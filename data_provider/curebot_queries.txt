@@ -1,0 +1,33 @@
+"charles fournier"
+"adoption" ET ("PLU" OU "PLUi" OU "Plan local d'urbanisme")
+"futurs énergétiques" 2050
+"représentation d'intérêts"
+"ouest france" ET ("Pays de loire" OR "Nantes" OR "Rennes" OR "Bretagne")
+"antoine chéreau" & montaigu
+"modification" ET ("SCOT" OU "schéma de cohérence territoriale")
+"conseil régional" & "centre val de loire"
+"élection présidentielle"
+PORAL
+"responsable d'équilibre" OR "opérateur d'effacement" OR "acteur d'ajustement" OR "responsables de réserves" OR "responsable de réserves" OR "Acteurs de marchés" OR "acteur de marchés" OR "services systèmes" OR "services systèmes fréquences" OR "Appel d'offre long terme" OR "AOLT" OR "mécanisme de capacité" OR "NEBEF" OR "bloc d'effacement" OR "effacement de consommation" OR "nouvelles flexibilités" OR "agrégateur" OR "agrégateurs" OR "Appel d'offre effacement" OR "valorisation des flexibilités"
+"modification" ET ("PLU" OU "PLUi" OU "Plan local d'urbanisme")
+"antoine chéreau" & "conseil régional"
+"révision" ET ("SCOT" OU "schéma de cohérence territoriale")
+"affaires publiques"
+erquy ET accident
+"michaël quernez" & "bretagne"
+"commission d'enquête" ET ("PLU" OU "PLUi" OU "Plan local d'urbanisme")
+"conseil régional" & "bretagne"
+"michaël quernez" & bretagne
+"Charles Fournier"
+erquy AND accident
+"révision" ET ("PLU" OU "PLUi" OU "Plan local d'urbanisme")
+"mécanisme de capacité"
+"adoption" ET ("SCOT" OU "schéma de cohérence territoriale")
+"commission d'enquête" ET ("SCOT" OU "schéma de cohérence territoriale")
+"commissaire enquêteur" ET ("SCOT" OU "schéma de cohérence territoriale")
+"conseil régional" & "pays de la loire"
+"antoine chéreau" & "Montaigu"
+"enquête publique" ET ("PLU" OU "PLUi" OU "Plan local d'urbanisme")
+CARBURANT AND INFLATION
+"conseil régional" & "Pays de la loire"
+"enquête publique" ET ("SCOT" OU "schéma de cohérence territoriale")

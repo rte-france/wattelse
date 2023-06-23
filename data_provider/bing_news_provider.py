@@ -22,7 +22,7 @@ class BingNewsProvider(DataProvider):
     def __init__(self):
         super().__init__()
 
-    def get_articles(self, keywords: List[str]) -> List[Dict]:
+    def get_articles(self, keywords: str) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
         query = self._build_query(keywords)
         logger.debug(f"Querying Bing: {query}")
@@ -32,9 +32,8 @@ class BingNewsProvider(DataProvider):
         results = [self._parse_entry(res) for res in result["entries"]]
         return [res for res in results if res is not None]
 
-    def _build_query(self, keywords: List) -> str:
-        kw = urllib.parse.quote(" ".join(keywords))
-        return self.URL_ENDPOINT.replace(PATTERN, f"{kw}")
+    def _build_query(self, keywords: str) -> str:
+        return self.URL_ENDPOINT.replace(PATTERN, f"{urllib.parse.quote(keywords)}")
 
     def _clean_url(self, bing_url) -> str:
         """Clean encoded URLs returned by Bing news such as "http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=649475a6257945d6900378c8310bcfde&amp;url=https%3a%2f%2fwww.lemondeinformatique.fr%2factualites%2flire-avec-schema-gpt-translator-datastax-automatise-la-creation-de-pipelines-de-donnees-90737.html&amp;c=15009376565431680830&amp;mkt=fr-fr"
