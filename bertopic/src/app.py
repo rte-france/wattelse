@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 
+from utils import TEXT_COLUMN, DATA_DIR
 from utils import (
     load_data,
     BERTopic_train,
@@ -64,9 +65,9 @@ with st.sidebar.form('parameters_sidebar'):
 
 ### DATA SELECTION AND LOADING ###
 
-# Select box with every file saved in "./data/cleaned/" as options. 
+# Select box with every file saved in "./data/" as options.
 # As long as no data is selected, the app breaks.
-data_options = ["None"] + os.listdir("./data/cleaned/")
+data_options = ["None"] + os.listdir(DATA_DIR)
 data_name = st.selectbox("Select data to continue", data_options)
 
 if data_name == "None":
@@ -83,7 +84,7 @@ st.write(df.head())
 if not parameters_sidebar_clicked and not ("search_term" in st.session_state) and not ("new_document" in st.session_state):
     st.stop()
 
-topics, probs, topic_model = BERTopic_train(df["docs"], st.session_state.parameters)
+topics, probs, topic_model = BERTopic_train(df[TEXT_COLUMN], st.session_state.parameters)
 
 
 ### DISPLAY RESULTS

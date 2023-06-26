@@ -11,14 +11,19 @@ from sklearn.feature_extraction.text import CountVectorizer
 from nltk.corpus import stopwords
 
 import pandas as pd
-import numpy as np
 import ast
 import streamlit as st
 
+DATA_DIR = "./data/"
+TEXT_COLUMN = "text"
+TIMESTAMP_COLUMN = "timestamp"
 
 @st.cache_data
 def load_data(data_name):
-	return pd.read_csv("./data/cleaned/"+data_name)
+	if ".csv" in data_name:
+		return pd.read_csv(DATA_DIR+data_name)
+	elif ".jsonl" in data_name or ".jsonlines" in data_name:
+		return pd.read_json(DATA_DIR+data_name)
 
 
 class EmbeddingModel(BaseEmbedder):
@@ -142,7 +147,7 @@ def plot_topics_hierarchy(form_parameters, _topic_model, width=800):
 
 @st.cache_data
 def plot_topics_over_time(form_parameters, _topic_model, df, nr_bins = 50, width=1000):
-	topics_over_time = _topic_model.topics_over_time(df["docs"], df["timestamps"], nr_bins=nr_bins, global_tuning=False)
+	topics_over_time = _topic_model.topics_over_time(df[TEXT_COLUMN], df[TIMESTAMP_COLUMN], nr_bins=nr_bins, global_tuning=False)
 	return _topic_model.visualize_topics_over_time(topics_over_time, top_n_topics=10, width=width)
 
 
@@ -160,3 +165,4 @@ def print_new_document_probs(new_document, topic_model):
 	if new_document != "":
 		topics, probs = topic_model.transform(new_document)
 		st.write(topic_model.visualize_distribution(probs.squeeze()))
+
