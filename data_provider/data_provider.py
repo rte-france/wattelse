@@ -9,7 +9,6 @@ from loguru import logger
 
 
 class DataProvider(ABC):
-
     def __init__(self):
         self.article_parser = Goose()
 

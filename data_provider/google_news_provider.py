@@ -13,12 +13,14 @@ BEFORE = "+before:today"
 AFTER = "+after:2000-01-01"
 MAX_ARTICLES = 100
 
+
 class GoogleNewsProvider(DataProvider):
     """News provider for Bing News.
     Limitations:
         - since of results limited to 12
         - hard to request specific dates
     """
+
     URL_ENDPOINT = f"https://news.google.com/rss/search?num={MAX_ARTICLES}&hl=fr&gl=FR&ceid=FR:fr&q={PATTERN}{BEFORE}{AFTER}"
 
     def __init__(self):
@@ -55,7 +57,7 @@ class GoogleNewsProvider(DataProvider):
             # fix padding
             base64_url += "=" * ((4 - len(base64_url) % 4) % 4)
             actual_url = base64.b64decode(base64_url)[4:-3].decode("ISO-8859-1")
-            if actual_url.startswith("\x01"): # workaround
+            if actual_url.startswith("\x01"):  # workaround
                 actual_url = actual_url.split("\x01")[1]
             return actual_url
         except IndexError:
@@ -79,8 +81,14 @@ class GoogleNewsProvider(DataProvider):
             summary = entry["summary"]
             published = dateparser.parse(entry["published"]).strftime("%Y-%m-%d %H:%M:%S")
             text = self._get_text(url)
-            return {'title': title, 'summary': summary, 'link': link, 'url': url, 'text': text,
-                    'timestamp': published}
+            return {
+                "title": title,
+                "summary": summary,
+                "link": link,
+                "url": url,
+                "text": text,
+                "timestamp": published,
+            }
         except Exception as e:
             logger.error(str(e) + f"\nError occurred with text parsing of url in : {entry}")
             return None

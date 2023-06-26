@@ -7,14 +7,20 @@ from loguru import logger
 if __name__ == "__main__":
     app = typer.Typer()
 
-
     @app.command("scrape")
-    def scrape(keywords: str = typer.Argument(None, help="keywords for news search engine."),
-               provider: str = typer.Option("google", help="source for news [bing, google]"),
-               after: str = typer.Option(None, help="date after which to consider news [format YYYY-MM-DD]"),
-               before: str = typer.Option(None, help="date before which to consider news [format YYYY-MM-DD]"),
-               save_path: str = typer.Option(None, help="Path for writing results. File is in jsonl format.")
-               ):
+    def scrape(
+        keywords: str = typer.Argument(None, help="keywords for news search engine."),
+        provider: str = typer.Option("google", help="source for news [bing, google]"),
+        after: str = typer.Option(
+            None, help="date after which to consider news [format YYYY-MM-DD]"
+        ),
+        before: str = typer.Option(
+            None, help="date before which to consider news [format YYYY-MM-DD]"
+        ),
+        save_path: str = typer.Option(
+            None, help="Path for writing results. File is in jsonl format."
+        ),
+    ):
         if provider == "bing":
             provider = BingNewsProvider()
         else:
@@ -22,13 +28,13 @@ if __name__ == "__main__":
         results = provider.get_articles(keywords, after, before)
         provider.store_articles(results, save_path)
 
-
     @app.command("auto-scrape")
     def auto_scrape(
-            requests_file: str = typer.Argument(None,
-                                                help="path of jsonlines input file containing the expected queries."),
-            provider: str = typer.Option("google", help="source for news [bing, google]"),
-            save_path: str = typer.Option(None, help="Path for writing results."),
+        requests_file: str = typer.Argument(
+            None, help="path of jsonlines input file containing the expected queries."
+        ),
+        provider: str = typer.Option("google", help="source for news [bing, google]"),
+        save_path: str = typer.Option(None, help="Path for writing results."),
     ):
         """Scrape data from a text file. Each line of the file shall be compliant with the following format:
         <keyword list>;<after_date, format YYYY-MM-DD>;<before_date, format YYYY-MM-DD>
@@ -59,6 +65,5 @@ if __name__ == "__main__":
                 return -1
             results = provider.get_articles_batch(requests)
             provider.store_articles(results, save_path)
-
 
     app()

@@ -62,8 +62,14 @@ class BingNewsProvider(DataProvider):
             summary = entry["summary"]
             published = dateparser.parse(entry["published"]).strftime("%Y-%m-%d %H:%M:%S")
             text = self._get_text(link)
-            return {'title': title, 'summary': summary, 'link': link, 'url': url, 'text': text,
-                    'timestamp': published}
+            return {
+                "title": title,
+                "summary": summary,
+                "link": link,
+                "url": url,
+                "text": text,
+                "timestamp": published,
+            }
         except Exception as e:
             logger.error(str(e) + f"\nError occurred with text parsing of url in : {entry}")
             return None
