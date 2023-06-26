@@ -36,14 +36,15 @@ class GoogleNewsProvider(DataProvider):
 
     def _build_query(self, keywords: str, after: str = None, before: str = None) -> str:
         query = self.URL_ENDPOINT.replace(PATTERN, f"{urllib.parse.quote(keywords)}")
-        if after:
-            query = query.replace(AFTER, f"+after:{after}")
-        else:
+        if after is None or after == "":
             query = query.replace(AFTER, "")
-        if before:
-            query = query.replace(BEFORE, f"+before:{before}")
         else:
+            query = query.replace(AFTER, f"+after:{after}")
+        if before is None or before == "":
             query = query.replace(BEFORE, "")
+        else:
+            query = query.replace(BEFORE, f"+before:{before}")
+
         return query
 
     def _clean_url(self, url) -> str:

@@ -27,7 +27,7 @@ if __name__ == "__main__":
     def auto_scrape(
             requests_file: str = typer.Argument(None,
                                                 help="path of jsonlines input file containing the expected queries."),
-            provider: str = typer.Option("bing", help="source for news [bing, google]"),
+            provider: str = typer.Option("google", help="source for news [bing, google]"),
             save_path: str = typer.Option(None, help="Path for writing results."),
     ):
         """Scrape data from a text file. Each line of the file shall be compliant with the following format:

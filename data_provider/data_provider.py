@@ -39,7 +39,7 @@ class DataProvider(ABC):
         articles = []
         for entry in queries_batch:
             logger.info(f"Processing query: {entry}")
-            articles += self.get_articles(queries_batch[0], queries_batch[1], queries_batch[2])
+            articles += self.get_articles(entry[0], entry[1], entry[2])
         return articles
 
     def parse_article(self, url: str) -> Article:
