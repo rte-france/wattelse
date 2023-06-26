@@ -22,9 +22,9 @@ class BingNewsProvider(DataProvider):
     def __init__(self):
         super().__init__()
 
-    def get_articles(self, keywords: str) -> List[Dict]:
+    def get_articles(self, keywords: str, after: str, before: str) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
-        query = self._build_query(keywords)
+        query = self._build_query(keywords, after, before)
         logger.debug(f"Querying Bing: {query}")
         result = feedparser.parse(query)
         logger.debug(f"Returned: {len(result['entries'])} entries")
@@ -32,7 +32,8 @@ class BingNewsProvider(DataProvider):
         results = [self._parse_entry(res) for res in result["entries"]]
         return [res for res in results if res is not None]
 
-    def _build_query(self, keywords: str) -> str:
+    def _build_query(self, keywords: str, after: str = None, before: str = None) -> str:
+        # FIXME: don't know how to use after/before parameters with Bing news queries
         return self.URL_ENDPOINT.replace(PATTERN, f"{urllib.parse.quote(keywords)}")
 
     def _clean_url(self, bing_url) -> str:
@@ -51,7 +52,7 @@ class BingNewsProvider(DataProvider):
         article = self.parse_article(url)
         return article.cleaned_text
 
-    @wait(1)
+    @wait(0.5)
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a Bing news entry, uses wait decorator to force delay between 2 successive calls"""
         try:

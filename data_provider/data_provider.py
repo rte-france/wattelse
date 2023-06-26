@@ -14,16 +14,32 @@ class DataProvider(ABC):
         self.article_parser = Goose()
 
     @abstractmethod
-    def get_articles(self, query: str) -> List[Dict]:
-        """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
+    def get_articles(self, query: str, after: str, before: str) -> List[Dict]:
+        """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines.
+
+        Parameters
+        ----------
+        query: str
+            keywords describing the request
+        after: str
+            date after which to consider articles, formatted as YYYY-MM-DD
+        before: str
+            date before which to consider articles, formatted as YYYY-MM-DD
+
+        Returns
+        -------
+        A list of dict entries, each one describing an article
+        """
+
         pass
 
-    def get_articles_batch(self, queries_batch: List[str]) -> List[Dict]:
-        """Requests the news data provider for a list of queries, collects a set of URLs to be parsed, return results as json lines"""
+    def get_articles_batch(self, queries_batch: List[List]) -> List[Dict]:
+        """Requests the news data provider for a list of queries, collects a set of URLs to be parsed,
+        return results as json lines"""
         articles = []
-        for query in queries_batch:
-            logger.info(f"Processing query: {query}")
-            articles += self.get_articles(query)
+        for entry in queries_batch:
+            logger.info(f"Processing query: {entry}")
+            articles += self.get_articles(queries_batch[0], queries_batch[1], queries_batch[2])
         return articles
 
     def parse_article(self, url: str) -> Article:
@@ -32,11 +48,14 @@ class DataProvider(ABC):
         return article
 
     @abstractmethod
-    def _build_query(self, keywords: str) -> str:
+    def _build_query(self, keywords: str, after: str, before: str) -> str:
         pass
 
     def store_articles(self, data: List[Dict], file_path: Path):
         """Store articles to a specific path as json lines"""
+        if not data:
+            logger.error("No data to be stored!")
+            return -1
         with open(file_path, "a+") as f:
             with jsonlines.Writer(f) as writer:
                 writer.write(data)

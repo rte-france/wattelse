@@ -4,4 +4,3 @@ goose3
 loguru
 jsonlines
 typer
-
