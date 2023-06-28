@@ -7,7 +7,7 @@ from pygooglenews import GoogleNews
 from newspaper import Article
 
 from data_provider.data_provider import DataProvider
-from data_provider.utils import wait, decode_google_news_url
+from data_provider.utils import wait, wait_if_seen_url, decode_google_news_url
 
 PATTERN = "{QUERY}"
 BEFORE = "+before:today"
@@ -39,6 +39,7 @@ class GoogleNewsProvider(DataProvider):
         results = [self._parse_entry(res) for res in result["entries"]]
         return [res for res in results if res is not None]
 
+    @wait(0.2)
     def get_articles(self, keywords: str, after: str, before: str) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
         #FIXME: this may be blocked by google
@@ -62,6 +63,7 @@ class GoogleNewsProvider(DataProvider):
 
         return query
 
+    @wait_if_seen_url(0.2)
     def _get_text(self, url: str) -> str:
         """Extracts text from an article URL"""
         logger.debug(f"Extracting text from {url}")
@@ -87,7 +89,6 @@ class GoogleNewsProvider(DataProvider):
             return None
         return text
 
-    @wait(0.2)
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a Google news entry, uses wait decorator to force delay between 2 successive calls"""
         try:
@@ -97,7 +98,7 @@ class GoogleNewsProvider(DataProvider):
             print(url)
             summary = entry["summary"]
             published = dateparser.parse(entry["published"]).strftime("%Y-%m-%d %H:%M:%S")
-            text = self._get_text(url)
+            text = self._get_text(url=url)
             text = self._filter_out_bad_text(text)
             if text is None or text=="":
                 return None

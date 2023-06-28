@@ -2,6 +2,7 @@ import time
 import base64
 import functools
 import re
+from urllib.parse import urlsplit
 
 # Ref: https://stackoverflow.com/a/59023463/
 
@@ -39,3 +40,31 @@ def wait(secs):
 
     return decorator
 
+
+def wait_if_seen_url(secs):
+    """wait decorator based on URL cache: only waits max to secs for websites already seen"""
+
+    def decorator(func):
+        cache = {}
+
+        def wrapper(*args, **kwargs):
+            url = kwargs.get("url")
+            if url is None:
+                return func(*args, **kwargs)
+            else:
+                base_url = urlsplit(url).netloc
+                last_call = cache.get(base_url)
+                current_call = round(time.time() * 1000)
+                if last_call is not None:
+                    # sleep if recent call
+                    delta = (current_call - last_call) / 1000
+                    if delta < secs:
+                        time.sleep(secs - delta)
+                        print(secs - delta)
+                # update cache
+                cache[base_url] = current_call
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

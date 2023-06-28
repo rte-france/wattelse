@@ -5,7 +5,7 @@ import urllib.parse
 import feedparser
 
 from data_provider.data_provider import DataProvider
-from data_provider.utils import wait
+from data_provider.utils import wait, wait_if_seen_url
 
 PATTERN = "{QUERY}"
 
@@ -22,6 +22,7 @@ class BingNewsProvider(DataProvider):
     def __init__(self):
         super().__init__()
 
+    @wait(0.2)
     def get_articles(self, keywords: str, after: str, before: str) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
         query = self._build_query(keywords, after, before)
@@ -46,13 +47,13 @@ class BingNewsProvider(DataProvider):
             # fallback (the URL does not match the expected pattern)
             return bing_url
 
+    @wait_if_seen_url(0.2)
     def _get_text(self, url: str) -> str:
         """Extracts text from an article URL"""
         logger.debug(f"Extracting text from {url}")
         article = self.parse_article(url)
         return article.cleaned_text
 
-    @wait(0.2)
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a Bing news entry, uses wait decorator to force delay between 2 successive calls"""
         try:
@@ -61,7 +62,7 @@ class BingNewsProvider(DataProvider):
             url = self._clean_url(link)
             summary = entry["summary"]
             published = dateparser.parse(entry["published"]).strftime("%Y-%m-%d %H:%M:%S")
-            text = self._get_text(link)
+            text = self._get_text(url=link)
             return {
                 "title": title,
                 "summary": summary,
