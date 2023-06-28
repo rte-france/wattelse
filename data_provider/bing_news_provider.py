@@ -52,7 +52,7 @@ class BingNewsProvider(DataProvider):
         article = self.parse_article(url)
         return article.cleaned_text
 
-    @wait(0.5)
+    @wait(0.2)
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a Bing news entry, uses wait decorator to force delay between 2 successive calls"""
         try:
