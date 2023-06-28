@@ -26,9 +26,9 @@ class BingNewsProvider(DataProvider):
     def get_articles(self, keywords: str, after: str, before: str) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
         query = self._build_query(keywords, after, before)
-        logger.debug(f"Querying Bing: {query}")
+        logger.info(f"Querying Bing: {query}")
         result = feedparser.parse(query)
-        logger.debug(f"Returned: {len(result['entries'])} entries")
+        logger.info(f"Returned: {len(result['entries'])} entries")
 
         results = [self._parse_entry(res) for res in result["entries"]]
         return [res for res in results if res is not None]

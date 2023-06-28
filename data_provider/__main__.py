@@ -83,6 +83,7 @@ if __name__ == "__main__":
                 logger.error("Bad file format")
                 return -1
             results = provider.get_articles_batch(requests)
+            logger.info(f"Storing {len(results)} articles")
             provider.store_articles(results, save_path)
 
     app()

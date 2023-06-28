@@ -32,9 +32,9 @@ class GoogleNewsProvider(DataProvider):
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
         #FIXME: this may be blocked by google
         query = self._build_query(keywords, after, before)
-        logger.debug(f"Querying Google: {query}")
+        logger.info(f"Querying Google: {query}")
         result = feedparser.parse(query)
-        logger.debug(f"Returned: {len(result['entries'])} entries")
+        logger.info(f"Returned: {len(result['entries'])} entries")
 
         results = [self._parse_entry(res) for res in result["entries"]]
         return [res for res in results if res is not None]
@@ -95,7 +95,6 @@ class GoogleNewsProvider(DataProvider):
             title = entry["title"]
             link = entry["link"]
             url = decode_google_news_url(link)
-            print(url)
             summary = entry["summary"]
             published = dateparser.parse(entry["published"]).strftime("%Y-%m-%d %H:%M:%S")
             text = self._get_text(url=url)

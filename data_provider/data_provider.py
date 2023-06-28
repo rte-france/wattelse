@@ -57,9 +57,9 @@ class DataProvider(ABC):
         if not data:
             logger.error("No data to be stored!")
             return -1
-        with open(file_path, "a+") as f:
-            with jsonlines.Writer(f) as writer:
-                writer.write(data)
+        with jsonlines.open('output.jsonl', 'w') as writer:
+            writer.write_all(data)
+
         logger.debug(f"Data stored to {file_path}.")
 
     def load_articles(self, file_path: Path) -> pd.DataFrame:

@@ -60,7 +60,6 @@ def wait_if_seen_url(secs):
                     delta = (current_call - last_call) / 1000
                     if delta < secs:
                         time.sleep(secs - delta)
-                        print(secs - delta)
                 # update cache
                 cache[base_url] = current_call
                 return func(*args, **kwargs)

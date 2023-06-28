@@ -1,3 +1,6 @@
+# Installation
+If the installation of the pygooglenews dependency fails, please use the script `install_pygooglenews.sh`
+
 # Description
 Grabs news articles and store them as jsonlines file.
 
@@ -20,3 +23,9 @@ Grabs news articles and store them as jsonlines file.
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
  ```
+
+# Remarques
+
+You can expect a rate of 10-20% of articles not correctly processed
+- problem of cookies management
+- errors 404, 403
