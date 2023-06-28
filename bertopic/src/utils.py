@@ -13,4 +13,4 @@ def file_to_pd(data_name: str, base_dir: str = None) -> pd.DataFrame:
     if ".csv" in data_name:
         return pd.read_csv(data_path)
     elif ".jsonl" in data_name or ".jsonlines" in data_name:
-        return pd.read_json(data_path)
+        return pd.read_json(data_path, lines=True)
