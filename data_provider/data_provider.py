@@ -57,7 +57,7 @@ class DataProvider(ABC):
         if not data:
             logger.error("No data to be stored!")
             return -1
-        with jsonlines.open('output.jsonl', 'w') as writer:
+        with jsonlines.open(file_path, 'w') as writer:
             writer.write_all(data)
 
         logger.debug(f"Data stored to {file_path}.")

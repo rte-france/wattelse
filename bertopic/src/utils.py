@@ -2,7 +2,6 @@ import nltk
 
 nltk.download("stopwords")
 import pandas as pd
-import jsonlines
 
 DATA_DIR = "./data/"
 TEXT_COLUMN = "text"
