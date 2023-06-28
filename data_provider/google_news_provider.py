@@ -82,8 +82,8 @@ class GoogleNewsProvider(DataProvider):
         return article.text
 
     def _filter_out_bad_text(self, text):
-        if "[if" in text:
-            logger.warning("Bad text: {text}")
+        if "[if" in text or "cookies" in text:
+            logger.warning(f"Bad text: {text}")
             return None
         return text
 

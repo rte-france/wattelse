@@ -2,6 +2,7 @@ import nltk
 
 nltk.download("stopwords")
 import pandas as pd
+import jsonlines
 
 DATA_DIR = "./data/"
 TEXT_COLUMN = "text"
@@ -13,4 +14,7 @@ def file_to_pd(data_name: str, base_dir: str = None) -> pd.DataFrame:
     if ".csv" in data_name:
         return pd.read_csv(data_path)
     elif ".jsonl" in data_name or ".jsonlines" in data_name:
-        return pd.read_json(data_path)
+        with open(data_path, "r") as f:
+            with jsonlines.Reader(f) as reader:
+                data = reader.read()
+                return pd.DataFrame(data)
