@@ -1,6 +1,7 @@
 dateparser
 feedparser
 goose3
-loguru
 jsonlines
+loguru
+newspaper3k
 typer

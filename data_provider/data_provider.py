@@ -11,6 +11,8 @@ from loguru import logger
 class DataProvider(ABC):
     def __init__(self):
         self.article_parser = Goose()
+        # set 'standard' user agent
+        self.article_parser.config.browser_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2)"
 
     @abstractmethod
     def get_articles(self, query: str, after: str, before: str) -> List[Dict]:

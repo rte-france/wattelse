@@ -4,6 +4,7 @@ import dateparser
 import urllib.parse
 import feedparser
 from pygooglenews import GoogleNews
+from newspaper import Article
 
 from data_provider.data_provider import DataProvider
 from data_provider.utils import wait, decode_google_news_url
@@ -64,8 +65,21 @@ class GoogleNewsProvider(DataProvider):
     def _get_text(self, url: str) -> str:
         """Extracts text from an article URL"""
         logger.debug(f"Extracting text from {url}")
-        article = self.parse_article(url)
-        return article.cleaned_text
+        try:
+            article = self.parse_article(url)
+            return article.cleaned_text
+        except:
+            # goose3 not working, trying with alternate parser
+            logger.warning("Parsing of text failed with Goose3, trying newspaper3k")
+            return self._get_text_alternate(url)
+
+    def _get_text_alternate(self, url: str) -> str:
+        """Extracts text from an article URL"""
+        logger.debug(f"Extracting text from {url} with newspaper3k")
+        article = Article(url)
+        article.download()
+        article.parse()
+        return article.text
 
     def _filter_out_bad_text(self, text):
         if "[if" in text:
