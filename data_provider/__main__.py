@@ -21,6 +21,25 @@ if __name__ == "__main__":
             None, help="Path for writing results. File is in jsonl format."
         ),
     ):
+        """Scrape data from Google or Bing news (single request).
+
+        Parameters
+        ----------
+        keywords: str
+            query described as keywords
+        provider: str
+            News data provider. Current authorized values [google, bing]
+        after: str
+            "from" date, formatted as YYYY-MM-DD
+        before: str
+            "to" date, formatted as YYYY-MM-DD
+        save_path: str
+            Path to the output file (jsonl format)
+
+        Returns
+        -------
+
+        """
         if provider == "bing":
             provider = BingNewsProvider()
         else:
@@ -36,8 +55,8 @@ if __name__ == "__main__":
         provider: str = typer.Option("google", help="source for news [bing, google]"),
         save_path: str = typer.Option(None, help="Path for writing results."),
     ):
-        """Scrape data from a text file. Each line of the file shall be compliant with the following format:
-        <keyword list>;<after_date, format YYYY-MM-DD>;<before_date, format YYYY-MM-DD>
+        """Scrape data from Google or Bing news (multiple requests from a configuration file: each line of the file shall be compliant with the following format:
+        <keyword list>;<after_date, format YYYY-MM-DD>;<before_date, format YYYY-MM-DD>)
 
         Parameters
         ----------

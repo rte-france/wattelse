@@ -4,6 +4,7 @@ from loguru import logger
 import dateparser
 import urllib.parse
 import feedparser
+from pygooglenews import GoogleNews
 
 from data_provider.data_provider import DataProvider
 from data_provider.utils import wait
@@ -25,12 +26,24 @@ class GoogleNewsProvider(DataProvider):
 
     def __init__(self):
         super().__init__()
+        self.gn = GoogleNews(lang = 'fr', country = 'FR')
 
-    def get_articles(self, keywords: str, after: str, before: str) -> List[Dict]:
+    def get_articles_old(self, keywords: str, after: str, before: str) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
+        #FIXME: this may be blocked by google
         query = self._build_query(keywords, after, before)
         logger.debug(f"Querying Google: {query}")
         result = feedparser.parse(query)
+        logger.debug(f"Returned: {len(result['entries'])} entries")
+
+        results = [self._parse_entry(res) for res in result["entries"]]
+        return [res for res in results if res is not None]
+
+    def get_articles(self, keywords: str, after: str, before: str) -> List[Dict]:
+        """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
+        #FIXME: this may be blocked by google
+        logger.debug(f"Querying Google: {keywords}")
+        result = self.gn.search(keywords, from_=after, to_=before)
         logger.debug(f"Returned: {len(result['entries'])} entries")
 
         results = [self._parse_entry(res) for res in result["entries"]]
