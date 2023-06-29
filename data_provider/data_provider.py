@@ -15,7 +15,7 @@ class DataProvider(ABC):
         self.article_parser.config.browser_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2)"
 
     @abstractmethod
-    def get_articles(self, query: str, after: str, before: str) -> List[Dict]:
+    def get_articles(self, query: str, after: str, before: str, max_results: int) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines.
 
         Parameters
@@ -26,6 +26,8 @@ class DataProvider(ABC):
             date after which to consider articles, formatted as YYYY-MM-DD
         before: str
             date before which to consider articles, formatted as YYYY-MM-DD
+        max_results: int
+            Maximum number of results per request
 
         Returns
         -------
@@ -34,23 +36,19 @@ class DataProvider(ABC):
 
         pass
 
-    def get_articles_batch(self, queries_batch: List[List]) -> List[Dict]:
+    def get_articles_batch(self, queries_batch: List[List], max_results: int) -> List[Dict]:
         """Requests the news data provider for a list of queries, collects a set of URLs to be parsed,
         return results as json lines"""
         articles = []
         for entry in queries_batch:
             logger.info(f"Processing query: {entry}")
-            articles += self.get_articles(entry[0], entry[1], entry[2])
+            articles += self.get_articles(entry[0], entry[1], entry[2], max_results)
         return articles
 
     def parse_article(self, url: str) -> Article:
         """Parses an article described by its URL"""
         article = self.article_parser.extract(url=url)
         return article
-
-    @abstractmethod
-    def _build_query(self, keywords: str, after: str, before: str) -> str:
-        pass
 
     def store_articles(self, data: List[Dict], file_path: Path):
         """Store articles to a specific path as json lines"""

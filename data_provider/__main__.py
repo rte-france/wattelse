@@ -1,3 +1,5 @@
+from datetime import timedelta, datetime
+
 import typer
 
 from data_provider.bing_news_provider import BingNewsProvider
@@ -17,6 +19,8 @@ if __name__ == "__main__":
         before: str = typer.Option(
             None, help="date before which to consider news [format YYYY-MM-DD]"
         ),
+        max_results: int = typer.Option(50, help="maximum number of results per request"
+        ),
         save_path: str = typer.Option(
             None, help="Path for writing results. File is in jsonl format."
         ),
@@ -33,6 +37,8 @@ if __name__ == "__main__":
             "from" date, formatted as YYYY-MM-DD
         before: str
             "to" date, formatted as YYYY-MM-DD
+        max_results: int
+            Maximum number of results per request
         save_path: str
             Path to the output file (jsonl format)
 
@@ -44,13 +50,15 @@ if __name__ == "__main__":
             provider = BingNewsProvider()
         else:
             provider = GoogleNewsProvider()
-        results = provider.get_articles(keywords, after, before)
+        results = provider.get_articles(keywords, after, before, max_results)
         provider.store_articles(results, save_path)
 
     @app.command("auto-scrape")
     def auto_scrape(
         requests_file: str = typer.Argument(
             None, help="path of jsonlines input file containing the expected queries."
+        ),
+        max_results: int = typer.Option(50, help="maximum number of results per request"
         ),
         provider: str = typer.Option("google", help="source for news [bing, google]"),
         save_path: str = typer.Option(None, help="Path for writing results."),
@@ -82,8 +90,60 @@ if __name__ == "__main__":
             except:
                 logger.error("Bad file format")
                 return -1
-            results = provider.get_articles_batch(requests)
+            results = provider.get_articles_batch(requests, max_results)
             logger.info(f"Storing {len(results)} articles")
             provider.store_articles(results, save_path)
+
+
+
+    @app.command("generate-query-file")
+    def generate_query_file(keywords: str = typer.Argument(None, help="keywords for news search engine."),
+                            after: str = typer.Option(
+                                None, help="date after which to consider news [format YYYY-MM-DD]"
+                            ),
+                            before: str = typer.Option(
+                                None, help="date before which to consider news [format YYYY-MM-DD]"
+                            ),
+                            save_path: str = typer.Option(
+                                None, help="Path for writing results. File is in jsonl format."
+                            ),
+                            interval: int = typer.Option(
+                                30, help="Range of days of atomic requests"
+                            )
+                            ):
+        """Generates a query file to be used with the auto-scrape command. This is useful for queries generating many results.
+        This will split the broad query into many ones, each one covering an 'interval' (range) in days covered by each atomic
+        request.
+        If you want to cover several keywords, run the command several times with the same output file.
+
+        Parameters
+        ----------
+        keywords: str
+            query described as keywords
+        after: str
+            "from" date, formatted as YYYY-MM-DD
+        before: str
+            "to" date, formatted as YYYY-MM-DD
+        save_path: str
+            Path to the output file (jsonl format)
+
+        Returns
+        -------
+
+        """
+        date_format = "%Y-%m-%d"
+        start_date = datetime.strptime(after, date_format)
+        end_date = datetime.strptime(before, date_format)
+        dates_l = list(_daterange(start_date,  end_date, interval))
+
+        with open(save_path, 'a') as query_file:
+            for elem in dates_l:
+                query_file.write(f"{keywords};{elem[0].strftime(date_format)};{elem[1].strftime(date_format)}\n")
+
+
+
+    def _daterange(start_date, end_date, ndays):
+        for n in range(int((end_date - start_date).days / ndays)):
+            yield (start_date + timedelta(ndays * n), start_date + timedelta(ndays * (n + 1)))
 
     app()

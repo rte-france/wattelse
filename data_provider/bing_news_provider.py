@@ -23,19 +23,22 @@ class BingNewsProvider(DataProvider):
         super().__init__()
 
     @wait(0.2)
-    def get_articles(self, keywords: str, after: str, before: str) -> List[Dict]:
+    def get_articles(self, keywords: str, after: str, before: str, max_results: int) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
         query = self._build_query(keywords, after, before)
         logger.info(f"Querying Bing: {query}")
         result = feedparser.parse(query)
-        logger.info(f"Returned: {len(result['entries'])} entries")
+        entries = result["entries"][:max_results]
+        logger.info(f"Returned: {len(entries)} entries")
 
-        results = [self._parse_entry(res) for res in result["entries"]]
+        results = [self._parse_entry(res) for res in entries]
         return [res for res in results if res is not None]
+
 
     def _build_query(self, keywords: str, after: str = None, before: str = None) -> str:
         # FIXME: don't know how to use after/before parameters with Bing news queries
-        return self.URL_ENDPOINT.replace(PATTERN, f"{urllib.parse.quote(keywords)}")
+        query = self.URL_ENDPOINT.replace(PATTERN, f"{urllib.parse.quote(keywords)}")
+        return query
 
     def _clean_url(self, bing_url) -> str:
         """Clean encoded URLs returned by Bing news such as "http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=649475a6257945d6900378c8310bcfde&amp;url=https%3a%2f%2fwww.lemondeinformatique.fr%2factualites%2flire-avec-schema-gpt-translator-datastax-automatise-la-creation-de-pipelines-de-donnees-90737.html&amp;c=15009376565431680830&amp;mkt=fr-fr"

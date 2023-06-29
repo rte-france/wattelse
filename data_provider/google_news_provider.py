@@ -28,27 +28,18 @@ class GoogleNewsProvider(DataProvider):
         super().__init__()
         self.gn = GoogleNews(lang = 'fr', country = 'FR')
 
-    def get_articles_old(self, keywords: str, after: str, before: str) -> List[Dict]:
-        """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
-        #FIXME: this may be blocked by google
-        query = self._build_query(keywords, after, before)
-        logger.info(f"Querying Google: {query}")
-        result = feedparser.parse(query)
-        logger.info(f"Returned: {len(result['entries'])} entries")
-
-        results = [self._parse_entry(res) for res in result["entries"]]
-        return [res for res in results if res is not None]
-
     @wait(0.2)
-    def get_articles(self, keywords: str, after: str, before: str) -> List[Dict]:
+    def get_articles(self, keywords: str, after: str, before: str, max_results: int) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
         #FIXME: this may be blocked by google
-        logger.debug(f"Querying Google: {keywords}")
+        logger.info(f"Querying Google: {keywords}")
         result = self.gn.search(keywords, from_=after, to_=before)
-        logger.debug(f"Returned: {len(result['entries'])} entries")
+        entries = result["entries"][:max_results]
+        logger.info(f"Returned: {len(entries)} entries")
 
-        results = [self._parse_entry(res) for res in result["entries"]]
+        results = [self._parse_entry(res) for res in entries]
         return [res for res in results if res is not None]
+
 
     def _build_query(self, keywords: str, after: str = None, before: str = None) -> str:
         query = self.URL_ENDPOINT.replace(PATTERN, f"{urllib.parse.quote(keywords)}")

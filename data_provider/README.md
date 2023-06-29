@@ -17,12 +17,41 @@ Grabs news articles and store them as jsonlines file.
 │ --help                                                       Show this message and exit.                                                           │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ auto-scrape  Scrape data from Google or Bing news (multiple requests from a configuration file: each line of the file shall be compliant with the  │
-│              following format: <keyword list>;<after_date, format YYYY-MM-DD>;<before_date, format YYYY-MM-DD>)                                    │
-│ scrape       Scrape data from Google or Bing news (single request).                                                                                │
+│ auto-scrape          Scrape data from Google or Bing news (multiple requests from a configuration file: each line of the file shall be compliant   │
+│                      with the following format: <keyword list>;<after_date, format YYYY-MM-DD>;<before_date, format YYYY-MM-DD>)                   │
+│ generate-query-file  Generates a query file to be used with the auto-scrape command. This is useful for queries generating many results. This will │
+│                      split the broad query into many ones, each one covering an 'interval' (range) in days covered by each atomic request. If you  │
+│                      want to cover several keywords, run the command several times with the same output file.                                      │
+│ scrape               Scrape data from Google or Bing news (single request).                                                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
+
  ```
+
+```
+(weak_signals) jerome@linux:~/dev/weak-signals$ PYTHONPATH=. python -m data_provider auto-scrape --help
+                                                                                                                                                      
+ Usage: python -m data_provider auto-scrape [OPTIONS] [REQUESTS_FILE]                                                                                 
+                                                                                                                                                      
+ Scrape data from Google or Bing news (multiple requests from a configuration file: each line of the file shall be compliant with the following       
+ format: <keyword list>;<after_date, format YYYY-MM-DD>;<before_date, format YYYY-MM-DD>)                                                             
+ Parameters ---------- requests_file: str     Text file containing the list of requests to be processed provider: str     News data provider. Current 
+ authorized values [google, bing] save_path: str     Path to the output file (jsonl format)                                                           
+ Returns -------                                                                                                                                      
+                                                                                                                                                      
+╭─ Arguments ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│   requests_file      [REQUESTS_FILE]  path of jsonlines input file containing the expected queries. [default: None]                                │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --max-results        INTEGER  maximum number of results per request [default: 50]                                                                  │
+│ --provider           TEXT     source for news [bing, google] [default: google]                                                                     │
+│ --save-path          TEXT     Path for writing results. [default: None]                                                                            │
+│ --help                        Show this message and exit.                                                                                          │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+```
 
 # Remarques
 
