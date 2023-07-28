@@ -3,9 +3,12 @@ from pathlib import Path
 from typing import List, Dict
 
 import pandas as pd
-from goose3 import Goose, Article
+from goose3 import Goose
+from newspaper import Article
 import jsonlines
 from loguru import logger
+
+from data_provider.utils import wait_if_seen_url
 
 
 class DataProvider(ABC):
@@ -66,3 +69,30 @@ class DataProvider(ABC):
             with jsonlines.Reader(f) as reader:
                 data = reader.read()
                 return pd.DataFrame(data)
+
+
+    @wait_if_seen_url(0.2)
+    def _get_text(self, url: str) -> str:
+        """Extracts text from an article URL"""
+        logger.debug(f"Extracting text from {url}")
+        try:
+            article = self.parse_article(url)
+            return article.cleaned_text
+        except:
+            # goose3 not working, trying with alternate parser
+            logger.warning("Parsing of text failed with Goose3, trying newspaper3k")
+            return self._get_text_alternate(url)
+
+    def _get_text_alternate(self, url: str) -> str:
+        """Extracts text from an article URL"""
+        logger.debug(f"Extracting text from {url} with newspaper3k")
+        article = Article(url)
+        article.download()
+        article.parse()
+        return article.text
+
+    def _filter_out_bad_text(self, text):
+        if "[if" in text or "cookies" in text:
+            logger.warning(f"Bad text: {text}")
+            return None
+        return text

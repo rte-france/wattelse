@@ -50,12 +50,6 @@ class BingNewsProvider(DataProvider):
             # fallback (the URL does not match the expected pattern)
             return bing_url
 
-    @wait_if_seen_url(0.2)
-    def _get_text(self, url: str) -> str:
-        """Extracts text from an article URL"""
-        logger.debug(f"Extracting text from {url}")
-        article = self.parse_article(url)
-        return article.cleaned_text
 
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a Bing news entry, uses wait decorator to force delay between 2 successive calls"""

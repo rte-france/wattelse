@@ -2,12 +2,10 @@ from typing import List, Dict, Optional
 from loguru import logger
 import dateparser
 import urllib.parse
-import feedparser
 from pygooglenews import GoogleNews
-from newspaper import Article
 
 from data_provider.data_provider import DataProvider
-from data_provider.utils import wait, wait_if_seen_url, decode_google_news_url
+from data_provider.utils import wait, decode_google_news_url
 
 PATTERN = "{QUERY}"
 BEFORE = "+before:today"
@@ -16,10 +14,9 @@ MAX_ARTICLES = 100
 
 
 class GoogleNewsProvider(DataProvider):
-    """News provider for Bing News.
+    """News provider for Google News.
     Limitations:
-        - since of results limited to 12
-        - hard to request specific dates
+        - since of results limited to 100
     """
 
     URL_ENDPOINT = f"https://news.google.com/rss/search?num={MAX_ARTICLES}&hl=fr&gl=FR&ceid=FR:fr&q={PATTERN}{BEFORE}{AFTER}"
@@ -54,34 +51,9 @@ class GoogleNewsProvider(DataProvider):
 
         return query
 
-    @wait_if_seen_url(0.2)
-    def _get_text(self, url: str) -> str:
-        """Extracts text from an article URL"""
-        logger.debug(f"Extracting text from {url}")
-        try:
-            article = self.parse_article(url)
-            return article.cleaned_text
-        except:
-            # goose3 not working, trying with alternate parser
-            logger.warning("Parsing of text failed with Goose3, trying newspaper3k")
-            return self._get_text_alternate(url)
-
-    def _get_text_alternate(self, url: str) -> str:
-        """Extracts text from an article URL"""
-        logger.debug(f"Extracting text from {url} with newspaper3k")
-        article = Article(url)
-        article.download()
-        article.parse()
-        return article.text
-
-    def _filter_out_bad_text(self, text):
-        if "[if" in text or "cookies" in text:
-            logger.warning(f"Bad text: {text}")
-            return None
-        return text
 
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
-        """Parses a Google news entry, uses wait decorator to force delay between 2 successive calls"""
+        """Parses a Google news entry"""
         try:
             title = entry["title"]
             link = entry["link"]

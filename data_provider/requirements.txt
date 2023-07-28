@@ -3,5 +3,6 @@ feedparser
 goose3
 jsonlines
 loguru
+newscatcherapi
 newspaper3k
 typer
