@@ -6,13 +6,15 @@ from data_provider.bing_news_provider import BingNewsProvider
 from data_provider.google_news_provider import GoogleNewsProvider
 from loguru import logger
 
+from data_provider.newscatcher_provider import NewsCatcherProvider
+
 if __name__ == "__main__":
     app = typer.Typer()
 
     @app.command("scrape")
     def scrape(
         keywords: str = typer.Argument(None, help="keywords for news search engine."),
-        provider: str = typer.Option("google", help="source for news [bing, google]"),
+        provider: str = typer.Option("google", help="source for news [google, bing, newscatcher]"),
         after: str = typer.Option(
             None, help="date after which to consider news [format YYYY-MM-DD]"
         ),
@@ -25,14 +27,14 @@ if __name__ == "__main__":
             None, help="Path for writing results. File is in jsonl format."
         ),
     ):
-        """Scrape data from Google or Bing news (single request).
+        """Scrape data from Google, Bing or NewsCatcher news (single request).
 
         Parameters
         ----------
         keywords: str
             query described as keywords
         provider: str
-            News data provider. Current authorized values [google, bing]
+            News data provider. Current authorized values [google, bing, newscatcher]
         after: str
             "from" date, formatted as YYYY-MM-DD
         before: str
@@ -46,7 +48,9 @@ if __name__ == "__main__":
         -------
 
         """
-        if provider == "bing":
+        if provider == "newscatcher":
+            provider = NewsCatcherProvider()
+        elif provider == "bing":
             provider = BingNewsProvider()
         else:
             provider = GoogleNewsProvider()
@@ -60,10 +64,10 @@ if __name__ == "__main__":
         ),
         max_results: int = typer.Option(50, help="maximum number of results per request"
         ),
-        provider: str = typer.Option("google", help="source for news [bing, google]"),
+        provider: str = typer.Option("google", help="source for news [google, bing, newscatcher]"),
         save_path: str = typer.Option(None, help="Path for writing results."),
     ):
-        """Scrape data from Google or Bing news (multiple requests from a configuration file: each line of the file shall be compliant with the following format:
+        """Scrape data from Google, Bing news or NewsCatcher (multiple requests from a configuration file: each line of the file shall be compliant with the following format:
         <keyword list>;<after_date, format YYYY-MM-DD>;<before_date, format YYYY-MM-DD>)
 
         Parameters
@@ -71,7 +75,7 @@ if __name__ == "__main__":
         requests_file: str
             Text file containing the list of requests to be processed
         provider: str
-            News data provider. Current authorized values [google, bing]
+            News data provider. Current authorized values [google, bing, newscatcher]
         save_path: str
             Path to the output file (jsonl format)
 
@@ -79,7 +83,9 @@ if __name__ == "__main__":
         -------
 
         """
-        if provider == "bing":
+        if provider == "newscatcher":
+            provider = NewsCatcherProvider()
+        elif provider == "bing":
             provider = BingNewsProvider()
         else:
             provider = GoogleNewsProvider()
