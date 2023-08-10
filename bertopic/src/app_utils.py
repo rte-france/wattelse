@@ -71,11 +71,21 @@ def plot_topics_hierarchy(form_parameters, _topic_model, width=800):
 
 
 @st.cache_data
-def plot_topics_over_time(form_parameters, _topic_model, df, nr_bins=50, width=1000):
-    topics_over_time = _topic_model.topics_over_time(
+def compute_topics_over_time(form_parameters, _topic_model, df, nr_bins=50):
+    return _topic_model.topics_over_time(
         df[TEXT_COLUMN], df[TIMESTAMP_COLUMN], nr_bins=nr_bins, global_tuning=False
     )
-    return _topic_model.visualize_topics_over_time(topics_over_time, top_n_topics=10, width=width)
+    
+
+def plot_topics_over_time(topics_over_time, dynamic_topics_list, topic_model, width=800):
+    if dynamic_topics_list != "":
+        if ":" in dynamic_topics_list:
+            dynamic_topics_list = [i for i in range(int(dynamic_topics_list.split(":")[0]), int(dynamic_topics_list.split(":")[1]))]
+        else:
+            dynamic_topics_list = [int(i) for i in dynamic_topics_list.split(",")]
+        return topic_model.visualize_topics_over_time(topics_over_time, topics=dynamic_topics_list, width=width)
+
+
 
 
 def print_search_results(search_term, topic_model):

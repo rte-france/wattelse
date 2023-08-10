@@ -24,6 +24,7 @@ from app_utils import (
     plot_topics_over_time,
     print_search_results,
     print_new_document_probs,
+    compute_topics_over_time
 )
 
 from train import train_BERTopic, EmbeddingModel
@@ -169,12 +170,25 @@ topics, probs, topic_model = BERTopic_train(df, st.session_state.parameters)
 
 st.write("## Results")
 
+# Barchart
 st.write(plot_barchart(st.session_state.parameters, topic_model))
 
+# HDBSCAN Dendrogram
 st.write(plot_topics_hierarchy(st.session_state.parameters, topic_model))
 
+# Dynamic topic modelling
 if TIMESTAMP_COLUMN in df.keys():
-    st.write(plot_topics_over_time(st.session_state.parameters, topic_model, df))
+    st.write("## Dynamic topic modelling")
+
+    #Parameters
+    st.text_input("Topics list (format 1,12,52 or 1:20)", key="dynamic_topics_list", value="0:10")
+    st.number_input("nr_bins", min_value=1, value=20, key="nr_bins")
+
+    # Compute topics over time
+    st.session_state["topics_over_time"] = compute_topics_over_time(st.session_state.parameters, topic_model, df, nr_bins=st.session_state.nr_bins)
+
+    # Visualize
+    st.write(plot_topics_over_time(st.session_state.topics_over_time, st.session_state.dynamic_topics_list, topic_model))
 
 
 ### USE THE TRAINED MODEL
