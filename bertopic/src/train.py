@@ -86,7 +86,7 @@ def train_BERTopic(
 
     # Build BERTopic model
     topic_model = BERTopic(
-        #embedding_model=embedding_model,
+        embedding_model=embedding_model,
         umap_model=umap_model,
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
