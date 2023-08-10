@@ -16,7 +16,7 @@ def embedding_model_options():
 
 def bertopic_options():
     return {
-        "bertopic_nr_topics": st.number_input("nr_topics", min_value=1, value=50),
+        "bertopic_nr_topics": st.number_input("nr_topics", min_value=0, value=0),
         "bertopic_top_n_words": st.number_input("top_n_words", min_value=1, value=10),
     }
 

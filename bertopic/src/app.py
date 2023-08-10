@@ -76,7 +76,7 @@ def BERTopic_train(docs, form_parameters):
         vectorizer_model,
         ctfidf_model,
         top_n_words=form_parameters["bertopic_top_n_words"],
-        nr_topics=form_parameters["bertopic_nr_topics"],
+        nr_topics=form_parameters["bertopic_nr_topics"] if form_parameters["bertopic_nr_topics"] > 0 else None,
     )
 
 
