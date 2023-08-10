@@ -47,7 +47,7 @@ def hdbscan_options():
 
 def countvectorizer_options():
     return {
-        "countvectorizer_stop_words": st.selectbox("stop_words", ["french", None]),
+        "countvectorizer_stop_words": st.selectbox("stop_words", ["french", "english", None]),
         "countvectorizer_ngram_range": st.selectbox(
             "ngram_range", [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)]
         ),
