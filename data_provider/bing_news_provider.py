@@ -3,6 +3,7 @@ from loguru import logger
 import dateparser
 import urllib.parse
 import feedparser
+from joblib import Parallel, delayed
 
 from data_provider.data_provider import DataProvider
 from data_provider.utils import wait, wait_if_seen_url
@@ -31,7 +32,13 @@ class BingNewsProvider(DataProvider):
         entries = result["entries"][:max_results]
         logger.info(f"Returned: {len(entries)} entries")
 
-        results = [self._parse_entry(res) for res in entries]
+        # Number of parallel jobs you want to run (adjust as needed)
+        num_jobs = -1 # all available cpus
+
+        # Parallelize the loop using joblib
+        results = Parallel(n_jobs=num_jobs)(
+            delayed(self._parse_entry)(res) for res in entries
+        )
         return [res for res in results if res is not None]
 
 
