@@ -4,6 +4,7 @@ import dateparser
 from loguru import logger
 
 from newscatcherapi import NewsCatcherApiClient
+from joblib import Parallel, delayed
 
 from data_provider.data_provider import DataProvider
 from data_provider.utils import wait
@@ -37,7 +38,13 @@ class NewsCatcherProvider(DataProvider):
         entries = result["articles"][:max_results]
         logger.info(f"Returned: {len(entries)} entries")
 
-        results = [self._parse_entry(res) for res in entries]
+        # Number of parallel jobs you want to run (adjust as needed)
+        num_jobs = -1 # all available cpus
+
+        # Parallelize the loop using joblib
+        results = Parallel(n_jobs=num_jobs)(
+            delayed(self._parse_entry)(res) for res in entries
+        )
         return [res for res in results if res is not None]
 
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:

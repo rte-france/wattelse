@@ -3,6 +3,7 @@ from loguru import logger
 import dateparser
 import urllib.parse
 from pygooglenews import GoogleNews
+from joblib import Parallel, delayed
 
 from data_provider.data_provider import DataProvider
 from data_provider.utils import wait, decode_google_news_url
@@ -34,7 +35,14 @@ class GoogleNewsProvider(DataProvider):
         entries = result["entries"][:max_results]
         logger.info(f"Returned: {len(entries)} entries")
 
-        results = [self._parse_entry(res) for res in entries]
+        # Number of parallel jobs you want to run (adjust as needed)
+        num_jobs = -1 # all available cpus
+
+        # Parallelize the loop using joblib
+        results = Parallel(n_jobs=num_jobs)(
+            delayed(self._parse_entry)(res) for res in entries
+        )
+
         return [res for res in results if res is not None]
 
 
@@ -64,6 +72,7 @@ class GoogleNewsProvider(DataProvider):
             text = self._filter_out_bad_text(text)
             if text is None or text=="":
                 return None
+            logger.debug(f"----- Title: {title},\tDate: {published}")
             return {
                 "title": title,
                 "summary": summary,

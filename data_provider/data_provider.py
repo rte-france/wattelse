@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Set
 
 import pandas as pd
 from goose3 import Goose
@@ -9,6 +9,11 @@ import jsonlines
 from loguru import logger
 
 from data_provider.utils import wait_if_seen_url
+
+# List of URLs we do not want to have results from (ex. obsolete or not pertinent)
+BLACKLISTED_URL = [
+    "www.filiere-3e.fr"
+]
 
 
 class DataProvider(ABC):
@@ -46,6 +51,7 @@ class DataProvider(ABC):
         for entry in queries_batch:
             logger.info(f"Processing query: {entry}")
             articles += self.get_articles(entry[0], entry[1], entry[2], max_results)
+        logger.info(f"Collected {len(articles)} articles")
         return articles
 
     def parse_article(self, url: str) -> Article:
@@ -61,7 +67,7 @@ class DataProvider(ABC):
         with jsonlines.open(file_path, 'w') as writer:
             writer.write_all(data)
 
-        logger.debug(f"Data stored to {file_path}.")
+        logger.debug(f"Data stored to {file_path} [{len(data)} entries].")
 
     def load_articles(self, file_path: Path) -> pd.DataFrame:
         """Read articles serialized as json files and provide an associated dataframe"""
@@ -74,6 +80,10 @@ class DataProvider(ABC):
     @wait_if_seen_url(0.2)
     def _get_text(self, url: str) -> str:
         """Extracts text from an article URL"""
+        if any(ele in url for ele in BLACKLISTED_URL):
+            logger.warning(f"Source of {url} is blacklisted!")
+            return None
+
         logger.debug(f"Extracting text from {url}")
         try:
             article = self.parse_article(url)

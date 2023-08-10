@@ -1,16 +1,20 @@
+import gzip
+import pandas as pd
 import nltk
 
 nltk.download("stopwords")
-import pandas as pd
 
 DATA_DIR = "./data/"
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
 
-
-def file_to_pd(data_name: str, base_dir: str = None) -> pd.DataFrame:
-    data_path = base_dir + data_name if base_dir else data_name
-    if ".csv" in data_name:
+def file_to_pd(file_name: str, base_dir: str = None) -> pd.DataFrame:
+    data_path = base_dir + file_name if base_dir else file_name
+    if ".csv" in file_name:
         return pd.read_csv(data_path)
-    elif ".jsonl" in data_name or ".jsonlines" in data_name:
+    elif ".jsonl" in file_name or ".jsonlines" in file_name:
         return pd.read_json(data_path, lines=True)
+    elif ".jsonl.gz" in file_name or ".jsonlines.gz" in file_name:
+        with gzip.open(file_name) as f_in:
+            return pd.read_json(f_in, lines=True)
+
