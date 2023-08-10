@@ -5,6 +5,7 @@ import typer
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 from bertopic.backend import BaseEmbedder
+from loguru import logger
 
 from umap import UMAP
 from hdbscan import HDBSCAN
@@ -15,7 +16,7 @@ import torch
 
 import logging
 
-from utils import file_to_pd, TEXT_COLUMN
+from utils import file_to_pd, TEXT_COLUMN, BASE_CACHE_PATH, load_embeddings, save_embeddings
 
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
@@ -50,6 +51,7 @@ class EmbeddingModel(BaseEmbedder):
 
         logging.info(f"Loading model: {model_name} on device: {device}")
         self.embedding_model = SentenceTransformer(model_name)
+        self.name = model_name
         logging.info("Model loaded")
 
     def embed(self, documents, verbose=True):
@@ -66,11 +68,25 @@ def train_BERTopic(
     ctfidf_model=DEFAULT_CTFIDF_MODEL,
     top_n_words=DEFAULT_TOP_N_WORDS,
     nr_topics=DEFAULT_NR_TOPICS,
+    use_cache = True,
 ):
+
+    cache_path = BASE_CACHE_PATH / f"{embedding_model.name}_{hash(str(texts))}.pkl"
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    logger.debug(f"Using cache: {use_cache}")
+    if not use_cache or not cache_path.exists():
+        logger.info("Computing embeddings")
+        embeddings = embedding_model.embed(texts)
+        if use_cache:
+            save_embeddings(embeddings, cache_path)
+            logger.info(f"Embeddings stored to cache file: {cache_path}")
+    else:
+        embeddings = load_embeddings(cache_path)
+        logger.info(f"Embeddings loaded from cache file: {cache_path}")
 
     # Build BERTopic model
     topic_model = BERTopic(
-        embedding_model=embedding_model,
+        #embedding_model=embedding_model,
         umap_model=umap_model,
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
@@ -82,7 +98,7 @@ def train_BERTopic(
     )
 
     logging.info("Fitting BERTopic...")
-    topics, probs = topic_model.fit_transform(texts)
+    topics, probs = topic_model.fit_transform(texts, embeddings)
 
     return topics, probs, topic_model
 

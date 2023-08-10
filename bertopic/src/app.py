@@ -80,6 +80,7 @@ def BERTopic_train(dataset: pd.DataFrame, form_parameters):
         ctfidf_model,
         top_n_words=form_parameters["bertopic_top_n_words"],
         nr_topics=form_parameters["bertopic_nr_topics"] if form_parameters["bertopic_nr_topics"] > 0 else None,
+        use_cache=form_parameters["use_cached_embeddings"],
     )
 
 

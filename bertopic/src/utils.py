@@ -1,12 +1,17 @@
 import gzip
+import pickle
+
 import pandas as pd
 import nltk
 from loguru import logger
+from pathlib import Path
+
 nltk.download("stopwords")
 
 DATA_DIR = "./data/"
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
+BASE_CACHE_PATH = Path("cache")
 
 def file_to_pd(file_name: str, base_dir: str = None) -> pd.DataFrame:
     data_path = base_dir + file_name if base_dir else file_name
@@ -23,3 +28,12 @@ def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
     cleaned_dataset = dataset.loc[dataset[TEXT_COLUMN].str.len() >= length_criteria]
     logger.debug(f"Cleaned dataset reduced to: {len(cleaned_dataset)} items")
     return cleaned_dataset
+
+
+def load_embeddings(cache_path: Path):
+    with open(cache_path, "rb") as f_in:
+        return pickle.load(f_in)
+
+def save_embeddings(embeddings, cache_path: Path):
+    with open(cache_path, "wb") as f_out:
+        pickle.dump(embeddings, f_out)

@@ -4,6 +4,7 @@ fitz
 loguru
 nltk
 pandas
+pathlib
 sklearn
 streamlit
 typer

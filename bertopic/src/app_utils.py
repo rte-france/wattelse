@@ -16,6 +16,7 @@ def data_cleaning_options():
 def embedding_model_options():
     return {
         "embedding_model_name": st.selectbox("Name", ["paraphrase-multilingual-MiniLM-L12-v2"]),
+        "use_cached_embeddings": st.checkbox("Put embeddings in cache", value=True)
     }
 
 
