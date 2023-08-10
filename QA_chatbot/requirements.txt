@@ -1,0 +1,5 @@
+pandas
+sklearn
+sentence_transformers
+transformers
+vigogne
