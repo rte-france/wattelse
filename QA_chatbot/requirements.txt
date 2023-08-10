@@ -2,4 +2,4 @@ pandas
 sklearn
 sentence_transformers
 transformers
-vigogne
+vigogne @ git+https://github.com/bofenghuang/vigogne.git@main
