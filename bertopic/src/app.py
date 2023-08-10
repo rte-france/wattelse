@@ -1,5 +1,7 @@
 import ast
 import os
+
+import pandas as pd
 import streamlit as st
 from bertopic.vectorizers import ClassTfidfTransformer
 from hdbscan import HDBSCAN
@@ -7,9 +9,10 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
-from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, DATA_DIR
+from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, DATA_DIR, clean_dataset
 from app_utils import load_data
 from app_utils import (
+    data_cleaning_options,
     embedding_model_options,
     bertopic_options,
     umap_options,
@@ -27,7 +30,7 @@ from train import train_BERTopic, EmbeddingModel
 
 
 @st.cache_data
-def BERTopic_train(docs, form_parameters):
+def BERTopic_train(dataset: pd.DataFrame, form_parameters):
 
     # Transform form_parameters from str to dict (dict is not yet hashable using Streamlit)
     form_parameters = ast.literal_eval(form_parameters)
@@ -69,7 +72,7 @@ def BERTopic_train(docs, form_parameters):
     )
 
     return train_BERTopic(
-        docs,
+        dataset[TEXT_COLUMN],
         embedding_model,
         umap_model,
         hdbscan_model,
@@ -93,6 +96,9 @@ with st.sidebar.form("parameters_sidebar"):
 
     st.title("Parameters")
 
+    with st.expander("Data cleaning options"):
+        data_cleaning_options = data_cleaning_options()
+
     with st.expander("Embedding model"):
         embedding_model_options = embedding_model_options()
 
@@ -114,6 +120,7 @@ with st.sidebar.form("parameters_sidebar"):
     # Merge parameters in a dict and change type to str to make it hashable
     st.session_state["parameters"] = str(
         {
+            **data_cleaning_options,
             **embedding_model_options,
             **bertopic_options,
             **umap_options,
@@ -150,7 +157,11 @@ if (
 ):
     st.stop()
 
-topics, probs, topic_model = BERTopic_train(df[TEXT_COLUMN], st.session_state.parameters)
+# Clean dataset
+dataset = clean_dataset(df, ast.literal_eval(st.session_state.parameters)["min_text_length"])
+
+# Train
+topics, probs, topic_model = BERTopic_train(df, st.session_state.parameters)
 
 
 ### DISPLAY RESULTS

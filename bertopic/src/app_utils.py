@@ -8,6 +8,11 @@ def load_data(data_name: str):
     return file_to_pd(data_name, base_dir=DATA_DIR)
 
 
+def data_cleaning_options():
+    return {
+        "min_text_length": st.number_input("min_text_length (#chars)", min_value=0, value=300),
+    }
+
 def embedding_model_options():
     return {
         "embedding_model_name": st.selectbox("Name", ["paraphrase-multilingual-MiniLM-L12-v2"]),

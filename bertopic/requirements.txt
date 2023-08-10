@@ -1,0 +1,9 @@
+bertopic
+hdbscan
+fitz
+loguru
+nltk
+pandas
+sklearn
+streamlit
+typer

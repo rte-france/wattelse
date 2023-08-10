@@ -1,7 +1,7 @@
 import gzip
 import pandas as pd
 import nltk
-
+from loguru import logger
 nltk.download("stopwords")
 
 DATA_DIR = "./data/"
@@ -18,3 +18,8 @@ def file_to_pd(file_name: str, base_dir: str = None) -> pd.DataFrame:
         with gzip.open(file_name) as f_in:
             return pd.read_json(f_in, lines=True)
 
+
+def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
+    cleaned_dataset = dataset.loc[dataset[TEXT_COLUMN].str.len() >= length_criteria]
+    logger.debug(f"Cleaned dataset reduced to: {len(cleaned_dataset)} items")
+    return cleaned_dataset
