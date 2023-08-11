@@ -22,6 +22,7 @@ from app_utils import (
     plot_barchart,
     plot_topics_hierarchy,
     plot_topics_over_time,
+    print_topics,
     print_search_results,
     print_new_document_probs,
     compute_topics_over_time
@@ -192,6 +193,12 @@ if TIMESTAMP_COLUMN in df.keys():
 
 
 ### USE THE TRAINED MODEL
+
+# Explore topics
+
+st.write("## Topics information")
+print_topics(topic_model)
+
 
 # Find most similar topics
 

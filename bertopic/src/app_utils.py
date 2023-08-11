@@ -86,6 +86,8 @@ def plot_topics_over_time(topics_over_time, dynamic_topics_list, topic_model, wi
         return topic_model.visualize_topics_over_time(topics_over_time, topics=dynamic_topics_list, width=width)
 
 
+def print_topics(topic_model):
+    st.write(topic_model.get_topic_info())
 
 
 def print_search_results(search_term, topic_model):
