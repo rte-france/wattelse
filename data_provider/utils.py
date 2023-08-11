@@ -1,7 +1,7 @@
-import time
 import base64
 import functools
 import re
+import time
 from urllib.parse import urlsplit
 
 # Ref: https://stackoverflow.com/a/59023463/

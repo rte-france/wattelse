@@ -1,10 +1,9 @@
 from typing import List, Dict, Optional
 
 import dateparser
-from loguru import logger
-
-from newscatcherapi import NewsCatcherApiClient
 from joblib import Parallel, delayed
+from loguru import logger
+from newscatcherapi import NewsCatcherApiClient
 
 from data_provider.data_provider import DataProvider
 from data_provider.utils import wait
