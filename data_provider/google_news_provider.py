@@ -1,9 +1,10 @@
-from typing import List, Dict, Optional
-from loguru import logger
-import dateparser
 import urllib.parse
-from pygooglenews import GoogleNews
+from typing import List, Dict, Optional
+
+import dateparser
 from joblib import Parallel, delayed
+from loguru import logger
+from pygooglenews import GoogleNews
 
 from data_provider.data_provider import DataProvider
 from data_provider.utils import wait, decode_google_news_url

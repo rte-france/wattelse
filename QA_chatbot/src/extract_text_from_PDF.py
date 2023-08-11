@@ -1,10 +1,9 @@
-import pdb
-
-import fitz #pymupdf
-import pandas as pd
+import logging
 import re
 
-import logging
+import fitz  # pymupdf
+import pandas as pd
+
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
 
@@ -47,7 +46,7 @@ def clean_text(x):
     x = re.sub("fi ", "fi", x)
     x = re.sub("�", " ", x)
     
-	# Remove block structure
+    # Remove block structure
     x = re.sub("-\n", "", x)
     x = re.sub("\n", " ", x)
     x = re.sub(" +", " ", x)

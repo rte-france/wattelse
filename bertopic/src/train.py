@@ -1,19 +1,18 @@
+import logging
 import pdb
 from typing import List
+
+import torch
 import typer
 from bertopic import BERTopic
-from bertopic.vectorizers import ClassTfidfTransformer
 from bertopic.backend import BaseEmbedder
-from loguru import logger
-
-from umap import UMAP
+from bertopic.vectorizers import ClassTfidfTransformer
 from hdbscan import HDBSCAN
+from loguru import logger
+from nltk.corpus import stopwords
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
-from nltk.corpus import stopwords
-import torch
-
-import logging
+from umap import UMAP
 
 from utils import file_to_pd, TEXT_COLUMN, BASE_CACHE_PATH, load_embeddings, save_embeddings, get_hash
 
@@ -53,7 +52,7 @@ class EmbeddingModel(BaseEmbedder):
         self.name = model_name
         logging.info("Model loaded")
 
-    def embed(self, documents, verbose=True):
+    def embed(self, documents: List[str], verbose=True) -> List:
         embeddings = self.embedding_model.encode(documents, show_progress_bar=verbose)
         return embeddings
 

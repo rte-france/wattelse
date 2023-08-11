@@ -1,12 +1,13 @@
-from typing import List, Dict, Optional
-from loguru import logger
-import dateparser
 import urllib.parse
+from typing import List, Dict, Optional
+
+import dateparser
 import feedparser
 from joblib import Parallel, delayed
+from loguru import logger
 
 from data_provider.data_provider import DataProvider
-from data_provider.utils import wait, wait_if_seen_url
+from data_provider.utils import wait
 
 PATTERN = "{QUERY}"
 

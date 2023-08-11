@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Dict, Set
+from typing import List, Dict
 
+import jsonlines
 import pandas as pd
 from goose3 import Goose
-from newspaper import Article
-import jsonlines
 from loguru import logger
+from newspaper import Article
 
 from data_provider.utils import wait_if_seen_url
 
