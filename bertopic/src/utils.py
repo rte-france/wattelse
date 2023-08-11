@@ -1,7 +1,7 @@
 import gzip
 import hashlib
 import pickle
-
+import socket
 import pandas as pd
 import nltk
 from loguru import logger
@@ -13,7 +13,7 @@ nltk.download("stopwords")
 DATA_DIR = "./data/"
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
-BASE_CACHE_PATH = Path("cache")
+BASE_CACHE_PATH = Path("/data/weak_signals/cache") if socket.gethostname()=="groesplu0" else Path("cache")
 
 def file_to_pd(file_name: str, base_dir: str = None) -> pd.DataFrame:
     data_path = base_dir + file_name if base_dir else file_name
