@@ -194,6 +194,12 @@ if TIMESTAMP_COLUMN in df.keys():
 
 ### USE THE TRAINED MODEL
 
+# Explore topics
+
+st.write("## Topics information")
+print_topics(topic_model)
+
+
 # Find most similar topics
 
 st.write("## Find most similar topic using search term")
