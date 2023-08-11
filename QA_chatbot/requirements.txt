@@ -3,3 +3,4 @@ sklearn
 sentence_transformers
 transformers
 vigogne @ git+https://github.com/bofenghuang/vigogne.git@main
+protobuf==3.20.3    
