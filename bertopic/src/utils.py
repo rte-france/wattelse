@@ -1,10 +1,12 @@
 import gzip
+import hashlib
 import pickle
 
 import pandas as pd
 import nltk
 from loguru import logger
 from pathlib import Path
+from typing import Any, List
 
 nltk.download("stopwords")
 
@@ -34,6 +36,10 @@ def load_embeddings(cache_path: Path):
     with open(cache_path, "rb") as f_in:
         return pickle.load(f_in)
 
-def save_embeddings(embeddings, cache_path: Path):
+def save_embeddings(embeddings: List, cache_path: Path):
     with open(cache_path, "wb") as f_out:
         pickle.dump(embeddings, f_out)
+
+def get_hash(data: Any):
+    """Returns a *stable* hash(persistent between different Python session) for any object. NB. The default hash() function does not guarantee this."""
+    return hashlib.md5(repr(data).encode("utf-8")).hexdigest()

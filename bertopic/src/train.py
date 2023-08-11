@@ -1,6 +1,5 @@
 import pdb
 from typing import List
-
 import typer
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
@@ -16,7 +15,7 @@ import torch
 
 import logging
 
-from utils import file_to_pd, TEXT_COLUMN, BASE_CACHE_PATH, load_embeddings, save_embeddings
+from utils import file_to_pd, TEXT_COLUMN, BASE_CACHE_PATH, load_embeddings, save_embeddings, get_hash
 
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
@@ -71,7 +70,7 @@ def train_BERTopic(
     use_cache = True,
 ):
 
-    cache_path = BASE_CACHE_PATH / f"{embedding_model.name}_{hash(tuple(texts))}.pkl"
+    cache_path = BASE_CACHE_PATH / f"{embedding_model.name}_{get_hash(texts)}.pkl"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     logger.debug(f"Using cache: {use_cache}")
     if not use_cache or not cache_path.exists():
