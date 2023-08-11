@@ -1,10 +1,4 @@
 import pandas as pd
-from sentence_transformers import SentenceTransformer
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
-from utils import make_docs_embedding, extract_n_most_relevant_extracts, generate_answer
-import pandas as pd
 import torch
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -38,6 +32,6 @@ docs_embeddings = make_docs_embedding(docs, embedding_model)
 
 while True:
     query = input("Question :")
-    relevent_extracts = extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_model)
-    generate_answer(instruct_model, tokenizer, query, relevent_extracts)
+    relevant_extracts = extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_model)
+    generate_answer(instruct_model, tokenizer, query, relevant_extracts)
     
