@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+import sys
 import torch
 import typer
 from loguru import logger
@@ -43,6 +44,8 @@ def chat(data_file: Path = DEFAULT_DATA_FILE):
     # Chatbot
     while True:
         query = input("Question: ")
+        if query in ["bye", "exit", "ciao", "quit"]:
+            sys.exit(0)
         relevant_extracts = extract_n_most_relevant_extracts(
             N, query, docs, docs_embeddings, embedding_model
         )
