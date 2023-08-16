@@ -21,6 +21,7 @@ def initialize_models():
     """Load models"""
     logger.info("Initializing models...")
     embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    embedding_model.max_seq_length = 512 # Default is 514, this creates error with big texts
     tokenizer = AutoTokenizer.from_pretrained(INSTRUCT_MODEL_NAME, padding_side="right", use_fast=False)
     instruct_model = AutoModelForCausalLM.from_pretrained(INSTRUCT_MODEL_NAME, torch_dtype=torch.float16, device_map="auto")
     return embedding_model, tokenizer, instruct_model
@@ -30,6 +31,7 @@ def load_data(data_file: Path, embedding_model: SentenceTransformer):
     logger.info(f"Using data from: {data_file}")
     data = pd.read_csv(data_file)
     docs = data["text"]
+
     docs_embeddings = make_docs_embedding(docs, embedding_model)
     return docs, docs_embeddings
 
