@@ -25,7 +25,8 @@ from app_utils import (
     print_topics,
     print_search_results,
     print_new_document_probs,
-    compute_topics_over_time
+    compute_topics_over_time,
+    print_docs_for_specific_topic,
 )
 
 from train import train_BERTopic, EmbeddingModel
@@ -166,6 +167,7 @@ dataset = clean_dataset(df, ast.literal_eval(st.session_state.parameters)["min_t
 # Train
 topics, probs, topic_model = BERTopic_train(df, st.session_state.parameters)
 
+topics = pd.Series(topics)
 
 ### DISPLAY RESULTS
 
@@ -198,6 +200,13 @@ if TIMESTAMP_COLUMN in df.keys():
 
 st.write("## Topics information")
 print_topics(topic_model)
+
+
+# Find docs belonging to a specific topic
+
+st.write("## Find docs belonging to a specific topic")
+st.number_input("Topic number", min_value=-1, value=0, key="topic_number")
+print_docs_for_specific_topic(dataset, topics, st.session_state.topic_number)
 
 
 # Find most similar topics

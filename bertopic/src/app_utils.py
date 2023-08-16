@@ -89,6 +89,10 @@ def plot_topics_over_time(topics_over_time, dynamic_topics_list, topic_model, wi
 def print_topics(topic_model):
     st.write(topic_model.get_topic_info())
 
+def print_docs_for_specific_topic(docs, topics, topic_number):
+    st.write(docs.loc[topics==topic_number])
+    
+
 
 def print_search_results(search_term, topic_model):
     if search_term != "":
