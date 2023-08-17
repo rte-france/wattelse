@@ -27,10 +27,17 @@ def initialize_models():
     return embedding_model, tokenizer, instruct_model
 
 def load_data(data_file: Path, embedding_model: SentenceTransformer):
-    """Loads data and transform them into embeddings"""
+    """Loads data and transform them into embeddings; data file shall contain a column 'processed_text' (preferred)
+    or 'text'"""
     logger.info(f"Using data from: {data_file}")
-    data = pd.read_csv(data_file)
-    docs = data["text"]
+    data = pd.read_csv(data_file, keep_default_na=False)
+    if "processed_text" in data.columns:
+        docs = data["processed_text"]
+    elif "text" in data.columns:
+        docs = data["text"]
+    else:
+        logger.error(f"Data {data_file} not formatted correctly! (expecting 'processed_text' or 'text' column")
+        sys.exit(-1)
 
     docs_embeddings = make_docs_embedding(docs, embedding_model)
     return docs, docs_embeddings

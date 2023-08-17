@@ -53,7 +53,12 @@ def parse_mds(md_directory: Path, output_file: Path = "./data/output_md.csv"):
             logger.info(f"Parsing file: {path}")
             paragraphs += extract_text_from_md(path)
 
-    pd.DataFrame(paragraphs).to_csv(output_file)
+    df = pd.DataFrame(paragraphs).fillna("")
+    # Combine columns to enrich the text
+    df["processed_text"] = "Fichier: " + df.file + "\nTitre: " + df.section_title + "\n" + df.text
+
+    df.to_csv(output_file)
+
     logger.info(f"Output stored in: {output_file}")
 
 
