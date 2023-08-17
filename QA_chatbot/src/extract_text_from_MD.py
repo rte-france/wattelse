@@ -18,6 +18,7 @@ def extract_paragraphs_with_titles(markdown_text):
         elif line.strip():  # Non-empty line (paragraph content)
             paragraph += line + "\n"
         elif paragraph:  # Empty line (end of paragraph)
+            #FIXME: à revoir dans le cas où on a une liste avec des bullet points (risque de séparation d'avec le texte qui précède)
             paragraphs.append(
                 {"section_title": current_section, "text": paragraph.strip()}
             )

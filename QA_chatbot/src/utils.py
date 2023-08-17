@@ -1,10 +1,13 @@
+from typing import List
+
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import GenerationConfig
 from vigogne.preprocess import generate_instruct_prompt
 
 
-def make_docs_embedding(docs, embedding_model):
-    return embedding_model.encode(docs)
+def make_docs_embedding(docs: List[str], embedding_model: SentenceTransformer):
+    return embedding_model.encode(docs, show_progress_bar=True)
 
 
 def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_model):
@@ -14,7 +17,7 @@ def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_
     return docs[max_index].tolist()
 
 
-def generate_answer(instruct_model, tokenizer, query, relevent_extracts):
+def generate_answer(instruct_model, tokenizer, query, relevent_extracts) -> str:
     context = " ".join(relevent_extracts)
 
     ###┘ MAIN PROMPT ###
@@ -40,4 +43,4 @@ def generate_answer(instruct_model, tokenizer, query, relevent_extracts):
     )
     generated_tokens = generated_outputs.sequences[0, input_length:]
     generated_text = tokenizer.decode(generated_tokens, skip_special_tokens=True)
-    print(generated_text)
+    return generated_text
