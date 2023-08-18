@@ -167,7 +167,7 @@ dataset = clean_dataset(df, ast.literal_eval(st.session_state.parameters)["min_t
 # Train
 topics, probs, topic_model = BERTopic_train(df, st.session_state.parameters)
 
-topics = pd.Series(topics)
+most_likely_topic_per_doc = probs.argmax(axis=1) # select most likely topic per document, match outliers (topic -1) documents to actual topic
 
 ### DISPLAY RESULTS
 
@@ -205,8 +205,8 @@ print_topics(topic_model)
 # Find docs belonging to a specific topic
 
 st.write("## Find docs belonging to a specific topic")
-st.number_input("Topic number", min_value=-1, value=0, key="topic_number")
-print_docs_for_specific_topic(dataset, topics, st.session_state.topic_number)
+st.number_input("Topic number", min_value=0, value=0, key="topic_number")
+print_docs_for_specific_topic(df, most_likely_topic_per_doc, st.session_state.topic_number)
 
 
 # Find most similar topics
