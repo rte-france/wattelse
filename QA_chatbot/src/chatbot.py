@@ -92,7 +92,7 @@ def chat(data_file: Path = DEFAULT_DATA_FILE):
             # we use the previous answer as an additional context to continue the conversation thread
             if 'answer' in locals(): # the variable exists, set from previous interaction
                 query = answer + " " + query[1:]
-        relevant_extracts = extract_n_most_relevant_extracts(
+        relevant_extracts, _ = extract_n_most_relevant_extracts(
             N, query, docs, docs_embeddings, embedding_model
         )
         answer = generate_answer(instruct_model, tokenizer, query, relevant_extracts)

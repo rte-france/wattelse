@@ -1,10 +1,5 @@
 repos:
 
-# - repo: https://github.com/kynan/nbstripout
-#   rev: 0.6.0
-#   hooks:
-#     - id: nbstripout
-
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v1.2.3
   hooks:
@@ -21,18 +16,3 @@ repos:
     language_version: python3
     args: [--line-length=100]
     additional_dependencies: ['click==7.1.2']
-
-- repo: https://gitlab.com/ljn/projects/rte/origami/rte-origami-precommit-hooks.git
-  rev: 0.0.4
-  hooks:
-  - id: check-commit-message
-    stages: [commit-msg]
-
-- repo: local
-  hooks:
-  - id: tests
-    name: run tests
-    entry: pytest -v origami_indexers
-    language: system
-    types: [python]
-    stages: [push]

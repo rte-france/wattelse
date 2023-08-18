@@ -1,5 +1,6 @@
 from typing import List
 
+import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import GenerationConfig
@@ -10,11 +11,18 @@ def make_docs_embedding(docs: List[str], embedding_model: SentenceTransformer):
     return embedding_model.encode(docs, show_progress_bar=True)
 
 
-def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_model):
+def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_model, similarity_threshold:float = 0):
     query_embedding = embedding_model.encode(query)
     similarity = cosine_similarity([query_embedding], docs_embeddings)[0]
-    max_index = similarity.argsort()[-n:][::-1]
-    return docs[max_index].tolist()
+
+    # Find indices of documents with similarity above threshold
+    above_threshold_indices = np.where(similarity > similarity_threshold)[0]
+
+    # Sort above-threshold indices by similarity and select top n
+    max_indices = above_threshold_indices[np.argsort(similarity[above_threshold_indices])][-n:][::-1]
+
+    #max_index = similarity.argsort()[-n:][::-1]
+    return docs[max_indices].tolist(), similarity[max_indices].tolist()
 
 
 def generate_answer(instruct_model, tokenizer, query, relevant_extracts, expected_answer_size="short") -> str:

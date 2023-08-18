@@ -1,5 +1,7 @@
 import datetime
+import json
 import os
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -7,13 +9,13 @@ from loguru import logger
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 
-from chatbot import N, initialize_models, load_data
+from chatbot import initialize_models, load_data
 from utils import extract_n_most_relevant_extracts, generate_answer
+
+# inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 
 DATA_DIR = "./data"
 DEFAULT_MEMORY_DELAY = 2 # in minutes
-
-# inspiration: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 
 if "prev_selected_file" not in st.session_state:
     st.session_state["prev_selected_file"] = None
@@ -47,7 +49,9 @@ db_table = initialize_db()
 
 def export_history():
     """Export messages in JSON from the database"""
-    logger.warning("Not implemented yet")
+    return json.dumps(
+        [{k:v if k!="timestamp" else v.strftime("%d-%m-%Y %H:%M:%S") for k, v in d.items()} for d in db_table.all()]
+    )
 
 
 def add_user_message_to_session(prompt):
@@ -62,6 +66,7 @@ def reset_messages_history():
     st.session_state["messages"] = []
     # clean database
     db_table.truncate()
+    logger.debug("History now empty")
 
 
 def display_existing_messages():
@@ -83,31 +88,48 @@ def enrich_query(query):
     return enriched_query
 
 def generate_assistant_response(query):
+    if st.session_state.get("docs") is None:
+        st.error("Select a document first", icon="🚨")
+        return
+
     if st.session_state["remember_recent_messages"]:
         query = enrich_query(query)
 
-    relevant_extracts = extract_n_most_relevant_extracts(
-        N, query, st.session_state["docs"], st.session_state["docs_embeddings"], embedding_model
-    )
-
-    with st.chat_message("assistant"):
-        # HAL answer GUI initialization
-        message_placeholder = st.empty()
-        message_placeholder.markdown("...")
-
-        # Generation of response
-        response = generate_answer(instruct_model, tokenizer, query, relevant_extracts, st.session_state["expected_answer_size"])
-
-        # HAL final response
-        message_placeholder.markdown(response)
-
-        st.session_state["messages"].append({"role": "assistant", "content": response})
+    relevant_extracts, sims = extract_n_most_relevant_extracts(st.session_state["nb_extracts"],
+                                                               query,
+                                                               st.session_state["docs"],
+                                                               st.session_state["docs_embeddings"],
+                                                               embedding_model,
+                                                               st.session_state["similarity_threshold"]
+                                                               )
 
     if st.session_state["provide_explanations"]:
-        with st.chat_message("explanation", avatar="🔑"):
-            explanation_placeholder = st.empty()
-            explanations = "Blablabla"
-            explanation_placeholder.markdown(f"```{explanations}``")
+        response_col, explanations_col = st.columns([2,3], gap="small") # wide column for explanations
+    else:
+        response_col, explanations_col = st.columns([100,1], gap="small")
+
+    with response_col:
+
+        with st.chat_message("assistant"):
+            # HAL answer GUI initialization
+            message_placeholder = st.empty()
+            message_placeholder.markdown("...")
+
+            # Generation of response
+            response = generate_answer(instruct_model, tokenizer, query, relevant_extracts, st.session_state["expected_answer_size"])
+
+            # HAL final response
+            message_placeholder.markdown(response)
+
+            st.session_state["messages"].append({"role": "assistant", "content": response})
+
+    if st.session_state["provide_explanations"]:
+        with explanations_col:
+            for expl, sim in zip(relevant_extracts, sims):
+                with st.chat_message("explanation", avatar="🔑"):
+                    # Add score to text explanation
+                    score = round(sim * 5) * "⭐"
+                    st.caption(f"{score}\n{expl}")
 
     return response
 
@@ -115,7 +137,6 @@ def generate_assistant_response(query):
 def add_to_database(query, response):
     timestamp = datetime.datetime.now()
     db_table.insert({"query": query, "response": response, "timestamp": timestamp})
-    logger.debug("Database updated")
 
 
 def get_recent_context(delay = DEFAULT_MEMORY_DELAY):
@@ -134,7 +155,6 @@ def on_file_change():
         initialize_data(st.session_state["selected_file"])
         st.session_state["prev_selected_file"] = st.session_state["selected_file"]
         reset_messages_history()
-
 
 def on_instruct_prompt_change():
     logger.debug(
@@ -177,24 +197,37 @@ def display_side_bar():
 
         # Relevant references as explanations
         st.checkbox("Provide explanations", value=False, key="provide_explanations")
-        
+
+        # Number of extracts to be considered
+        st.slider("Maximum number of extracts used", min_value=1, max_value=10, value=5, step=1,
+                  key="nb_extracts")
+
+        # Similarity threshold
+        st.slider("Similarity threshold for extracts", min_value=0., max_value=1., value=0.4, step=0.05,
+                  key="similarity_threshold")
+
         parameters_sidebar_clicked = st.form_submit_button("Apply")
+
         if parameters_sidebar_clicked:
-            logger.debug("Parameters changed!")
+            logger.debug("Parameters updated!")
             on_file_change()
             on_instruct_prompt_change()
+            info = st.info("Parameters saved!")
+            time.sleep(0.5)
+            info.empty()  # Clear the alert
 
 def display_reset():
-    st.button("Clear discussion", on_click=reset_messages_history)
-    st.button("Export discussion", on_click=export_history)
+    col1, col2 = st.columns(2, gap="small")
+    with col1:
+        st.button("Clear discussion", on_click=reset_messages_history)
+    with col2:
+        st.download_button("Export discussion", data=export_history(), file_name="history.json")
 
 
 def main():
     st.title("WattChat®")
 
     display_side_bar()
-
-    logger.debug("Ready to chat!")
 
     display_existing_messages()
 
