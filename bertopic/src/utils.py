@@ -30,7 +30,7 @@ def file_to_pd(file_name: str, base_dir: str = None) -> pd.DataFrame:
 
 def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
     """Clean dataset. So far, only removes short text."""
-    cleaned_dataset = dataset.loc[dataset[TEXT_COLUMN].str.len() >= length_criteria]
+    cleaned_dataset = dataset.loc[dataset[TEXT_COLUMN].str.len() >= length_criteria].reset_index(drop=True)
     logger.debug(f"Cleaned dataset reduced to: {len(cleaned_dataset)} items")
     return cleaned_dataset
 
