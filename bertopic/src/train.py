@@ -7,6 +7,7 @@ import typer
 from bertopic import BERTopic
 from bertopic.backend import BaseEmbedder
 from bertopic.vectorizers import ClassTfidfTransformer
+from bertopic.representation import MaximalMarginalRelevance
 from hdbscan import HDBSCAN
 from loguru import logger
 from nltk.corpus import stopwords
@@ -36,6 +37,8 @@ DEFAULT_VECTORIZER_MODEL = CountVectorizer(
 )
 DEFAULT_CTFIDF_MODEL = ClassTfidfTransformer(reduce_frequent_words=True)
 
+DEFAULT_REPRESENTATION_MODEL = MaximalMarginalRelevance(diversity=0.3)
+
 
 class EmbeddingModel(BaseEmbedder):
     """
@@ -64,6 +67,7 @@ def train_BERTopic(
     hdbscan_model=DEFAULT_HBSCAN_MODEL,
     vectorizer_model=DEFAULT_VECTORIZER_MODEL,
     ctfidf_model=DEFAULT_CTFIDF_MODEL,
+    representation_model=DEFAULT_REPRESENTATION_MODEL,
     top_n_words=DEFAULT_TOP_N_WORDS,
     nr_topics=DEFAULT_NR_TOPICS,
     use_cache = True,
@@ -89,6 +93,7 @@ def train_BERTopic(
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
         ctfidf_model=ctfidf_model,
+        representation_model=representation_model,
         top_n_words=top_n_words,
         nr_topics=nr_topics,
         calculate_probabilities=True,
