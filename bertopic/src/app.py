@@ -162,7 +162,7 @@ if (
     st.stop()
 
 # Clean dataset
-dataset = clean_dataset(df, ast.literal_eval(st.session_state.parameters)["min_text_length"])
+df = clean_dataset(df, ast.literal_eval(st.session_state.parameters)["min_text_length"])
 
 # Train
 topics, probs, topic_model = BERTopic_train(df, st.session_state.parameters)
