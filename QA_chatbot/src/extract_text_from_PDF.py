@@ -1,11 +1,9 @@
-import logging
 import re
 
-import fitz  # pymupdf
+import fitz
 import pandas as pd
 
-logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
-
+from loguru import logger
 
 ### Parameters
 
@@ -31,7 +29,7 @@ with fitz.open(pdf_file_path) as doc:
 # Transform into a pandas DataFrame
 
 df = pd.DataFrame.from_dict(data_dict)
-logging.info(f"Found {len(df)} blocks of text")
+logger.info(f"Found {len(df)} blocks of text")
 
 # Clean text
 
@@ -58,14 +56,14 @@ df["text"] = df["text"].apply(clean_text).astype(str)
 
 # Filter blocks to keep paragraphs only
 
-logging.info(f"Removing blocks having less than {filter_text_value} words...")
+logger.info(f"Removing blocks having less than {filter_text_value} words...")
 df = df[df["text"].str.split().apply(len)>filter_text_value].reset_index(drop=True)
-logging.info(f"{len(df)} blocks remaining")
+logger.info(f"{len(df)} blocks remaining")
 
 ### Save 
 
 df.to_csv(save_path)
-logging.info(f"Saved DF to {save_path}")
+logger.info(f"Saved DF to {save_path}")
 
 
         

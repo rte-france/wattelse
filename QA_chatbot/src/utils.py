@@ -17,13 +17,12 @@ def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_
     return docs[max_index].tolist()
 
 
-def generate_answer(instruct_model, tokenizer, query, relevent_extracts) -> str:
-    context = " ".join(relevent_extracts)
+def generate_answer(instruct_model, tokenizer, query, relevant_extracts, expected_answer_size="short") -> str:
+    context = " ".join(relevant_extracts)
 
     ###┘ MAIN PROMPT ###
-
-    instruct_prompt = f"En utilisant le contexte suivant : {context}\nRépond à la question suivante : {query}. La réponse doit s'appuyer sur le contexte et être détaillée."
-
+    answer_size = "courte" if expected_answer_size=="short" else "détaillée"
+    instruct_prompt = f"En utilisant le contexte suivant : {context}\nRépond à la question suivante : {query}. La réponse doit s'appuyer sur le contexte et être {answer_size}."
     ####################
 
     prompt = generate_instruct_prompt(instruct_prompt)

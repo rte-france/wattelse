@@ -6,5 +6,5 @@ nltk
 pandas
 pathlib
 sklearn
-streamlit
+streamlit>=1.25
 typer
