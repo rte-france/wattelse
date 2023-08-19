@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import tempfile
 import time
 from pathlib import Path
 
@@ -9,12 +10,15 @@ from loguru import logger
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 
+from extract_text_from_MD import parse_md
+from extract_text_from_PDF import parse_pdf
+from extract_text_using_origami import parse_docx
 from chatbot import initialize_models, load_data
 from utils import extract_n_most_relevant_extracts, generate_answer
 
+DATA_DIR = Path("./data")
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 
-DATA_DIR = "./data"
 DEFAULT_MEMORY_DELAY = 2 # in minutes
 
 if "prev_selected_file" not in st.session_state:
@@ -26,9 +30,9 @@ def initialize():
     return initialize_models()
 
 
-@st.cache_resource
-def initialize_data(data_name: str):
-    data_path = Path(DATA_DIR) / data_name  # TODO choose
+def initialize_data(data_path: Path):
+    if not data_path.is_file():
+        st.error("Select a data file", icon="🚨")
     docs, docs_embeddings = load_data(data_path, embedding_model, use_cache=True)
     st.session_state["docs"] = docs
     st.session_state["docs_embeddings"] = docs_embeddings
@@ -145,14 +149,42 @@ def get_recent_context(delay = DEFAULT_MEMORY_DELAY):
     q = Query()
     return db_table.search(q.timestamp > (current_timestamp - datetime.timedelta(minutes = delay)))
 
+
 def index_file():
-    logger.debug(f"Uploading file: {st.session_state['uploaded_file']}")
-    logger.warning("Not implemented yet!")
+    uploaded_file = st.session_state["uploaded_file"]
+    logger.debug(f"Uploading file: {uploaded_file}")
+
+    if uploaded_file: # can be used like a BytesIO
+        extension = uploaded_file.name.split(".")[-1].lower()
+        # create a temporary file using a context manager
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with open(tmpdirname + "/" + uploaded_file.name, "wb") as file:
+                # store temporary file
+                file.write(uploaded_file.getbuffer())
+                # extract data from file
+                if extension == "pdf":
+                    st.session_state["data_file_from_parsing"] = parse_pdf(Path(file.name), DATA_DIR)
+                elif extension == "docx":
+                    st.session_state["data_file_from_parsing"] = parse_docx(Path(file.name), DATA_DIR)
+                    logger.warning("Requires Origami!")
+                elif extension == "md":
+                    st.session_state["data_file_from_parsing"] = parse_md(Path(file.name), DATA_DIR)
+                    logger.warning("Not implemented yet!")
+                else:
+                    st.error("File type not supported!")
 
 def on_file_change():
-    if st.session_state["selected_file"] != st.session_state["prev_selected_file"]:
+    if st.session_state.get("uploaded_file") is not None:
+        index_file() # this will update st.session_state["data_file_from_parsing"]
+        if st.session_state.get("data_file_from_parsing") is not None:
+            logger.debug("Data file changed! Resetting chat history")
+            initialize_data(st.session_state["data_file_from_parsing"])
+            st.session_state["prev_selected_file"] = st.session_state["data_file_from_parsing"]
+            reset_messages_history()
+
+    elif st.session_state["selected_file"] != st.session_state["prev_selected_file"]:
         logger.debug("Data file changed! Resetting chat history")
-        initialize_data(st.session_state["selected_file"])
+        initialize_data(DATA_DIR / st.session_state["selected_file"])
         st.session_state["prev_selected_file"] = st.session_state["selected_file"]
         reset_messages_history()
 
@@ -172,23 +204,22 @@ def display_side_bar():
             st.selectbox(
                 "Select input data",
                 data_options,
-                #on_change=on_file_change,
                 key="selected_file",
+                disabled = st.session_state.get("uploaded_file") is not None
             )
         with t2:
             st.file_uploader(
                 "File",
-                type=["pdf", "docx", "txt", "md"],
+                type=["pdf", "docx", "md"],
                 key="uploaded_file",
-                #on_change=index_file,
                 label_visibility="collapsed",
+                accept_multiple_files = False
             )
 
         # Response size
         st.selectbox(
             "Response size",
             ["short", "detailed"],
-            #on_change=on_instruct_prompt_change,
             key="expected_answer_size",
         )
 
@@ -225,8 +256,11 @@ def display_reset():
 
 
 def main():
-    st.title("WattChat®")
-
+    st.title("WattElse® Chat")
+    #st.markdown("**W**ord **A**nalysis and **T**ext **T**racking with an **E**nhanced **L**anguage model **S**earch **E**ngine")
+    st.markdown(
+        "**W**holistic **A**nalysis of  **T**ex**T** with an **E**nhanced **L**anguage model **S**earch **E**ngine"
+    )
     display_side_bar()
 
     display_existing_messages()

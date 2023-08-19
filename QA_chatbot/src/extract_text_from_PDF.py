@@ -1,39 +1,17 @@
 import re
 
-import fitz
-import pandas as pd
+import fitz # the package is called pymupdf (confusing!!)
+from pathlib import Path
 
+import pandas as pd
+import typer
 from loguru import logger
 
-### Parameters
-
-pdf_file_path = "./data/etude_de_zone.pdf"
-save_path = "./data/etude_de_zone.csv"
-filter_text_value = 10 # blocks with less than filter_text_value words will be discarded
+DEFAULT_DATA_PATH = Path("./data")
+FILTER_TEXT_VALUE = 10 # blocks with less than filter_text_value words will be discarded
 
 
-### Load pdf and parse blocks of text
-
-data_dict = {"text":[], "page_number":[]}
-
-with fitz.open(pdf_file_path) as doc:
-    for page in doc:
-        text = page.get_text("blocks")
-        for elem in text:
-            data_dict["text"].append(elem[4]) # store text only
-            data_dict["page_number"].append(page.number)
-            
-
-### Process collected blocks
-
-# Transform into a pandas DataFrame
-
-df = pd.DataFrame.from_dict(data_dict)
-logger.info(f"Found {len(df)} blocks of text")
-
-# Clean text
-
-def clean_text(x):
+def _clean_text(x):
     """
     Function applied to clean the text column in the DataFrame. 
     """
@@ -52,18 +30,45 @@ def clean_text(x):
 
     return x
 
-df["text"] = df["text"].apply(clean_text).astype(str)
 
-# Filter blocks to keep paragraphs only
+def extract_data_from_pdf(pdf_file_path) -> pd.DataFrame:
+    data_dict = {"text": [], "page_number": []}
 
-logger.info(f"Removing blocks having less than {filter_text_value} words...")
-df = df[df["text"].str.split().apply(len)>filter_text_value].reset_index(drop=True)
-logger.info(f"{len(df)} blocks remaining")
+    ### Load pdf and parse blocks of text
+    with fitz.open(pdf_file_path) as f:
+        for page in f:
+            text = page.get_text("blocks")
+            for elem in text:
+                data_dict["text"].append(elem[4])  # store text only
+                data_dict["page_number"].append(page.number)
 
-### Save 
+    ### Process collected blocks
+    # Transform into a pandas DataFrame
+    df = pd.DataFrame.from_dict(data_dict)
+    logger.info(f"Found {len(df)} blocks of text")
 
-df.to_csv(save_path)
-logger.info(f"Saved DF to {save_path}")
+    # Clean text
+    df["text"] = df["text"].apply(_clean_text).astype(str)
+    
+    # Filter blocks to keep paragraphs only
+    logger.debug(f"Removing blocks having less than {FILTER_TEXT_VALUE} words...")
+    df = df[df["text"].str.split().apply(len) > FILTER_TEXT_VALUE].reset_index(drop=True)
+    logger.debug(f"{len(df)} blocks remaining")
+    return df
 
+def parse_pdf(pdf_file: Path, output_path: Path = DEFAULT_DATA_PATH) -> Path:
+    logger.info(f"Parsing {pdf_file}...")
 
+    output_file = pdf_file.stem + ".csv"
+    full_output_path = output_path / output_file
+
+    df = extract_data_from_pdf(pdf_file)
+
+    df.to_csv(full_output_path)
+    logger.info(f"Saved data file: {full_output_path}")
+
+    return full_output_path
+
+if __name__ == "__main__":
+    typer.run(parse_pdf)
         

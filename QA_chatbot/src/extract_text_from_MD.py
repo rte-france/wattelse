@@ -43,7 +43,7 @@ def extract_text_from_md(markdown_file_path: Path):
         ]
         return paragraphs_with_titles
 
-def parse_mds(md_directory: Path, output_file: Path = "./data/output_md.csv"):
+def parse_mds(md_directory: Path, output_file: Path = "./data/output_md.csv") -> Path:
     """Parses a set of .md documents stored in the directory"""
     # Parsed paragraphs
     paragraphs = []
@@ -61,6 +61,27 @@ def parse_mds(md_directory: Path, output_file: Path = "./data/output_md.csv"):
     df.to_csv(output_file)
 
     logger.info(f"Output stored in: {output_file}")
+
+    return output_file
+
+
+def parse_md(md_file: Path, output_path: Path) -> Path:
+    logger.info(f"Parsing {md_file}...")
+    # Parsed paragraphs
+    paragraphs = extract_text_from_md(md_file)
+
+    df = pd.DataFrame(paragraphs).fillna("")
+    # Combine columns to enrich the text
+    df["processed_text"] = (
+        "Fichier: " + df.file + "\nTitre: " + df.section_title + "\n" + df.text
+    )
+
+    output_file = md_file.stem + ".csv"
+    full_output_path = output_path / output_file
+    df.to_csv(full_output_path)
+    logger.info(f"Saved data file: {full_output_path}")
+
+    return full_output_path
 
 
 if __name__ == "__main__":
