@@ -21,17 +21,15 @@ def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_
     # Sort above-threshold indices by similarity and select top n
     max_indices = above_threshold_indices[np.argsort(similarity[above_threshold_indices])][-n:][::-1]
 
-    #max_index = similarity.argsort()[-n:][::-1]
     return docs[max_indices].tolist(), similarity[max_indices].tolist()
 
 
 def generate_answer(instruct_model, tokenizer, query, relevant_extracts, expected_answer_size="short") -> str:
     context = " ".join(relevant_extracts)
 
-    ###┘ MAIN PROMPT ###
+    ### MAIN PROMPT ###
     answer_size = "courte" if expected_answer_size=="short" else "détaillée"
     instruct_prompt = f"En utilisant le contexte suivant : {context}\nRépond à la question suivante : {query}. La réponse doit s'appuyer sur le contexte et être {answer_size}."
-    ####################
 
     prompt = generate_instruct_prompt(instruct_prompt)
     input_ids = tokenizer(prompt, return_tensors="pt")["input_ids"].to(

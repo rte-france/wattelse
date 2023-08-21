@@ -1,8 +1,7 @@
 import re
-
-import fitz # the package is called pymupdf (confusing!!)
 from pathlib import Path
 
+import fitz  # the package is called pymupdf (confusing!!)
 import pandas as pd
 import typer
 from loguru import logger

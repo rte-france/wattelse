@@ -10,10 +10,10 @@ from loguru import logger
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 
+from chatbot import initialize_models, load_data
 from extract_text_from_MD import parse_md
 from extract_text_from_PDF import parse_pdf
 from extract_text_using_origami import parse_docx
-from chatbot import initialize_models, load_data
 from utils import extract_n_most_relevant_extracts, generate_answer
 
 DATA_DIR = Path("./data")
@@ -166,10 +166,8 @@ def index_file():
                     st.session_state["data_file_from_parsing"] = parse_pdf(Path(file.name), DATA_DIR)
                 elif extension == "docx":
                     st.session_state["data_file_from_parsing"] = parse_docx(Path(file.name), DATA_DIR)
-                    logger.warning("Requires Origami!")
                 elif extension == "md":
                     st.session_state["data_file_from_parsing"] = parse_md(Path(file.name), DATA_DIR)
-                    logger.warning("Not implemented yet!")
                 else:
                     st.error("File type not supported!")
 
