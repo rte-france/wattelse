@@ -52,6 +52,8 @@ See `extract_text*.py` for details.
 To run the PoC in GUI mode (Streamlit app):
 
 ```
-(weak_signals) jerome@linux:~/dev/weak-signals/QA_chatbot$ PYTHONPATH=. python src/app.py 
+(weak_signals) jerome@groesplu0:~/dev/weak-signals/QA_chatbot$ CUDA_VISIBLE_DEVICES=0,2 PYTHONPATH=src streamlit run src/app.py 
 
 ```
+
+**Important**: on the R&D server, this PoC requires at least 2 GPUs!
