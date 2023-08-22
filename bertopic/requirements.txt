@@ -1,10 +1,10 @@
 bertopic
 hdbscan
-fitz
 loguru
 nltk
 pandas
 pathlib
+pymupdf
 sklearn
 streamlit>=1.25
 typer
