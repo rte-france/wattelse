@@ -134,6 +134,9 @@ class TopicMetrics():
     def identify_signals(topic_map: pd.DataFrame, x_col: str, y_col: str) -> pd.DataFrame:
         """Adds interpretable characteristics to topics by clustering them according to the two dimensions of the map"""
 
+        # remove topic -1 as this is noise and may perturb the interpretation / scaling
+        topic_map = topic_map[topic_map.topic != -1]
+
         def get_signal(row):
             """ensures correct human labeling, assuming cluster labels are put in a correct order"""
             x = row["x_clus"]
