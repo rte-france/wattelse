@@ -189,9 +189,7 @@ if TIMESTAMP_COLUMN in df.keys():
     st.number_input("nr_bins", min_value=1, value=20, key="nr_bins")
 
     # Compute topics over time
-    st.session_state["topics_over_time"] = compute_topics_over_time(st.session_state.parameters, topic_model, df, nr_bins=st.session_state.nr_bins,
-                                                                    global_tuning = False
-                                                                    )
+    st.session_state["topics_over_time"] = compute_topics_over_time(st.session_state.parameters, topic_model, df, nr_bins=st.session_state.nr_bins)
 
     # Visualize
     st.write(plot_topics_over_time(st.session_state.topics_over_time, st.session_state.dynamic_topics_list, topic_model))
