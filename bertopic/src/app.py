@@ -9,6 +9,7 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
+from metrics import TopicMetrics
 from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, DATA_DIR, clean_dataset
 from app_utils import load_data
 from app_utils import (
@@ -188,7 +189,9 @@ if TIMESTAMP_COLUMN in df.keys():
     st.number_input("nr_bins", min_value=1, value=20, key="nr_bins")
 
     # Compute topics over time
-    st.session_state["topics_over_time"] = compute_topics_over_time(st.session_state.parameters, topic_model, df, nr_bins=st.session_state.nr_bins)
+    st.session_state["topics_over_time"] = compute_topics_over_time(st.session_state.parameters, topic_model, df, nr_bins=st.session_state.nr_bins,
+                                                                    global_tuning = False
+                                                                    )
 
     # Visualize
     st.write(plot_topics_over_time(st.session_state.topics_over_time, st.session_state.dynamic_topics_list, topic_model))
@@ -225,3 +228,10 @@ st.text_area("Copy/Paste your document:", key="new_document")
 
 if "new_document" in st.session_state:
     print_new_document_probs(st.session_state.new_document, topic_model)
+
+
+# Topic maps
+tw=0.02
+st.write("## Topic map")
+topic_metrics = TopicMetrics(topic_model, st.session_state.topics_over_time)
+st.plotly_chart(topic_metrics.plot_TIM_map(tw))
