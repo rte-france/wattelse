@@ -16,6 +16,7 @@ from utils import (
     extract_n_most_relevant_extracts,
     generate_answer_locally,
     generate_answer_remotely,
+    generate_prompt,
 )
 
 ### Parameters ###
@@ -121,10 +122,16 @@ def chat(data_file: Path = DEFAULT_DATA_FILE, use_remote_llm: bool = False):
         relevant_extracts, _ = extract_n_most_relevant_extracts(
             N, query, docs, docs_embeddings, embedding_model
         )
+
+        # Generates prompt
+        prompt = generate_prompt(
+            query, relevant_extracts
+        )
+
         if use_remote_llm:
-            answer = generate_answer_remotely(query, relevant_extracts)
+            answer = generate_answer_remotely(prompt)
         else:
-            answer = generate_answer_locally(instruct_model, tokenizer, query, relevant_extracts)
+            answer = generate_answer_locally(instruct_model, tokenizer, prompt)
         print(answer)
 
 

@@ -1,10 +1,10 @@
 import configparser
+from pathlib import Path
 from typing import List
 
 import numpy as np
 import openai
 from loguru import logger
-from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import GenerationConfig
@@ -35,19 +35,19 @@ def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_
 
     return docs[max_indices].tolist(), similarity[max_indices].tolist()
 
-def generate_base_prompt(query: str, context_elements: List[str], expected_answer_size="short") -> str:
+def generate_prompt(query: str, context_elements: List[str], expected_answer_size="short") -> str:
     """Generates a specific prompt for the LLM"""
     context = " ".join(context_elements)
 
     ### MAIN PROMPT ###
     answer_size = "courte" if expected_answer_size=="short" else "détaillée"
-    instruct_prompt = f"En utilisant le contexte suivant : {context}\nRépond à la question suivante : {query}. La réponse doit s'appuyer sur le contexte et être {answer_size}."
+    base_prompt = f"En utilisant le contexte suivant : {context}\nRépond à la question suivante : {query}. La réponse doit s'appuyer sur le contexte et être {answer_size}."
 
-    return instruct_prompt
+    return generate_instruct_prompt(base_prompt)
 
-def generate_answer_locally(instruct_model, tokenizer, query, relevant_extracts, expected_answer_size="short") -> str:
+
+def generate_answer_locally(instruct_model, tokenizer, prompt) -> str:
     """Uses the local model to generate the answer"""
-    prompt = generate_instruct_prompt(generate_base_prompt(query, relevant_extracts, expected_answer_size))
     input_ids = tokenizer(prompt, return_tensors="pt")["input_ids"].to(
         instruct_model.device
     )
@@ -64,13 +64,12 @@ def generate_answer_locally(instruct_model, tokenizer, query, relevant_extracts,
     )
     generated_tokens = generated_outputs.sequences[0, input_length:]
     generated_text = tokenizer.decode(generated_tokens, skip_special_tokens=True)
+    logger.debug(f"Answer: {generated_text}")
     return generated_text
 
-def generate_answer_remotely(query, relevant_extracts, expected_answer_size="short") -> str:
+def generate_answer_remotely(prompt) -> str:
     """Uses the remote model (API) to generate the answer"""
 
-    # Prompt
-    prompt = generate_base_prompt(query, relevant_extracts, expected_answer_size)
     logger.debug(f"Calling remote LLM service...")
 
     try:
@@ -90,6 +89,7 @@ def generate_answer_remotely(query, relevant_extracts, expected_answer_size="sho
             temperature=TEMPERATURE,
         )
         answer = completion_result["choices"][0]["text"]
+        logger.debug(f"Answer: {answer}")
         return answer
     except Exception as e:
         msg = f"Cannot reach the API endpoint: {OPENAI_URL}. Error: {e}"

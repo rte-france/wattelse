@@ -19,6 +19,7 @@ from utils import (
     extract_n_most_relevant_extracts,
     generate_answer_locally,
     generate_answer_remotely,
+    generate_prompt,
 )
 
 DATA_DIR = Path("./data")
@@ -125,12 +126,15 @@ def generate_assistant_response(query):
             message_placeholder = st.empty()
             message_placeholder.markdown("...")
 
+            # Generates prompt
+            prompt = generate_prompt(query, relevant_extracts, st.session_state["expected_answer_size"])
+
             # Generation of response
             if USE_REMOTE_LLM_MODEL:
-                response = generate_answer_remotely(query, relevant_extracts, st.session_state["expected_answer_size"])
+                response = generate_answer_remotely(prompt)
             else:
                 response = generate_answer_locally(
-                    instruct_model, tokenizer, query, relevant_extracts, st.session_state["expected_answer_size"]
+                    instruct_model, tokenizer, prompt
             )
 
             # HAL final response
