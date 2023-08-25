@@ -14,12 +14,18 @@ from chatbot import initialize_models, load_data
 from extract_text_from_MD import parse_md
 from extract_text_from_PDF import parse_pdf
 from extract_text_using_origami import parse_docx
-from utils import extract_n_most_relevant_extracts, generate_answer
+from utils import (
+    USE_REMOTE_LLM_MODEL,
+    extract_n_most_relevant_extracts,
+    generate_answer_locally,
+    generate_answer_remotely,
+)
 
 DATA_DIR = Path("./data")
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 
 DEFAULT_MEMORY_DELAY = 2 # in minutes
+
 
 if "prev_selected_file" not in st.session_state:
     st.session_state["prev_selected_file"] = None
@@ -27,7 +33,7 @@ if "prev_selected_file" not in st.session_state:
 @st.cache_resource
 def initialize():
     """Streamlit wrapper to manage data caching"""
-    return initialize_models()
+    return initialize_models(USE_REMOTE_LLM_MODEL)
 
 
 def initialize_data(data_path: Path):
@@ -120,7 +126,12 @@ def generate_assistant_response(query):
             message_placeholder.markdown("...")
 
             # Generation of response
-            response = generate_answer(instruct_model, tokenizer, query, relevant_extracts, st.session_state["expected_answer_size"])
+            if USE_REMOTE_LLM_MODEL:
+                response = generate_answer_remotely(query, relevant_extracts, st.session_state["expected_answer_size"])
+            else:
+                response = generate_answer_locally(
+                    instruct_model, tokenizer, query, relevant_extracts, st.session_state["expected_answer_size"]
+            )
 
             # HAL final response
             message_placeholder.markdown(response)

@@ -11,7 +11,12 @@ from loguru import logger
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from utils import make_docs_embedding, extract_n_most_relevant_extracts, generate_answer
+from utils import (
+    make_docs_embedding,
+    extract_n_most_relevant_extracts,
+    generate_answer_locally,
+    generate_answer_remotely,
+)
 
 ### Parameters ###
 DEFAULT_DATA_FILE = "./data/BP-2019.csv"
@@ -41,19 +46,23 @@ def save_embeddings(embeddings: List, cache_path: Path):
         pickle.dump(embeddings, f_out)
 
 
-def initialize_models():
+def initialize_models(use_remote_llm: bool = True):
     """Load models"""
     logger.info("Initializing models...")
     embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
     embedding_model.max_seq_length = (
         512  # Default is 514, this creates error with big texts
     )
-    tokenizer = AutoTokenizer.from_pretrained(
-        INSTRUCT_MODEL_NAME, padding_side="right", use_fast=False
-    )
-    instruct_model = AutoModelForCausalLM.from_pretrained(
-        INSTRUCT_MODEL_NAME, torch_dtype=torch.float16, device_map="auto"
-    )
+    if use_remote_llm:
+        tokenizer = None
+        instruct_model = None
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(
+            INSTRUCT_MODEL_NAME, padding_side="right", use_fast=False
+        )
+        instruct_model = AutoModelForCausalLM.from_pretrained(
+            INSTRUCT_MODEL_NAME, torch_dtype=torch.float16, device_map="auto"
+        )
     return embedding_model, tokenizer, instruct_model
 
 
@@ -90,9 +99,9 @@ def load_data(
     return docs, docs_embeddings
 
 
-def chat(data_file: Path = DEFAULT_DATA_FILE):
+def chat(data_file: Path = DEFAULT_DATA_FILE, use_remote_llm: bool = False):
     # initialize models
-    embedding_model, tokenizer, instruct_model = initialize_models()
+    embedding_model, tokenizer, instruct_model = initialize_models(use_remote_llm)
 
     # load data
     docs, docs_embeddings = load_data(data_file, embedding_model, use_cache=True)
@@ -112,7 +121,10 @@ def chat(data_file: Path = DEFAULT_DATA_FILE):
         relevant_extracts, _ = extract_n_most_relevant_extracts(
             N, query, docs, docs_embeddings, embedding_model
         )
-        answer = generate_answer(instruct_model, tokenizer, query, relevant_extracts)
+        if use_remote_llm:
+            answer = generate_answer_remotely(query, relevant_extracts)
+        else:
+            answer = generate_answer_locally(instruct_model, tokenizer, query, relevant_extracts)
         print(answer)
 
 

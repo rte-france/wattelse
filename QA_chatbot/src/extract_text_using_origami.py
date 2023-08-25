@@ -8,7 +8,7 @@ try:
     from origami_indexers.indexers import OrigamiSummaryDocXIndexer
     from origami_indexers.utils.s3 import download_file_if_not_exists
 except ImportError as e:
-    logger.error("Origami module is required for this feature")
+    logger.error("Origami module is required for .docx upload feature")
 
 DEFAULT_DATA_PATH = Path("./data")
 

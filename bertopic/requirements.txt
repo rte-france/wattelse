@@ -2,6 +2,7 @@ bertopic
 hdbscan
 loguru
 nltk
+openai
 pandas
 pathlib
 pymupdf
