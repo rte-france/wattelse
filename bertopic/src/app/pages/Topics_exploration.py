@@ -1,11 +1,11 @@
 import streamlit as st
-import pandas as pd
+
 from utils import TIMESTAMP_COLUMN
 from app_utils import print_docs_for_specific_topic
 
 # Stop script if no model is trained
 if "topic_model" not in st.session_state.keys():
-	st.write("Train a model to explore generated topics.")
+	st.error("Train a model to explore generated topics.", icon="🚨")
 	st.stop()
 
 

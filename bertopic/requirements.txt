@@ -1,3 +1,4 @@
+arxiv
 bertopic
 hdbscan
 loguru

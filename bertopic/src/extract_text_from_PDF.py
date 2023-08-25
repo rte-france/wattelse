@@ -1,5 +1,3 @@
-import pdb
-
 import fitz #pymupdf
 import pandas as pd
 import re

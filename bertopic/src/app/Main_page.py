@@ -1,15 +1,9 @@
 import ast
 import os
 
-import pandas as pd
 import streamlit as st
-from bertopic.vectorizers import ClassTfidfTransformer
-from hdbscan import HDBSCAN
-from nltk.corpus import stopwords
-from sklearn.feature_extraction.text import CountVectorizer
-from umap import UMAP
 
-from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, DATA_DIR, clean_dataset
+from utils import TIMESTAMP_COLUMN, DATA_DIR, clean_dataset
 from app_utils import load_data
 from app_utils import (
     data_cleaning_options,
@@ -24,8 +18,7 @@ from app_utils import (
     compute_topics_over_time,
 )
 
-from train import BERTopic_train
-
+from train_utils import train_BERTopic_wrapper
 
 ### TITLE ###
 
@@ -102,7 +95,7 @@ if parameters_sidebar_clicked:
     st.session_state["df"] = clean_dataset(st.session_state["raw_df"], ast.literal_eval(st.session_state["parameters"])["min_text_length"])
 
     # Train
-    _, probs, st.session_state["topic_model"] = BERTopic_train(st.session_state["df"], st.session_state["parameters"])
+    _, probs, st.session_state["topic_model"] = train_BERTopic_wrapper(st.session_state["df"], st.session_state["parameters"])
     st.session_state["topic_per_doc"] = probs.argmax(axis=1) # select most likely topic per document to match outliers (topic -1) documents to actual topic
     st.session_state["topics_list"] = st.session_state["topic_model"].get_topic_info().iloc[1:] # exclude -1 topic from topic list
 
