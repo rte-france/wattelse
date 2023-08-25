@@ -55,6 +55,7 @@ class EmbeddingModel(BaseEmbedder):
 
         logging.info(f"Loading model: {model_name} on device: {device}")
         self.embedding_model = SentenceTransformer(model_name)
+        self.embedding_model.max_seq_length = 512
         self.name = model_name
         logging.info("Model loaded")
 

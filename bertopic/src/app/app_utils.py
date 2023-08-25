@@ -1,7 +1,6 @@
 import streamlit as st
 
 from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, DATA_DIR, file_to_pd
-from sklearn.metrics.pairwise import cosine_similarity
 
 
 @st.cache_data
@@ -16,7 +15,7 @@ def data_cleaning_options():
 
 def embedding_model_options():
     return {
-        "embedding_model_name": st.selectbox("Name", ["paraphrase-multilingual-MiniLM-L12-v2", "sentence-transformers/all-mpnet-base-v2"]),
+        "embedding_model_name": st.selectbox("Name", ["dangvantuan/sentence-camembert-large", "paraphrase-multilingual-MiniLM-L12-v2", "sentence-transformers/all-mpnet-base-v2"]),
         "use_cached_embeddings": st.checkbox("Put embeddings in cache", value=True)
     }
 
@@ -35,7 +34,6 @@ def umap_options():
         "umap_min_dist": st.number_input("min_dist", min_value=0.0, value=0.0, max_value=1.0),
         "umap_metric": st.selectbox("metric", ["cosine"]),
     }
-
 
 def hdbscan_options():
     return {
