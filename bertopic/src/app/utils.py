@@ -11,7 +11,7 @@ from loguru import logger
 
 nltk.download("stopwords")
 
-DATA_DIR = "./data/"
+DATA_DIR = "/data/weak_signals/bertopic_data/"
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
 URL_COLUMN = "url"
