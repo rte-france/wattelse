@@ -2,9 +2,8 @@ import ast
 import os
 
 import streamlit as st
-
 from utils import TIMESTAMP_COLUMN, DATA_DIR, clean_dataset
-from app_utils import load_data
+
 from app_utils import (
     data_cleaning_options,
     embedding_model_options,
@@ -17,7 +16,7 @@ from app_utils import (
     plot_topics_over_time,
     compute_topics_over_time,
 )
-
+from app_utils import load_data
 from train_utils import train_BERTopic_wrapper
 
 ### TITLE ###
@@ -83,16 +82,23 @@ if st.session_state["data_name"] == "None":
 
 # Load selected DataFrame
 st.session_state["raw_df"] = load_data(st.session_state["data_name"]).sort_values(by=TIMESTAMP_COLUMN, ascending=False)
-st.write(f"Found {len(st.session_state['raw_df'])} documents.")
-st.write(st.session_state["raw_df"].head())
 
+# Select time range
+min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(['min', 'max'])
+timestamp_range = st.slider(
+    "Select the range of timestamps you want to use for training",
+    value=(min_max["min"].to_pydatetime(), min_max["max"].to_pydatetime()), key="timestamp_range")
+st.session_state["timefiltered_df"] = st.session_state["raw_df"].query(f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'")
+
+st.write(f"Found {len(st.session_state['timefiltered_df'])} documents.")
+st.write(st.session_state["timefiltered_df"].head())
 
 ### TRAIN MODEL ###
 
 if parameters_sidebar_clicked:
 
     # Clean dataset
-    st.session_state["df"] = clean_dataset(st.session_state["raw_df"], ast.literal_eval(st.session_state["parameters"])["min_text_length"])
+    st.session_state["df"] = clean_dataset(st.session_state["timefiltered_df"], ast.literal_eval(st.session_state["parameters"])["min_text_length"])
 
     # Train
     _, probs, st.session_state["topic_model"] = train_BERTopic_wrapper(st.session_state["df"], st.session_state["parameters"])

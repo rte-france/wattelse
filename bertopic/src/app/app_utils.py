@@ -1,11 +1,15 @@
 import streamlit as st
-
+import pandas as pd
 from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, DATA_DIR, file_to_pd
 
 
 @st.cache_data
 def load_data(data_name: str):
-    return file_to_pd(data_name, base_dir=DATA_DIR)
+    df = file_to_pd(data_name, base_dir=DATA_DIR)
+    # convert timestamp column
+    df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
+    return df
+
 
 
 def data_cleaning_options():

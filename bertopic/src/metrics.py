@@ -87,7 +87,6 @@ class TopicMetrics():
         # remove topic -1 as this is noise and may perturb the interpretation / scaling
         topic_map = topic_map[topic_map.topic != -1]
 
-
         x_med = topic_map[x_col].median()
         y_med = topic_map[y_col].median()
 
