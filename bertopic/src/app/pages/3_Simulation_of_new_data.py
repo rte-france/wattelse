@@ -70,7 +70,7 @@ def process_new_data():
     TEM_map = tm.identify_signals(TEM_map, TEM_x, TEM_y)
     TEM_map["batch"] = 0
 
-    # FIXME! Need to sort batches by ascending time for correct processing order
+    # Need to sort batches by ascending time for correct processing order
     ts_avg = {}
     for i, df_b in enumerate(df_batches):
         ts_avg[i] = df_b[TIMESTAMP_COLUMN].mean()
