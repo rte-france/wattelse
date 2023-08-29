@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, DATA_DIR, file_to_pd
-import matplotlib.pyplot as plt
 import plotly.express as px
 
 
