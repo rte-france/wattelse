@@ -8,5 +8,5 @@ pandas
 pathlib
 pymupdf
 sklearn
-streamlit>=1.25
+streamlit>=1.26
 typer

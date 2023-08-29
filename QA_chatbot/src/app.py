@@ -237,10 +237,10 @@ def display_side_bar():
         )
 
         # Memory management
-        st.checkbox("Use recent interaction history", value=True, key="remember_recent_messages")
+        st.toggle("Use recent interaction history", value=True, key="remember_recent_messages")
 
         # Relevant references as explanations
-        st.checkbox("Provide explanations", value=False, key="provide_explanations")
+        st.toggle("Provide explanations", value=False, key="provide_explanations")
 
         # Number of extracts to be considered
         st.slider("Maximum number of extracts used", min_value=1, max_value=10, value=5, step=1,

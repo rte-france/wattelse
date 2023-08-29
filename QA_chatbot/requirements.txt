@@ -3,7 +3,7 @@ pandas
 pymupdf
 sklearn
 sentence_transformers
-streamlit>=1.25
+streamlit>=1.26
 tinydb
 transformers
 vigogne @ git+https://github.com/bofenghuang/vigogne.git@main

@@ -19,13 +19,16 @@ from app_utils import (
 from app_utils import load_data
 from train_utils import train_BERTopic_wrapper
 
-### TITLE ###
+# FIXME: save status of sliders, etc. when we go from one page to another!
 
+# Wide layout
+st.set_page_config(layout="wide")
+
+### TITLE ###
 st.title("BERTopic")
 
 
 ### SIDEBAR OPTIONS ###
-
 with st.sidebar.form("parameters_sidebar"):
 
     st.title("Parameters")
@@ -64,7 +67,7 @@ with st.sidebar.form("parameters_sidebar"):
         }
     )
 
-    parameters_sidebar_clicked = st.form_submit_button("Train model")
+    parameters_sidebar_clicked = st.form_submit_button("Train model", type="primary")
 
 
 ### DATA SELECTION AND LOADING ###
@@ -85,13 +88,14 @@ st.session_state["raw_df"] = load_data(st.session_state["data_name"]).sort_value
 
 # Select time range
 min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(['min', 'max'])
-timestamp_range = st.slider(
+st.session_state["timestamp_range"] = st.slider(
     "Select the range of timestamps you want to use for training",
-    value=(min_max["min"].to_pydatetime(), min_max["max"].to_pydatetime()), key="timestamp_range")
+    value=(min_max["min"].to_pydatetime(), min_max["max"].to_pydatetime()))
+timestamp_range = st.session_state["timestamp_range"]
 st.session_state["timefiltered_df"] = st.session_state["raw_df"].query(f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'")
-
 st.write(f"Found {len(st.session_state['timefiltered_df'])} documents.")
-st.write(st.session_state["timefiltered_df"].head())
+with st.expander("Data overview"):
+    st.dataframe(st.session_state["timefiltered_df"].head())
 
 ### TRAIN MODEL ###
 
@@ -111,20 +115,24 @@ if not ("topic_model" in st.session_state.keys()):
     st.stop()
 
 # 2d plot
-st.write("## Overall results")
-st.write(plot_2d_topics(st.session_state.parameters, st.session_state["topic_model"]))
+with st.expander("Overall results"):
+    st.write("## Overall results")
+    st.write(plot_2d_topics(st.session_state.parameters, st.session_state["topic_model"]))
 
 # Dynamic topic modelling
-if TIMESTAMP_COLUMN in st.session_state["df"].keys():
-    st.write("## Dynamic topic modelling")
+with st.spinner("Computing topics over time..."):
+    with st.expander("Dynamic topic modelling"):
+        if TIMESTAMP_COLUMN in st.session_state["df"].keys():
+            st.write("## Dynamic topic modelling")
 
-    #Parameters
-    st.text_input("Topics list (format 1,12,52 or 1:20)", key="dynamic_topics_list", value="0:10")
-    st.number_input("nr_bins", min_value=1, value=20, key="nr_bins")
+            #Parameters
+            st.text_input("Topics list (format 1,12,52 or 1:20)", key="dynamic_topics_list", value="0:10")
+            st.number_input("nr_bins", min_value=1, value=20, key="nr_bins")
 
-    # Compute topics over time only when train button is clicked
-    if parameters_sidebar_clicked:
-        st.session_state["topics_over_time"] = compute_topics_over_time(st.session_state["parameters"], st.session_state["topic_model"], st.session_state["df"], nr_bins=st.session_state["nr_bins"])
+            # Compute topics over time only when train button is clicked
+            if parameters_sidebar_clicked:
+                st.session_state["topics_over_time"] = compute_topics_over_time(st.session_state["parameters"], st.session_state["topic_model"], st.session_state["df"], nr_bins=st.session_state["nr_bins"])
 
-    # Visualize
-    st.write(plot_topics_over_time(st.session_state["topics_over_time"], st.session_state["dynamic_topics_list"], st.session_state["topic_model"]))
+            # Visualize
+            st.write(plot_topics_over_time(st.session_state["topics_over_time"], st.session_state["dynamic_topics_list"], st.session_state["topic_model"]))
+

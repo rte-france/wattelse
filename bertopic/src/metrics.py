@@ -1,6 +1,6 @@
+from statistics import geometric_mean
 from typing import Tuple, Dict
 
-from statistics import geometric_mean
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -8,7 +8,7 @@ from bertopic import BERTopic
 
 RANDOM_STATE = 666
 
-TIME_WEIGHT = 0.05
+TIME_WEIGHT = 0.04
 
 TEM_x = "Average topic frequency (TF)"
 TEM_y = "Time weighted increasing rate of DoV"
@@ -138,11 +138,12 @@ class TopicMetrics():
         # return topic_map
 
     @staticmethod
-    def scatterplot_with_annotations(df, x_col, y_col, label_col, hover_data, title, x_label, y_label):
+    def scatterplot_with_annotations(df, x_col, y_col, label_col, hover_data, title, x_label, y_label, animation_frame=None, animation_group=None):
         """Utility function to plat scatter plot"""
 
         # Create a scatter plot using Plotly
-        fig = px.scatter(df, x=x_col, y=y_col, text=label_col, size_max=10, hover_data=hover_data, color=df.signal)
+        fig = px.scatter(df, x=x_col, y=y_col, text=label_col, size_max=10, hover_data=hover_data, color=df.signal,
+                         animation_frame=animation_frame, animation_group=animation_group)
 
         # Add annotations
         fig.update_traces(textposition='top center')
