@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, DATA_DIR, file_to_pd
+import matplotlib.pyplot as plt
+import plotly.express as px
 
 
 @st.cache_data
@@ -92,3 +94,14 @@ def print_docs_for_specific_topic(df, most_likely_topic_per_doc, topic_number):
         df.loc[most_likely_topic_per_doc==topic_number][[TITLE_COLUMN, URL_COLUMN, TIMESTAMP_COLUMN]].set_index(TITLE_COLUMN), 
         column_config={"url": st.column_config.LinkColumn()}
         )
+    
+def plot_docs_reparition_over_time(df, freq):
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df.loc[0, "timestamp"] = df["timestamp"].iloc[0].normalize()
+
+    count = df.groupby(pd.Grouper(key="timestamp", freq=freq), as_index=False).size()
+    count["timestamp"] = count["timestamp"].dt.strftime('%Y-%m-%d')
+
+    fig = px.bar(count, x="timestamp", y="size")
+    st.write(fig)
+

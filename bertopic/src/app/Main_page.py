@@ -15,6 +15,7 @@ from app_utils import (
     plot_2d_topics,
     plot_topics_over_time,
     compute_topics_over_time,
+    plot_docs_reparition_over_time,
 )
 from app_utils import load_data
 from train_utils import train_BERTopic_wrapper
@@ -96,6 +97,14 @@ st.session_state["timefiltered_df"] = st.session_state["raw_df"].query(f"timesta
 st.write(f"Found {len(st.session_state['timefiltered_df'])} documents.")
 with st.expander("Data overview"):
     st.dataframe(st.session_state["timefiltered_df"].head())
+    st.markdown("""---""")
+    freq = st.select_slider(
+        "Time aggregation",
+        options=("1D", "2D", "1W", "2W", "1M", "2M", "1Y", "2Y",),
+        value = "2M"
+    )
+    plot_docs_reparition_over_time(st.session_state["raw_df"], freq)
+
 
 ### TRAIN MODEL ###
 
@@ -116,7 +125,6 @@ if not ("topic_model" in st.session_state.keys()):
 
 # 2d plot
 with st.expander("Overall results"):
-    st.write("## Overall results")
     st.write(plot_2d_topics(st.session_state.parameters, st.session_state["topic_model"]))
 
 # Dynamic topic modelling
