@@ -82,9 +82,9 @@ def data_overview():
                 "1Y",
                 "2Y",
             ),
-            value="2M",
+            value="1M",
         )
-        plot_docs_reparition_over_time(st.session_state["raw_df"], freq)
+        plot_docs_reparition_over_time(st.session_state["timefiltered_df"], freq)
 
 def train_model():
     ### TRAIN MODEL ###
