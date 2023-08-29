@@ -14,7 +14,7 @@ semantic_scholar_df_save_path = arxiv_df_path.replace("arxiv", "semantic_scholar
 api_key = "q252gwgpRVAb49CWJqde3TEr6VjzXyc8P8RcGCo2"
 papers_per_request = 500 # should not be more than 500
 delay_seconds = 1 # delay between each request
-fields = "title,abstract,citationCount,publicationDate"
+fields = "title,abstract,citationCount,publicationDate,url"
 
 
 ### Call Semantic Scholar API ###
@@ -53,7 +53,7 @@ semantic_scholar_items_list += [item for item in r.json() if item is not None]
 
 new_df  = pd.DataFrame(semantic_scholar_items_list)
 new_df = new_df.dropna()
-new_df.columns = ["id", "title", "text", "citation_count", "timestamp"]
+new_df.columns = ["id", "url", "title", "text", "citation_count", "timestamp"]
 logging.info(f"Retrieved {len(new_df)}/{len(df)} papers")
 
 new_df.to_csv(semantic_scholar_df_save_path)
