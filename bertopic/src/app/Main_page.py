@@ -17,6 +17,7 @@ from app_utils import (
     plot_topics_over_time,
     compute_topics_over_time,
     plot_docs_reparition_over_time,
+    initialize_default_parameters_keys,
 )
 from app_utils import load_data
 from train_utils import train_BERTopic_wrapper
@@ -162,6 +163,9 @@ restore_widget_state()
 ### TITLE ###
 st.title("BERTopic")
 
+# Initialize default parameters
+initialize_default_parameters_keys()
+
 
 ### SIDEBAR OPTIONS ###
 with st.sidebar.form("parameters_sidebar"):
@@ -202,7 +206,7 @@ with st.sidebar.form("parameters_sidebar"):
         }
     )
 
-    parameters_sidebar_clicked = st.form_submit_button("Train model", type="primary")
+    parameters_sidebar_clicked = st.form_submit_button("Train model", type="primary", on_click=save_widget_state)
 
 
 # Load selected DataFrame

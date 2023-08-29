@@ -1,7 +1,32 @@
-import streamlit as st
 import pandas as pd
-from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, DATA_DIR, file_to_pd
 import plotly.express as px
+import streamlit as st
+from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, DATA_DIR, file_to_pd
+from state_utils import register_widget
+
+DEFAULT_PARAMETERS = {
+    "min_text_length": 300,
+    "embedding_model_name": "dangvantuan/sentence-camembert-large",
+    "use_cached_embeddings": True,
+    "bertopic_nr_topics": 0,
+    "bertopic_top_n_words": 10,
+    "umap_n_neighbors": 15,
+    "umap_n_components": 5,
+    "umap_min_dist": 0.0,
+    "umap_metric": "cosine",
+    "hdbscan_min_cluster_size": 10,
+    "hdbscan_min_samples": 10,
+    "hdbscan_metric": "euclidean",
+    "hdbscan_cluster_selection_method": "eom",
+    "countvectorizer_stop_words": "french",
+    "countvectorizer_ngram_range": (1, 1),
+    "ctfidf_reduce_frequent_words": True,
+}
+def initialize_default_parameters_keys():
+    for k,v in DEFAULT_PARAMETERS.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+        register_widget(k)
 
 
 @st.cache_data
@@ -15,52 +40,54 @@ def load_data(data_name: str):
 
 def data_cleaning_options():
     return {
-        "min_text_length": st.number_input("min_text_length (#chars)", min_value=0, value=300),
+        "min_text_length": st.number_input("min_text_length (#chars)", min_value=0, key="min_text_length"),
     }
 
 def embedding_model_options():
     return {
-        "embedding_model_name": st.selectbox("Name", ["dangvantuan/sentence-camembert-large", "paraphrase-multilingual-MiniLM-L12-v2", "sentence-transformers/all-mpnet-base-v2"]),
-        "use_cached_embeddings": st.toggle("Put embeddings in cache", value=True)
+        "embedding_model_name": st.selectbox("Name",
+                                             ["dangvantuan/sentence-camembert-large", "paraphrase-multilingual-MiniLM-L12-v2",
+                                              "sentence-transformers/all-mpnet-base-v2"], key="embedding_model_name"),
+        "use_cached_embeddings": st.toggle("Put embeddings in cache", key="use_cached_embeddings")
     }
 
 
 def bertopic_options():
     return {
-        "bertopic_nr_topics": st.number_input("nr_topics", min_value=0, value=0),
-        "bertopic_top_n_words": st.number_input("top_n_words", min_value=1, value=10),
+        "bertopic_nr_topics": st.number_input("nr_topics", min_value=0, key="bertopic_nr_topics"),
+        "bertopic_top_n_words": st.number_input("top_n_words", min_value=1, key="bertopic_top_n_words"),
     }
 
 
 def umap_options():
     return {
-        "umap_n_neighbors": st.number_input("n_neighbors", min_value=1, value=15),
-        "umap_n_components": st.number_input("n_components", min_value=1, value=5),
-        "umap_min_dist": st.number_input("min_dist", min_value=0.0, value=0.0, max_value=1.0),
-        "umap_metric": st.selectbox("metric", ["cosine"]),
+        "umap_n_neighbors": st.number_input("n_neighbors", min_value=1, key="umap_n_neighbors"),
+        "umap_n_components": st.number_input("n_components", min_value=1, key="umap_n_components"),
+        "umap_min_dist": st.number_input("min_dist", min_value=0.0, key="umap_min_dist", max_value=1.0),
+        "umap_metric": st.selectbox("metric", ["cosine"], key="umap_metric"),
     }
 
 def hdbscan_options():
     return {
-        "hdbscan_min_cluster_size": st.number_input("min_cluster_size", min_value=1, value=10),
-        "hdbscan_min_samples": st.number_input("min_samples", min_value=1, value=10),
-        "hdbscan_metric": st.selectbox("metric", ["euclidean"]),
-        "hdbscan_cluster_selection_method": st.selectbox("cluster_selection_method", ["eom"]),
+        "hdbscan_min_cluster_size": st.number_input("min_cluster_size", min_value=1, key="hdbscan_min_cluster_size"),
+        "hdbscan_min_samples": st.number_input("min_samples", min_value=1, key="hdbscan_min_samples"),
+        "hdbscan_metric": st.selectbox("metric", ["euclidean"], key="hdbscan_metric"),
+        "hdbscan_cluster_selection_method": st.selectbox("cluster_selection_method", ["eom"], key="hdbscan_cluster_selection_method"),
     }
 
 
 def countvectorizer_options():
     return {
-        "countvectorizer_stop_words": st.selectbox("stop_words", ["french", "english", None]),
+        "countvectorizer_stop_words": st.selectbox("stop_words", ["french", "english", None], key="countvectorizer_stop_words"),
         "countvectorizer_ngram_range": st.selectbox(
-            "ngram_range", [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)]
+            "ngram_range", [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)], key="countvectorizer_ngram_range"
         ),
     }
 
 
 def ctfidf_options():
     return {
-        "ctfidf_reduce_frequent_words": st.selectbox("reduce_frequent_words", [True, False]),
+        "ctfidf_reduce_frequent_words": st.toggle("reduce_frequent_words", key="ctfidf_reduce_frequent_words")
     }
 
 
