@@ -2,6 +2,10 @@ import streamlit as st
 
 from utils import TIMESTAMP_COLUMN
 from app_utils import print_docs_for_specific_topic
+from state_utils import register_widget, save_widget_state, restore_widget_state
+
+# Restore widget state
+restore_widget_state()
 
 # Stop script if no model is trained
 if "topic_model" not in st.session_state.keys():

@@ -3,6 +3,7 @@ import os
 
 import streamlit as st
 from utils import TIMESTAMP_COLUMN, DATA_DIR, clean_dataset
+from state_utils import register_widget, save_widget_state, restore_widget_state
 
 from app_utils import (
     data_cleaning_options,
@@ -20,10 +21,11 @@ from app_utils import (
 from app_utils import load_data
 from train_utils import train_BERTopic_wrapper
 
-# FIXME: save status of sliders, etc. when we go from one page to another!
-
 # Wide layout
 st.set_page_config(layout="wide")
+
+# Restore widget state
+restore_widget_state()
 
 ### TITLE ###
 st.title("BERTopic")
@@ -89,10 +91,15 @@ st.session_state["raw_df"] = load_data(st.session_state["data_name"]).sort_value
 
 # Select time range
 min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(['min', 'max'])
-st.session_state["timestamp_range"] = st.slider(
+register_widget("timestamp_range")
+if  "timestamp_range" not in st.session_state:
+    st.session_state["timestamp_range"] = (min_max["min"].to_pydatetime(), min_max["max"].to_pydatetime())
+timestamp_range = st.slider(
     "Select the range of timestamps you want to use for training",
-    value=(min_max["min"].to_pydatetime(), min_max["max"].to_pydatetime()))
-timestamp_range = st.session_state["timestamp_range"]
+    min_value=min_max["min"].to_pydatetime(),
+    max_value=min_max["max"].to_pydatetime(),
+    key = "timestamp_range",
+    on_change=save_widget_state)
 st.session_state["timefiltered_df"] = st.session_state["raw_df"].query(f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'")
 st.write(f"Found {len(st.session_state['timefiltered_df'])} documents.")
 with st.expander("Data overview"):

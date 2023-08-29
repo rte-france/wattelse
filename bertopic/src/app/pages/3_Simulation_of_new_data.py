@@ -3,10 +3,12 @@ from collections import Counter
 import numpy as np
 import pandas as pd
 import streamlit as st
-
 from metrics import TopicMetrics, TIME_WEIGHT, TEM_x, TEM_y
+from state_utils import register_widget, save_widget_state, restore_widget_state
 from utils import TIMESTAMP_COLUMN, TEXT_COLUMN
 
+# Restore widget state
+restore_widget_state()
 
 if "tw" not in st.session_state.keys():
     st.session_state["tw"] = TIME_WEIGHT
@@ -46,14 +48,17 @@ def main():
         st.dataframe(st.session_state["remaining_df"].head())
 
     # Selection of number of batches
+    register_widget("new_data_batches_nb")
     st.slider(
         "Number of data batches",
         min_value=1,
         max_value=min(10, len(st.session_state["remaining_df"])),
-        key="new_data_batches_nb"
+        key="new_data_batches_nb",
+        on_change=save_widget_state
     )
 
-    st.slider("Time weight", min_value=0.0, max_value=0.1, step=0.005, key="tw")
+    register_widget("tw")
+    st.slider("Time weight", min_value=0.0, max_value=0.1, step=0.005, key="tw", on_change=save_widget_state)
 
     if st.button("Run", type="primary"):
         process_new_data()
