@@ -33,6 +33,7 @@ try:
     st.plotly_chart(topic_metrics.plot_TEM_map(st.session_state["tw"]))
 except StatisticsError as se:
     st.warning(f"Try to change the Time Weight value: {se}", icon="⚠️")
+    st.stop()
 
 
 #save_state()

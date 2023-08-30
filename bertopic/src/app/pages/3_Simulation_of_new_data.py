@@ -114,24 +114,31 @@ def process_new_data_per_batch() -> List[Dict]:
 
 def plot_animated_topic_map(batch_results: List[Dict]):
     # Topic map based on data before the introduction of new batches
-    tm = TopicMetrics(st.session_state["topic_model"], st.session_state["topics_over_time"])
-    TEM_map = tm.TEM_map(st.session_state["tw"])
-    TEM_map = tm.identify_signals(TEM_map, TEM_x, TEM_y)
-    TEM_map["batch"] = 0
+    try:
+        tm = TopicMetrics(st.session_state["topic_model"], st.session_state["topics_over_time"])
+        TEM_map = tm.TEM_map(st.session_state["tw"])
+        TEM_map = tm.identify_signals(TEM_map, TEM_x, TEM_y)
+        TEM_map["batch"] = 0
+    except StatisticsError as se:
+            st.warning(f"Try to change the Time Weight value: {se}", icon="⚠️")
+            st.stop()
 
     # Use batch results to compute new data
     for i, res in enumerate(batch_results):
-        # New topic metrics (that takes into account the new batch)
-        topic_metrics = TopicMetrics(st.session_state["topic_model"], res["topics_over_time"])
-        batch_TEM_map = topic_metrics.TEM_map(st.session_state["tw"])
-        batch_TEM_map = topic_metrics.identify_signals(batch_TEM_map, TEM_x, TEM_y)
-        batch_TEM_map["batch"] = i+1
-        TEM_map = pd.concat([TEM_map, batch_TEM_map])
+        try:
+            # New topic metrics (that takes into account the new batch)
+            topic_metrics = TopicMetrics(st.session_state["topic_model"], res["topics_over_time"])
+            batch_TEM_map = topic_metrics.TEM_map(st.session_state["tw"])
+            batch_TEM_map = topic_metrics.identify_signals(batch_TEM_map, TEM_x, TEM_y)
+            batch_TEM_map["batch"] = i+1
+            TEM_map = pd.concat([TEM_map, batch_TEM_map])
+        except StatisticsError as se:
+            st.warning(f"Try to change the Time Weight value: {se}", icon="⚠️")
+            st.stop()
 
 
     # Plot the resulting map as an animation
     with st.spinner("Plotting topic map..."):
-        try:
             st.plotly_chart(TopicMetrics.scatterplot_with_annotations(TEM_map, TEM_x, TEM_y, "topic", "topic_description",
                                                                       "Animated Topic Emergence Map (TEM)", TEM_x, TEM_y,
                                                                       animation_frame="batch"
