@@ -1,4 +1,5 @@
 from collections import Counter
+from statistics import StatisticsError
 from typing import List, Tuple, Union, Dict, Any
 
 import numpy as np
@@ -130,11 +131,13 @@ def plot_animated_topic_map(batch_results: List[Dict]):
 
     # Plot the resulting map as an animation
     with st.spinner("Plotting topic map..."):
-        st.plotly_chart(TopicMetrics.scatterplot_with_annotations(TEM_map, TEM_x, TEM_y, "topic", "topic_description",
-                                                                  "Animated Topic Emergence Map (TEM)", TEM_x, TEM_y,
-                                                                  animation_frame="batch"
-                                                                  ))
-
+        try:
+            st.plotly_chart(TopicMetrics.scatterplot_with_annotations(TEM_map, TEM_x, TEM_y, "topic", "topic_description",
+                                                                      "Animated Topic Emergence Map (TEM)", TEM_x, TEM_y,
+                                                                      animation_frame="batch"
+                                                                      ))
+        except StatisticsError as se:
+            st.warning(f"Try to change the Time Weight value: {se}", icon="⚠️")
 ###
 # Write page
 main()
