@@ -25,4 +25,3 @@ def restore_widget_state():
     if WIDGET_STATE in st.session_state.keys():
         for k,v in st.session_state[WIDGET_STATE].items():
             st.session_state[k] = v
-            
