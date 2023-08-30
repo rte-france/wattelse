@@ -10,7 +10,7 @@ from pandas import DataFrame
 from state_utils import register_widget, save_widget_state, restore_widget_state
 from utils import TIMESTAMP_COLUMN, TEXT_COLUMN
 from app_utils import (
-    plot_remaining_docs_reparition_over_time,
+    plot_remaining_docs_repartition_over_time,
 )
 
 # Restore widget state
@@ -68,7 +68,7 @@ def main():
             ),
             value="1M",
         )
-        plot_remaining_docs_reparition_over_time(st.session_state["timefiltered_df"], st.session_state['remaining_df'], freq)
+        plot_remaining_docs_repartition_over_time(st.session_state["timefiltered_df"], st.session_state['remaining_df'], freq)
 
     # Selection of number of batches
     register_widget("new_data_batches_nb")

@@ -134,3 +134,31 @@ def plot_docs_reparition_over_time(df, freq):
     fig = px.bar(count, x="timestamp", y="size")
     st.write(fig)
 
+def plot_remaining_docs_repartition_over_time(df_base, df_remaining, freq):
+    # Concatenate df
+    df = pd.concat([df_base, df_remaining])
+
+    # Get split time value
+    split_time = str(df_remaining["timestamp"].min())
+
+    # Print aggregated docs
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df.loc[0, "timestamp"] = df["timestamp"].iloc[0].normalize()
+
+    count = df.groupby(pd.Grouper(key="timestamp", freq=freq), as_index=False).size()
+    count["timestamp"] = count["timestamp"].dt.strftime('%Y-%m-%d')
+    # Split to set a different color to each DF
+    count["category"] = ["Base" if time < split_time else "Remaining" for time in count["timestamp"]]
+
+    fig = px.bar(
+        count,
+        x="timestamp",
+        y="size",
+        color="category",
+        color_discrete_map={
+        "Base" : "light blue", # default plotly color to match main page graphs
+        "Remaining" : "orange",
+    }
+        )
+    st.write(fig)
+
