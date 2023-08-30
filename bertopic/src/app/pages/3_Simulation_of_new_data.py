@@ -9,6 +9,9 @@ from metrics import TopicMetrics, TIME_WEIGHT, TEM_x, TEM_y
 from pandas import DataFrame
 from state_utils import register_widget, save_widget_state, restore_widget_state
 from utils import TIMESTAMP_COLUMN, TEXT_COLUMN
+from app_utils import (
+    plot_remaining_docs_reparition_over_time,
+)
 
 # Restore widget state
 restore_widget_state()
@@ -47,8 +50,25 @@ def main():
 
     # Display remaining data
     st.write(f"Remaining data: {len(st.session_state['remaining_df'])} documents.")
-    with st.expander("View data"):
+    # Data overview
+    with st.expander("Data overview"):
         st.dataframe(st.session_state["remaining_df"].head())
+        st.markdown("""---""")
+        freq = st.select_slider(
+            "Time aggregation",
+            options=(
+                "1D",
+                "2D",
+                "1W",
+                "2W",
+                "1M",
+                "2M",
+                "1Y",
+                "2Y",
+            ),
+            value="1M",
+        )
+        plot_remaining_docs_reparition_over_time(st.session_state["timefiltered_df"], st.session_state['remaining_df'], freq)
 
     # Selection of number of batches
     register_widget("new_data_batches_nb")
@@ -143,8 +163,6 @@ def plot_animated_topic_map(batch_results: List[Dict]):
                                                                       "Animated Topic Emergence Map (TEM)", TEM_x, TEM_y,
                                                                       animation_frame="batch"
                                                                       ))
-        except StatisticsError as se:
-            st.warning(f"Try to change the Time Weight value: {se}", icon="⚠️")
 ###
 # Write page
 main()
