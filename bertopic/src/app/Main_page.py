@@ -2,6 +2,7 @@ import ast
 import os
 
 import streamlit as st
+from loguru import logger
 from utils import TIMESTAMP_COLUMN, DATA_DIR, clean_dataset
 from state_utils import register_widget, save_widget_state, restore_widget_state
 
@@ -112,7 +113,12 @@ def overall_results():
         st.stop()
     # Plot overall results
     with st.expander("Overall results"):
-        st.write(plot_2d_topics(st.session_state.parameters, st.session_state["topic_model"]))
+        try:
+            st.write(plot_2d_topics(st.session_state.parameters, st.session_state["topic_model"]))
+        except TypeError as te: # we have sometimes: TypeError: Cannot use scipy.linalg.eigh for sparse A with k >= N. Use scipy.linalg.eigh(A.toarray()) or reduce k.
+            logger.error(f"Error occurred: {te}")
+            st.error("Cannot display overall results", icon="🚨")
+            st.exception(te)
 
 
 

@@ -126,7 +126,6 @@ def print_docs_for_specific_topic(df, most_likely_topic_per_doc, topic_number):
         )
     
 def plot_docs_reparition_over_time(df, freq):
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
     df.loc[0, "timestamp"] = df["timestamp"].iloc[0].normalize()
 
     count = df.groupby(pd.Grouper(key="timestamp", freq=freq), as_index=False).size()
