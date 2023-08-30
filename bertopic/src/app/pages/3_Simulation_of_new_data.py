@@ -89,7 +89,8 @@ def main():
 
         # use this data for various display
         # - plot animated topic map
-        plot_animated_topic_map(batch_results)
+        with st.spinner("Plotting topic animated map"):
+            plot_animated_topic_map(batch_results)
         # - TODO: other visualizations?
 
 def process_new_data_per_batch() -> List[Dict]:
