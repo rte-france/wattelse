@@ -78,7 +78,7 @@ def select_data():
     )
     st.session_state["timefiltered_df"] = st.session_state["cleaned_df"].query(
         f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'"
-    )
+    ).reset_index(drop=True)
     st.write(f"Found {len(st.session_state['timefiltered_df'])} documents.")
 
 def data_overview():
