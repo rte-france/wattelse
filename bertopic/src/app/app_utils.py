@@ -1,11 +1,10 @@
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, DATA_DIR, file_to_pd
+from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, CITATION_COUNT_COL, DATA_DIR, file_to_pd
 from state_utils import register_widget
 
 DEFAULT_PARAMETERS = {
-    "min_text_length": 300,
     "embedding_model_name": "dangvantuan/sentence-camembert-large",
     "use_cached_embeddings": True,
     "bertopic_nr_topics": 0,
@@ -36,12 +35,6 @@ def load_data(data_name: str):
     df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
     return df
 
-
-
-def data_cleaning_options():
-    return {
-        "min_text_length": st.number_input("min_text_length (#chars)", min_value=0, key="min_text_length"),
-    }
 
 def embedding_model_options():
     return {

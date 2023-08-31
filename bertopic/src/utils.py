@@ -20,6 +20,7 @@ TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
 URL_COLUMN = "url"
 TITLE_COLUMN = "title"
+CITATION_COUNT_COL = "citation_count"
 BASE_CACHE_PATH = (
     Path("/data/weak_signals/cache")
     if socket.gethostname() == "groesplu0"

@@ -35,7 +35,7 @@ def main():
     st.title("Simulation of topic evolution with new data")
 
     timestamp_max = st.session_state["timefiltered_df"][TIMESTAMP_COLUMN].max()
-    st.session_state["remaining_df"] = st.session_state["raw_df"].query(
+    st.session_state["remaining_df"] = st.session_state["cleaned_df"].query(
         f"timestamp > '{timestamp_max}'"
     )
 

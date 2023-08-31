@@ -45,9 +45,9 @@ st.write(f"## Topic {st.session_state['selected_topic_number']} : {topic_docs_nu
 st.markdown(f"### {' | '.join(topic_words)}")
 
 # Plot topic over time
-if TIMESTAMP_COLUMN in st.session_state["df"].keys():
+if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():
 	st.write(st.session_state["topic_model"].visualize_topics_over_time(st.session_state["topics_over_time"], topics=[st.session_state["selected_topic_number"]], width=700))
 
 # Show documents belonging to the topic
 
-print_docs_for_specific_topic(st.session_state["df"], st.session_state["topic_per_doc"], st.session_state["selected_topic_number"])
+print_docs_for_specific_topic(st.session_state["timefiltered_df"], st.session_state["topic_per_doc"], st.session_state["selected_topic_number"])

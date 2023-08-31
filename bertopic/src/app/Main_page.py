@@ -7,7 +7,6 @@ from utils import TIMESTAMP_COLUMN, DATA_DIR, clean_dataset
 from state_utils import register_widget, save_widget_state, restore_widget_state
 
 from app_utils import (
-    data_cleaning_options,
     embedding_model_options,
     bertopic_options,
     umap_options,
@@ -38,7 +37,7 @@ def select_data():
         st.session_state["data_name"] = data_options[0]
     register_widget("data_name")
     st.selectbox(
-        "Select data to continue:", data_options, key="data_name", on_change=reset_all
+        "Select data to continue", data_options, key="data_name", on_change=reset_all
     )
     
     # Stop the app as long as no data is selected
@@ -49,8 +48,21 @@ def select_data():
         by=TIMESTAMP_COLUMN, ascending=False
     )
     
+    # Clean dataset
+    register_widget("min_text_length")
+    st.number_input(
+        "Select the minimum number of characters each docs should contain",
+        min_value=0,
+        key="min_text_length",
+        on_change=save_widget_state,
+    )
+    st.session_state["cleaned_df"] = clean_dataset(
+            st.session_state["raw_df"],
+            st.session_state["min_text_length"],
+        )
+
     # Select time range
-    min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
+    min_max = st.session_state["cleaned_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
     register_widget("timestamp_range")
     if "timestamp_range" not in st.session_state:
         st.session_state["timestamp_range"] = (
@@ -64,7 +76,7 @@ def select_data():
         key="timestamp_range",
         on_change=save_widget_state,
     )
-    st.session_state["timefiltered_df"] = st.session_state["raw_df"].query(
+    st.session_state["timefiltered_df"] = st.session_state["cleaned_df"].query(
         f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'"
     )
     st.write(f"Found {len(st.session_state['timefiltered_df'])} documents.")
@@ -92,15 +104,9 @@ def data_overview():
 def train_model():
     ### TRAIN MODEL ###
     if parameters_sidebar_clicked:
-        # Clean dataset
-        st.session_state["df"] = clean_dataset(
-            st.session_state["timefiltered_df"],
-            ast.literal_eval(st.session_state["parameters"])["min_text_length"],
-        )
-    
         # Train
         _, probs, st.session_state["topic_model"] = train_BERTopic_wrapper(
-            st.session_state["df"], st.session_state["parameters"]
+            st.session_state["timefiltered_df"], st.session_state["parameters"]
         )
         st.session_state["topic_per_doc"] = probs.argmax(
             axis=1
@@ -126,7 +132,7 @@ def overall_results():
 def dynamic_topic_modelling():
     with st.spinner("Computing topics over time..."):
         with st.expander("Dynamic topic modelling"):
-            if TIMESTAMP_COLUMN in st.session_state["df"].keys():
+            if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():
                 st.write("## Dynamic topic modelling")
     
                 # Parameters
@@ -142,7 +148,7 @@ def dynamic_topic_modelling():
                     st.session_state["topics_over_time"] = compute_topics_over_time(
                         st.session_state["parameters"],
                         st.session_state["topic_model"],
-                        st.session_state["df"],
+                        st.session_state["timefiltered_df"],
                         nr_bins=st.session_state["nr_bins"],
                     )
     
@@ -179,9 +185,6 @@ with st.sidebar.form("parameters_sidebar"):
 
     st.title("Parameters")
 
-    with st.expander("Data cleaning options"):
-        data_cleaning_options = data_cleaning_options()
-
     with st.expander("Embedding model"):
         embedding_model_options = embedding_model_options()
 
@@ -203,7 +206,6 @@ with st.sidebar.form("parameters_sidebar"):
     # Merge parameters in a dict and change type to str to make it hashable
     st.session_state["parameters"] = str(
         {
-            **data_cleaning_options,
             **embedding_model_options,
             **bertopic_options,
             **umap_options,
