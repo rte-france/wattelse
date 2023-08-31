@@ -52,8 +52,6 @@ def main():
     st.write(f"Remaining data: {len(st.session_state['remaining_df'])} documents.")
     # Data overview
     with st.expander("Data overview"):
-        st.dataframe(st.session_state["remaining_df"].head())
-        st.markdown("""---""")
         freq = st.select_slider(
             "Time aggregation",
             options=(
@@ -70,7 +68,7 @@ def main():
         )
         plot_remaining_docs_repartition_over_time(st.session_state["timefiltered_df"], st.session_state['remaining_df'], freq)
 
-    # Selection of number of batches
+    # Select number of batches
     register_widget("new_data_batches_nb")
     st.slider(
         "Number of data batches",
@@ -80,18 +78,24 @@ def main():
         on_change=save_widget_state
     )
 
+    # Select time weight for topic maps evolution
     register_widget("tw")
     st.slider("Time weight", min_value=0.0, max_value=0.1, step=0.005, key="tw", on_change=save_widget_state)
 
-    if st.button("Run", type="primary"):
+    if st.button("Simulate new data", type="primary"):
         # computes predictions and related data per batch
-        batch_results = process_new_data_per_batch()
+        st.session_state["batch_results"] = process_new_data_per_batch()
+    if not "batch_results" in st.session_state.keys():
+        st.stop()
 
-        # use this data for various display
+    with st.expander("Other visualization"):
+        #TODO : other vis
+        st.write("Other vis")
+    
+    with st.expander("Topics map evolution"):
         # - plot animated topic map
         with st.spinner("Plotting topic animated map"):
-            plot_animated_topic_map(batch_results)
-        # - TODO: other visualizations?
+            plot_animated_topic_map(st.session_state["batch_results"])
 
 def process_new_data_per_batch() -> List[Dict]:
     """Enriches topics with new data, returns a list (each element of the list correspond to one batch and is  """
