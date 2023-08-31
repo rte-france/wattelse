@@ -116,12 +116,11 @@ def plot_topics_over_time(topics_over_time, dynamic_topics_list, topic_model, wi
         return topic_model.visualize_topics_over_time(topics_over_time, topics=dynamic_topics_list, width=width)
 
 def print_docs_for_specific_topic(df, most_likely_topic_per_doc, topic_number):
-    column_list = [TITLE_COLUMN, URL_COLUMN, TIMESTAMP_COLUMN]
-    # print citation count if provided
-    if "citation_count" in df.keys():
-        column_list += ["citation_count"]
+    # Select column available in DF
+    columns_list = [col for col in [TITLE_COLUMN, TEXT_COLUMN, URL_COLUMN, TIMESTAMP_COLUMN, CITATION_COUNT_COL] if col in df.keys()]
+    
     st.dataframe(
-        df.loc[most_likely_topic_per_doc==topic_number][column_list].set_index(TITLE_COLUMN), 
+        df.loc[most_likely_topic_per_doc==topic_number][columns_list],
         column_config={"url": st.column_config.LinkColumn()}
         )
     
