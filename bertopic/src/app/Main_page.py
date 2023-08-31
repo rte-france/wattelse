@@ -60,6 +60,10 @@ def select_data():
             st.session_state["raw_df"],
             st.session_state["min_text_length"],
         )
+    # Stop if dataset is empty
+    if st.session_state["cleaned_df"].empty:
+        st.error("Not enough remaining data after cleaning", icon="🚨")
+        st.stop()
 
     # Select time range
     min_max = st.session_state["cleaned_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
