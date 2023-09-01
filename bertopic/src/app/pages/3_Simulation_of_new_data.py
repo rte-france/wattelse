@@ -40,7 +40,7 @@ def main():
     )
 
     # Handle missing data
-    if st.session_state["remaining_df"].empty:
+    if len(st.session_state["remaining_df"]) <= 1:
         st.error("Not enough remaining data to simulate evolution of topics", icon="🚨")
         st.info(
             "Please reduce the max value of the dataset timestamp in the main page!",
