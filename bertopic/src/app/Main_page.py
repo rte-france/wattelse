@@ -145,7 +145,7 @@ def dynamic_topic_modelling():
                     key="dynamic_topics_list",
                     value="0:10",
                 )
-                st.number_input("nr_bins", min_value=1, value=20, key="nr_bins")
+                st.number_input("nr_bins", min_value=1, value=10, key="nr_bins")
     
                 # Compute topics over time only when train button is clicked
                 if parameters_sidebar_clicked:
