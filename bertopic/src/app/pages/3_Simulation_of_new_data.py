@@ -11,6 +11,9 @@ from state_utils import register_widget, save_widget_state, restore_widget_state
 from utils import TIMESTAMP_COLUMN, TEXT_COLUMN
 from app_utils import (
     plot_remaining_docs_repartition_over_time,
+    compute_topics_over_time,
+    plot_topics_over_time,
+    transform_new_data,
 )
 
 # Restore widget state
@@ -81,63 +84,63 @@ def main():
     # Select time weight for topic maps evolution
     register_widget("tw")
     st.slider("Time weight", min_value=0.0, max_value=0.1, step=0.005, key="tw", on_change=save_widget_state)
-
     if st.button("Simulate new data", type="primary"):
-        # computes predictions and related data per batch
-        st.session_state["batch_results"] = process_new_data_per_batch()
-    if not "batch_results" in st.session_state.keys():
-        st.stop()
+        # Computes remaining_df prediction using trained topic_model
+        with st.spinner("Simulating new data..."):
+            st.session_state["new_topics"], _ = transform_new_data(
+                st.session_state["topic_model"],
+                st.session_state["remaining_df"],
+                form_parameters=st.session_state["parameters"]
+                )
 
-    with st.expander("Other visualization"):
-        #TODO : other vis
-        st.write("Other vis")
+    if not "new_topics" in st.session_state.keys():
+        st.stop()
+    
+    with st.spinner("Computing topics over time..."):
+        with st.expander("Dynamic topic modelling"):
+            if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():
+                st.write("## Dynamic topic modelling")
+    
+                # Parameters
+                st.text_input(
+                    "Topics list (format 1,12,52 or 1:20)",
+                    key="dynamic_topics_list",
+                    value="0:10",
+                )
+                st.number_input("nr_bins", min_value=1, value=10, key="nr_bins")
+    
+                # Compute topics over time using old and new data
+                st.session_state["new_topics_over_time"] = compute_topics_over_time(
+                    st.session_state["parameters"],
+                    st.session_state["topic_model"],
+                    st.session_state["timefiltered_df"],
+                    nr_bins=st.session_state["nr_bins"],
+                    new_df=st.session_state["remaining_df"],
+                    new_nr_bins=st.session_state["new_data_batches_nb"],
+                    new_topics=st.session_state["new_topics"],
+                    )
+    
+                # Visualize
+                st.write(
+                    plot_topics_over_time(
+                    st.session_state["new_topics_over_time"],
+                    st.session_state["dynamic_topics_list"],
+                    st.session_state["topic_model"],
+                    time_split=timestamp_max,
+                    )
+                )
     
     with st.expander("Topics map evolution"):
         # - plot animated topic map
         with st.spinner("Plotting topic animated map"):
-            plot_animated_topic_map(st.session_state["batch_results"])
+            plot_animated_topic_map(
+                timestamp_max,
+                form_parameters=st.session_state["parameters"],
+                nr_new_batches=st.session_state["new_data_batches_nb"],
+                )
 
-def process_new_data_per_batch() -> List[Dict]:
-    """Enriches topics with new data, returns a list (each element of the list correspond to one batch and is  """
-    df_batches = np.array_split(
-        st.session_state["remaining_df"], st.session_state["new_data_batches_nb"]
-    )
-
-    new_topics_over_time = st.session_state["topics_over_time"]
-
-    results = []
-
-    # Need to sort batches by ascending time for correct processing order
-    ts_avg = {}
-    for i, df_b in enumerate(df_batches):
-        ts_avg[i] = df_b[TIMESTAMP_COLUMN].mean()
-
-    # Process set of batches
-    for i, ts_avg in sorted(ts_avg.items()):
-        batch_id = i+1
-        with st.spinner(f"Simulating batch #{batch_id} as new incoming data..."):
-
-            # For each batch, computes the topic map and combines the result into a common dataframe
-
-            # classify new items
-            topics, probs = st.session_state["topic_model"].transform(list(df_batches[i][TEXT_COLUMN]))
-
-            # update model stats
-            topics_counter = Counter(topics)
-            words = "" # TODO: update words in the same way as it is done in bertopic (kind of tf-idf)
-            topics_over_time_per_batch = [
-                {"Topic": t, "Frequency": f, "Words": words, "Timestamp": ts_avg, "Batch": batch_id}
-                for t, f in topics_counter.items()
-            ]
-
-            # Combine the batch result with existing info about topics over time
-            new_topics_over_time = pd.concat([new_topics_over_time, pd.DataFrame(topics_over_time_per_batch)])
-
-            results.append({"ts_avg": ts_avg, "topics": topics, "probs": probs, "topics_over_time": new_topics_over_time})
-
-    return results
-
-def plot_animated_topic_map(batch_results: List[Dict]):
+@st.cache_data
+def plot_animated_topic_map(date_split: str, form_parameters: dict = None, nr_new_batches: int = 1):
     # Topic map based on data before the introduction of new batches
     try:
         tm = TopicMetrics(st.session_state["topic_model"], st.session_state["topics_over_time"])
@@ -148,11 +151,16 @@ def plot_animated_topic_map(batch_results: List[Dict]):
             st.warning(f"Try to change the Time Weight value: {se}", icon="⚠️")
             st.stop()
 
-    # Use batch results to compute new data
-    for i, res in enumerate(batch_results):
+    # Use new data
+    new_data = st.session_state["new_topics_over_time"][st.session_state["new_topics_over_time"]["Timestamp"]>date_split]
+    batch_results = [d for _, d in new_data.groupby(["Timestamp"])]
+    current_topic_over_time = st.session_state["topics_over_time"]
+    for i, batch in enumerate(batch_results):
         try:
+            # Append next timestamp to current topic over time
+            current_topic_over_time = pd.concat([current_topic_over_time,batch])
             # New topic metrics (that takes into account the new batch)
-            topic_metrics = TopicMetrics(st.session_state["topic_model"], res["topics_over_time"])
+            topic_metrics = TopicMetrics(st.session_state["topic_model"], current_topic_over_time)
             batch_TEM_map = topic_metrics.TEM_map(st.session_state["tw"])
             batch_TEM_map = topic_metrics.identify_signals(batch_TEM_map, TEM_x, TEM_y)
             batch_TEM_map["batch"] = i+1
@@ -168,6 +176,7 @@ def plot_animated_topic_map(batch_results: List[Dict]):
                                                                       "Animated Topic Emergence Map (TEM)", TEM_x, TEM_y,
                                                                       animation_frame="batch"
                                                                       ))
+
 ###
 # Write page
 main()

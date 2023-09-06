@@ -18,6 +18,7 @@ DATA_DIR = (
 )
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
+GROUPED_TIMESTAMP_COLUMN = "grouped_timestamp"
 URL_COLUMN = "url"
 TITLE_COLUMN = "title"
 CITATION_COUNT_COL = "citation_count"
@@ -64,3 +65,10 @@ def save_embeddings(embeddings: List, cache_path: Path):
 def get_hash(data: Any):
     """Returns a *stable* hash(persistent between different Python session) for any object. NB. The default hash() function does not guarantee this."""
     return hashlib.md5(repr(data).encode("utf-8")).hexdigest()
+
+def split_df_by_paragraphs(dataset: pd.DataFrame):
+    """Split texts into multiple paragraphs and returns a concatenation of all extracts as a new pandas DF"""
+    dataset[TEXT_COLUMN] = dataset[TEXT_COLUMN].str.split("\n")
+    dataset = dataset.explode(TEXT_COLUMN)
+    dataset = dataset[dataset[TEXT_COLUMN]!=""].reset_index(drop=True)
+    return dataset

@@ -1,7 +1,8 @@
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import streamlit as st
-from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, CITATION_COUNT_COL, DATA_DIR, file_to_pd
+from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, CITATION_COUNT_COL, DATA_DIR, file_to_pd
 from state_utils import register_widget
 
 DEFAULT_PARAMETERS = {
@@ -93,33 +94,57 @@ def plot_2d_topics(form_parameters, _topic_model, width=700):
 def plot_topics_hierarchy(form_parameters, _topic_model, width=700):
     return _topic_model.visualize_hierarchy(width=width)
 
+def make_dynamic_topics_split(df, nr_bins):
+    """Split docs into nr_bins and generate a common timestamp label into a new column"""
+    # Ensure df is sorted by timestamp to get temporal split
+    df = df.sort_values(TIMESTAMP_COLUMN, ascending=False)
+    split_df = np.array_split(df, nr_bins)
+    for split in split_df:
+        split[GROUPED_TIMESTAMP_COLUMN] = split[TIMESTAMP_COLUMN].max()
+    return pd.concat(split_df)
+
 
 @st.cache_data
-def compute_topics_over_time(form_parameters, _topic_model, df, nr_bins=50):
-    return _topic_model.topics_over_time(
-        df[TEXT_COLUMN], df[TIMESTAMP_COLUMN], nr_bins=nr_bins, global_tuning=False
+def compute_topics_over_time(form_parameters, _topic_model, df, nr_bins, new_df=None, new_nr_bins=None, new_topics=None):
+    df = make_dynamic_topics_split(df, nr_bins)
+    if new_nr_bins:
+        new_df = make_dynamic_topics_split(new_df, new_nr_bins)
+        df = pd.concat([df, new_df])
+        _topic_model.topics_ += new_topics
+    res = _topic_model.topics_over_time(
+        df[TEXT_COLUMN],
+        df[GROUPED_TIMESTAMP_COLUMN],
+        global_tuning=False,
     )
+    if new_nr_bins:
+        _topic_model.topics_ = _topic_model.topics_[:-len(new_topics)]
+    return res
 
-def plot_topics_over_time(topics_over_time, dynamic_topics_list, topic_model, width=700):
+def plot_topics_over_time(topics_over_time, dynamic_topics_list, topic_model, time_split=None, width=900):
     if dynamic_topics_list != "":
         if ":" in dynamic_topics_list:
             dynamic_topics_list = [i for i in range(int(dynamic_topics_list.split(":")[0]), int(dynamic_topics_list.split(":")[1]))]
         else:
             dynamic_topics_list = [int(i) for i in dynamic_topics_list.split(",")]
-        return topic_model.visualize_topics_over_time(topics_over_time, topics=dynamic_topics_list, width=width)
+        fig = topic_model.visualize_topics_over_time(topics_over_time, topics=dynamic_topics_list, width=width)
+        if time_split:
+            fig.add_vline(x=time_split, line_width=3, line_dash="dash", line_color="black", opacity=1)
+        return fig
 
-def print_docs_for_specific_topic(df, most_likely_topic_per_doc, topic_number):
+def print_docs_for_specific_topic(df, topics, topic_number):
     # Select column available in DF
     columns_list = [col for col in [TITLE_COLUMN, TEXT_COLUMN, URL_COLUMN, TIMESTAMP_COLUMN, CITATION_COUNT_COL] if col in df.keys()]
     
     st.dataframe(
-        df.loc[most_likely_topic_per_doc==topic_number][columns_list],
+        df.loc[pd.Series(topics)==topic_number][columns_list],
         column_config={"url": st.column_config.LinkColumn()}
         )
+
+@st.cache_data
+def transform_new_data(_topic_model, df, form_parameters=None):
+    return _topic_model.transform(df[TEXT_COLUMN])
     
 def plot_docs_reparition_over_time(df, freq):
-    df.loc[0, "timestamp"] = df["timestamp"].iloc[0].normalize()
-
     count = df.groupby(pd.Grouper(key="timestamp", freq=freq), as_index=False).size()
     count["timestamp"] = count["timestamp"].dt.strftime('%Y-%m-%d')
 
@@ -135,7 +160,6 @@ def plot_remaining_docs_repartition_over_time(df_base, df_remaining, freq):
 
     # Print aggregated docs
     df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df.loc[0, "timestamp"] = df["timestamp"].iloc[0].normalize()
 
     count = df.groupby(pd.Grouper(key="timestamp", freq=freq), as_index=False).size()
     count["timestamp"] = count["timestamp"].dt.strftime('%Y-%m-%d')

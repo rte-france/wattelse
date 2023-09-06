@@ -87,8 +87,6 @@ def select_data():
 
 def data_overview():
     with st.expander("Data overview"):
-        st.dataframe(st.session_state["timefiltered_df"].head())
-        st.markdown("""---""")
         freq = st.select_slider(
             "Time aggregation",
             options=(
@@ -109,13 +107,10 @@ def train_model():
     ### TRAIN MODEL ###
     if parameters_sidebar_clicked:
         # Train
-        _, probs, st.session_state["topic_model"] = train_BERTopic_wrapper(
+        st.session_state["topics"], _, st.session_state["topic_model"] = train_BERTopic_wrapper(
             st.session_state["timefiltered_df"], st.session_state["parameters"]
         )
-        st.session_state["topic_per_doc"] = probs.argmax(
-            axis=1
-        )  # select most likely topic per document to match outliers (topic -1) documents to actual topic
-        st.session_state["topics_list"] = (
+        st.session_state["topics_info"] = (
             st.session_state["topic_model"].get_topic_info().iloc[1:]
         )  # exclude -1 topic from topic list
 
