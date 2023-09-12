@@ -27,6 +27,8 @@ def reset_all():
     st.session_state.pop("timestamp_range", None)
     st.session_state.pop("new_topics", None)
     st.session_state.pop("selected_topic_number", None)
+    st.session_state.pop("new_topics_over_time", None)
+
     save_widget_state()
 
 
