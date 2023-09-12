@@ -26,6 +26,7 @@ def reset_all():
     # TODO: add here all state variables we want to reset when we change the data
     st.session_state.pop("timestamp_range", None)
     st.session_state.pop("new_topics", None)
+    st.session_state.pop("selected_topic_number", None)
     save_widget_state()
 
 
