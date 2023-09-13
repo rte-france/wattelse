@@ -3,7 +3,8 @@ import os
 
 import streamlit as st
 from loguru import logger
-from utils import TIMESTAMP_COLUMN, DATA_DIR, clean_dataset
+from utils import TIMESTAMP_COLUMN, DATA_DIR, clean_dataset, split_df_by_paragraphs
+
 from state_utils import register_widget, save_widget_state, restore_widget_state
 
 from app_utils import (
@@ -53,15 +54,23 @@ def select_data():
     )
     
     # Clean dataset
-    register_widget("min_text_length")
-    st.number_input(
-        "Select the minimum number of characters each docs should contain",
-        min_value=0,
-        key="min_text_length",
-        on_change=save_widget_state,
-    )
+    col1, col2 = st.columns(2)
+
+    with col1:
+        register_widget("min_text_length")
+        st.number_input(
+            "Select the minimum number of characters each docs should contain",
+            min_value=0,
+            key="min_text_length",
+            on_change=save_widget_state,
+        )
+
+    with col2:
+        register_widget("split_by_paragraphs")
+        st.toggle("Split texts by paragraphs", value=False, key="split_by_paragraphs", on_change=save_widget_state)
+
     st.session_state["cleaned_df"] = clean_dataset(
-            st.session_state["raw_df"],
+            st.session_state["raw_df"] if not st.session_state["split_by_paragraphs"] else split_df_by_paragraphs(st.session_state["raw_df"]),
             st.session_state["min_text_length"],
         )
     # Stop if dataset is empty

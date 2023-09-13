@@ -12,7 +12,16 @@ from data_provider.utils import wait_if_seen_url
 
 # List of URLs we do not want to have results from (ex. obsolete or not pertinent)
 BLACKLISTED_URL = [
-    "www.filiere-3e.fr"
+    "www.filiere-3e.fr",
+    "www.courrier-picard.fr",
+    "www.aisnenouvelle.fr",
+    "matinlibre.com",
+    "www.lest-eclair.fr",
+    "www.lunion.fr",
+    "www.nordlittoral.fr",
+    # journaux sur abonnements
+    "www.ouest-france.fr",
+    # download impossible
 ]
 
 
@@ -102,7 +111,7 @@ class DataProvider(ABC):
         return article.text
 
     def _filter_out_bad_text(self, text):
-        if "[if" in text or "cookies" in text:
+        if "[if" in text or "javascript" in text or "cookie" in text or "pour lire la suite, rejoignez notre communauté d'abonnés" in text:
             logger.warning(f"Bad text: {text}")
             return None
         return text
