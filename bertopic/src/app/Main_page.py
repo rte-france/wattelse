@@ -23,14 +23,18 @@ from app_utils import (
 from app_utils import load_data
 from train_utils import train_BERTopic_wrapper
 
+
+def reset_topics():
+    # shall be called when we update data parameters (timestamp, min char, split, etc.)
+    st.session_state.pop("selected_topic_number", None)
+    st.session_state.pop("new_topics", None)
+    st.session_state.pop("new_topics_over_time", None)
+    save_widget_state()
+
 def reset_all():
     # TODO: add here all state variables we want to reset when we change the data
     st.session_state.pop("timestamp_range", None)
-    st.session_state.pop("new_topics", None)
-    st.session_state.pop("selected_topic_number", None)
-    st.session_state.pop("new_topics_over_time", None)
-
-    save_widget_state()
+    reset_topics()
 
 
 def select_data():
@@ -131,14 +135,19 @@ def overall_results():
     if not ("topic_model" in st.session_state.keys()):
         st.stop()
     # Plot overall results
-    with st.expander("Overall results"):
-        try:
+    try:
+        with st.expander("Overall results"):
             st.write(plot_2d_topics(st.session_state.parameters, st.session_state["topic_model"]))
-        except TypeError as te: # we have sometimes: TypeError: Cannot use scipy.linalg.eigh for sparse A with k >= N. Use scipy.linalg.eigh(A.toarray()) or reduce k.
-            logger.error(f"Error occurred: {te}")
-            st.error("Cannot display overall results", icon="🚨")
-            st.exception(te)
-
+    except TypeError as te: # we have sometimes: TypeError: Cannot use scipy.linalg.eigh for sparse A with k >= N. Use scipy.linalg.eigh(A.toarray()) or reduce k.
+        logger.error(f"Error occurred: {te}")
+        st.error("Cannot display overall results", icon="🚨")
+        st.exception(te)
+    except ValueError as ve: # we have sometimes: ValueError: zero-size array to reduction operation maximum which has no identity
+        logger.error(f"Error occurred: {ve}")
+        st.error("Error computing overall results", icon="🚨")
+        st.exception(ve)
+        st.warning(f"Try to change the UMAP parameters", icon="⚠️")
+        st.stop()
 
 
 def dynamic_topic_modelling():

@@ -46,7 +46,6 @@ def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
     cleaned_dataset = dataset.loc[
         dataset[TEXT_COLUMN].str.len() >= length_criteria
     ].reset_index(drop=True)
-    logger.debug(f"Cleaned dataset reduced to: {len(cleaned_dataset)} items")
     return cleaned_dataset
 
 
