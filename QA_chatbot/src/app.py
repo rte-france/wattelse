@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import socket
 import tempfile
 import time
 from pathlib import Path
@@ -22,7 +23,11 @@ from utils import (
     generate_prompt,
 )
 
-DATA_DIR = Path("./data")
+DATA_DIR = (
+    Path("/data/weak_signals/cache/chatbot_data")
+    if socket.gethostname() == "groesplu0"
+    else Path("./data")
+)
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 
 DEFAULT_MEMORY_DELAY = 2 # in minutes

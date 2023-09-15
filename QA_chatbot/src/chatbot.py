@@ -29,7 +29,7 @@ SPECIAL_CHARACTER = ">"
 
 # TODO: duplicate code with Bertopic / To be put in common...
 BASE_CACHE_PATH = (
-    Path("/data/weak_signals/cache")
+    Path("/data/weak_signals/cache/chatbot")
     if socket.gethostname() == "groesplu0"
     else Path("cache")
 )
