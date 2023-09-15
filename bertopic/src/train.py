@@ -89,9 +89,9 @@ def train_BERTopic(
         embeddings = embedding_model.embed(full_df[TEXT_COLUMN])
         save_embeddings(embeddings, cache_path)
         logger.info(f"Embeddings stored to cache file: {cache_path}")
-
-    embeddings = load_embeddings(cache_path)
-    logger.info(f"Embeddings loaded from cache file: {cache_path}")
+    else:
+        embeddings = load_embeddings(cache_path)
+        logger.info(f"Embeddings loaded from cache file: {cache_path}")
     
     # Build BERTopic model
     topic_model = BERTopic(
