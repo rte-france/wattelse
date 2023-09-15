@@ -24,7 +24,7 @@ from utils import (
 )
 
 DATA_DIR = (
-    Path("/data/weak_signals/cache/chatbot_data")
+    Path("/data/weak_signals/chatbot_data")
     if socket.gethostname() == "groesplu0"
     else Path("./data")
 )
