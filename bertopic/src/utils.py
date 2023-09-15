@@ -12,7 +12,7 @@ from loguru import logger
 nltk.download("stopwords")
 
 DATA_DIR = (
-    "/data/weak_signals/bertopic_data/"
+    "/data/weak_signals/data/bertopic/"
     if socket.gethostname() == "groesplu0"
     else "cache"
 )
@@ -23,7 +23,7 @@ URL_COLUMN = "url"
 TITLE_COLUMN = "title"
 CITATION_COUNT_COL = "citation_count"
 BASE_CACHE_PATH = (
-    Path("/data/weak_signals/cache/bertopic")
+    Path("/data/weak_signals/cache/bertopic/")
     if socket.gethostname() == "groesplu0"
     else Path("cache")
 )
