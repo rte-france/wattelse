@@ -55,29 +55,35 @@ def select_data():
 
     st.session_state["raw_df"] = load_data(st.session_state["data_name"]).sort_values(
         by=TIMESTAMP_COLUMN, ascending=False
-    )
+    ).reset_index(drop=True).reset_index()
     
     # Clean dataset
     col1, col2 = st.columns(2)
 
-    with col1:
-        register_widget("min_text_length")
-        st.number_input(
-            "Select the minimum number of characters each docs should contain",
-            min_value=0,
-            key="min_text_length",
-            on_change=save_widget_state,
-        )
+    # Filter text length parameter
+    register_widget("min_text_length")
+    st.number_input(
+        "Select the minimum number of characters each docs should contain",
+        min_value=0,
+        key="min_text_length",
+        on_change=save_widget_state,
+    )
 
-    with col2:
-        register_widget("split_by_paragraphs")
-        st.toggle("Split texts by paragraphs", value=False, key="split_by_paragraphs", on_change=save_widget_state)
+    # Split DF by paragraphs parameter
+    register_widget("split_by_paragraphs")
+    st.toggle("Split texts by paragraphs", value=False, key="split_by_paragraphs", on_change=save_widget_state)
 
+    # Split if parameter is selected
+    if st.session_state["split_by_paragraphs"]:
+        st.session_state["raw_df"] = split_df_by_paragraphs(st.session_state["raw_df"]).drop("index", axis=1).sort_values(by=TIMESTAMP_COLUMN,ascending=False,).reset_index(drop=True).reset_index()
+
+    # Clean dataset using min_text_length
     st.session_state["cleaned_df"] = clean_dataset(
-            st.session_state["raw_df"] if not st.session_state["split_by_paragraphs"] else split_df_by_paragraphs(st.session_state["raw_df"]),
+            st.session_state["raw_df"],
             st.session_state["min_text_length"],
         )
-    # Stop if dataset is empty
+    
+    # Stop app if dataset is empty
     if st.session_state["cleaned_df"].empty:
         st.error("Not enough remaining data after cleaning", icon="🚨")
         st.stop()
@@ -97,6 +103,8 @@ def select_data():
         key="timestamp_range",
         on_change=save_widget_state,
     )
+
+    # Filter dataset to select only text within time range
     st.session_state["timefiltered_df"] = st.session_state["cleaned_df"].query(
         f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'"
     ).reset_index(drop=True)
@@ -125,7 +133,10 @@ def train_model():
     if parameters_sidebar_clicked:
         # Train
         st.session_state["topics"], _, st.session_state["topic_model"] = train_BERTopic_wrapper(
-            st.session_state["timefiltered_df"], st.session_state["parameters"]
+            st.session_state["timefiltered_df"],
+            st.session_state["parameters"],
+            st.session_state["data_name"],
+            split_by_paragraphs=st.session_state["split_by_paragraphs"]
         )
         st.session_state["topics_info"] = (
             st.session_state["topic_model"].get_topic_info().iloc[1:]

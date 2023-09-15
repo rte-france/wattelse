@@ -14,7 +14,8 @@ from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
-from utils import file_to_pd, TEXT_COLUMN, BASE_CACHE_PATH, load_embeddings, save_embeddings, get_hash
+from utils import file_to_pd, TEXT_COLUMN, TIMESTAMP_COLUMN, BASE_CACHE_PATH, load_embeddings, save_embeddings, split_df_by_paragraphs
+from app.app_utils import load_data
 
 # Parameters:
 
@@ -59,6 +60,8 @@ class EmbeddingModel(BaseEmbedder):
 
 def train_BERTopic(
     texts: List[str],
+    indexes: List[str],
+    data_name: str,
     embedding_model=DEFAULT_EMBEDDING_MODEL,
     umap_model=DEFAULT_UMAP_MODEL,
     hdbscan_model=DEFAULT_HBSCAN_MODEL,
@@ -68,21 +71,28 @@ def train_BERTopic(
     top_n_words=DEFAULT_TOP_N_WORDS,
     nr_topics=DEFAULT_NR_TOPICS,
     use_cache = True,
+    split_by_paragraphs = False,
 ):
 
-    cache_path = BASE_CACHE_PATH / f"{embedding_model.name}_{get_hash(texts)}.pkl"
+    if split_by_paragraphs:
+        cache_path = BASE_CACHE_PATH / f"{embedding_model.name}_{data_name}_split_by_paragraphs.pkl"
+    else:
+        cache_path = BASE_CACHE_PATH / f"{embedding_model.name}_{data_name}.pkl"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     logger.debug(f"Using cache: {use_cache}")
-    if not use_cache or not cache_path.exists():
+    if not cache_path.exists():
         logger.info("Computing embeddings")
-        embeddings = embedding_model.embed(texts)
-        if use_cache:
-            save_embeddings(embeddings, cache_path)
-            logger.info(f"Embeddings stored to cache file: {cache_path}")
-    else:
-        embeddings = load_embeddings(cache_path)
-        logger.info(f"Embeddings loaded from cache file: {cache_path}")
+        if split_by_paragraphs:
+            full_df = split_df_by_paragraphs(load_data(data_name)).sort_values(by=TIMESTAMP_COLUMN, ascending=False).reset_index()
+        else:
+            full_df = load_data(data_name).sort_values(by=TIMESTAMP_COLUMN, ascending=False).reset_index()
+        embeddings = embedding_model.embed(full_df[TEXT_COLUMN])
+        save_embeddings(embeddings, cache_path)
+        logger.info(f"Embeddings stored to cache file: {cache_path}")
 
+    embeddings = load_embeddings(cache_path)
+    logger.info(f"Embeddings loaded from cache file: {cache_path}")
+    
     # Build BERTopic model
     topic_model = BERTopic(
         embedding_model=embedding_model,
@@ -98,7 +108,7 @@ def train_BERTopic(
     )
 
     logger.info("Fitting BERTopic...")
-    topics, probs = topic_model.fit_transform(texts, embeddings)
+    topics, probs = topic_model.fit_transform(texts, embeddings[indexes])
 
     return topics, probs, topic_model
 

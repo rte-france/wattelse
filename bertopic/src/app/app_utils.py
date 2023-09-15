@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import streamlit as st
-from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, CITATION_COUNT_COL, DATA_DIR, file_to_pd
+from utils import TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, CITATION_COUNT_COL, DATA_DIR, BASE_CACHE_PATH, file_to_pd, load_embeddings
 from state_utils import register_widget
 
 DEFAULT_PARAMETERS = {
@@ -141,8 +141,15 @@ def print_docs_for_specific_topic(df, topics, topic_number):
         )
 
 @st.cache_data
-def transform_new_data(_topic_model, df, form_parameters=None):
-    return _topic_model.transform(df[TEXT_COLUMN])
+def transform_new_data(_topic_model, df, data_name, embedding_model_name, form_parameters=None, split_by_paragraphs=False):
+    # Get DF embeddings
+    if split_by_paragraphs:
+        cache_path = BASE_CACHE_PATH / f"{embedding_model_name}_{data_name}_split_by_paragraphs.pkl"
+    else:
+        cache_path = BASE_CACHE_PATH / f"{embedding_model_name}_{data_name}.pkl"
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    embeddings = load_embeddings(cache_path)
+    return _topic_model.transform(df[TEXT_COLUMN], embeddings=embeddings[df["index"]])
     
 def plot_docs_reparition_over_time(df, freq):
     count = df.groupby(pd.Grouper(key="timestamp", freq=freq), as_index=False).size()

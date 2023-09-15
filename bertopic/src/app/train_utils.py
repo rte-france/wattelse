@@ -1,5 +1,6 @@
 import ast
 
+from typing import List
 import pandas as pd
 import streamlit as st
 from bertopic.vectorizers import ClassTfidfTransformer
@@ -13,7 +14,7 @@ from utils import TEXT_COLUMN
 
 
 @st.cache_data
-def train_BERTopic_wrapper(dataset: pd.DataFrame, form_parameters):
+def train_BERTopic_wrapper(dataset: pd.DataFrame, form_parameters, data_name: str, split_by_paragraphs = False):
 
     # Transform form_parameters from str to dict (dict is not yet hashable using Streamlit)
     form_parameters = ast.literal_eval(form_parameters)
@@ -56,6 +57,8 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, form_parameters):
 
     return train_BERTopic(
         dataset[TEXT_COLUMN],
+        dataset["index"],
+        data_name,
         embedding_model,
         umap_model,
         hdbscan_model,
@@ -64,4 +67,5 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, form_parameters):
         top_n_words=form_parameters["bertopic_top_n_words"],
         nr_topics=form_parameters["bertopic_nr_topics"] if form_parameters["bertopic_nr_topics"] > 0 else None,
         use_cache=form_parameters["use_cached_embeddings"],
+        split_by_paragraphs=split_by_paragraphs,
     )

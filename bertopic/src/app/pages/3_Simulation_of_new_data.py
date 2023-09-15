@@ -90,7 +90,10 @@ def main():
             st.session_state["new_topics"], _ = transform_new_data(
                 st.session_state["topic_model"],
                 st.session_state["remaining_df"],
-                form_parameters=st.session_state["parameters"]
+                st.session_state["data_name"],
+                st.session_state["widget_state"]["embedding_model_name"],
+                form_parameters=st.session_state["parameters"],
+                split_by_paragraphs=st.session_state["split_by_paragraphs"]
                 )
 
     if not "new_topics" in st.session_state.keys():
