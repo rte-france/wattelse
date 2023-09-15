@@ -23,7 +23,7 @@ URL_COLUMN = "url"
 TITLE_COLUMN = "title"
 CITATION_COUNT_COL = "citation_count"
 BASE_CACHE_PATH = (
-    Path("/data/weak_signals/cache")
+    Path("/data/weak_signals/cache/bertopic")
     if socket.gethostname() == "groesplu0"
     else Path("cache")
 )
