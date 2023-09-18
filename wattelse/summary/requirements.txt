@@ -1,0 +1,4 @@
+numpy
+scipy
+streamlit>=1.25
+protobuf<=3.20
