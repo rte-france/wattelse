@@ -29,7 +29,7 @@ Instruction: Using the given context, answer the query.
 
 ### CLI
 ```
-(weak_signals) jerome@linux:~/dev/weak-signals/QA_chatbot$ PYTHONPATH=. python src/chatbot.py --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.chatbot.chatbot --help
                                                                                                                                                       
  Usage: chatbot.py [OPTIONS]                                                                                                                          
                                                                                                                                                       
@@ -46,13 +46,13 @@ Additionally, data files may have a column `processed_text`; if this column is p
 A number of scripts are provided to extract data from various file formats (PDF, DOCX, MD).
 They can also be run in CLI mode.
 
-See `extract_text*.py` for details.
+See `wattelse/common/extract_text*.py` for details.
 
 ### GUI
 To run the PoC in GUI mode (Streamlit app):
 
 ```
-(weak_signals) jerome@groesplu0:~/dev/weak-signals/QA_chatbot$ CUDA_VISIBLE_DEVICES=0,2 PYTHONPATH=src streamlit run src/app.py 
+(weak_signals) jerome@groesplu0:~/dev/weak-signals/wattelse/chatbot$ CUDA_VISIBLE_DEVICES=0,2 streamlit run app.py 
 
 ```
 

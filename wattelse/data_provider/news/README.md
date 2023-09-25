@@ -11,7 +11,7 @@ Several news providers are supported:
 
 # Usage
 ```                                                                                                                                                 
-(weak_signals) jerome@linux:~/dev/weak-signals$ PYTHONPATH=. python -m data_provider --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider.news --help
                                                                                                                                                       
                                                                                                                                                        
  Usage: python -m data_provider [OPTIONS] COMMAND [ARGS]...                                                                                           
@@ -34,7 +34,7 @@ Several news providers are supported:
  ```
 
 ```
-(weak_signals) jerome@linux:~/dev/weak-signals$ PYTHONPATH=. python -m data_provider auto-scrape --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider.news --help auto-scrape --help
                                                                                                                                                       
 Usage: python -m data_provider auto-scrape [OPTIONS] [REQUESTS_FILE]                                                                                 
                                                                                                                                                       
@@ -58,7 +58,7 @@ Usage: python -m data_provider auto-scrape [OPTIONS] [REQUESTS_FILE]
 ```
 
 ```
-(weak_signals) jerome@linux:~/dev/weak-signals$ PYTHONPATH=. python -m data_provider generate-query-file --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider.news generate-query-file --help
                                                                                                                                                       
  Usage: python -m data_provider generate-query-file [OPTIONS] [KEYWORDS]                                                                              
                                                                                                                                                       

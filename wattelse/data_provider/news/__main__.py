@@ -1,12 +1,11 @@
 from datetime import timedelta, datetime
 
 import typer
-
-from wattelse.data_provider.news.data_provider import BingNewsProvider
-from wattelse.data_provider.news.data_provider import GoogleNewsProvider
 from loguru import logger
 
-from wattelse.data_provider.news.data_provider import NewsCatcherProvider
+from wattelse.data_provider.news.bing_news_provider import BingNewsProvider
+from wattelse.data_provider.news.google_news_provider import GoogleNewsProvider
+from wattelse.data_provider.news.newscatcher_provider import NewsCatcherProvider
 
 if __name__ == "__main__":
     app = typer.Typer()
