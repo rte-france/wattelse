@@ -7,14 +7,13 @@ from typing import Any, List
 
 import nltk
 import pandas as pd
-from loguru import logger
 
 nltk.download("stopwords")
 
 DATA_DIR = (
-    "/data/weak_signals/data/bertopic/"
+    Path("/data/weak_signals/data/bertopic/")
     if socket.gethostname() == "groesplu0"
-    else "../../data/bertopic"
+    else Path(__file__).parent.parent.parent / "data" / "bertopic"
 )
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
@@ -25,13 +24,16 @@ CITATION_COUNT_COL = "citation_count"
 BASE_CACHE_PATH = (
     Path("/data/weak_signals/cache/bertopic/")
     if socket.gethostname() == "groesplu0"
-    else Path("../../cache")
+    else Path(__file__).parent.parent.parent / "cache"
 )
 
+# Make dirs if not exist
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+BASE_CACHE_PATH.mkdir(parents=True, exist_ok=True)
 
-def file_to_pd(file_name: str, base_dir: str = None) -> pd.DataFrame:
+def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
     """Read data in various format and convert in to a DataFrame"""
-    data_path = base_dir + file_name if base_dir else file_name
+    data_path = base_dir / file_name if base_dir else file_name
     if ".csv" in file_name:
         return pd.read_csv(data_path)
     elif ".jsonl" in file_name or ".jsonlines" in file_name:
