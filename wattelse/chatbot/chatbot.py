@@ -27,11 +27,10 @@ N = 5  # number of top relevant extracts to include as context in the prompt
 
 SPECIAL_CHARACTER = ">"
 
-# TODO: duplicate code with Bertopic / To be put in common...
 BASE_CACHE_PATH = (
     Path("/data/weak_signals/cache/chatbot")
     if socket.gethostname() == "groesplu0"
-    else Path("cache")
+    else Path(__file__).parent.parent.parent / "cache" / "chatbot"
 )
 
 

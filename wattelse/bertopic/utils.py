@@ -24,7 +24,7 @@ CITATION_COUNT_COL = "citation_count"
 BASE_CACHE_PATH = (
     Path("/data/weak_signals/cache/bertopic/")
     if socket.gethostname() == "groesplu0"
-    else Path(__file__).parent.parent.parent / "cache"
+    else Path(__file__).parent.parent.parent / "cache" / "bertopic"
 )
 
 # Make dirs if not exist
