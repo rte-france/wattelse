@@ -22,11 +22,12 @@ from wattelse.chatbot.utils import (
     generate_answer_remotely,
     generate_prompt,
 )
+from wattelse.common.vars import GPU_SERVERS
 
 DATA_DIR = (
     Path("/data/weak_signals/data/chatbot")
     if socket.gethostname() in GPU_SERVERS
-    else Path("../../data/chatbot")
+    else Path(__file__).parent.parent.parent / "data" / "chatbot"
 )
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 

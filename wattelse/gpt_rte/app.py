@@ -1,12 +1,10 @@
 import streamlit as st
-import generation
+from wattelse.gpt_rte import generation
 
 
 # Get model name used for generation
 
 model_name = generation.model_name
-model_name = model_name.split("/")[3]
-
 
 # Make the streamlit application
 

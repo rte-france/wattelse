@@ -1,7 +1,4 @@
-import pdb
-
 import pandas as pd
-from random import randrange
 
 from sklearn.model_selection import train_test_split
 
@@ -10,8 +7,7 @@ from torch.utils.data import Dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForLanguageModeling
 from transformers import Trainer, TrainingArguments
 
-import logging
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+from loguru import logger
 
 # Parameters
 
@@ -48,19 +44,19 @@ training_args = TrainingArguments(
 # Print available GPUs (by default, Hugging Face Trainer uses every available GPUs for training)
 
 available_gpus = [torch.cuda.get_device_properties(i).name for i in range(torch.cuda.device_count())]
-logging.info(f"Available GPUs: {available_gpus}")
+logger.info(f"Available GPUs: {available_gpus}")
 
 
 
 # Load data and split into train and valid
 
-logging.info("Loading tokenized DataFrame from: "+series_tokenized_document_path+"...")
+logger.info("Loading tokenized DataFrame from: "+series_tokenized_document_path+"...")
 tokenized_documents = pd.read_pickle(series_tokenized_document_path)
-logging.info("Loaded")
+logger.info("Loaded")
 
 X_train, X_valid = train_test_split(tokenized_documents, test_size = 0.2)
-logging.info(f"Train paragraphs: {len(X_train)}")
-logging.info(f"Valid paragraphs: {len(X_valid)}")
+logger.info(f"Train paragraphs: {len(X_train)}")
+logger.info(f"Valid paragraphs: {len(X_valid)}")
 
 
 # Make PyTorch Dataset
@@ -117,6 +113,3 @@ trainer = Trainer(
 
 trainer.train()
 
-#pdb.set_trace()
-
-            
