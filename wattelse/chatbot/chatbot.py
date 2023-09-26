@@ -18,6 +18,7 @@ from wattelse.chatbot.utils import (
     generate_answer_remotely,
     generate_prompt,
 )
+from wattelse.common.vars import GPU_SERVERS
 
 ### Parameters ###
 DEFAULT_DATA_FILE = "./data/BP-2019.csv"
@@ -29,7 +30,7 @@ SPECIAL_CHARACTER = ">"
 
 BASE_CACHE_PATH = (
     Path("/data/weak_signals/cache/chatbot")
-    if socket.gethostname() == "groesplu0"
+    if socket.gethostname() in GPU_SERVERS
     else Path(__file__).parent.parent.parent / "cache" / "chatbot"
 )
 

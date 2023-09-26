@@ -25,7 +25,7 @@ from wattelse.chatbot.utils import (
 
 DATA_DIR = (
     Path("/data/weak_signals/data/chatbot")
-    if socket.gethostname() == "groesplu0"
+    if socket.gethostname() in GPU_SERVERS
     else Path("../../data/chatbot")
 )
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py

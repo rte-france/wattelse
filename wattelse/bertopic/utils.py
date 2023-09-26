@@ -8,11 +8,13 @@ from typing import Any, List
 import nltk
 import pandas as pd
 
+from wattelse.common.vars import GPU_SERVERS
+
 nltk.download("stopwords")
 
 DATA_DIR = (
     Path("/data/weak_signals/data/bertopic/")
-    if socket.gethostname() == "groesplu0"
+    if socket.gethostname() in GPU_SERVERS
     else Path(__file__).parent.parent.parent / "data" / "bertopic"
 )
 TEXT_COLUMN = "text"
@@ -23,7 +25,7 @@ TITLE_COLUMN = "title"
 CITATION_COUNT_COL = "citation_count"
 BASE_CACHE_PATH = (
     Path("/data/weak_signals/cache/bertopic/")
-    if socket.gethostname() == "groesplu0"
+    if socket.gethostname() in GPU_SERVERS
     else Path(__file__).parent.parent.parent / "cache" / "bertopic"
 )
 
