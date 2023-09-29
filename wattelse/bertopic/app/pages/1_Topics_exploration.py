@@ -12,18 +12,21 @@ if "topic_model" not in st.session_state.keys():
 	st.error("Train a model to explore generated topics.", icon="🚨")
 	st.stop()
 
-
-### TITLE ###
-
-st.title("Topics exploration")
-
-
 ### SIDEBAR ###
 
 def set_topic_selection(selected_topic_number):
 	st.session_state["selected_topic_number"] = selected_topic_number
 
+def find_similar_topic():
+	similar_topics, _ = st.session_state["topic_model"].find_topics(st.session_state["search_terms"], top_n=1)
+	st.session_state["selected_topic_number"] = similar_topics[0]
+
+
 with st.sidebar:
+	# Search bar
+	search_terms = st.text_input("Search topic", on_change=find_similar_topic, key="search_terms")
+
+	# Topics list
 	for index, topic in st.session_state["topics_info"].iterrows():
 		topic_number = topic["Topic"]
 		topic_words = topic["Representation"][:3]
@@ -45,8 +48,10 @@ if "selected_topic_number" not in st.session_state.keys():
 topic_docs_number = st.session_state["topics_info"].iloc[st.session_state["selected_topic_number"]]["Count"]
 topic_words = st.session_state["topics_info"].iloc[st.session_state["selected_topic_number"]]["Representation"]
 
-st.write(f"## Topic {st.session_state['selected_topic_number']} : {topic_docs_number} documents")
-st.markdown(f"### {' | '.join(topic_words)}")
+st.write(f"# Topic {st.session_state['selected_topic_number']} : {topic_docs_number} documents")
+
+
+st.markdown(f"## {' | '.join(topic_words)}")
 
 # Plot topic over time
 if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():

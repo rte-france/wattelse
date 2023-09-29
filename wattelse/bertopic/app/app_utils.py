@@ -9,7 +9,7 @@ DEFAULT_PARAMETERS = {
     "embedding_model_name": "dangvantuan/sentence-camembert-large",
     "use_cached_embeddings": True,
     "bertopic_nr_topics": 0,
-    "bertopic_top_n_words": 10,
+    "bertopic_top_n_words": 5,
     "umap_n_neighbors": 15,
     "umap_n_components": 5,
     "umap_min_dist": 0.0,
