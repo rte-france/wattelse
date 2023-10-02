@@ -1,0 +1,1 @@
+GPU_SERVERS = ["groesplu0", "GROESSLAO01"]

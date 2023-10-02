@@ -117,7 +117,7 @@ ENV/
 !brique_a/logs/.gitkeep
 
 nbs/
-notebooks/
+experiments/notebooks/
 origami_indexers/notebooks/
 experiments/metadata/batch_indexing/*.json
 experiments/memory_leak.py
