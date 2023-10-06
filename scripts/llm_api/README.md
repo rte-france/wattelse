@@ -28,25 +28,32 @@ Scripts are provided to start / stop the LLM service on the GPU server
 
 ## Test du service
 
-```commandline
+```python
 import openai
 
 # Modify OpenAI's API key and API base to use vLLM's API server.
 openai.api_key = "EMPTY"
-openai.api_base = "http://localhost:8000/v1"
+openai.api_base = "http://localhost:8888/v1"
 
 # First model
 models = openai.Model.list()
 model = models["data"][0]["id"]
 
 # Chat completion API
-chat_completion = openai.api_resources.Completion.create(
+
+def get_answer(prompt, max_tokens=1024, temperature=0.7, return_text_only=True):
+  chat_completion = openai.api_resources.Completion.create(
     model=model,
-    prompt="Décris en un ou deux mots le thème associé à l'ensemble des mots clés suivants: hiver, électricité, risque, ecowatt",
-    max_tokens=1024,
-    temperature=0.7,
-)
-print("Chat completion results:", chat_completion)
+    prompt=prompt,
+    max_tokens=max_tokens,
+    temperature=temperature,
+    )
+  if return_text_only:
+    return chat_completion["choices"][0]["text"]
+  else:
+    return chat_completion
+
+print(get_answer("Quel est le rôle de l'entreprise RTE ?"))
 ```
 
 
