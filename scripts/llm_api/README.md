@@ -6,7 +6,7 @@ Buts
 
 ## Prérequis: installation de fastchat
 
-``` pip install "fschat[model_worker,webui]"```
+```pip install "fschat[model_worker,webui]"```
 
 ## Lancement du service sur le serveur GPU
 
