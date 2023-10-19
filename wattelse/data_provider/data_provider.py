@@ -8,7 +8,7 @@ from goose3 import Goose
 from loguru import logger
 from newspaper import Article
 
-from wattelse.data_provider.news.utils import wait_if_seen_url
+from wattelse.data_provider.utils import wait_if_seen_url
 
 # List of URLs we do not want to have results from (ex. obsolete or not pertinent)
 BLACKLISTED_URL = [

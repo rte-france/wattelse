@@ -2,16 +2,17 @@
 If the installation of the pygooglenews dependency fails, please use the script `install_pygooglenews.sh`
 
 # Description
-Grabs news articles and store them as jsonlines file.
+Grabs articles (news or scientific articles) and store them as jsonlines file.
 
-Several news providers are supported:
+Several data providers are supported:
+- Arxiv
 - Google News
 - Bing News
 - NewsCatcher
 
 # Usage
 ```                                                                                                                                                 
-(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider.news --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider --help
                                                                                                                                                       
                                                                                                                                                        
  Usage: python -m data_provider [OPTIONS] COMMAND [ARGS]...                                                                                           
@@ -34,7 +35,7 @@ Several news providers are supported:
  ```
 
 ```
-(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider.news --help auto-scrape --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider --help auto-scrape --help
                                                                                                                                                       
 Usage: python -m data_provider auto-scrape [OPTIONS] [REQUESTS_FILE]                                                                                 
                                                                                                                                                       
@@ -58,7 +59,7 @@ Usage: python -m data_provider auto-scrape [OPTIONS] [REQUESTS_FILE]
 ```
 
 ```
-(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider.news generate-query-file --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider generate-query-file --help
                                                                                                                                                       
  Usage: python -m data_provider generate-query-file [OPTIONS] [KEYWORDS]                                                                              
                                                                                                                                                       

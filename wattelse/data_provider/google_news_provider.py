@@ -2,34 +2,37 @@ import urllib.parse
 from typing import List, Dict, Optional
 
 import dateparser
-import feedparser
 from joblib import Parallel, delayed
 from loguru import logger
+from pygooglenews import GoogleNews
 
-from wattelse.data_provider.news.data_provider import DataProvider
-from wattelse.data_provider.news.utils import wait
+from wattelse.data_provider.data_provider import DataProvider
+from wattelse.data_provider.utils import wait, decode_google_news_url
 
 PATTERN = "{QUERY}"
+BEFORE = "+before:today"
+AFTER = "+after:2000-01-01"
+MAX_ARTICLES = 100
 
 
-class BingNewsProvider(DataProvider):
-    """News provider for Bing News.
+class GoogleNewsProvider(DataProvider):
+    """News provider for Google News.
     Limitations:
-        - since of results limited to 12
-        - hard to request specific dates
+        - since of results limited to 100
     """
 
-    URL_ENDPOINT = f"https://www.bing.com/news/search?q={PATTERN}&format=rss&setLang=fr&sortBy=Date"
+    URL_ENDPOINT = f"https://news.google.com/rss/search?num={MAX_ARTICLES}&hl=fr&gl=FR&ceid=FR:fr&q={PATTERN}{BEFORE}{AFTER}"
 
     def __init__(self):
         super().__init__()
+        self.gn = GoogleNews(lang = 'fr', country = 'FR')
 
     @wait(0.2)
     def get_articles(self, keywords: str, after: str, before: str, max_results: int) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
-        query = self._build_query(keywords, after, before)
-        logger.info(f"Querying Bing: {query}")
-        result = feedparser.parse(query)
+        #FIXME: this may be blocked by google
+        logger.info(f"Querying Google: {keywords}")
+        result = self.gn.search(keywords, from_=after, to_=before)
         entries = result["entries"][:max_results]
         logger.info(f"Returned: {len(entries)} entries")
 
@@ -40,34 +43,37 @@ class BingNewsProvider(DataProvider):
         results = Parallel(n_jobs=num_jobs)(
             delayed(self._parse_entry)(res) for res in entries
         )
+
         return [res for res in results if res is not None]
 
 
     def _build_query(self, keywords: str, after: str = None, before: str = None) -> str:
-        # FIXME: don't know how to use after/before parameters with Bing news queries
         query = self.URL_ENDPOINT.replace(PATTERN, f"{urllib.parse.quote(keywords)}")
-        return query
+        if after is None or after == "":
+            query = query.replace(AFTER, "")
+        else:
+            query = query.replace(AFTER, f"+after:{after}")
+        if before is None or before == "":
+            query = query.replace(BEFORE, "")
+        else:
+            query = query.replace(BEFORE, f"+before:{before}")
 
-    def _clean_url(self, bing_url) -> str:
-        """Clean encoded URLs returned by Bing news such as "http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=649475a6257945d6900378c8310bcfde&amp;url=https%3a%2f%2fwww.lemondeinformatique.fr%2factualites%2flire-avec-schema-gpt-translator-datastax-automatise-la-creation-de-pipelines-de-donnees-90737.html&amp;c=15009376565431680830&amp;mkt=fr-fr"
-        """
-        try:
-            clean_url = bing_url.split("url=")[1].split("&  ")[0]
-            return urllib.parse.unquote(clean_url)
-        except IndexError:
-            # fallback (the URL does not match the expected pattern)
-            return bing_url
+        return query
 
 
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
-        """Parses a Bing news entry, uses wait decorator to force delay between 2 successive calls"""
+        """Parses a Google news entry"""
         try:
             title = entry["title"]
             link = entry["link"]
-            url = self._clean_url(link)
+            url = decode_google_news_url(link)
             summary = entry["summary"]
             published = dateparser.parse(entry["published"]).strftime("%Y-%m-%d %H:%M:%S")
-            text = self._get_text(url=link)
+            text = self._get_text(url=url)
+            text = self._filter_out_bad_text(text)
+            if text is None or text=="":
+                return None
+            logger.debug(f"----- Title: {title},\tDate: {published}")
             return {
                 "title": title,
                 "summary": summary,
