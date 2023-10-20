@@ -11,7 +11,7 @@ from transformers import GenerationConfig
 from vigogne.preprocess import generate_instruct_prompt
 
 config = configparser.ConfigParser()
-config.read(Path(__file__).parent / "api.cfg")
+config.read(Path(__file__).parent.parent / "config" / "llm_api.cfg")
 USE_REMOTE_LLM_MODEL = config.get("LLM_API_CONFIG", "use_remote_api")
 OPENAI_KEY = config.get("LLM_API_CONFIG", "openai_key")
 OPENAI_URL = config.get("LLM_API_CONFIG", "openai_url")

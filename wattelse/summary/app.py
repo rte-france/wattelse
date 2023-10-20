@@ -2,8 +2,10 @@ import streamlit as st
 from loguru import logger
 from abstractive_summarizer import AbstractiveSummarizer
 from extractive_summarizer import ExtractiveSummarizer
+from wattelse.summary.chatgpt_summarizer import GPTSummarizer
 
-MODEL_LIST = [ "origami_summarizer",
+MODEL_LIST = [ "chat_gpt",
+               "origami_summarizer",
                "mrm8488/camembert2camembert_shared-finetuned-french-summarization",
                "csebuetnlp/mT5_multilingual_XLSum",
                ]
@@ -24,7 +26,9 @@ def get_summarizer(summary_model):
     model = models.get(summary_model)
     if model is None:
         logger.info(f"Instantiating: {summary_model}")
-        if summary_model == "origami_summarizer":
+        if summary_model == "chat_gpt":
+            model = GPTSummarizer()
+        elif summary_model == "origami_summarizer":
             model = ExtractiveSummarizer()
         else:
             model = AbstractiveSummarizer(summary_model)
@@ -36,7 +40,7 @@ def app():
     st.title("Summarizer (abstractive & extractive")
 
     summary_model = st.selectbox("summary model", MODEL_LIST, key="summary_model")
-    summary_ratio = st.number_input("summary ratio", min_value=1, max_value=100, value=30, key="summary_ratio")/100
+    summary_ratio = st.number_input("summary ratio", min_value=1, max_value=100, value=20, key="summary_ratio")/100
 
     text = st.text_area("Input text", DEFAULT_TEXT, height=180, key="text")
     summary = st.text_area("Summary", "", height=50, key="summary")
