@@ -1,7 +1,7 @@
 import streamlit as st
 
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN
-from app_utils import print_docs_for_specific_topic, plot_topics_over_time, generate_newsletter, load_data
+from app_utils import print_docs_for_specific_topic, plot_topics_over_time, load_data
 from state_utils import register_widget, save_widget_state, restore_widget_state
 
 # Restore widget state
@@ -23,10 +23,6 @@ def find_similar_topic():
 
 
 with st.sidebar:
-
-	# Automatic newsletter
-	if st.button("Generate newsletter"):
-		generate_newsletter(st.session_state["topic_model"], load_data(st.session_state["data_name"]), st.session_state["topics"], df_split = st.session_state["timefiltered_df"])
 
 	# Search bar
 	search_terms = st.text_input("Search topic", on_change=find_similar_topic, key="search_terms")

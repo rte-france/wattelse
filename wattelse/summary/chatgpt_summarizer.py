@@ -5,10 +5,9 @@ from pathlib import Path
 from loguru import logger
 
 from wattelse.summary.summarizer import Summarizer
+from wattelse.summary.utils import BASE_PROMPT_SUMMARY
 
 MODEL = "gpt-3.5-turbo-instruct"
-BASE_PROMPT = "Résume en quelques phrases le texte suivant: "
-MAX_TOKENS = 15
 TEMPERATURE = 0
 
 
@@ -32,7 +31,7 @@ class GPTSummarizer(Summarizer):
     def generate_summary(self, article_text, max_length_ratio=0.1) -> str:
         answer = openai.Completion.create(
             model=MODEL,
-            prompt=BASE_PROMPT + article_text,
+            prompt=BASE_PROMPT_SUMMARY + article_text,
             max_tokens=round(self.num_tokens_from_string(article_text)*max_length_ratio),
             temperature=TEMPERATURE,
         )

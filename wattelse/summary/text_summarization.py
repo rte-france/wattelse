@@ -8,7 +8,8 @@ import numpy as np
 from sentence_transformers import SentenceTransformer, util
 from sentence_transformers.models import Transformer, Pooling
 
-from lexrank import degree_centrality_scores
+from wattelse.summary.lexrank import degree_centrality_scores
+
 #from origami_indexers.metadata.common.text_analysis_utils import load_nlp_core_news_full
 
 DEFAULT_LENGTH_SUMMARY = 3

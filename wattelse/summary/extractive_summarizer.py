@@ -1,7 +1,5 @@
-from text_summarization import TextSummarizer
-from loguru import logger
-
-from summarizer import Summarizer
+from wattelse.summary.summarizer import Summarizer
+from wattelse.summary.text_summarization import TextSummarizer
 
 BASE_PATH = "/home/jerome/dev/origami/rte-origami-nlp-models/rte_origami_nlp_models/.cache" #FIXME!
 DEFAULT_SUMMARIZER_MODEL_PATH = "models/language_model_rte/lm-distilcamembertbase-rte-saola2_20220826"

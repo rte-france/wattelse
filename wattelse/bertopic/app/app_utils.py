@@ -4,9 +4,6 @@ import plotly.express as px
 import streamlit as st
 from wattelse.bertopic.utils import TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, CITATION_COUNT_COL, DATA_DIR, BASE_CACHE_PATH, file_to_pd, load_embeddings
 from state_utils import register_widget
-from transformers import AutoTokenizer
-from vigogne.preprocess import generate_inference_chat_prompt
-from wattelse.chatbot.utils import generate_answer_remotely
 
 DEFAULT_PARAMETERS = {
     "embedding_model_name": "dangvantuan/sentence-camembert-large",
@@ -25,8 +22,6 @@ DEFAULT_PARAMETERS = {
     "countvectorizer_ngram_range": (1, 1),
     "ctfidf_reduce_frequent_words": True,
 }
-
-TOKENIZER = AutoTokenizer.from_pretrained("bofenghuang/vigogne-2-7b-chat", revision="v2.0", padding_side="right", use_fast=False)
 
 def initialize_default_parameters_keys():
     for k,v in DEFAULT_PARAMETERS.items():
@@ -190,37 +185,3 @@ def plot_remaining_docs_repartition_over_time(df_base, df_remaining, freq):
     }
         )
     st.write(fig)
-
-
-def generate_newsletter(_topic_model, df, topics, df_split=None, top_n_topics = 5, top_n_docs=3, newsletter_title="Newsletter"):
-    """
-    Write a newsletter using trained BERTopic model.
-    """
-
-    # Ensure top_n_topics is smaller than number of topics
-    topics_info = _topic_model.get_topic_info()[1:]
-    if len(topics_info) < top_n_topics:
-        top_n_topics = len(topics_info)
-    
-    # Store each line in a list
-    md_lines = [f"# {newsletter_title}"]
-    # Get most represented docs per topic
-    for i in range(top_n_topics):
-        sub_df = df_split.loc[pd.Series(topics)==i]
-        sub_df = sub_df.groupby(["title"]).size().reset_index(name="counts").sort_values("counts", ascending=False).iloc[0:top_n_docs]
-        sub_df = df[df["title"].isin(sub_df["title"])]
-        md_lines.append(f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}")
-        for _, doc in sub_df.iterrows():
-            # Generate a doc summary
-            prompt = f"Écris un résumé du texte suivant en quelques phrases :\n{doc.text}"
-            prompt = generate_inference_chat_prompt([[prompt,""]], TOKENIZER, max_length = 4096)
-            summary = generate_answer_remotely(prompt)
-            
-            # Write newsletter
-            md_lines.append(f"### [*{doc.title}*]({doc.url})")
-            md_lines.append(f"{doc.domain} | {doc.timestamp.strftime('%d-%m-%Y')}")
-            md_lines.append(summary)
-
-    # Write full file
-    with open("./auto_generated_newsletter.md", "w") as f:
-        f.writelines("\n\n".join(md_lines))

@@ -2,14 +2,17 @@ import re
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-from summarizer import Summarizer
+from wattelse.summary.summarizer import Summarizer
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+device="cpu"
 
+#DEFAULT_ABSTRACTIVE_MODEL =  "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
+DEFAULT_ABSTRACTIVE_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
 
 class AbstractiveSummarizer(Summarizer):
     ## class that performs auto summary using T multi langual model
-    def __init__(self, model_name):
+    def __init__(self, model_name=DEFAULT_ABSTRACTIVE_MODEL):
         self.model_name = model_name
         self.WHITESPACE_HANDLER = lambda k: re.sub('\s+', ' ', re.sub('\n+', ' ', k.strip()))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
