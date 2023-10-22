@@ -19,7 +19,7 @@ from app_utils import (
     plot_docs_reparition_over_time,
     initialize_default_parameters_keys,
 )
-from app_utils import load_data
+from app_utils import load_data_wrapper
 from wattelse.bertopic.app.train_utils import train_BERTopic_wrapper
 
 
@@ -52,7 +52,7 @@ def select_data():
     if st.session_state["data_name"] == "None":
         st.stop()
 
-    st.session_state["raw_df"] = load_data(st.session_state["data_name"]).sort_values(
+    st.session_state["raw_df"] = load_data_wrapper(f"{DATA_DIR}/{st.session_state['data_name']}").sort_values(
         by=TIMESTAMP_COLUMN, ascending=False
     ).reset_index(drop=True).reset_index()
     

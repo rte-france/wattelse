@@ -64,7 +64,7 @@ def generate_newsletter(
     return md_content
 
 
-def export_newsletter(newsletter_md: str, path: Path, format="md"):
+def export_md_string(newsletter_md: str, path: Path, format="md"):
     if format == "md":
         with open(path, "w") as f:
             f.write(newsletter_md)
@@ -75,3 +75,4 @@ def export_newsletter(newsletter_md: str, path: Path, format="md"):
         with open(path, "w") as f:
             f.write(result)
     logger.info(f"Newsletter exported in {format} format: {path}")
+

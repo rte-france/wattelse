@@ -14,8 +14,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
-from wattelse.bertopic.utils import file_to_pd, TEXT_COLUMN, TIMESTAMP_COLUMN, BASE_CACHE_PATH, load_embeddings, save_embeddings, split_df_by_paragraphs
-from wattelse.bertopic.app.app_utils import load_data
+from wattelse.bertopic.utils import file_to_pd, TEXT_COLUMN, TIMESTAMP_COLUMN, BASE_CACHE_PATH, load_data, load_embeddings, save_embeddings, split_df_by_paragraphs
 
 # Parameters:
 
@@ -46,7 +45,7 @@ class EmbeddingModel(BaseEmbedder):
         super().__init__()
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+    
         logger.info(f"Loading model: {model_name} on device: {device}")
         self.embedding_model = SentenceTransformer(model_name)
         self.embedding_model.max_seq_length = 512

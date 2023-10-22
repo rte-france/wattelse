@@ -1,7 +1,9 @@
+import ast
 import gzip
 import hashlib
 import pickle
 import socket
+from loguru import logger
 from pathlib import Path
 from typing import Any, List
 
@@ -32,6 +34,13 @@ BASE_CACHE_PATH = (
 # Make dirs if not exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 BASE_CACHE_PATH.mkdir(parents=True, exist_ok=True)
+
+def load_data(full_data_name: Path):
+    logger.info(f"Loading data from: {full_data_name}")
+    df = file_to_pd(full_data_name)
+    # convert timestamp column
+    df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
+    return df
 
 def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
     """Read data in various format and convert in to a DataFrame"""
@@ -75,3 +84,13 @@ def split_df_by_paragraphs(dataset: pd.DataFrame):
     dataset = dataset.explode(TEXT_COLUMN)
     dataset = dataset[dataset[TEXT_COLUMN]!=""].reset_index(drop=True)
     return dataset
+
+def parse_literal(expr: Any) -> Any:
+    """Allows to convert easily something like {'a': "2", 'b': "3", 3:'xyz', "c":"0.5", "z": "(1,1)"} into {'a': 2, 'b': 3, 3: 'xyz', 'c': 0.5, 'z': (1, 1)}"""
+    if type(expr) is dict:
+        return { k: parse_literal(v) for k,v in expr.items()}
+    else:
+        try:
+            return ast.literal_eval(expr)
+        except:
+            return expr

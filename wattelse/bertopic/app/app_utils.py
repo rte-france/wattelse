@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import streamlit as st
-from wattelse.bertopic.utils import TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN, CITATION_COUNT_COL, DATA_DIR, BASE_CACHE_PATH, file_to_pd, load_embeddings
+from wattelse.bertopic.utils import (TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN,
+                                     CITATION_COUNT_COL, BASE_CACHE_PATH, load_embeddings, load_data, DATA_DIR)
 from state_utils import register_widget
 
 DEFAULT_PARAMETERS = {
@@ -31,11 +32,8 @@ def initialize_default_parameters_keys():
 
 
 @st.cache_data
-def load_data(data_name: str):
-    df = file_to_pd(data_name, base_dir=DATA_DIR)
-    # convert timestamp column
-    df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
-    return df
+def load_data_wrapper(data_name: str):
+    return load_data(data_name)
 
 
 def embedding_model_options():
