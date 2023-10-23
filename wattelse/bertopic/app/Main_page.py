@@ -131,11 +131,14 @@ def train_model():
     ### TRAIN MODEL ###
     if parameters_sidebar_clicked:
         # Train
-        st.session_state["topics"], _, st.session_state["topic_model"] = train_BERTopic_wrapper(
-            st.session_state["timefiltered_df"],
-            st.session_state["parameters"],
-            st.session_state["data_name"],
-            split_by_paragraphs=st.session_state["split_by_paragraphs"]
+        full_dataset =st.session_state["cleaned_df"]
+        indices = st.session_state["timefiltered_df"]["index"]
+        st.session_state["topic_model"], st.session_state["topics"], _  = train_BERTopic_wrapper(
+            dataset=full_dataset,
+            indices=indices,
+            form_parameters=st.session_state["parameters"],
+            cache_base_name=st.session_state["data_name"] if not st.session_state["split_by_paragraphs"]
+            else f'{st.session_state["data_name"]}_split_by_paragraphs'
         )
         st.session_state["topics_info"] = (
             st.session_state["topic_model"].get_topic_info().iloc[1:]

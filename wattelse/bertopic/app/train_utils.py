@@ -1,4 +1,5 @@
 import ast
+from typing import Tuple
 
 import pandas as pd
 import streamlit as st
@@ -9,13 +10,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
 from wattelse.bertopic.train import EmbeddingModel, train_BERTopic
-from wattelse.bertopic.utils import TEXT_COLUMN, DATA_DIR
-
 
 @st.cache_data
-def train_BERTopic_wrapper(
-    dataset: pd.DataFrame, form_parameters, data_name: str, split_by_paragraphs=False
-):
+def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parameters, cache_base_name: str) -> Tuple:
 
     # Transform form_parameters from str to dict (dict is not yet hashable using Streamlit)
     form_parameters = ast.literal_eval(form_parameters)
@@ -58,18 +55,17 @@ def train_BERTopic_wrapper(
     )
 
     return train_BERTopic(
-        dataset[TEXT_COLUMN],
-        dataset["index"],
-        f"{DATA_DIR}/{data_name}",
-        embedding_model,
-        umap_model,
-        hdbscan_model,
-        vectorizer_model,
-        ctfidf_model,
+        full_dataset=dataset,
+        indices=indices,
+        embedding_model=embedding_model,
+        umap_model=umap_model,
+        hdbscan_model=hdbscan_model,
+        vectorizer_model=vectorizer_model,
+        ctfidf_model=ctfidf_model,
         top_n_words=form_parameters["bertopic_top_n_words"],
         nr_topics=form_parameters["bertopic_nr_topics"]
         if form_parameters["bertopic_nr_topics"] > 0
         else None,
         use_cache=form_parameters["use_cached_embeddings"],
-        split_by_paragraphs=split_by_paragraphs,
+        cache_base_name = cache_base_name
     )
