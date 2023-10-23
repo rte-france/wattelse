@@ -21,15 +21,13 @@ from wattelse.bertopic.utils import (
     TEXT_COLUMN,
     TIMESTAMP_COLUMN,
     BASE_CACHE_PATH,
-    load_data,
     load_embeddings,
     save_embeddings,
-    split_df_by_paragraphs,
 )
 
 # Parameters:
 
-DEFAULT_EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+DEFAULT_EMBEDDING_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_TOP_N_WORDS = 10
 DEFAULT_NR_TOPICS = 10
 DEFAULT_NGRAM_RANGE = (1, 1)
@@ -43,7 +41,7 @@ DEFAULT_HBSCAN_MODEL = HDBSCAN(
 )
 DEFAULT_STOP_WORDS = stopwords.words("french")
 DEFAULT_VECTORIZER_MODEL = CountVectorizer(
-    stop_words=DEFAULT_TOP_N_WORDS,
+    stop_words=DEFAULT_STOP_WORDS,
     ngram_range=DEFAULT_NGRAM_RANGE,
 )
 DEFAULT_CTFIDF_MODEL = ClassTfidfTransformer(reduce_frequent_words=True)
@@ -74,8 +72,8 @@ class EmbeddingModel(BaseEmbedder):
 
 def train_BERTopic(
     full_dataset: pd.DataFrame,
-    indices: pd.Series,
-    embedding_model: str = DEFAULT_EMBEDDING_MODEL,
+    indices: pd.Series = None,
+    embedding_model: EmbeddingModel = EmbeddingModel(DEFAULT_EMBEDDING_MODEL_NAME),
     umap_model: UMAP = DEFAULT_UMAP_MODEL,
     hdbscan_model: HDBSCAN = DEFAULT_HBSCAN_MODEL,
     vectorizer_model: CountVectorizer = DEFAULT_VECTORIZER_MODEL,
@@ -95,8 +93,9 @@ def train_BERTopic(
         The full dataset to train
     indices:  pd.Series
         Indices of the full_dataset to be used for partial training (ex. selection of date range of the full dataset)
-    embedding_model: str
-        Name of the embedding model to be used in BERTopic
+        If set to None, use all indices
+    embedding_model: EmbeddingModel
+        Embedding model to be used in BERTopic
     umap_model: UMAP
         UMAP model to be used in BERTopic
     hdbscan_model: HDBSCAN
@@ -135,8 +134,9 @@ def train_BERTopic(
     if not cache_path.exists() or not use_cache:
         logger.info("Computing embeddings")
         embeddings = embedding_model.embed(full_dataset[TEXT_COLUMN])
-        save_embeddings(embeddings, cache_path)
-        logger.info(f"Embeddings stored to cache file: {cache_path}")
+        if use_cache:
+            save_embeddings(embeddings, cache_path)
+            logger.info(f"Embeddings stored to cache file: {cache_path}")
     else:
         # use previous cache
         embeddings = load_embeddings(cache_path)
@@ -157,6 +157,8 @@ def train_BERTopic(
     )
 
     logger.info("Fitting BERTopic...")
+    if indices is None:
+        indices = full_dataset["index"]
     topics, probs = topic_model.fit_transform(
         full_dataset[TEXT_COLUMN][indices], embeddings[indices]
     )
@@ -170,7 +172,7 @@ if __name__ == "__main__":
     @app.command("train")
     def train(
         model: str = typer.Option(
-            DEFAULT_EMBEDDING_MODEL, help="name of the model to be used"
+            DEFAULT_EMBEDDING_MODEL_NAME, help="name of the model to be used"
         ),
         data_path: str = typer.Option(
             None, help="path to the data from which topics have to be analyzed"

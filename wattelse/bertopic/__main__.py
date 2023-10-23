@@ -1,6 +1,7 @@
 import configparser
 import glob
 import os
+from pydoc import locate
 
 import pandas as pd
 import typer
@@ -12,13 +13,13 @@ from hdbscan import HDBSCAN
 from loguru import logger
 from pathlib import Path
 
+from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
 from wattelse.bertopic.ouput_features import generate_newsletter, export_md_string
-from wattelse.bertopic.utils import load_data, parse_literal
+from wattelse.bertopic.utils import load_data, parse_literal, OUTPUT_DIR, TEXT_COLUMN
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
-from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
 
 # Config sections
 BERTOPIC_CONFIG_SECTION = "bertopic_config"
@@ -31,8 +32,6 @@ LEARN_FROM_SCRATCH = (
 )
 LEARN_FROM_LAST = "learn_from_last"  # only the last feed data to create the model
 INFERENCE_ONLY = "inference_only"  # do not retrain model; reuse existing bertopic model if available, otherwise, fallback to learn_from_scratch for the first run"""
-
-DEFAULT_SCHEDULE = ""
 
 
 if __name__ == "__main__":
@@ -63,26 +62,35 @@ if __name__ == "__main__":
         logger.info(f"Loading dataset...")
         learning_type = learning_strategy.get("learning_strategy", INFERENCE_ONLY)
         model_path = learning_strategy.get("bertopic_model_path", None)
+        if model_path:
+            model_path = OUTPUT_DIR / model_path
         if learning_type == INFERENCE_ONLY and (
-            not model_path or not os.path.isfile(model_path)
+            not model_path or not model_path.exists()
         ):
             learning_type = LEARN_FROM_SCRATCH
-        """
+
+        logger.info(f"Learning strategy: {learning_type}")
+
         dataset = (
             _load_feed_data(data_feed_cfg, learning_type)
             .reset_index(drop=True)
             .reset_index()
         )
-        """
-        dataset, latest_file = _load_feed_data(data_feed_cfg, learning_type)
-        dataset = dataset.reset_index(drop=True).reset_index()
+
         logger.info(f"Dataset size: {len(dataset.index)}")
 
         # learn model and predict
         if learning_type == INFERENCE_ONLY:
-            topics, topic_model = _load_topic_model(model_path)
+            topic_model = _load_topic_model(model_path)
+            logger.info(f"Topic model loaded from {model_path}")
+            logger.info("Computation of embeddings for new data...")
+            embeddings = EmbeddingModel(
+                config.get("topic_model.embedding", "model_name")
+            ).embed(dataset[TEXT_COLUMN])
+            topics, probs = topic_model.fit_transform(dataset[TEXT_COLUMN], embeddings)
+
         else:
-            topics, topic_model = _train_topic_model(config, dataset, latest_file)
+            topics, topic_model = _train_topic_model(config, dataset)
             # train topic model with the dataset
             if model_path:
                 logger.info(f"Saving topic model to: {model_path}")
@@ -92,29 +100,36 @@ if __name__ == "__main__":
                     model_path,
                 )
 
+        summarizer_class = locate(newsletter_params.get("summarizer_class"))
+
         # generate newsletter
         logger.info(f"Generating newsletter...")
         newsletter_md = generate_newsletter(
             topic_model,
             dataset,
             topics,
-            df_split=None,
+            df_split=dataset,  # FIXME! check behaviour
             top_n_topics=newsletter_params.getliteral("top_n_topics"),
             top_n_docs=newsletter_params.getliteral("top_n_docs"),
             newsletter_title=newsletter_params.get("title"),
-            summarizer_class=newsletter_params.get("summarizer_class"),
+            summarizer_class=summarizer_class,
         )
 
-        path = (
-            newsletter_params.get("output_directory")
-            / f"{datetime.today().strftime('%Y-%m-%d')}{newsletter_params.get('id')}"
-            / f".{newsletter_params.get('output_format')}"
+        output_dir = OUTPUT_DIR / newsletter_params.get("output_directory")
+
+        output_path = (
+            output_dir
+            / f"{datetime.today().strftime('%Y-%m-%d')}_{newsletter_params.get('id')}"
+            f"_{data_feed_cfg.get('data-feed','id')}.{newsletter_params.get('output_format')}"
         )
         export_md_string(
-            newsletter_md, path, format=newsletter_params.get("output_format")
+            newsletter_md, output_path, format=newsletter_params.get("output_format")
+        )
+        logger.info(
+            f"Newsletter exported in {newsletter_params.get('output_format')} format: {output_path}"
         )
 
-    def _train_topic_model(config: configparser.ConfigParser, dataset: pd.DataFrame, latest_file):
+    def _train_topic_model(config: configparser.ConfigParser, dataset: pd.DataFrame):
         # Step 1 - Embedding model
         embedding_model = EmbeddingModel(
             config.get("topic_model.embedding", "model_name")
@@ -125,7 +140,12 @@ if __name__ == "__main__":
         hdbscan_model = HDBSCAN(**parse_literal(dict(config["topic_model.hdbscan"])))
         # Step 4 - Count vectorizer
         vectorizer_model = CountVectorizer(
-            **parse_literal(dict(config["topic_model.count_vectorizer"]))
+            stop_words=stopwords.words(
+                config.get("topic_model.count_vectorizer", "stop_words")
+            ),
+            ngram_range=config.getliteral(
+                "topic_model.count_vectorizer", "ngram_range"
+            ),
         )
         # Step 5 - c-TF-IDF model
         ctfidf_model = ClassTfidfTransformer(
@@ -136,18 +156,15 @@ if __name__ == "__main__":
         if topic_params.get("nr_topics") == 0:
             topic_params["nr_topics"] = None
 
-        topics, _, topic_model = train_BERTopic(
+        topic_model, topics, _ = train_BERTopic(
             **topic_params,
-            texts=dataset[TEXT_COLUMN],
-            indexes=dataset["index"],
-            data_name=latest_file, #FIXME pas top!
+            full_dataset=dataset,
             embedding_model=embedding_model,
             umap_model=umap_model,
             hdbscan_model=hdbscan_model,
             vectorizer_model=vectorizer_model,
             ctfidf_model=ctfidf_model,
             use_cache=False,
-            split_by_paragraphs=False,
         )
 
         return topics, topic_model
@@ -157,9 +174,7 @@ if __name__ == "__main__":
     ) -> pd.DataFrame:
         data_dir = data_feed_cfg.get("data-feed", "data_dir_path")
         logger.info(f"Loading data from feed dir: {data_dir}")
-        list_all_files = glob.glob(
-            f"{data_dir}/*.jsonl"
-        )
+        list_all_files = glob.glob(f"{data_dir}/*.jsonl")
         latest_file = max(list_all_files, key=os.path.getctime)
 
         if learning_strategy == INFERENCE_ONLY or learning_strategy == LEARN_FROM_LAST:
@@ -170,14 +185,16 @@ if __name__ == "__main__":
             # use all data available in the feed dir
             dfs = [load_data(f) for f in list_all_files]
             new_df = pd.concat(dfs)
-            return new_df, latest_file #FIXME! file name shall be avoided in train
+            return new_df
 
     def _load_topic_model(model_path_dir: str):
         loaded_model = BERTopic.load(model_path_dir)
         return loaded_model
 
-    def _save_topic_model(topic_model, embedding_model, model_path_dir):
-        # Method 1 - safetensors
+    def _save_topic_model(topic_model: BERTopic, embedding_model: EmbeddingModel, model_path_dir: Path):
+        model_path_dir.mkdir(parents=True, exist_ok=True)
+
+        # Serialization using safetensors
         topic_model.save(
             model_path_dir,
             serialization="safetensors",

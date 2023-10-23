@@ -1,15 +1,11 @@
 import pandas as pd
 from pathlib import Path
-from loguru import logger
 
+import pathlib
 # from md2pdf.core import md2pdf
 from md2html import md2html
-from wattelse.summary import (
-    ExtractiveSummarizer,
-    AbstractiveSummarizer,
-    LocalLLMSummarizer,
-    GPTSummarizer,
-)
+
+import wattelse.summary.abstractive_summarizer
 
 
 def generate_newsletter(
@@ -20,7 +16,7 @@ def generate_newsletter(
     top_n_topics=5,
     top_n_docs=3,
     newsletter_title="Newsletter",
-    summarizer_class=AbstractiveSummarizer,
+    summarizer_class=wattelse.summary.abstractive_summarizer.AbstractiveSummarizer,
 ) -> str:
     """
     Write a newsletter using trained BERTopic model.
@@ -65,14 +61,14 @@ def generate_newsletter(
 
 
 def export_md_string(newsletter_md: str, path: Path, format="md"):
+    path.parent.mkdir(parents=True, exist_ok=True)
+
     if format == "md":
         with open(path, "w") as f:
             f.write(newsletter_md)
     # elif format == "pdf":
     #    md2pdf(path, md_content=newsletter_md)
     elif format == "html":
-        result = md2html.render(md2html.parse_args(), newsletter_md)
+        result = md2html.render(md2html.parse_args(None), newsletter_md)
         with open(path, "w") as f:
             f.write(result)
-    logger.info(f"Newsletter exported in {format} format: {path}")
-

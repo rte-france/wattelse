@@ -19,6 +19,12 @@ DATA_DIR = (
     if socket.gethostname() in GPU_SERVERS
     else Path(__file__).parent.parent.parent / "data" / "bertopic"
 )
+
+OUTPUT_DIR = ( Path("/data/weak_signals/output/bertopic/")
+    if socket.gethostname() in GPU_SERVERS
+    else Path(__file__).parent.parent.parent / "output" / "bertopic"
+)
+
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
 GROUPED_TIMESTAMP_COLUMN = "grouped_timestamp"
