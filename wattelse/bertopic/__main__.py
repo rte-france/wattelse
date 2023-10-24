@@ -1,6 +1,7 @@
 import configparser
 import glob
 import os
+import sys
 from pydoc import locate
 
 import pandas as pd
@@ -230,7 +231,7 @@ if __name__ == "__main__":
         schedule = newsletter_cfg.get(NEWSLETTER_SECTION, "update_frequency")
         proxy = os.getenv("https_proxy")
         home = os.getenv("HOME")
-        command = f"http_proxy='{proxy}' https_proxy='{proxy}' {home}/venv/weak_signals/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path} {data_feed_cfg_path} > {LOG_DIR}/cron_newsletters.log 2>&1"
+        command = f"http_proxy='{proxy}' https_proxy='{proxy}' {sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path} {data_feed_cfg_path} > {LOG_DIR}/cron_newsletters.log 2>&1"
 
         add_job_to_crontab(schedule, command)
 
