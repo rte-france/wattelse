@@ -23,6 +23,7 @@ from wattelse.bertopic.utils import (
     BASE_CACHE_PATH,
     load_embeddings,
     save_embeddings,
+    get_hash,
 )
 
 # Parameters:
@@ -123,6 +124,9 @@ def train_BERTopic(
         - an array of probabilities
     """
 
+    if use_cache and cache_base_name is None:
+        cache_base_name = get_hash(full_dataset[TEXT_COLUMN])
+
     cache_path = BASE_CACHE_PATH / f"{embedding_model.name}_{cache_base_name}.pkl"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -131,16 +135,16 @@ def train_BERTopic(
     ).reset_index()
 
     logger.debug(f"Using cache: {use_cache}")
-    if not cache_path.exists() or not use_cache:
+    if cache_path.exists() and use_cache:
+        # use previous cache
+        embeddings = load_embeddings(cache_path)
+        logger.info(f"Embeddings loaded from cache file: {cache_path}")
+    else:
         logger.info("Computing embeddings")
         embeddings = embedding_model.embed(full_dataset[TEXT_COLUMN])
         if use_cache:
             save_embeddings(embeddings, cache_path)
             logger.info(f"Embeddings stored to cache file: {cache_path}")
-    else:
-        # use previous cache
-        embeddings = load_embeddings(cache_path)
-        logger.info(f"Embeddings loaded from cache file: {cache_path}")
 
     # Build BERTopic model
     topic_model = BERTopic(

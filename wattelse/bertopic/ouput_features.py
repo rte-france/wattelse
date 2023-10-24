@@ -1,10 +1,8 @@
 import pandas as pd
 from pathlib import Path
 
-import pathlib
 # from md2pdf.core import md2pdf
-from md2html import md2html
-
+import markdown
 import wattelse.summary.abstractive_summarizer
 
 
@@ -62,13 +60,12 @@ def generate_newsletter(
 
 def export_md_string(newsletter_md: str, path: Path, format="md"):
     path.parent.mkdir(parents=True, exist_ok=True)
-
     if format == "md":
         with open(path, "w") as f:
             f.write(newsletter_md)
     # elif format == "pdf":
     #    md2pdf(path, md_content=newsletter_md)
     elif format == "html":
-        result = md2html.render(md2html.parse_args(None), newsletter_md)
+        result = markdown.markdown(newsletter_md)
         with open(path, "w") as f:
             f.write(result)

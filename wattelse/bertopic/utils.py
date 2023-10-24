@@ -80,7 +80,7 @@ def save_embeddings(embeddings: List, cache_path: Path):
         pickle.dump(embeddings, f_out)
 
 
-def get_hash(data: Any):
+def get_hash(data: Any) -> str:
     """Returns a *stable* hash(persistent between different Python session) for any object. NB. The default hash() function does not guarantee this."""
     return hashlib.md5(repr(data).encode("utf-8")).hexdigest()
 

@@ -18,7 +18,13 @@ from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
 from wattelse.bertopic.ouput_features import generate_newsletter, export_md_string
-from wattelse.bertopic.utils import load_data, parse_literal, OUTPUT_DIR, TEXT_COLUMN
+from wattelse.bertopic.utils import (
+    load_data,
+    parse_literal,
+    OUTPUT_DIR,
+    TEXT_COLUMN,
+    DATA_DIR,
+)
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
 
 # Config sections
@@ -47,7 +53,6 @@ if __name__ == "__main__":
         """
         Creates a newsletter associated to a data feed.
         """
-
         logger.info(f"Reading newsletter configuration file: {newsletter_cfg_path}")
 
         # read newsletter & data feed configuration
@@ -173,8 +178,9 @@ if __name__ == "__main__":
         data_feed_cfg: configparser.ConfigParser, learning_strategy: str
     ) -> pd.DataFrame:
         data_dir = data_feed_cfg.get("data-feed", "data_dir_path")
-        logger.info(f"Loading data from feed dir: {data_dir}")
-        list_all_files = glob.glob(f"{data_dir}/*.jsonl")
+        logger.info(f"Loading data from feed dir: {DATA_DIR/data_dir}")
+        # filter files according to extension and pattern
+        list_all_files = glob.glob(f"{DATA_DIR}/{data_dir}/*{data_feed_cfg.get('data-feed', 'id')}*.jsonl*")
         latest_file = max(list_all_files, key=os.path.getctime)
 
         if learning_strategy == INFERENCE_ONLY or learning_strategy == LEARN_FROM_LAST:
@@ -191,7 +197,9 @@ if __name__ == "__main__":
         loaded_model = BERTopic.load(model_path_dir)
         return loaded_model
 
-    def _save_topic_model(topic_model: BERTopic, embedding_model: EmbeddingModel, model_path_dir: Path):
+    def _save_topic_model(
+        topic_model: BERTopic, embedding_model: EmbeddingModel, model_path_dir: Path
+    ):
         model_path_dir.mkdir(parents=True, exist_ok=True)
 
         # Serialization using safetensors
