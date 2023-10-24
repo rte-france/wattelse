@@ -25,7 +25,8 @@ from wattelse.bertopic.utils import (
     TEXT_COLUMN,
 )
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
-from wattelse.common.vars import FEED_BASE_DIR
+from wattelse.common.utils import add_job_to_crontab
+from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
 
 # Config sections
 BERTOPIC_CONFIG_SECTION = "bertopic_config"
@@ -190,7 +191,9 @@ if __name__ == "__main__":
         elif learning_strategy == LEARN_FROM_SCRATCH:
             # use all data available in the feed dir
             dfs = [load_data(f) for f in list_all_files]
-            new_df = pd.concat(dfs).drop_duplicates(subset=None, keep="first", inplace=False)
+            new_df = pd.concat(dfs).drop_duplicates(
+                subset=None, keep="first", inplace=False
+            )
             return new_df
 
     def _load_topic_model(model_path_dir: str):
@@ -211,7 +214,7 @@ if __name__ == "__main__":
             save_embedding_model=embedding_model,
         )
 
-    @app.command("install-newsletter")
+    @app.command("schedule-newsletter")
     def automate_newsletter(
         newsletter_cfg_path: Path = typer.Argument(
             help="Path to newsletter config file"
@@ -221,7 +224,15 @@ if __name__ == "__main__":
         """
         Install in crontab an automatic newsletter creation
         """
-        logger.error("Not implemented yet!")
+        """Schedule data scrapping on the basis of a feed configuration file"""
+        newsletter_cfg = configparser.ConfigParser()
+        newsletter_cfg.read(newsletter_cfg_path)
+        schedule = newsletter_cfg.get(NEWSLETTER_SECTION, "update_frequency")
+        proxy = os.getenv("https_proxy")
+        home = os.getenv("HOME")
+        command = f"http_proxy='{proxy}' https_proxy='{proxy}' {home}/venv/weak_signals/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path} {data_feed_cfg_path} > {LOG_DIR}/cron_newsletters.log 2>&1"
+
+        add_job_to_crontab(schedule, command)
 
     @app.command("list-newsletters")
     def list_newsletters():

@@ -7,7 +7,8 @@ from datetime import timedelta, datetime
 import typer
 from loguru import logger
 
-from wattelse.common.vars import FEED_BASE_DIR
+from wattelse.common.utils import add_job_to_crontab
+from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
 from wattelse.data_provider.arxiv_provider import ArxivProvider
 from wattelse.data_provider.bing_news_provider import BingNewsProvider
 from wattelse.data_provider.google_news_provider import GoogleNewsProvider
@@ -207,13 +208,9 @@ if __name__ == "__main__":
         schedule = data_feed_cfg.get("data-feed", "update_frequency")
         proxy = os.getenv("https_proxy")
         home = os.getenv("HOME")
-        command = f"http_proxy='{proxy}' https_proxy='{proxy}'  {home}/venv/weak_signals/bin/python -m wattelse.data_provider scrape-feed {feed_cfg} > cron_wattelse.log 2>&1"
+        command = f"http_proxy='{proxy}' https_proxy='{proxy}'  {home}/venv/weak_signals/bin/python -m wattelse.data_provider scrape-feed {feed_cfg} > {LOG_DIR}/cron_feeds.log 2>&1"
 
-        logger.info(f"Adding to crontab: {schedule} {command}")
-        # Create crontab, add command
-        cmd = f'(crontab -u $(whoami) -l; echo "{schedule} {command}" ) | crontab -u $(whoami) -'
-        returned_value = subprocess.call(cmd, shell=True)  # returns the exit code in unix
-        logger.info(f"Crontab updated with status {returned_value}")
+        add_job_to_crontab(schedule, command)
 
     ##################
     app()
