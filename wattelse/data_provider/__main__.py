@@ -1,4 +1,6 @@
 import configparser
+import os
+import subprocess
 import tempfile
 from datetime import timedelta, datetime
 
@@ -108,37 +110,6 @@ if __name__ == "__main__":
             logger.info(f"Storing {len(results)} articles")
             provider.store_articles(results, save_path)
 
-    @app.command("scrape-feed")
-    def scrape_from_feed(
-        feed_cfg: str = typer.Argument(help="Path of the data feed config file"),
-    ):
-        """Scrape data from Arxiv, Google, Bing news or NewsCatcher on the basis of a feed configuration file"""
-        data_feed_cfg = configparser.ConfigParser()
-        data_feed_cfg.read(feed_cfg)
-        current_date = datetime.today()
-        current_date_str = current_date.strftime("%Y-%m-%d")
-        days_to_subtract = data_feed_cfg.getint("data-feed", "number_of_days")
-        provider = data_feed_cfg.get("data-feed", "provider")
-
-        keywords = data_feed_cfg.get("data-feed", "query")
-        max_results = data_feed_cfg.getint("data-feed", "max_results")
-        before = current_date_str
-        after = (current_date - timedelta(days=days_to_subtract)).strftime("%Y-%m-%d")
-        save_path = (
-            FEED_BASE_DIR
-            / data_feed_cfg.get("data-feed", "feed_dir_path")
-            / f"current_date_str_{data_feed_cfg.get('data-feed', 'id')}.jsonl"
-        )
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Generate a query file
-        with tempfile.NamedTemporaryFile() as query_file:
-            generate_query_file(
-                keywords, after, before, interval=1, save_path=query_file.name
-            )
-            auto_scrape(requests_file=query_file.name, max_results=max_results, provider=provider,
-                        save_path=save_path)
-
     @app.command("generate-query-file")
     def generate_query_file(
         keywords: str = typer.Argument(help="keywords for news search engine."),
@@ -191,4 +162,58 @@ if __name__ == "__main__":
                 start_date + timedelta(ndays * (n + 1)),
             )
 
+    @app.command("scrape-feed")
+    def scrape_from_feed(
+        feed_cfg: str = typer.Argument(help="Path of the data feed config file"),
+    ):
+        """Scrape data from Arxiv, Google, Bing news or NewsCatcher on the basis of a feed configuration file"""
+        data_feed_cfg = configparser.ConfigParser()
+        data_feed_cfg.read(feed_cfg)
+        current_date = datetime.today()
+        current_date_str = current_date.strftime("%Y-%m-%d")
+        days_to_subtract = data_feed_cfg.getint("data-feed", "number_of_days")
+        provider = data_feed_cfg.get("data-feed", "provider")
+
+        keywords = data_feed_cfg.get("data-feed", "query")
+        max_results = data_feed_cfg.getint("data-feed", "max_results")
+        before = current_date_str
+        after = (current_date - timedelta(days=days_to_subtract)).strftime("%Y-%m-%d")
+        save_path = (
+            FEED_BASE_DIR
+            / data_feed_cfg.get("data-feed", "feed_dir_path")
+            / f"{current_date_str}_{data_feed_cfg.get('data-feed', 'id')}.jsonl"
+        )
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Generate a query file
+        with tempfile.NamedTemporaryFile() as query_file:
+            generate_query_file(
+                keywords, after, before, interval=1, save_path=query_file.name
+            )
+            auto_scrape(
+                requests_file=query_file.name,
+                max_results=max_results,
+                provider=provider,
+                save_path=save_path,
+            )
+
+    @app.command("schedule-scrapping")
+    def schedule_scrapping(
+        feed_cfg: str = typer.Argument(help="Path of the data feed config file"),
+    ):
+        """Schedule data scrapping on the basis of a feed configuration file"""
+        data_feed_cfg = configparser.ConfigParser()
+        data_feed_cfg.read(feed_cfg)
+        schedule = data_feed_cfg.get("data-feed", "update_frequency")
+        proxy = os.getenv("https_proxy")
+        home = os.getenv("HOME")
+        command = f"http_proxy='{proxy}' https_proxy='{proxy}'  {home}/venv/weak_signals/bin/python -m wattelse.data_provider scrape-feed {feed_cfg} > cron_wattelse.log 2>&1"
+
+        logger.info(f"Adding to crontab: {schedule} {command}")
+        # Create crontab, add command
+        cmd = f'(crontab -u $(whoami) -l; echo "{schedule} {command}" ) | crontab -u $(whoami) -'
+        returned_value = subprocess.call(cmd, shell=True)  # returns the exit code in unix
+        logger.info(f"Crontab updated with status {returned_value}")
+
+    ##################
     app()
