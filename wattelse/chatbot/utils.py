@@ -136,7 +136,7 @@ def generate_answer_remotely_stream(prompt) -> str:
 
 def get_api_model_name():
     """
-    Return currently loaded llm (using vLLM).
+    Return currently loaded llm name(using vLLM).
     """
     try :
         openai.api_key = OPENAI_KEY
