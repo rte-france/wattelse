@@ -1,5 +1,5 @@
+import markdown
 import streamlit as st
-from md2html import md2html
 
 from wattelse.bertopic.ouput_features import generate_newsletter
 
@@ -17,4 +17,4 @@ if st.button("Generate newsletter"):
         df_split=st.session_state["timefiltered_df"],
     )
     #st.markdown(md)
-    st.components.v1.html(md2html.render(md2html.parse_args(), md), height=800, scrolling=True)
+    st.components.v1.html(markdown.markdown(md), height=800, scrolling=True)
