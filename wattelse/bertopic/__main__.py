@@ -83,18 +83,18 @@ if __name__ == "__main__":
         )
 
         logger.info(f"Dataset size: {len(dataset.index)}")
-
-        # learn model and predict
         if learning_type == INFERENCE_ONLY:
+            # predict only
             topic_model = _load_topic_model(model_path)
             logger.info(f"Topic model loaded from {model_path}")
             logger.info("Computation of embeddings for new data...")
             embeddings = EmbeddingModel(
                 config.get("topic_model.embedding", "model_name")
             ).embed(dataset[TEXT_COLUMN])
-            topics, probs = topic_model.fit_transform(dataset[TEXT_COLUMN], embeddings)
+            topics, probs = topic_model.transform(dataset[TEXT_COLUMN], embeddings)
 
         else:
+            # learn and predict
             topics, topic_model = _train_topic_model(config, dataset)
             # train topic model with the dataset
             if model_path:
@@ -136,9 +136,7 @@ if __name__ == "__main__":
 
     def _train_topic_model(config: configparser.ConfigParser, dataset: pd.DataFrame):
         # Step 1 - Embedding model
-        embedding_model = EmbeddingModel(
-            config.get("topic_model.embedding", "model_name")
-        )
+        embedding_model = config.get("topic_model.embedding", "model_name")
         # Step 2 - Dimensionality reduction algorithm
         umap_model = UMAP(**parse_literal(dict(config["topic_model.umap"])))
         # Step 3 - Clustering algorithm
@@ -164,7 +162,7 @@ if __name__ == "__main__":
         topic_model, topics, _ = train_BERTopic(
             **topic_params,
             full_dataset=dataset,
-            embedding_model=embedding_model,
+            embedding_model_name=embedding_model_name,
             umap_model=umap_model,
             hdbscan_model=hdbscan_model,
             vectorizer_model=vectorizer_model,
@@ -180,7 +178,9 @@ if __name__ == "__main__":
         data_dir = data_feed_cfg.get("data-feed", "data_dir_path")
         logger.info(f"Loading data from feed dir: {DATA_DIR/data_dir}")
         # filter files according to extension and pattern
-        list_all_files = glob.glob(f"{DATA_DIR}/{data_dir}/*{data_feed_cfg.get('data-feed', 'id')}*.jsonl*")
+        list_all_files = glob.glob(
+            f"{DATA_DIR}/{data_dir}/*{data_feed_cfg.get('data-feed', 'id')}*.jsonl*"
+        )
         latest_file = max(list_all_files, key=os.path.getctime)
 
         if learning_strategy == INFERENCE_ONLY or learning_strategy == LEARN_FROM_LAST:
@@ -200,11 +200,12 @@ if __name__ == "__main__":
     def _save_topic_model(
         topic_model: BERTopic, embedding_model: EmbeddingModel, model_path_dir: Path
     ):
-        model_path_dir.mkdir(parents=True, exist_ok=True)
+        full_model_path_dir = OUTPUT_DIR / "models" / model_path_dir
+        full_model_path_dir.mkdir(parents=True, exist_ok=True)
 
         # Serialization using safetensors
         topic_model.save(
-            model_path_dir,
+            full_model_path_dir,
             serialization="safetensors",
             save_ctfidf=True,
             save_embedding_model=embedding_model,

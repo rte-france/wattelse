@@ -17,13 +17,13 @@ from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
 from wattelse.bertopic.utils import (
-    file_to_pd,
     TEXT_COLUMN,
     TIMESTAMP_COLUMN,
     BASE_CACHE_PATH,
     load_embeddings,
     save_embeddings,
     get_hash,
+    file_to_pd,
 )
 
 # Parameters:
@@ -60,11 +60,11 @@ class EmbeddingModel(BaseEmbedder):
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        logger.info(f"Loading model: {model_name} on device: {device}")
+        logger.info(f"Loading embedding model: {model_name} on device: {device}")
         self.embedding_model = SentenceTransformer(model_name)
         self.embedding_model.max_seq_length = 512
         self.name = model_name
-        logger.info("Model loaded")
+        logger.debug("Embedding model loaded")
 
     def embed(self, documents: List[str], verbose=True) -> List:
         embeddings = self.embedding_model.encode(documents, show_progress_bar=verbose)
@@ -74,7 +74,7 @@ class EmbeddingModel(BaseEmbedder):
 def train_BERTopic(
     full_dataset: pd.DataFrame,
     indices: pd.Series = None,
-    embedding_model: EmbeddingModel = EmbeddingModel(DEFAULT_EMBEDDING_MODEL_NAME),
+    embedding_model_name: str = DEFAULT_EMBEDDING_MODEL_NAME,
     umap_model: UMAP = DEFAULT_UMAP_MODEL,
     hdbscan_model: HDBSCAN = DEFAULT_HBSCAN_MODEL,
     vectorizer_model: CountVectorizer = DEFAULT_VECTORIZER_MODEL,
@@ -127,7 +127,7 @@ def train_BERTopic(
     if use_cache and cache_base_name is None:
         cache_base_name = get_hash(full_dataset[TEXT_COLUMN])
 
-    cache_path = BASE_CACHE_PATH / f"{embedding_model.name}_{cache_base_name}.pkl"
+    cache_path = BASE_CACHE_PATH / f"{embedding_model_name}_{cache_base_name}.pkl"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 
     full_dataset = full_dataset.sort_values(
@@ -135,6 +135,7 @@ def train_BERTopic(
     ).reset_index()
 
     logger.debug(f"Using cache: {use_cache}")
+    embedding_model = EmbeddingModel(embedding_model_name)
     if cache_path.exists() and use_cache:
         # use previous cache
         embeddings = load_embeddings(cache_path)
@@ -203,4 +204,5 @@ if __name__ == "__main__":
 
         pdb.set_trace()
 
-    app()
+
+app()

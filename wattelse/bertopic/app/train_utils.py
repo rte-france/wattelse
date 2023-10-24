@@ -9,7 +9,7 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
-from wattelse.bertopic.train import EmbeddingModel, train_BERTopic
+from wattelse.bertopic.train import train_BERTopic
 
 @st.cache_data
 def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parameters, cache_base_name: str) -> Tuple:
@@ -18,7 +18,7 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
     form_parameters = ast.literal_eval(form_parameters)
 
     # Step 1 - Embedding model
-    embedding_model = EmbeddingModel(form_parameters["embedding_model_name"])
+    embedding_model_name = form_parameters["embedding_model_name"]
 
     # Step 2 - Dimensionality reduction algorithm
     umap_model = UMAP(
@@ -57,7 +57,7 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
     return train_BERTopic(
         full_dataset=dataset,
         indices=indices,
-        embedding_model=embedding_model,
+        embedding_model_name=embedding_model_name,
         umap_model=umap_model,
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
