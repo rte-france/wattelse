@@ -131,7 +131,7 @@ def train_model():
     ### TRAIN MODEL ###
     if parameters_sidebar_clicked:
         # Train
-        full_dataset =st.session_state["cleaned_df"]
+        full_dataset =st.session_state["raw_df"]
         indices = st.session_state["timefiltered_df"]["index"]
         st.session_state["topic_model"], st.session_state["topics"], _  = train_BERTopic_wrapper(
             dataset=full_dataset,
