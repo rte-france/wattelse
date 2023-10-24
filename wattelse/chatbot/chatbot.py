@@ -16,13 +16,13 @@ from wattelse.chatbot.utils import (
     extract_n_most_relevant_extracts,
     generate_answer_locally,
     generate_answer_remotely,
-    generate_prompt,
+    generate_RAG_prompt,
 )
 from wattelse.common.vars import GPU_SERVERS
 
 ### Parameters ###
 DEFAULT_DATA_FILE = "./data/BP-2019.csv"
-EMBEDDING_MODEL_NAME = "dangvantuan/sentence-camembert-large"
+EMBEDDING_MODEL_NAME = "antoinelouis/biencoder-camembert-base-mmarcoFR"
 INSTRUCT_MODEL_NAME = "bofenghuang/vigogne-2-7b-instruct"
 N = 5  # number of top relevant extracts to include as context in the prompt
 
@@ -124,7 +124,7 @@ def chat(data_file: Path = DEFAULT_DATA_FILE, use_remote_llm: bool = False):
         )
 
         # Generates prompt
-        prompt = generate_prompt(
+        prompt = generate_RAG_prompt(
             query, relevant_extracts
         )
 

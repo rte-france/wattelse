@@ -11,18 +11,23 @@ from loguru import logger
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 
-from wattelse.chatbot.chatbot import initialize_models, load_data
+from wattelse.chatbot.chatbot import EMBEDDING_MODEL_NAME, initialize_models, load_data
 from wattelse.common.text_parsers.extract_text_from_MD import parse_md
 from wattelse.common.text_parsers.extract_text_from_PDF import parse_pdf
 from wattelse.common.text_parsers.extract_text_using_origami import parse_docx
 from wattelse.chatbot.utils import (
     USE_REMOTE_LLM_MODEL,
+    BASE_PROMPT,
     extract_n_most_relevant_extracts,
     generate_answer_locally,
     generate_answer_remotely,
-    generate_prompt,
+    generate_answer_remotely_stream,
+    generate_RAG_prompt,
+    generate_llm_specific_prompt,
+    get_api_model_name,
 )
 from wattelse.common.vars import GPU_SERVERS
+from transformers import AutoTokenizer
 
 DATA_DIR = (
     Path("/data/weak_signals/data/chatbot")
@@ -33,6 +38,8 @@ DATA_DIR = (
 
 DEFAULT_MEMORY_DELAY = 2 # in minutes
 
+API_MODEL_NAME = get_api_model_name()
+API_TOKENIZER = AutoTokenizer.from_pretrained(API_MODEL_NAME, padding_side="right", use_fast=False)
 
 if "prev_selected_file" not in st.session_state:
     st.session_state["prev_selected_file"] = None
@@ -120,36 +127,34 @@ def generate_assistant_response(query):
                                                                st.session_state["similarity_threshold"]
                                                                )
 
-    if st.session_state["provide_explanations"]:
-        response_col, explanations_col = st.columns([2,3], gap="small") # wide column for explanations
-    else:
-        response_col, explanations_col = st.columns([100,1], gap="small")
 
-    with response_col:
+    with st.chat_message("assistant"):
+        # HAL answer GUI initialization
+        message_placeholder = st.empty()
+        message_placeholder.markdown("...")
 
-        with st.chat_message("assistant"):
-            # HAL answer GUI initialization
-            message_placeholder = st.empty()
-            message_placeholder.markdown("...")
+        # Generates prompt
+        prompt = generate_RAG_prompt(query, relevant_extracts, expected_answer_size=st.session_state["expected_answer_size"], custom_prompt=st.session_state["custom_prompt"])
+        prompt = generate_llm_specific_prompt(prompt, API_TOKENIZER)
 
-            # Generates prompt
-            prompt = generate_prompt(query, relevant_extracts, st.session_state["expected_answer_size"])
-
-            # Generation of response
-            if USE_REMOTE_LLM_MODEL:
-                response = generate_answer_remotely(prompt)
-            else:
-                response = generate_answer_locally(
-                    instruct_model, tokenizer, prompt
-            )
-
-            # HAL final response
+        # Generates response
+        if USE_REMOTE_LLM_MODEL:
+            stream_response = generate_answer_remotely_stream(prompt)
+        else:
+            stream_response = generate_answer_locally(
+                instruct_model, tokenizer, prompt
+        )
+            
+        # HAL final response
+        response = ""
+        for chunk in stream_response:
+            response += chunk['choices'][0]['text']
             message_placeholder.markdown(response)
-
-            st.session_state["messages"].append({"role": "assistant", "content": response})
+        st.session_state["messages"].append({"role": "assistant", "content": response})
+        
 
     if st.session_state["provide_explanations"]:
-        with explanations_col:
+        with st.expander("Explanation"):
             for expl, sim in zip(relevant_extracts, sims):
                 with st.chat_message("explanation", avatar="🔑"):
                     # Add score to text explanation
@@ -214,6 +219,8 @@ def on_instruct_prompt_change():
 
 def display_side_bar():
     with st.sidebar.form("parameters_sidebar"):
+        st.markdown(f"**API** : *{get_api_model_name()}*")
+        st.markdown(f"**Embedding** : *{EMBEDDING_MODEL_NAME}*")
         st.title("Parameters")
 
         # Data
@@ -243,10 +250,10 @@ def display_side_bar():
         )
 
         # Memory management
-        st.toggle("Use recent interaction history", value=True, key="remember_recent_messages")
+        st.toggle("Use recent interaction history", value=False, key="remember_recent_messages")
 
         # Relevant references as explanations
-        st.toggle("Provide explanations", value=False, key="provide_explanations")
+        st.toggle("Provide explanations", value=True, key="provide_explanations")
 
         # Number of extracts to be considered
         st.slider("Maximum number of extracts used", min_value=1, max_value=10, value=5, step=1,
@@ -255,7 +262,10 @@ def display_side_bar():
         # Similarity threshold
         st.slider("Similarity threshold for extracts", min_value=0., max_value=1., value=0.4, step=0.05,
                   key="similarity_threshold")
-
+        
+        # Custom prompt
+        st.text_area("Prompt", value=BASE_PROMPT, key="custom_prompt")
+        
         parameters_sidebar_clicked = st.form_submit_button("Apply")
 
         if parameters_sidebar_clicked:
@@ -267,10 +277,14 @@ def display_side_bar():
             info.empty()  # Clear the alert
 
 def display_reset():
-    col1, col2 = st.columns(2, gap="small")
+    col1, col2, col3 = st.columns(3, gap="small")
     with col1:
-        st.button("Clear discussion", on_click=reset_messages_history)
+        def reset_prompt():
+            st.session_state["custom_prompt"] = BASE_PROMPT
+        st.button("Reset prompt", on_click=reset_prompt)
     with col2:
+        st.button("Clear discussion", on_click=reset_messages_history)
+    with col3:
         st.download_button("Export discussion", data=export_history(), file_name="history.json")
 
 
@@ -289,7 +303,6 @@ def main():
         add_user_message_to_session(query)
 
         response = generate_assistant_response(query)
-
         add_to_database(query, response)
 
     display_reset()

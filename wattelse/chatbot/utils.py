@@ -8,7 +8,6 @@ from loguru import logger
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import GenerationConfig
-from vigogne.preprocess import generate_instruct_prompt
 
 config = configparser.ConfigParser()
 config.read(Path(__file__).parent.parent / "config" / "llm_api.cfg")
@@ -18,6 +17,14 @@ OPENAI_URL = config.get("LLM_API_CONFIG", "openai_url")
 
 TEMPERATURE=0.1
 MAX_TOKENS=512
+
+BASE_PROMPT = """Répond à la question en utilisant le contexte fourni.
+Contexte :
+\"\"\"
+{context}
+\"\"\"
+Question : {query}
+La réponse doit être {expected_answer_size} et se baser uniquement sur le contexte. Si le contexte ne contient pas d'éléments permettant de répondre à la question, répondre \"Le contexte ne fourni pas assez d'information pour répondre à la question.\""""
 
 def make_docs_embedding(docs: List[str], embedding_model: SentenceTransformer):
     return embedding_model.encode(docs, show_progress_bar=True)
@@ -35,15 +42,26 @@ def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_
 
     return docs[max_indices].tolist(), similarity[max_indices].tolist()
 
-def generate_prompt(query: str, context_elements: List[str], expected_answer_size="short") -> str:
-    """Generates a specific prompt for the LLM"""
-    context = " ".join(context_elements)
+def generate_RAG_prompt(query: str, context_elements: List[str], expected_answer_size="short", custom_prompt=None) -> str:
+    """
+    Generates RAG prompt using query and context.
+    """
+    context = "\n".join(context_elements)
+    expected_answer_size = "courte" if expected_answer_size=="short" else "détaillée"
+    if custom_prompt:
+        return custom_prompt.format(context=context, query=query, expected_answer_size=expected_answer_size)
+    else:
+        return BASE_PROMPT.format(context=context, query=query, expected_answer_size=expected_answer_size)
 
-    ### MAIN PROMPT ###
-    answer_size = "courte" if expected_answer_size=="short" else "détaillée"
-    base_prompt = f"En utilisant le contexte suivant : {context}\nRépond à la question suivante : {query}. La réponse doit s'appuyer sur le contexte et être {answer_size}."
-
-    return generate_instruct_prompt(base_prompt)
+def generate_llm_specific_prompt(prompt, tokenizer):
+    """
+    Takes a prompt as input and returns the prompt in the LLM specific format.
+    """
+    chat = [{
+            "role": "user",
+            "content": prompt,
+            }]
+    return tokenizer.apply_chat_template(chat, add_generation_prompt=True, tokenize = False)
 
 
 def generate_answer_locally(instruct_model, tokenizer, prompt) -> str:
@@ -68,18 +86,14 @@ def generate_answer_locally(instruct_model, tokenizer, prompt) -> str:
     return generated_text
 
 def generate_answer_remotely(prompt) -> str:
-    """Uses the remote model (API) to generate the answer"""
+    """
+    Uses the remote model (API) to generate the answer. Return full text once generated.
+    """
 
     logger.debug(f"Calling remote LLM service...")
-
+    print(prompt)
     try:
-        # Modify OpenAI's API key and API base to use vLLM's API server.
-        openai.api_key = OPENAI_KEY
-        openai.api_base = OPENAI_URL
-
-        # First model
-        models = openai.Model.list()
-        model = models["data"][0]["id"]
+        model = get_api_model_name()
 
         # Use of completion API
         completion_result = openai.api_resources.Completion.create(
@@ -95,3 +109,41 @@ def generate_answer_remotely(prompt) -> str:
         msg = f"Cannot reach the API endpoint: {OPENAI_URL}. Error: {e}"
         logger.error(msg)
         return msg
+
+def generate_answer_remotely_stream(prompt) -> str:
+    """
+    Uses the remote model (API) to generate the answer. Returns Reponse object streaming output.
+    """
+
+    logger.debug(f"Calling remote LLM service...")
+    print(prompt)
+    try:
+        model = get_api_model_name()
+
+        # Use of completion API
+        completion_result = openai.api_resources.Completion.create(
+            model=model,
+            prompt=prompt,
+            max_tokens=MAX_TOKENS,
+            temperature=TEMPERATURE,
+            stream=True,
+        )
+        return completion_result
+    except Exception as e:
+        msg = f"Cannot reach the API endpoint: {OPENAI_URL}. Error: {e}"
+        logger.error(msg)
+        return msg
+
+def get_api_model_name():
+    """
+    Return currently loaded llm (using vLLM).
+    """
+    try :
+        openai.api_key = OPENAI_KEY
+        openai.api_base = OPENAI_URL
+
+        # First model
+        models = openai.Model.list()
+        return models["data"][0]["id"]
+    except Exception as e:
+        return "API is down"
