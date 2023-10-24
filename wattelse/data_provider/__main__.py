@@ -1,27 +1,40 @@
+import configparser
+import tempfile
 from datetime import timedelta, datetime
 
 import typer
 from loguru import logger
 
+from wattelse.common.vars import FEED_BASE_DIR
 from wattelse.data_provider.arxiv_provider import ArxivProvider
 from wattelse.data_provider.bing_news_provider import BingNewsProvider
 from wattelse.data_provider.google_news_provider import GoogleNewsProvider
 from wattelse.data_provider.newscatcher_provider import NewsCatcherProvider
+
+PROVIDERS = {
+    "arxiv": ArxivProvider,
+    "google": GoogleNewsProvider,
+    "bing": BingNewsProvider,
+    "newscatcher": NewsCatcherProvider,
+}
 
 if __name__ == "__main__":
     app = typer.Typer()
 
     @app.command("scrape")
     def scrape(
-        keywords: str = typer.Argument(None, help="keywords for data search engine."),
-        provider: str = typer.Option("google", help="source for data [arxiv, google, bing, newscatcher]"),
+        keywords: str = typer.Argument(help="keywords for data search engine."),
+        provider: str = typer.Option(
+            "google", help="source for data [arxiv, google, bing, newscatcher]"
+        ),
         after: str = typer.Option(
             None, help="date after which to consider news [format YYYY-MM-DD]"
         ),
         before: str = typer.Option(
             None, help="date before which to consider news [format YYYY-MM-DD]"
         ),
-        max_results: int = typer.Option(50, help="maximum number of results per request"
+        max_results: int = typer.Option(
+            50, help="maximum number of results per request"
         ),
         save_path: str = typer.Option(
             None, help="Path for writing results. File is in jsonl format."
@@ -48,25 +61,22 @@ if __name__ == "__main__":
         -------
 
         """
-        if provider == "arxiv":
-            provider = ArxivProvider()
-        elif provider == "newscatcher":
-            provider = NewsCatcherProvider()
-        elif provider == "bing":
-            provider = BingNewsProvider()
-        else:
-            provider = GoogleNewsProvider()
+        provider_class = PROVIDERS.get(provider)
+        provider = provider_class()
         results = provider.get_articles(keywords, after, before, max_results)
         provider.store_articles(results, save_path)
 
     @app.command("auto-scrape")
     def auto_scrape(
         requests_file: str = typer.Argument(
-            None, help="path of jsonlines input file containing the expected queries."
+            help="path of jsonlines input file containing the expected queries."
         ),
-        max_results: int = typer.Option(50, help="maximum number of results per request"
+        max_results: int = typer.Option(
+            50, help="maximum number of results per request"
         ),
-        provider: str = typer.Option("google", help="source for news [google, bing, newscatcher]"),
+        provider: str = typer.Option(
+            "google", help="source for news [google, bing, newscatcher]"
+        ),
         save_path: str = typer.Option(None, help="Path for writing results."),
     ):
         """Scrape data from Arxiv, Google, Bing news or NewsCatcher (multiple requests from a configuration file: each line of the file shall be compliant with the following format:
@@ -85,14 +95,8 @@ if __name__ == "__main__":
         -------
 
         """
-        if provider == "arxiv":
-            provider = ArxivProvider()
-        elif provider == "newscatcher":
-            provider = NewsCatcherProvider()
-        elif provider == "bing":
-            provider = BingNewsProvider()
-        else:
-            provider = GoogleNewsProvider()
+        provider_class = PROVIDERS.get(provider)
+        provider = provider_class()
         logger.info(f"Opening query file: {requests_file}")
         with open(requests_file) as file:
             try:
@@ -104,23 +108,51 @@ if __name__ == "__main__":
             logger.info(f"Storing {len(results)} articles")
             provider.store_articles(results, save_path)
 
+    @app.command("scrape-feed")
+    def scrape_from_feed(
+        feed_cfg: str = typer.Argument(help="Path of the data feed config file"),
+    ):
+        """Scrape data from Arxiv, Google, Bing news or NewsCatcher on the basis of a feed configuration file"""
+        data_feed_cfg = configparser.ConfigParser()
+        data_feed_cfg.read(feed_cfg)
+        current_date = datetime.today()
+        current_date_str = current_date.strftime("%Y-%m-%d")
+        days_to_subtract = data_feed_cfg.getint("data-feed", "number_of_days")
+        provider = data_feed_cfg.get("data-feed", "provider")
 
+        keywords = data_feed_cfg.get("data-feed", "query")
+        max_results = data_feed_cfg.getint("data-feed", "max_results")
+        before = current_date_str
+        after = (current_date - timedelta(days=days_to_subtract)).strftime("%Y-%m-%d")
+        save_path = (
+            FEED_BASE_DIR
+            / data_feed_cfg.get("data-feed", "feed_dir_path")
+            / f"current_date_str_{data_feed_cfg.get('data-feed', 'id')}.jsonl"
+        )
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Generate a query file
+        with tempfile.NamedTemporaryFile() as query_file:
+            generate_query_file(
+                keywords, after, before, interval=1, save_path=query_file.name
+            )
+            auto_scrape(requests_file=query_file.name, max_results=max_results, provider=provider,
+                        save_path=save_path)
 
     @app.command("generate-query-file")
-    def generate_query_file(keywords: str = typer.Argument(None, help="keywords for news search engine."),
-                            after: str = typer.Option(
-                                None, help="date after which to consider news [format YYYY-MM-DD]"
-                            ),
-                            before: str = typer.Option(
-                                None, help="date before which to consider news [format YYYY-MM-DD]"
-                            ),
-                            save_path: str = typer.Option(
-                                None, help="Path for writing results. File is in jsonl format."
-                            ),
-                            interval: int = typer.Option(
-                                30, help="Range of days of atomic requests"
-                            )
-                            ):
+    def generate_query_file(
+        keywords: str = typer.Argument(help="keywords for news search engine."),
+        after: str = typer.Option(
+            None, help="date after which to consider news [format YYYY-MM-DD]"
+        ),
+        before: str = typer.Option(
+            None, help="date before which to consider news [format YYYY-MM-DD]"
+        ),
+        save_path: str = typer.Option(
+            None, help="Path for writing results. File is in jsonl format."
+        ),
+        interval: int = typer.Option(30, help="Range of days of atomic requests"),
+    ):
         """Generates a query file to be used with the auto-scrape command. This is useful for queries generating many results.
         This will split the broad query into many ones, each one covering an 'interval' (range) in days covered by each atomic
         request.
@@ -144,16 +176,19 @@ if __name__ == "__main__":
         date_format = "%Y-%m-%d"
         start_date = datetime.strptime(after, date_format)
         end_date = datetime.strptime(before, date_format)
-        dates_l = list(_daterange(start_date,  end_date, interval))
+        dates_l = list(_daterange(start_date, end_date, interval))
 
-        with open(save_path, 'a') as query_file:
+        with open(save_path, "a") as query_file:
             for elem in dates_l:
-                query_file.write(f"{keywords};{elem[0].strftime(date_format)};{elem[1].strftime(date_format)}\n")
-
-
+                query_file.write(
+                    f"{keywords};{elem[0].strftime(date_format)};{elem[1].strftime(date_format)}\n"
+                )
 
     def _daterange(start_date, end_date, ndays):
         for n in range(int((end_date - start_date).days / ndays)):
-            yield (start_date + timedelta(ndays * n), start_date + timedelta(ndays * (n + 1)))
+            yield (
+                start_date + timedelta(ndays * n),
+                start_date + timedelta(ndays * (n + 1)),
+            )
 
     app()

@@ -23,9 +23,9 @@ from wattelse.bertopic.utils import (
     parse_literal,
     OUTPUT_DIR,
     TEXT_COLUMN,
-    DATA_DIR,
 )
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
+from wattelse.common.vars import FEED_BASE_DIR
 
 # Config sections
 BERTOPIC_CONFIG_SECTION = "bertopic_config"
@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     def _train_topic_model(config: configparser.ConfigParser, dataset: pd.DataFrame):
         # Step 1 - Embedding model
-        embedding_model = config.get("topic_model.embedding", "model_name")
+        embedding_model_name = config.get("topic_model.embedding", "model_name")
         # Step 2 - Dimensionality reduction algorithm
         umap_model = UMAP(**parse_literal(dict(config["topic_model.umap"])))
         # Step 3 - Clustering algorithm
@@ -175,11 +175,11 @@ if __name__ == "__main__":
     def _load_feed_data(
         data_feed_cfg: configparser.ConfigParser, learning_strategy: str
     ) -> pd.DataFrame:
-        data_dir = data_feed_cfg.get("data-feed", "data_dir_path")
-        logger.info(f"Loading data from feed dir: {DATA_DIR/data_dir}")
+        data_dir = data_feed_cfg.get("data-feed", "feed_dir_path")
+        logger.info(f"Loading data from feed dir: {FEED_BASE_DIR/data_dir}")
         # filter files according to extension and pattern
         list_all_files = glob.glob(
-            f"{DATA_DIR}/{data_dir}/*{data_feed_cfg.get('data-feed', 'id')}*.jsonl*"
+            f"{FEED_BASE_DIR}/{data_dir}/*{data_feed_cfg.get('data-feed', 'id')}*.jsonl*"
         )
         latest_file = max(list_all_files, key=os.path.getctime)
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
         elif learning_strategy == LEARN_FROM_SCRATCH:
             # use all data available in the feed dir
             dfs = [load_data(f) for f in list_all_files]
-            new_df = pd.concat(dfs)
+            new_df = pd.concat(dfs).drop_duplicates(subset=None, keep="first", inplace=False)
             return new_df
 
     def _load_topic_model(model_path_dir: str):
