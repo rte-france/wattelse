@@ -130,10 +130,6 @@ def train_BERTopic(
     cache_path = BASE_CACHE_PATH / f"{embedding_model_name}_{cache_base_name}.pkl"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-    full_dataset = full_dataset.sort_values(
-        by=TIMESTAMP_COLUMN, ascending=False
-    ).reset_index()
-
     logger.debug(f"Using cache: {use_cache}")
     embedding_model = EmbeddingModel(embedding_model_name)
     if cache_path.exists() and use_cache:
