@@ -5,7 +5,6 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from wattelse.summary.summarizer import Summarizer
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
-device="cpu"
 
 #DEFAULT_ABSTRACTIVE_MODEL =  "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
 DEFAULT_ABSTRACTIVE_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
@@ -17,6 +16,7 @@ class AbstractiveSummarizer(Summarizer):
         self.WHITESPACE_HANDLER = lambda k: re.sub('\s+', ' ', re.sub('\n+', ' ', k.strip()))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+        self.model = self.model.to(device)
 
     def generate_summary(self, article_text, max_length_ratio=0.2) -> str:
         inputs = self.tokenizer(
