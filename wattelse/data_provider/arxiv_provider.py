@@ -1,4 +1,5 @@
 import itertools
+from datetime import datetime
 from typing import List, Dict, Optional
 from collections import defaultdict
 
@@ -23,6 +24,9 @@ max_results = float("inf")
 SEMANTIC_SCHOLAR_API_KEY = "q252gwgpRVAb49CWJqde3TEr6VjzXyc8P8RcGCo2"
 PAPERS_PER_REQUEST = 500  # should not be more than 500
 SEMANTIC_SCHOLAR_FIELDS = "title,abstract,citationCount,publicationDate,url"
+
+DATE_FORMAT_YYYYMMDD = "%Y-%m-%d"
+DATE_FORMAT_YYYYMMDD_TIME = "%Y-%m-%d %H:%M:%S"
 
 
 class ArxivProvider(DataProvider):
@@ -55,6 +59,9 @@ class ArxivProvider(DataProvider):
         -------
         A list of dict entries, each one describing an article
         """
+        begin = datetime.strptime(after, DATE_FORMAT_YYYYMMDD)
+        end = datetime.strptime(before, DATE_FORMAT_YYYYMMDD)
+
         logger.info(f"Querying Arxiv: {query}")
         entries = list(
             self.client.results(
@@ -67,7 +74,12 @@ class ArxivProvider(DataProvider):
             )
         )
         logger.info(f"Returned: {len(entries)} entries")
-        results = [self._parse_entry(res) for res in entries]
+
+        results = [self._parse_entry(res) for res in entries ]
+        # post-filtering by date
+        results = [res for res in results if  begin <= datetime.strptime(res["timestamp"],DATE_FORMAT_YYYYMMDD_TIME) <= end]
+
+        # add citations count
         return self.add_citations_count([res for res in results if res is not None])
 
     def _parse_entry(self, entry: arxiv.Result) -> Optional[Dict]:
@@ -125,5 +137,4 @@ class ArxivProvider(DataProvider):
             # careful, order is important, semantic_scholar_items may contain less items than entries
             d[item["title"]].update(item)
         new_entries = list(d.values())
-
         return new_entries

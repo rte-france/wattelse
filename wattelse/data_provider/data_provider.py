@@ -60,6 +60,8 @@ class DataProvider(ABC):
         for entry in queries_batch:
             logger.info(f"Processing query: {entry}")
             articles += self.get_articles(entry[0], entry[1], entry[2], max_results)
+        # remove duplicates
+        articles = [dict(t) for t in {tuple(d.items()) for d in articles}]
         logger.info(f"Collected {len(articles)} articles")
         return articles
 
@@ -76,7 +78,7 @@ class DataProvider(ABC):
         with jsonlines.open(file_path, 'w') as writer:
             writer.write_all(data)
 
-        logger.debug(f"Data stored to {file_path} [{len(data)} entries].")
+        logger.info(f"Data stored to {file_path} [{len(data)} entries].")
 
     def load_articles(self, file_path: Path) -> pd.DataFrame:
         """Read articles serialized as json files and provide an associated dataframe"""

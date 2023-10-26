@@ -26,11 +26,10 @@ class GPTSummarizer(Summarizer):
     def num_tokens_from_string(self, string: str) -> int:
         """Returns the number of tokens in a text string."""
         num_tokens = len(self.encoding.encode(string))
-        print(num_tokens)
         return num_tokens
 
     def generate_summary(self, article_text, max_length_ratio=0.1) -> str:
-        answer = openai.Completion.create(
+        answer = openai.ChatCompletion.create(
             model=MODEL,
             prompt=BASE_PROMPT_SUMMARY + article_text,
             max_tokens=round(self.num_tokens_from_string(article_text)*max_length_ratio),

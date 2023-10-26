@@ -137,7 +137,6 @@ if __name__ == "__main__":
             query described as keywords
         after: str
             "from" date, formatted as YYYY-MM-DD
-            
         before: str
             "to" date, formatted as YYYY-MM-DD
         save_path: str
@@ -190,15 +189,18 @@ if __name__ == "__main__":
 
         # Generate a query file
         with tempfile.NamedTemporaryFile() as query_file:
-            generate_query_file(
-                keywords, after, before, interval=1, save_path=query_file.name
-            )
-            auto_scrape(
-                requests_file=query_file.name,
-                max_results=max_results,
-                provider=provider,
-                save_path=save_path,
-            )
+            if provider == "arxiv":  # already returns batches
+                scrape(keywords = keywords, provider=provider, after= after, before=before, max_results=max_results, save_path=save_path)
+            else:
+                generate_query_file(
+                    keywords, after, before, interval=1, save_path=query_file.name
+                )
+                auto_scrape(
+                    requests_file=query_file.name,
+                    max_results=max_results,
+                    provider=provider,
+                    save_path=save_path,
+                )
 
     @app.command("schedule-scrapping")
     def schedule_scrapping(
