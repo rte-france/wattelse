@@ -1,1 +1,1 @@
-BASE_PROMPT_SUMMARY = "Écris un résumé du texte suivant en quelques phrases :\n"
+BASE_PROMPT_SUMMARY = "Résume le texte suivant en quelques phrases seulement :\n"

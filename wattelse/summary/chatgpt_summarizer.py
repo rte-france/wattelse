@@ -28,12 +28,12 @@ class GPTSummarizer(Summarizer):
         num_tokens = len(self.encoding.encode(string))
         return num_tokens
 
-    def generate_summary(self, article_text, max_length_ratio=0.1) -> str:
-        answer = openai.ChatCompletion.create(
+    def generate_summary(self, article_text, max_length_ratio=0.3) -> str:
+        answer = openai.Completion.create(
             model=MODEL,
             prompt=BASE_PROMPT_SUMMARY + article_text,
-            max_tokens=round(self.num_tokens_from_string(article_text)*max_length_ratio),
-            temperature=TEMPERATURE,
+            max_tokens = round(self.num_tokens_from_string(article_text)*max_length_ratio),
+            temperature = TEMPERATURE,
         )
         logger.debug(f"API returned: {answer}")
         return answer.choices[0].text
