@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
     @app.command("scrape-feed")
     def scrape_from_feed(
-        feed_cfg: Path = typer.Argument(help="Path of the data feed config file"),
+        feed_cfg: str = typer.Argument(help="Path of the data feed config file"),
     ):
         """Scrape data from Arxiv, Google, Bing news or NewsCatcher on the basis of a feed configuration file"""
         data_feed_cfg = configparser.ConfigParser()
@@ -202,7 +202,7 @@ if __name__ == "__main__":
 
     @app.command("schedule-scrapping")
     def schedule_scrapping(
-        feed_cfg: str = typer.Argument(help="Path of the data feed config file"),
+        feed_cfg: Path = typer.Argument(help="Path of the data feed config file"),
     ):
         """Schedule data scrapping on the basis of a feed configuration file"""
         data_feed_cfg = configparser.ConfigParser()
