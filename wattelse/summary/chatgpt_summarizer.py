@@ -21,6 +21,7 @@ class GPTSummarizer(Summarizer):
         openai.api_key = config.get("OPENAI_CONFIG", "openai_key")
         openai.organization = config.get("OPENAI_CONFIG", "openai_organization")
         self.encoding = tiktoken.encoding_for_model(MODEL)
+        logger.debug("GPTSummarizer initialized")
 
     def num_tokens_from_string(self, string: str) -> int:
         """Returns the number of tokens in a text string."""

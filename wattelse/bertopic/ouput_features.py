@@ -31,14 +31,17 @@ def generate_newsletter(
     md_lines = [f"# {newsletter_title}"]
     # Get most represented docs per topic
     for i in range(top_n_topics):
-        sub_df = df_split.loc[pd.Series(topics) == i]
-        sub_df = (
-            sub_df.groupby(["title"])
-            .size()
-            .reset_index(name="counts")
-            .sort_values("counts", ascending=False)
-            .iloc[0:top_n_docs]
-        )
+        if df_split is None:
+            sub_df = df
+        else:
+            sub_df = df_split.loc[pd.Series(topics) == i]
+            sub_df = (
+                sub_df.groupby(["title"])
+                .size()
+                .reset_index(name="counts")
+                .sort_values("counts", ascending=False)
+                .iloc[0:top_n_docs]
+            )
         sub_df = df[df["title"].isin(sub_df["title"])]
         md_lines.append(
             f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"

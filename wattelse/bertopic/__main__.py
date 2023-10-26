@@ -107,6 +107,8 @@ if __name__ == "__main__":
                     model_path,
                 )
 
+        logger.debug(f"Number of topics: {topic_model.get_topic_info()[1:]}")
+
         summarizer_class = locate(newsletter_params.get("summarizer_class"))
 
         # generate newsletter
@@ -115,7 +117,7 @@ if __name__ == "__main__":
             topic_model,
             dataset,
             topics,
-            df_split=dataset,  # FIXME! check behaviour
+            df_split=None,
             top_n_topics=newsletter_params.getliteral("top_n_topics"),
             top_n_docs=newsletter_params.getliteral("top_n_docs"),
             newsletter_title=newsletter_params.get("title"),
