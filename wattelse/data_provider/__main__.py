@@ -137,6 +137,7 @@ if __name__ == "__main__":
             query described as keywords
         after: str
             "from" date, formatted as YYYY-MM-DD
+            
         before: str
             "to" date, formatted as YYYY-MM-DD
         save_path: str
@@ -209,7 +210,7 @@ if __name__ == "__main__":
         schedule = data_feed_cfg.get("data-feed", "update_frequency")
         proxy = os.getenv("https_proxy")
         home = os.getenv("HOME")
-        command = f"http_proxy='{proxy}' https_proxy='{proxy}'  {sys.prefix}/bin/python -m wattelse.data_provider scrape-feed {feed_cfg} > {LOG_DIR}/cron_feeds.log 2>&1"
+        command = f"http_proxy='{proxy}' https_proxy='{proxy}'  {sys.prefix}/bin/python -m wattelse.data_provider scrape-feed {feed_cfg.resolve()} > {LOG_DIR}/cron_feeds.log 2>&1"
 
         add_job_to_crontab(schedule, command)
 

@@ -10,9 +10,9 @@ FEED_BASE_DIR = (
 )
 
 LOG_DIR = (
-    Path("/data/weak_signals/log/bertopic/")
+    Path("/data/weak_signals/log/")
     if socket.gethostname() in GPU_SERVERS
-    else Path(__file__).parent.parent.parent / "log" / "bertopic"
+    else Path(__file__).parent.parent.parent / "log"
 )
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)
