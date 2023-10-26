@@ -10,7 +10,7 @@ Follow the model in `bertopic/config/newsletters`
 
 Follow the model in `bertopic/config/feeds`
 
-### One-shot creation
+## One-shot creation
 
 ```
 (weak_signals) jerome@linux:~/dev/weak-signals$ CUDA_VISIBLE_DEVICES=0 python -m wattelse.bertopic newsletter --help
@@ -32,7 +32,19 @@ Follow the model in `bertopic/config/feeds`
 ```
 
 
-### Periodic creations
+## Periodic creations
 
-TBD
+### New automatic feed installation
 
+Follow this example
+```
+(weak_signals) jerome@groesplu0:~/dev/weak-signals$ python -m wattelse.data_provider schedule-scrapping wattelse/config/feeds/arxiv_feed.cfg 
+
+```
+
+### New automatic newsletter installation
+
+Follow this example
+```
+(weak_signals) jerome@groesplu0:~/dev/weak-signals$ python -m wattelse.bertopic schedule-newsletter wattelse/config/newsletters/arxiv_newsletter_from_scratch.cfg wattelse/config/feeds/arxiv_feed.cfg 
+```
