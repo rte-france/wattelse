@@ -1,12 +1,12 @@
 import configparser
 import os
-import subprocess
 import sys
 import tempfile
 from datetime import timedelta, datetime
 
 import typer
 from loguru import logger
+from pathlib import Path
 
 from wattelse.common.utils import add_job_to_crontab
 from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
     @app.command("scrape-feed")
     def scrape_from_feed(
-        feed_cfg: str = typer.Argument(help="Path of the data feed config file"),
+        feed_cfg: Path = typer.Argument(help="Path of the data feed config file"),
     ):
         """Scrape data from Arxiv, Google, Bing news or NewsCatcher on the basis of a feed configuration file"""
         data_feed_cfg = configparser.ConfigParser()
