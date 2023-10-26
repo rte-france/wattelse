@@ -221,6 +221,8 @@ if __name__ == "__main__":
             help="Path to newsletter config file"
         ),
         data_feed_cfg_path: Path = typer.Argument(help="Path to data feed config file"),
+        cuda_devices: str = typer.Option(
+            "1", help="CUDA_VISIBLE_DEVICES parameters")
     ):
         """
         Install in crontab an automatic newsletter creation
@@ -231,7 +233,7 @@ if __name__ == "__main__":
         schedule = newsletter_cfg.get(NEWSLETTER_SECTION, "update_frequency")
         proxy = os.getenv("https_proxy")
         home = os.getenv("HOME")
-        command = f"http_proxy='{proxy}' https_proxy='{proxy}' {sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {LOG_DIR}/cron_newsletters.log 2>&1"
+        command = f"CUDA_VISIBLE_DEVICES={cuda_devices} http_proxy='{proxy}' https_proxy='{proxy}' {sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {LOG_DIR}/cron_newsletters.log 2>&1"
 
         add_job_to_crontab(schedule, command)
 
