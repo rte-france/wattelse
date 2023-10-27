@@ -69,6 +69,30 @@ def export_md_string(newsletter_md: str, path: Path, format="md"):
     # elif format == "pdf":
     #    md2pdf(path, md_content=newsletter_md)
     elif format == "html":
-        result = markdown.markdown(newsletter_md)
+        result = md2html(newsletter_md, Path(__file__).parent / "newsletter.css")
         with open(path, "w") as f:
             f.write(result)
+
+
+def md2html(md: str, css_style: Path = None) -> str:
+    html_result = markdown.markdown(md)
+    if not css_style:
+        return html_result
+    output = """<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <style type="text/css">
+    """
+    cssin = open(css_style)
+    output += cssin.read()
+    output += """
+        </style>
+    </head>
+    <body>
+    """
+    output += html_result
+    output += """</body>
+    </html>
+    """
+    return output
