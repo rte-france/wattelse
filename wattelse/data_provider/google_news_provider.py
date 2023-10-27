@@ -27,7 +27,7 @@ class GoogleNewsProvider(DataProvider):
         super().__init__()
         self.gn = GoogleNews(lang = 'fr', country = 'FR')
 
-    @wait(0.2)
+    @wait(1)
     def get_articles(self, keywords: str, after: str, before: str, max_results: int) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
         #FIXME: this may be blocked by google

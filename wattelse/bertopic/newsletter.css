@@ -1,10 +1,8 @@
 /* inspired by https://codepen.io/vedadesigns/pen/GPxYZg */
 
-
 body {
    width:70%;
    margin:0 auto;
-   padding:100px
 }
 
 h1 {
@@ -80,14 +78,16 @@ h2:after {
   bottom: 2px;
   height: 1px;
   width: 95%;
-  max-width: 255px;
+  max-width: 90%;
   background-color: #333;
 }
 
-
 p { color: #222; font-family: "Raleway", sans-serif; font-size: 15px; font-weight: 400; line-height: 24px; margin: 0 0 14px; }
 
-a { background: #fff; color: #222; text-decoration: none; }
+a { background: #fff; color: #222; font-family: "Raleway", sans-serif; font-size: 15px; text-decoration: none; }
+
+a:visited {
+  color: purple;
+}
 
 a:hover { background: #c50000; color: #eee; text-decoration: none; }
-
