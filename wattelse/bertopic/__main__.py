@@ -233,8 +233,9 @@ if __name__ == "__main__":
         newsletter_cfg = configparser.ConfigParser()
         newsletter_cfg.read(newsletter_cfg_path)
         schedule = newsletter_cfg.get(NEWSLETTER_SECTION, "update_frequency")
+        id = newsletter_cfg.get(NEWSLETTER_SECTION, "id")
         proxy = os.getenv("https_proxy")
-        command = f"{sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {LOG_DIR}/cron_newsletters.log 2>&1"
+        command = f"{sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {LOG_DIR}/cron_newsletter_{id}.log 2>&1"
         env_vars = f"CUDA_VISIBLE_DEVICES={cuda_devices} http_proxy='{proxy}' https_proxy='{proxy}'"
         add_job_to_crontab(schedule, command, env_vars)
 
