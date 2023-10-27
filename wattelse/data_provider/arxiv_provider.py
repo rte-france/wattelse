@@ -8,6 +8,7 @@ import arxiv
 from loguru import logger
 import requests
 
+from wattelse.bertopic.utils import TEXT_COLUMN
 from wattelse.data_provider.data_provider import DataProvider
 from wattelse.data_provider.utils import wait
 
@@ -128,7 +129,6 @@ class ArxivProvider(DataProvider):
             ))[0]
 
         # merge semantic scholar entries with arxiv entries
-        l = semantic_scholar_items_list
 
         # update values of entries
         d = defaultdict(dict)
@@ -136,5 +136,8 @@ class ArxivProvider(DataProvider):
         for item in semantic_scholar_items_list + entries:
             # careful, order is important, semantic_scholar_items may contain less items than entries
             d[item["title"]].update(item)
-        new_entries = list(d.values())
+
+        # filter out possible missing values
+        new_entries = [item for item in list(d.values()) if TEXT_COLUMN in item.keys()]
+
         return new_entries
