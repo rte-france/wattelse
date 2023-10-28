@@ -107,7 +107,7 @@ if __name__ == "__main__":
                     model_path,
                 )
 
-        logger.debug(f"Number of topics: {topic_model.get_topic_info()[1:]}")
+        logger.debug(f"Number of topics: {len(topic_model.get_topic_info()[1:])}")
 
         summarizer_class = locate(newsletter_params.get("summarizer_class"))
 

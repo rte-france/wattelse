@@ -1,11 +1,10 @@
-import markdown
 import streamlit as st
+from pathlib import Path
 
-from wattelse.bertopic.ouput_features import generate_newsletter
+from wattelse.bertopic.ouput_features import generate_newsletter, md2html
 from wattelse.bertopic.utils import load_data
 from wattelse.bertopic.app.state_utils import restore_widget_state
 from wattelse.bertopic.utils import DATA_DIR
-from wattelse.summary.chatgpt_summarizer import GPTSummarizer
 
 restore_widget_state()
 
@@ -22,5 +21,9 @@ if st.button("Generate newsletter"):
         st.session_state["topics"],
         df_split=st.session_state["timefiltered_df"],
     )
-    #st.markdown(md)
-    st.components.v1.html(markdown.markdown(md), height=800, scrolling=True)
+    # st.markdown(md)
+    st.components.v1.html(
+        md2html(md, Path(__file__).parent.parent.parent / "newsletter.css"),
+        height=800,
+        scrolling=True,
+    )
