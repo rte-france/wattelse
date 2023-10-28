@@ -26,6 +26,7 @@ from wattelse.bertopic.utils import (
     TEXT_COLUMN,
 )
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
+from wattelse.common.mail_utils import get_credentials, send_email
 from wattelse.common.utils import add_job_to_crontab
 from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
 
@@ -113,6 +114,7 @@ if __name__ == "__main__":
 
         # generate newsletter
         logger.info(f"Generating newsletter...")
+        title = newsletter_params.get("title")
         newsletter_md = generate_newsletter(
             topic_model,
             dataset,
@@ -120,23 +122,35 @@ if __name__ == "__main__":
             df_split=None,
             top_n_topics=newsletter_params.getliteral("top_n_topics"),
             top_n_docs=newsletter_params.getliteral("top_n_docs"),
-            newsletter_title=newsletter_params.get("title"),
+            newsletter_title=title,
             summarizer_class=summarizer_class,
         )
 
         output_dir = OUTPUT_DIR / newsletter_params.get("output_directory")
-
+        output_format = newsletter_params.get("output_format")
         output_path = (
             output_dir
             / f"{datetime.today().strftime('%Y-%m-%d')}_{newsletter_params.get('id')}"
-            f"_{data_feed_cfg.get('data-feed','id')}.{newsletter_params.get('output_format')}"
+            f"_{data_feed_cfg.get('data-feed','id')}.{output_format}"
         )
         export_md_string(
-            newsletter_md, output_path, format=newsletter_params.get("output_format")
+            newsletter_md, output_path, format=output_format
         )
         logger.info(
-            f"Newsletter exported in {newsletter_params.get('output_format')} format: {output_path}"
+            f"Newsletter exported in {output_format} format: {output_path}"
         )
+
+        # send newsletter by email
+        recipients = newsletter_params.getliteral("recipients", [])
+        if recipients:
+            credentials = get_credentials()
+            with open(output_path, "r") as file:
+                # Read the entire contents of the file into a string
+                content = file.read()
+            send_email(
+                credentials, title, recipients, content, output_format
+            )
+            logger.info(f"Newsletter sent to: {recipients}")
 
     def _train_topic_model(config: configparser.ConfigParser, dataset: pd.DataFrame):
         # Step 1 - Embedding model
@@ -223,8 +237,7 @@ if __name__ == "__main__":
             help="Path to newsletter config file"
         ),
         data_feed_cfg_path: Path = typer.Argument(help="Path to data feed config file"),
-        cuda_devices: str = typer.Option(
-            "1", help="CUDA_VISIBLE_DEVICES parameters")
+        cuda_devices: str = typer.Option("1", help="CUDA_VISIBLE_DEVICES parameters"),
     ):
         """
         Install in crontab an automatic newsletter creation
