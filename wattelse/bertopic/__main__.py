@@ -24,6 +24,8 @@ from wattelse.bertopic.utils import (
     parse_literal,
     OUTPUT_DIR,
     TEXT_COLUMN,
+    TIMESTAMP_COLUMN,
+    split_df_by_paragraphs,
 )
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
 from wattelse.common.mail_utils import get_credentials, send_email
@@ -70,6 +72,7 @@ if __name__ == "__main__":
         logger.info(f"Loading dataset...")
         learning_type = learning_strategy.get("learning_strategy", INFERENCE_ONLY)
         model_path = learning_strategy.get("bertopic_model_path", None)
+        split_data_by_paragraphs= learning_strategy.getboolean("split_data_by_paragraphs", False)
         if model_path:
             model_path = OUTPUT_DIR / model_path
         if learning_type == INFERENCE_ONLY and (
@@ -79,10 +82,26 @@ if __name__ == "__main__":
 
         logger.info(f"Learning strategy: {learning_type}")
 
-        dataset = (
+        original_dataset = (
             _load_feed_data(data_feed_cfg, learning_type)
             .reset_index(drop=True)
             .reset_index()
+        )
+
+        # split data by paragraphs if required
+        dataset = (
+            (
+                split_df_by_paragraphs(original_dataset)
+                .drop("index", axis=1)
+                .sort_values(
+                    by=TIMESTAMP_COLUMN,
+                    ascending=False,
+                )
+                .reset_index(drop=True)
+                .reset_index()
+            )
+            if split_data_by_paragraphs
+            else original_dataset
         )
 
         logger.info(f"Dataset size: {len(dataset.index)}")
@@ -116,10 +135,10 @@ if __name__ == "__main__":
         logger.info(f"Generating newsletter...")
         title = newsletter_params.get("title")
         newsletter_md = generate_newsletter(
-            topic_model,
-            dataset,
-            topics,
-            df_split=None,
+            topic_model=topic_model,
+            df=original_dataset,
+            topics=topics,
+            df_split=dataset if split_data_by_paragraphs else None,
             top_n_topics=newsletter_params.getliteral("top_n_topics"),
             top_n_docs=newsletter_params.getliteral("top_n_docs"),
             newsletter_title=title,
@@ -133,12 +152,8 @@ if __name__ == "__main__":
             / f"{datetime.today().strftime('%Y-%m-%d')}_{newsletter_params.get('id')}"
             f"_{data_feed_cfg.get('data-feed','id')}.{output_format}"
         )
-        export_md_string(
-            newsletter_md, output_path, format=output_format
-        )
-        logger.info(
-            f"Newsletter exported in {output_format} format: {output_path}"
-        )
+        export_md_string(newsletter_md, output_path, format=output_format)
+        logger.info(f"Newsletter exported in {output_format} format: {output_path}")
 
         # send newsletter by email
         recipients = newsletter_params.getliteral("recipients", [])
@@ -147,9 +162,7 @@ if __name__ == "__main__":
             with open(output_path, "r") as file:
                 # Read the entire contents of the file into a string
                 content = file.read()
-            send_email(
-                credentials, title, recipients, content, output_format
-            )
+            send_email(credentials, title, recipients, content, output_format)
             logger.info(f"Newsletter sent to: {recipients}")
 
     def _train_topic_model(config: configparser.ConfigParser, dataset: pd.DataFrame):
