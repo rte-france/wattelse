@@ -14,7 +14,7 @@ def generate_newsletter(
     df_split=None,
     top_n_topics=5,
     top_n_docs=3,
-    top_n_docs_mode="ctfidf_representation",
+    top_n_docs_mode="cluster_probability",
     newsletter_title="Newsletter",
     summarizer_class=wattelse.summary.abstractive_summarizer.AbstractiveSummarizer,
 ) -> str:
