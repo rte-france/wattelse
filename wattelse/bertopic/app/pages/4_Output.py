@@ -14,12 +14,19 @@ if "topic_model" not in st.session_state.keys():
     st.stop()
 
 # Automatic newsletter
+
+if st.session_state["split_by_paragraphs"]:
+    df = load_data(f"{DATA_DIR}/{st.session_state['data_name']}")
+    df_split = st.session_state["timefiltered_df"]
+else:
+    df = st.session_state["timefiltered_df"]
+    df_split = None
 if st.button("Generate newsletter"):
     md = generate_newsletter(
         st.session_state["topic_model"],
-        load_data(f"{DATA_DIR}/{st.session_state['data_name']}"),
+        df,
         st.session_state["topics"],
-        df_split=st.session_state["timefiltered_df"],
+        df_split=df_split,
     )
     # st.markdown(md)
     st.components.v1.html(

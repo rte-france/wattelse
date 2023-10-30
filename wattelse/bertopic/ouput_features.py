@@ -4,15 +4,17 @@ from pathlib import Path
 # from md2pdf.core import md2pdf
 import markdown
 import wattelse.summary.abstractive_summarizer
+from wattelse.bertopic.app.app_utils import get_most_representative_docs
 
 
 def generate_newsletter(
-    _topic_model,
+    topic_model,
     df,
     topics,
     df_split=None,
     top_n_topics=5,
     top_n_docs=3,
+    top_n_docs_mode="ctfidf_representation",
     newsletter_title="Newsletter",
     summarizer_class=wattelse.summary.abstractive_summarizer.AbstractiveSummarizer,
 ) -> str:
@@ -23,29 +25,18 @@ def generate_newsletter(
     summarizer = summarizer_class()
 
     # Ensure top_n_topics is smaller than number of topics
-    topics_info = _topic_model.get_topic_info()[1:]
+    topics_info = topic_model.get_topic_info()[1:]
     if len(topics_info) < top_n_topics:
         top_n_topics = len(topics_info)
 
     # Store each line in a list
     md_lines = [f"# {newsletter_title}"]
-    # Get most represented docs per topic
+    # Iterate over topics
     for i in range(top_n_topics):
-        if df_split is None:
-            sub_df = df
-        else:
-            sub_df = df_split.loc[pd.Series(topics) == i]
-            sub_df = (
-                sub_df.groupby(["title"])
-                .size()
-                .reset_index(name="counts")
-                .sort_values("counts", ascending=False)
-                .iloc[0:top_n_docs]
-            )
-        sub_df = df[df["title"].isin(sub_df["title"])]
         md_lines.append(
             f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
         )
+        sub_df = get_most_representative_docs(topic_model, df, topics, mode=top_n_docs_mode, df_split=df_split, topic_number=i, top_n_docs=top_n_docs)            
         for _, doc in sub_df.iterrows():
             # Generates summary for article
             summary = summarizer.generate_summary(doc.text)
@@ -59,7 +50,6 @@ def generate_newsletter(
     # Write full file
     md_content = "\n\n".join(md_lines)
     return md_content
-
 
 def export_md_string(newsletter_md: str, path: Path, format="md"):
     path.parent.mkdir(parents=True, exist_ok=True)
