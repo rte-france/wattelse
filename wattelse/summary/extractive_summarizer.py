@@ -1,5 +1,6 @@
 from typing import List, Optional, Callable
 
+import nltk
 import numpy as np
 import torch
 from loguru import logger
@@ -16,6 +17,8 @@ DEFAULT_SUMMARIZER_MODEL = "camembert-base"
 DEFAULT_LENGTH_SUMMARY = 3
 DEFAULT_RATIO_SUMMARY = 0.33
 DEFAULT_CHUNKS_NUMBER_SUMMARY = 6
+
+nltk.download('punkt')
 
 class ExtractiveSummarizer(Summarizer):
 
@@ -285,7 +288,7 @@ class ExtractiveSummarizer(Summarizer):
 
         """
         # Compute the pair-wise cosine similarities
-        cos_scores = util.pytorch_cos_sim(embeddings, embeddings).numpy()
+        cos_scores = util.pytorch_cos_sim(embeddings, embeddings).cpu().numpy()
         return self._summarize_based_on_cos_scores(cos_scores, summary_size)
 
     def check_paraphrase(self, sentences: List[str]):
