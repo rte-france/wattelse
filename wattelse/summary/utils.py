@@ -1,1 +1,0 @@
-BASE_PROMPT_SUMMARY = "Résume le texte suivant en quelques phrases seulement :\n"
