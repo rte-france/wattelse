@@ -3,7 +3,7 @@ from vigogne.preprocess import generate_inference_chat_prompt
 
 from wattelse.chatbot.utils import generate_answer_remotely
 from wattelse.summary.summarizer import Summarizer
-from wattelse.summary.utils import BASE_PROMPT_SUMMARY
+from wattelse.summary.prompts import BASE_PROMPT_SUMMARY
 
 TOKENIZER = AutoTokenizer.from_pretrained("bofenghuang/vigogne-2-7b-chat", revision="v2.0", padding_side="right", use_fast=False)
 
