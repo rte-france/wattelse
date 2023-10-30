@@ -7,7 +7,8 @@ from wattelse.summary.summarizer import Summarizer
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 #DEFAULT_ABSTRACTIVE_MODEL =  "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
-DEFAULT_ABSTRACTIVE_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
+#DEFAULT_ABSTRACTIVE_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
+DEFAULT_ABSTRACTIVE_MODEL = "facebook/mbart-large-50"
 
 class AbstractiveSummarizer(Summarizer):
     ## class that performs auto summary using T multi langual model
