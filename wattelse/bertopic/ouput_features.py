@@ -32,8 +32,7 @@ def generate_newsletter(
     # Get most represented docs per topic
     for i in range(top_n_topics):
         if df_split is None:
-            # FIXME: temporary hack to limit size of output! (random output)
-            sub_df = df.sample(top_n_docs)
+            sub_df = df
         else:
             sub_df = df_split.loc[pd.Series(topics) == i]
             sub_df = (
