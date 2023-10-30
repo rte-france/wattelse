@@ -86,10 +86,11 @@ def get_hash(data: Any) -> str:
 
 def split_df_by_paragraphs(dataset: pd.DataFrame):
     """Split texts into multiple paragraphs and returns a concatenation of all extracts as a new pandas DF"""
-    dataset[TEXT_COLUMN] = dataset[TEXT_COLUMN].str.split("\n")
-    dataset = dataset.explode(TEXT_COLUMN)
-    dataset = dataset[dataset[TEXT_COLUMN] != ""].reset_index(drop=True)
-    return dataset
+    df = dataset.copy() # to avoid modifying the original dataframe
+    df[TEXT_COLUMN] = df[TEXT_COLUMN].str.split("\n")
+    df = df.explode(TEXT_COLUMN)
+    df = df[df[TEXT_COLUMN] != ""].reset_index(drop=True)
+    return df
 
 
 def parse_literal(expr: Any) -> Any:
