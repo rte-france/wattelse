@@ -3,6 +3,7 @@
 # use the option "--load-8bit" to launch it in 8-bit mode
 
 MODEL=bofenghuang/vigogne-2-7b-chat
+#MODEL=mistralai/Mistral-7B-Instruct-v0.1
 #MODEL=bofenghuang/vigogne-2-13b-instruct
 
 HOST=localhost

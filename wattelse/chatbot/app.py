@@ -10,22 +10,18 @@ from loguru import logger
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 
-from wattelse.chatbot.chatbot import EMBEDDING_MODEL_NAME, initialize_models, load_data
 from wattelse.common.text_parsers.extract_text_from_MD import parse_md
 from wattelse.common.text_parsers.extract_text_from_PDF import parse_pdf
 from wattelse.common.text_parsers.extract_text_using_origami import parse_docx
 from wattelse.chatbot.utils import (
-    USE_REMOTE_LLM_MODEL,
     BASE_PROMPT,
     extract_n_most_relevant_extracts,
-    generate_answer_locally,
-    generate_answer_remotely_stream,
     generate_RAG_prompt,
-    generate_llm_specific_prompt,
-    get_api_model_name,
+    load_data,
 )
 from wattelse.common.vars import BASE_DATA_DIR
-from transformers import AutoTokenizer
+from wattelse.llm.vllm_api import vLLM_API
+from sentence_transformers import SentenceTransformer
 
 DATA_DIR = BASE_DATA_DIR / "chatbot"
 
@@ -33,19 +29,27 @@ DATA_DIR = BASE_DATA_DIR / "chatbot"
 
 DEFAULT_MEMORY_DELAY = 2  # in minutes
 
-API_MODEL_NAME = get_api_model_name()
-API_TOKENIZER = AutoTokenizer.from_pretrained(
-    API_MODEL_NAME, padding_side="right", use_fast=False
-)
+# Generation model API parameters
+API = vLLM_API()
+TEMPERATURE = 0.1
+MAX_TOKENS = 512
+
+# Embedding model parameters
+EMBEDDING_MODEL_NAME = "antoinelouis/biencoder-camembert-base-mmarcoFR"
 
 if "prev_selected_file" not in st.session_state:
     st.session_state["prev_selected_file"] = None
 
 
 @st.cache_resource
-def initialize():
-    """Streamlit wrapper to manage data caching"""
-    return initialize_models(USE_REMOTE_LLM_MODEL)
+def initialize_embedding_model():
+    """Load embedding_model"""
+    logger.info("Initializing embedding model...")
+    embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    # Fix model max input length issue
+    if embedding_model.max_seq_length == 514:
+        embedding_model.max_seq_length = 512
+    return embedding_model
 
 
 def initialize_data(data_path: Path):
@@ -66,7 +70,7 @@ def initialize_db():
 
 
 # initialize models
-embedding_model, tokenizer, instruct_model = initialize()
+embedding_model = initialize_embedding_model()
 
 # initialize DB
 db_table = initialize_db()
@@ -148,13 +152,9 @@ def generate_assistant_response(query):
             expected_answer_size=st.session_state["expected_answer_size"],
             custom_prompt=st.session_state["custom_prompt"],
         )
-        prompt = generate_llm_specific_prompt(prompt, API_TOKENIZER)
 
         # Generates response
-        if USE_REMOTE_LLM_MODEL:
-            stream_response = generate_answer_remotely_stream(prompt)
-        else:
-            stream_response = generate_answer_locally(instruct_model, tokenizer, prompt)
+        stream_response = API.generate(prompt, temperature=TEMPERATURE, max_tokens=MAX_TOKENS, stream=True)
 
         # HAL final response
         response = ""
@@ -242,7 +242,7 @@ def on_instruct_prompt_change():
 
 def display_side_bar():
     with st.sidebar.form("parameters_sidebar"):
-        st.markdown(f"**API** : *{get_api_model_name()}*")
+        st.markdown(f"**API** : *{API.model_name}*")
         st.markdown(f"**Embedding** : *{EMBEDDING_MODEL_NAME}*")
         st.title("Parameters")
 

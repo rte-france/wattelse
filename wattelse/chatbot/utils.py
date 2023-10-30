@@ -1,19 +1,17 @@
-import configparser
 from pathlib import Path
 from typing import List
+import pickle
+import sys
+import socket
 
 import numpy as np
-import openai
+import pandas as pd
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import GenerationConfig
 
-config = configparser.ConfigParser()
-config.read(Path(__file__).parent.parent / "config" / "llm_api.cfg")
-USE_REMOTE_LLM_MODEL = config.get("LLM_API_CONFIG", "use_remote_api")
-OPENAI_KEY = config.get("LLM_API_CONFIG", "openai_key")
-OPENAI_URL = config.get("LLM_API_CONFIG", "openai_url")
+from wattelse.common.vars import GPU_SERVERS
 
 TEMPERATURE=0.1
 MAX_TOKENS=512
@@ -25,6 +23,12 @@ Contexte :
 \"\"\"
 Question : {query}
 La réponse doit être {expected_answer_size} et se baser uniquement sur le contexte. Si le contexte ne contient pas d'éléments permettant de répondre à la question, répondre \"Le contexte ne fourni pas assez d'information pour répondre à la question.\""""
+
+BASE_CACHE_PATH = (
+    Path("/data/weak_signals/cache/chatbot")
+    if socket.gethostname() in GPU_SERVERS
+    else Path(__file__).parent.parent.parent / "cache" / "chatbot"
+)
 
 def make_docs_embedding(docs: List[str], embedding_model: SentenceTransformer):
     return embedding_model.encode(docs, show_progress_bar=True)
@@ -53,16 +57,6 @@ def generate_RAG_prompt(query: str, context_elements: List[str], expected_answer
     else:
         return BASE_PROMPT.format(context=context, query=query, expected_answer_size=expected_answer_size)
 
-def generate_llm_specific_prompt(prompt, tokenizer):
-    """
-    Takes a prompt as input and returns the prompt in the LLM specific format.
-    """
-    chat = [{
-            "role": "user",
-            "content": prompt,
-            }]
-    return tokenizer.apply_chat_template(chat, add_generation_prompt=True, tokenize = False)
-
 
 def generate_answer_locally(instruct_model, tokenizer, prompt) -> str:
     """Uses the local model to generate the answer"""
@@ -85,65 +79,46 @@ def generate_answer_locally(instruct_model, tokenizer, prompt) -> str:
     logger.debug(f"Answer: {generated_text}")
     return generated_text
 
-def generate_answer_remotely(prompt) -> str:
-    """
-    Uses the remote model (API) to generate the answer. Return full text once generated.
-    """
 
-    logger.debug(f"Calling remote LLM service...")
-    print(prompt)
-    try:
-        model = get_api_model_name()
+def load_embeddings(cache_path: Path):
+    """Loads embeddings as pickle"""
+    with open(cache_path, "rb") as f_in:
+        return pickle.load(f_in)
 
-        # Use of completion API
-        completion_result = openai.api_resources.Completion.create(
-            model=model,
-            prompt=prompt,
-            max_tokens=MAX_TOKENS,
-            temperature=TEMPERATURE,
+
+def save_embeddings(embeddings: List, cache_path: Path):
+    """Save embeddings as pickle"""
+    with open(cache_path, "wb") as f_out:
+        pickle.dump(embeddings, f_out)
+
+def load_data(
+    data_file: Path, embedding_model: SentenceTransformer, use_cache: bool = True
+):
+    """Loads data and transform them into embeddings; data file shall contain a column 'processed_text' (preferred)
+    or 'text'"""
+    logger.info(f"Using data from: {data_file}")
+    data = pd.read_csv(data_file, keep_default_na=False)
+    if "processed_text" in data.columns:
+        docs = data["processed_text"]
+    elif "text" in data.columns:
+        docs = data["text"]
+    else:
+        logger.error(
+            f"Data {data_file} not formatted correctly! (expecting 'processed_text' or 'text' column"
         )
-        answer = completion_result["choices"][0]["text"]
-        logger.debug(f"Answer: {answer}")
-        return answer
-    except Exception as e:
-        msg = f"Cannot reach the API endpoint: {OPENAI_URL}. Error: {e}"
-        logger.error(msg)
-        return msg
+        sys.exit(-1)
 
-def generate_answer_remotely_stream(prompt) -> str:
-    """
-    Uses the remote model (API) to generate the answer. Returns Reponse object streaming output.
-    """
+    cache_path = BASE_CACHE_PATH / f"{data_file.name}.pkl"
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    logger.debug(f"Using cache: {use_cache}")
+    if not use_cache or not cache_path.exists():
+        logger.info("Computing sentence embeddings...")
+        docs_embeddings = make_docs_embedding(docs, embedding_model)
+        if use_cache:
+            save_embeddings(docs_embeddings, cache_path)
+            logger.info(f"Embeddings stored to cache file: {cache_path}")
+    else:
+        docs_embeddings = load_embeddings(cache_path)
+        logger.info(f"Embeddings loaded from cache file: {cache_path}")
 
-    logger.debug(f"Calling remote LLM service...")
-    print(prompt)
-    try:
-        model = get_api_model_name()
-
-        # Use of completion API
-        completion_result = openai.api_resources.Completion.create(
-            model=model,
-            prompt=prompt,
-            max_tokens=MAX_TOKENS,
-            temperature=TEMPERATURE,
-            stream=True,
-        )
-        return completion_result
-    except Exception as e:
-        msg = f"Cannot reach the API endpoint: {OPENAI_URL}. Error: {e}"
-        logger.error(msg)
-        return msg
-
-def get_api_model_name():
-    """
-    Return currently loaded llm name(using vLLM).
-    """
-    try :
-        openai.api_key = OPENAI_KEY
-        openai.api_base = OPENAI_URL
-
-        # First model
-        models = openai.Model.list()
-        return models["data"][0]["id"]
-    except Exception as e:
-        return "API is down"
+    return docs, docs_embeddings
