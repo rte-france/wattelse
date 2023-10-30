@@ -4,7 +4,7 @@ import plotly.express as px
 import streamlit as st
 from wattelse.bertopic.utils import (TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN,
                                      CITATION_COUNT_COL, BASE_CACHE_PATH, load_embeddings, load_data)
-from wattelse.bertopic.app.app_utils import register_widget
+from app_utils import register_widget
 
 DEFAULT_PARAMETERS = {
     "embedding_model_name": "dangvantuan/sentence-camembert-large",
@@ -183,47 +183,3 @@ def plot_remaining_docs_repartition_over_time(df_base, df_remaining, freq):
     }
         )
     st.write(fig)
-
-
-def get_most_representative_docs(topic_model, df, topics, mode="cluster_probability", df_split=None, topic_number=0, top_n_docs=3):
-    """
-    Return most representative documents for a given topic.
-
-    - If df_split is not None :
-        Groups splited docs by title to count how many paragraphs of the initial document belong to the topic.
-        Returns docs having the most occurences.
-
-    - If df_split is None:
-        Uses mode to determine the method used. Currently support :
-            * cluster_probability : computes the probability for each docs to belong to the topic using the clustering model. Returns most likely docs.
-            * ctfidf_representation : computes c-TF-IDF representation for each docs and compare it to topic c-TF-IDF vector using cosine similarity. Returns highest similarity scores docs.
-        
-    """
-    # If df_split is not None :
-    if isinstance(df_split, pd.DataFrame):
-        # Filter docs belonging to the specific topic
-        sub_df = df_split.loc[pd.Series(topics) == topic_number]
-        # Most representative docs in a topic are those with the highest number of extracts in this topic
-        sub_df = (
-            sub_df.groupby(["title"])
-            .size()
-            .reset_index(name="counts")
-            .sort_values("counts", ascending=False)
-            .iloc[0:top_n_docs]
-        )
-        return df[df["title"].isin(sub_df["title"])]
-    
-    # If no df_split is None, use mode to determine how to return most representative docs :
-    elif mode == "cluster_probability":
-        docs_prob = topic_model.get_document_info(df["text"])["Probability"]
-        df = df.assign(Probability=docs_prob)
-        sub_df = df.loc[pd.Series(topics) == topic_number]
-        sub_df = sub_df.sort_values("Probability", ascending=False).iloc[0:top_n_docs]
-        return sub_df
-
-    elif mode == "ctfidf_representation":
-        # TODO : "get_representative_docs" currently returns maximum 3 docs as implemtented in BERTopic
-        # We should modify the function to return more if needed
-        docs = topic_model.get_representative_docs(topic=topic_number)
-        sub_df = df[df["text"].isin(docs)].iloc[0:top_n_docs]
-        return sub_df
