@@ -5,10 +5,10 @@ from pathlib import Path
 from loguru import logger
 
 from wattelse.summary.summarizer import Summarizer
-from wattelse.summary.utils import BASE_PROMPT_SUMMARY
+from wattelse.summary.prompts import BASE_PROMPT_SUMMARY
 
-MODEL = "gpt-3.5-turbo-instruct"
-TEMPERATURE = 0
+MODEL = "gpt-3.5-turbo"
+TEMPERATURE = 0.1
 
 
 class GPTSummarizer(Summarizer):
@@ -28,12 +28,18 @@ class GPTSummarizer(Summarizer):
         num_tokens = len(self.encoding.encode(string))
         return num_tokens
 
-    def generate_summary(self, article_text, max_length_ratio=0.3) -> str:
-        answer = openai.Completion.create(
+    def generate_summary(self, article_text, max_summary_length_ratio=0.5, max_article_length=2000) -> str:
+        # Limit input length :
+        encoded_article_text = self.encoding.encode(article_text)
+        if len(encoded_article_text) > max_article_length:
+            encoded_article_text = encoded_article_text[0:max_article_length]
+            article_text = self.encoding.decode(encoded_article_text)
+        # Create answer object
+        answer = openai.ChatCompletion.create(
             model=MODEL,
-            prompt=BASE_PROMPT_SUMMARY + article_text,
-            max_tokens = round(self.num_tokens_from_string(article_text)*max_length_ratio),
-            temperature = TEMPERATURE,
+            messages=[{"role": "user", "content": BASE_PROMPT_SUMMARY.format(text=article_text)}],
+            max_tokens=round(self.num_tokens_from_string(article_text)*max_summary_length_ratio),
+            temperature=TEMPERATURE,
         )
         logger.debug(f"API returned: {answer}")
-        return answer.choices[0].text
+        return answer.choices[0].message.content
