@@ -1,7 +1,6 @@
 from transformers import AutoTokenizer
-from vigogne.preprocess import generate_inference_chat_prompt
 
-from wattelse.chatbot.utils import generate_answer_remotely
+from wattelse.llm.vllm_api import vLLM_API
 from wattelse.summary.summarizer import Summarizer
 from wattelse.summary.prompts import BASE_PROMPT_SUMMARY
 
@@ -11,11 +10,10 @@ class LocalLLMSummarizer(Summarizer):
     """Class that uses a local LLM service to provide a sumary of a text"""
 
     def __init__(self):
-        pass
+        self.api = vLLM_API()
 
     def generate_summary(self, article_text, max_length_ratio=0.1) -> str:
         # Generate a doc summary
-        prompt = BASE_PROMPT_SUMMARY + article_text
-        prompt = generate_inference_chat_prompt([[prompt,""]], TOKENIZER, max_length = 4096)
-        summary = generate_answer_remotely(prompt)
+        prompt = BASE_PROMPT_SUMMARY.format(text=article_text)
+        summary = self.api.generate(prompt)
         return summary
