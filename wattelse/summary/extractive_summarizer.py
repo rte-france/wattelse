@@ -15,7 +15,7 @@ RTE_MODEL_NAME = "models/language_model_rte/lm-distilcamembertbase-rte-saola2_20
 DEFAULT_SUMMARIZER_MODEL = "camembert-base"
 
 DEFAULT_LENGTH_SUMMARY = 3
-DEFAULT_RATIO_SUMMARY = 0.33
+DEFAULT_RATIO_SUMMARY = 0.1
 DEFAULT_CHUNKS_NUMBER_SUMMARY = 6
 
 nltk.download('punkt')
