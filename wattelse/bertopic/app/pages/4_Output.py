@@ -1,7 +1,7 @@
 import streamlit as st
 from pathlib import Path
 
-from wattelse.bertopic.ouput_features import generate_newsletter, md2html
+from wattelse.bertopic.newsletter_features import generate_newsletter, md2html
 from wattelse.bertopic.utils import load_data
 from wattelse.bertopic.app.state_utils import restore_widget_state
 from wattelse.bertopic.utils import DATA_DIR

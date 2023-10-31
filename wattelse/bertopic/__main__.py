@@ -18,7 +18,7 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
-from wattelse.bertopic.ouput_features import generate_newsletter, export_md_string
+from wattelse.bertopic.newsletter_features import generate_newsletter, export_md_string
 from wattelse.bertopic.utils import (
     load_data,
     parse_literal,

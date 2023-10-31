@@ -3,6 +3,7 @@ from pathlib import Path
 # from md2pdf.core import md2pdf
 import markdown
 import pandas as pd
+import tldextract
 
 import wattelse.summary.abstractive_summarizer
 
@@ -43,8 +44,8 @@ def generate_newsletter(
 
             # Write newsletter
             md_lines.append(f"### [*{doc.title}*]({doc.url})")
-            # FIXME handles special columns if needed
-            # md_lines.append(f"{doc.domain} | {doc.timestamp.strftime('%d-%m-%Y')}")
+            domain = tldextract.extract(doc.url).domain
+            md_lines.append(f"<div class='timestamp'>{doc.timestamp.strftime('%d-%m-%Y')} | {domain}</div>")
             md_lines.append(summary)
 
     # Write full file

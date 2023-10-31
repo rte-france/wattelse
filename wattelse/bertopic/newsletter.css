@@ -91,3 +91,9 @@ a:visited {
 }
 
 a:hover { background: #c50000; color: #eee; text-decoration: none; }
+
+.timestamp{
+  color: grey;
+  display: flex;
+  align-items: stretch;
+}
