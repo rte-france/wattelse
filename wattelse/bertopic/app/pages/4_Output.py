@@ -22,15 +22,16 @@ else:
     df = st.session_state["timefiltered_df"]
     df_split = None
 if st.button("Generate newsletter"):
-    md = generate_newsletter(
-        st.session_state["topic_model"],
-        df,
-        st.session_state["topics"],
-        df_split=df_split,
-    )
-    # st.markdown(md)
-    st.components.v1.html(
-        md2html(md, Path(__file__).parent.parent.parent / "newsletter.css"),
-        height=800,
-        scrolling=True,
-    )
+    with st.spinner("Generating newsletter..."):
+        md = generate_newsletter(
+            st.session_state["topic_model"],
+            df,
+            st.session_state["topics"],
+            df_split=df_split,
+        )
+        # st.markdown(md)
+        st.components.v1.html(
+            md2html(md, Path(__file__).parent.parent.parent / "newsletter.css"),
+            height=800,
+            scrolling=True,
+        )

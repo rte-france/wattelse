@@ -2,9 +2,10 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import streamlit as st
+
+from wattelse.bertopic.app.state_utils import register_widget
 from wattelse.bertopic.utils import (TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN,
                                      CITATION_COUNT_COL, BASE_CACHE_PATH, load_embeddings, load_data)
-from app_utils import register_widget
 
 DEFAULT_PARAMETERS = {
     "embedding_model_name": "dangvantuan/sentence-camembert-large",
