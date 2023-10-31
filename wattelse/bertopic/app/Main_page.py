@@ -74,6 +74,7 @@ def select_data():
 
     # Split if parameter is selected
     if st.session_state["split_by_paragraphs"]:
+        st.session_state["initial_df"] = st.session_state["raw_df"].copy() # this DF is used later for newsletter generation
         st.session_state["raw_df"] = split_df_by_paragraphs(st.session_state["raw_df"]).drop("index", axis=1).sort_values(by=TIMESTAMP_COLUMN,ascending=False,).reset_index(drop=True).reset_index()
 
     # Clean dataset using min_text_length
