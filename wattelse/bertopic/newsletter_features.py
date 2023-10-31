@@ -4,6 +4,7 @@ from pathlib import Path
 import markdown
 import pandas as pd
 import tldextract
+from loguru import logger
 
 import wattelse.summary.abstractive_summarizer
 
@@ -44,7 +45,11 @@ def generate_newsletter(
 
             # Write newsletter
             md_lines.append(f"### [*{doc.title}*]({doc.url})")
-            domain = tldextract.extract(doc.url).domain
+            try:
+                domain = tldextract.extract(doc.url).domain
+            except:
+                logger.warning(f"Cannot extract URL for {doc}")
+                domain = ""
             md_lines.append(f"<div class='timestamp'>{doc.timestamp.strftime('%d-%m-%Y')} | {domain}</div>")
             md_lines.append(summary)
 
