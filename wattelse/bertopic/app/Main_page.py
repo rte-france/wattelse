@@ -40,7 +40,7 @@ def select_data():
     st.write("## Data selection")
     
     # Select box with every file saved in DATA_DIR as options
-    data_options = ["None"] + os.listdir(DATA_DIR)
+    data_options = ["None"] + sorted(os.listdir(DATA_DIR))
     if "data_name" not in st.session_state:
         st.session_state["data_name"] = data_options[0]
     register_widget("data_name")
