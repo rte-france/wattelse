@@ -145,6 +145,10 @@ if __name__ == "__main__":
             summarizer_class=summarizer_class,
         )
 
+        if newsletter_params.getboolean("debug",True):
+            conf_dict = {section: dict(config[section]) for section in config.sections()}
+            newsletter_md += f"\n\n## Debug: config\n\n{conf_dict} \n\n"
+
         output_dir = OUTPUT_DIR / newsletter_params.get("output_directory")
         output_format = newsletter_params.get("output_format")
         output_path = (
@@ -252,9 +256,6 @@ if __name__ == "__main__":
         data_feed_cfg_path: Path = typer.Argument(help="Path to data feed config file"),
         cuda_devices: str = typer.Option("1", help="CUDA_VISIBLE_DEVICES parameters"),
     ):
-        """
-        Install in crontab an automatic newsletter creation
-        """
         """Schedule data scrapping on the basis of a feed configuration file"""
         newsletter_cfg = configparser.ConfigParser()
         newsletter_cfg.read(newsletter_cfg_path)
