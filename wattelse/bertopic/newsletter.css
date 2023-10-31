@@ -82,6 +82,23 @@ h2:after {
   background-color: #333;
 }
 
+h3 {
+  padding: 0;
+  margin: 0;
+  font-family: "Raleway", sans-serif;
+  color:DarkSlateBlue;
+  -webkit-transition: all 0.4s ease 0s;
+  -o-transition: all 0.4s ease 0s;
+  transition: all 0.4s ease 0s;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.5em;
+  padding-bottom: 15px;
+  position: relative;
+
+}
+
 p { color: #222; font-family: "Raleway", sans-serif; font-size: 15px; font-weight: 400; line-height: 24px; margin: 0 0 14px; }
 
 a { background: #fff; color: MidnightBlue; font-family: "Raleway", sans-serif; font-size: 15px; text-decoration: none; }

@@ -2,7 +2,7 @@ from transformers import AutoTokenizer
 
 from wattelse.llm.vllm_api import vLLM_API
 from wattelse.summary.summarizer import Summarizer
-from wattelse.summary.prompts import BASE_PROMPT_SUMMARY
+from wattelse.llm.prompts import BASE_PROMPT_SUMMARY
 
 TOKENIZER = AutoTokenizer.from_pretrained("bofenghuang/vigogne-2-7b-chat", revision="v2.0", padding_side="right", use_fast=False)
 

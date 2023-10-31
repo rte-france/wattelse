@@ -7,6 +7,8 @@ import tldextract
 from loguru import logger
 
 import wattelse.summary.abstractive_summarizer
+from wattelse.llm.openai_api import OpenAI_API
+from wattelse.llm.prompts import GENERATE_TOPIC_LABEL_TITLE
 
 
 def generate_newsletter(
@@ -19,6 +21,7 @@ def generate_newsletter(
     top_n_docs_mode="cluster_probability",
     newsletter_title="Newsletter",
     summarizer_class=wattelse.summary.abstractive_summarizer.AbstractiveSummarizer,
+    improve_topic_description=False,
 ) -> str:
     """
     Write a newsletter using trained BERTopic model.
@@ -38,7 +41,25 @@ def generate_newsletter(
         md_lines.append(
             f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
         )
-        sub_df = get_most_representative_docs(topic_model, df, topics, mode=top_n_docs_mode, df_split=df_split, topic_number=i, top_n_docs=top_n_docs)            
+        sub_df = get_most_representative_docs(
+            topic_model,
+            df,
+            topics,
+            mode=top_n_docs_mode,
+            df_split=df_split,
+            topic_number=i,
+            top_n_docs=top_n_docs,
+        )
+        if improve_topic_description:
+            titles = [doc.title for _, doc in sub_df.iterrows()]
+            improved_topic_description = OpenAI_API().generate(
+                GENERATE_TOPIC_LABEL_TITLE.format(
+                    keywords=", ".join(topics_info["Representation"].iloc[i]),
+                    title_list = ", ".join(titles),
+                )
+            )
+            md_lines.append(f"### Description : {improved_topic_description}")
+
         for _, doc in sub_df.iterrows():
             # Generates summary for article
             summary = summarizer.generate_summary(doc.text)
@@ -50,12 +71,15 @@ def generate_newsletter(
             except:
                 logger.warning(f"Cannot extract URL for {doc}")
                 domain = ""
-            md_lines.append(f"<div class='timestamp'>{doc.timestamp.strftime('%d-%m-%Y')} | {domain}</div>")
+            md_lines.append(
+                f"<div class='timestamp'>{doc.timestamp.strftime('%d-%m-%Y')} | {domain}</div>"
+            )
             md_lines.append(summary)
 
     # Write full file
     md_content = "\n\n".join(md_lines)
     return md_content
+
 
 def export_md_string(newsletter_md: str, path: Path, format="md"):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -94,7 +118,15 @@ def md2html(md: str, css_style: Path = None) -> str:
     return output
 
 
-def get_most_representative_docs(topic_model, df, topics, mode="cluster_probability", df_split=None, topic_number=0, top_n_docs=3):
+def get_most_representative_docs(
+    topic_model,
+    df,
+    topics,
+    mode="cluster_probability",
+    df_split=None,
+    topic_number=0,
+    top_n_docs=3,
+):
     """
     Return most representative documents for a given topic.
 

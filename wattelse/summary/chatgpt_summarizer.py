@@ -6,7 +6,7 @@ from loguru import logger
 from openai import APIError
 
 from wattelse.summary.summarizer import Summarizer
-from wattelse.summary.prompts import BASE_PROMPT_SUMMARY
+from wattelse.llm.prompts import BASE_PROMPT_SUMMARY
 
 MODEL = "gpt-3.5-turbo"
 TEMPERATURE = 0.1

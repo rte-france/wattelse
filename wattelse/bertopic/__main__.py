@@ -143,6 +143,7 @@ if __name__ == "__main__":
             top_n_docs=newsletter_params.getliteral("top_n_docs"),
             newsletter_title=title,
             summarizer_class=summarizer_class,
+            improve_topic_description=newsletter_params.getboolean("improve_topic_description", False)
         )
 
         if newsletter_params.getboolean("debug",True):

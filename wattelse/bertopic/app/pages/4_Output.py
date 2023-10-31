@@ -26,6 +26,7 @@ if st.button("Generate newsletter"):
             df=df,
             topics=st.session_state["topics"],
             df_split=df_split,
+            improve_topic_description=True
         )
         # st.markdown(md)
         st.components.v1.html(
