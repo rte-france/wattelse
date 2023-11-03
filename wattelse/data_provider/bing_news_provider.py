@@ -62,12 +62,11 @@ class BingNewsProvider(DataProvider):
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a Bing news entry, uses wait decorator to force delay between 2 successive calls"""
         try:
-            title = entry["title"]
             link = entry["link"]
             url = self._clean_url(link)
             summary = entry["summary"]
             published = dateparser.parse(entry["published"]).strftime("%Y-%m-%d %H:%M:%S")
-            text = self._get_text(url=link)
+            text, title = self._get_text(url=link)
             return {
                 "title": title,
                 "summary": summary,

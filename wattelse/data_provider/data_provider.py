@@ -1,7 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import jsonlines
 import pandas as pd
@@ -33,10 +33,14 @@ class DataProvider(ABC):
     def __init__(self):
         self.article_parser = Goose()
         # set 'standard' user agent
-        self.article_parser.config.browser_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2)"
+        self.article_parser.config.browser_user_agent = (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2)"
+        )
 
     @abstractmethod
-    def get_articles(self, query: str, after: str, before: str, max_results: int) -> List[Dict]:
+    def get_articles(
+        self, query: str, after: str, before: str, max_results: int
+    ) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines.
 
         Parameters
@@ -57,7 +61,9 @@ class DataProvider(ABC):
 
         pass
 
-    def get_articles_batch(self, queries_batch: List[List], max_results: int) -> List[Dict]:
+    def get_articles_batch(
+        self, queries_batch: List[List], max_results: int
+    ) -> List[Dict]:
         """Requests the news data provider for a list of queries, collects a set of URLs to be parsed,
         return results as json lines"""
         articles = []
@@ -79,7 +85,7 @@ class DataProvider(ABC):
         if not data:
             logger.error("No data to be stored!")
             return -1
-        with jsonlines.open(file_path, 'w') as writer:
+        with jsonlines.open(file_path, "w") as writer:
             writer.write_all(data)
 
         logger.info(f"Data stored to {file_path} [{len(data)} entries].")
@@ -91,10 +97,9 @@ class DataProvider(ABC):
                 data = reader.read()
                 return pd.DataFrame(data)
 
-
     @wait_if_seen_url(0.2)
-    def _get_text(self, url: str) -> str:
-        """Extracts text from an article URL"""
+    def _get_text(self, url: str) -> Tuple[str, str]:
+        """Extracts text and (clean) title from an article URL"""
         if any(ele in url for ele in BLACKLISTED_URL):
             logger.warning(f"Source of {url} is blacklisted!")
             return None
@@ -102,22 +107,27 @@ class DataProvider(ABC):
         logger.debug(f"Extracting text from {url}")
         try:
             article = self.parse_article(url)
-            return article.cleaned_text
+            return article.cleaned_text, article.title
         except:
             # goose3 not working, trying with alternate parser
             logger.warning("Parsing of text failed with Goose3, trying newspaper3k")
             return self._get_text_alternate(url)
 
-    def _get_text_alternate(self, url: str) -> str:
+    def _get_text_alternate(self, url: str) -> Tuple[str, str]:
         """Extracts text from an article URL"""
         logger.debug(f"Extracting text from {url} with newspaper3k")
         article = Article(url)
         article.download()
         article.parse()
-        return article.text
+        return article.text, article.title
 
     def _filter_out_bad_text(self, text):
-        if "[if" in text or "javascript" in text or "cookie" in text or "pour lire la suite, rejoignez notre communauté d'abonnés" in text:
+        if (
+            "[if" in text
+            or "javascript" in text
+            or "cookie" in text
+            or "pour lire la suite, rejoignez notre communauté d'abonnés" in text
+        ):
             logger.warning(f"Bad text: {text}")
             return None
         return text

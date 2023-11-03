@@ -49,12 +49,11 @@ class NewsCatcherProvider(DataProvider):
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a NewsCatcher news entry"""
         try:
-            title = entry["title"]
             link = entry["link"]
             url = link
             summary = entry["summary"]
             published = dateparser.parse(entry["published_date"]).strftime("%Y-%m-%d %H:%M:%S")
-            text = self._get_text(url=url)
+            text, title = self._get_text(url=url)
             text = self._filter_out_bad_text(text)
             if text is None or text=="":
                 return None

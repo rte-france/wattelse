@@ -64,12 +64,12 @@ class GoogleNewsProvider(DataProvider):
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a Google news entry"""
         try:
-            title = entry["title"]
+            # NB. we do not use the title from Gnews as it is sometimes truncated
             link = entry["link"]
             url = decode_google_news_url(link)
             summary = entry["summary"]
             published = dateparser.parse(entry["published"]).strftime("%Y-%m-%d %H:%M:%S")
-            text = self._get_text(url=url)
+            text, title = self._get_text(url=url)
             text = self._filter_out_bad_text(text)
             if text is None or text=="":
                 return None
