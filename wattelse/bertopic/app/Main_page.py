@@ -278,7 +278,7 @@ st.set_page_config(layout="wide")
 restore_widget_state()
 
 ### TITLE ###
-st.title("BERTopic")
+st.title("Topic modelling")
 
 # Initialize default parameters
 initialize_default_parameters_keys()
