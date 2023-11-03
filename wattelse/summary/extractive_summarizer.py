@@ -119,8 +119,8 @@ class ExtractiveSummarizer(Summarizer):
         # Sentence tokenization
         sentences = self.get_sentences(text)
 
-        # Size of summary (max of values represented by max_nb_sentences and percentage in order to avoid conflits)
-        summary_size = round(max(max_nb, len(sentences) * percentage))
+        # Size of summary (min of values represented by max_nb_sentences and percentage in order to avoid conflits)
+        summary_size = round(min(max_nb, len(sentences) * percentage))
         logger.debug(f"Maximum size of summary: {summary_size}")
         if len(sentences) <= summary_size:
             logger.warning("Text too small, nothing changed.")
