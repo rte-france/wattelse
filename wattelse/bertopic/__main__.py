@@ -29,7 +29,7 @@ from wattelse.bertopic.utils import (
 )
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
 from wattelse.common.mail_utils import get_credentials, send_email
-from wattelse.common.utils import add_job_to_crontab
+from wattelse.common.crontab_utils import add_job_to_crontab
 from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
 
 # Config sections
@@ -44,6 +44,8 @@ LEARN_FROM_SCRATCH = (
 LEARN_FROM_LAST = "learn_from_last"  # only the last feed data to create the model
 INFERENCE_ONLY = "inference_only"  # do not retrain model; reuse existing bertopic model if available, otherwise, fallback to learn_from_scratch for the first run"""
 
+# Ensures to write with +rw for both user and groups
+os.umask(0o002)
 
 if __name__ == "__main__":
     app = typer.Typer()
@@ -263,7 +265,7 @@ if __name__ == "__main__":
         schedule = newsletter_cfg.get(NEWSLETTER_SECTION, "update_frequency")
         id = newsletter_cfg.get(NEWSLETTER_SECTION, "id")
         proxy = os.getenv("https_proxy")
-        command = f"{sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {LOG_DIR}/cron_newsletter_{id}.log 2>&1"
+        command = f"umask 002; {sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {LOG_DIR}/cron_newsletter_{id}.log 2>&1"
         env_vars = f"CUDA_VISIBLE_DEVICES={cuda_devices} http_proxy='{proxy}' https_proxy='{proxy}'"
         add_job_to_crontab(schedule, command, env_vars)
 

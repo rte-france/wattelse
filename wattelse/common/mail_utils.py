@@ -1,5 +1,5 @@
 import base64
-from email.message import EmailMessage
+import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE
@@ -20,6 +20,9 @@ SCOPES = ["https://mail.google.com/"] # full access to mail API
 FROM = "wattelse.ai@gmail.com"
 TOKEN_PATH = BASE_DATA_DIR / "gmail_token.json"
 DEFAULT_GMAIL_CREDENTIALS_PATH = Path(__file__).parent / "gmail_credentials.json"
+
+# Ensures to write with +rw for both user and groups
+os.umask(0o002)
 
 def get_credentials(credentials_path: Path = DEFAULT_GMAIL_CREDENTIALS_PATH) -> Credentials:
     """Returns credentials for the user"""

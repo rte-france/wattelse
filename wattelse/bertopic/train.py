@@ -20,11 +20,9 @@ from wattelse.bertopic.utils import (
     TEXT_COLUMN,
     TIMESTAMP_COLUMN,
     BASE_CACHE_PATH,
-    load_embeddings,
-    save_embeddings,
-    get_hash,
     file_to_pd,
 )
+from wattelse.common.cache_utils import load_embeddings, save_embeddings, get_hash
 
 # Parameters:
 

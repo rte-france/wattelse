@@ -1,6 +1,6 @@
+import os
 from pathlib import Path
 from typing import List
-import pickle
 import sys
 import socket
 
@@ -11,10 +11,11 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import GenerationConfig
 
+from wattelse.common.cache_utils import save_embeddings, load_embeddings
 from wattelse.common.vars import GPU_SERVERS
 
-TEMPERATURE=0.1
-MAX_TOKENS=512
+TEMPERATURE = 0.1
+MAX_TOKENS = 512
 
 BASE_PROMPT = """Répond à la question en utilisant le contexte fourni.
 Contexte :
@@ -30,11 +31,14 @@ BASE_CACHE_PATH = (
     else Path(__file__).parent.parent.parent / "cache" / "chatbot"
 )
 
+
 def make_docs_embedding(docs: List[str], embedding_model: SentenceTransformer):
     return embedding_model.encode(docs, show_progress_bar=True)
 
 
-def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_model, similarity_threshold:float = 0):
+def extract_n_most_relevant_extracts(
+    n, query, docs, docs_embeddings, embedding_model, similarity_threshold: float = 0
+):
     query_embedding = embedding_model.encode(query)
     similarity = cosine_similarity([query_embedding], docs_embeddings)[0]
 
@@ -42,20 +46,32 @@ def extract_n_most_relevant_extracts(n, query, docs, docs_embeddings, embedding_
     above_threshold_indices = np.where(similarity > similarity_threshold)[0]
 
     # Sort above-threshold indices by similarity and select top n
-    max_indices = above_threshold_indices[np.argsort(similarity[above_threshold_indices])][-n:][::-1]
+    max_indices = above_threshold_indices[
+        np.argsort(similarity[above_threshold_indices])
+    ][-n:][::-1]
 
     return docs[max_indices].tolist(), similarity[max_indices].tolist()
 
-def generate_RAG_prompt(query: str, context_elements: List[str], expected_answer_size="short", custom_prompt=None) -> str:
+
+def generate_RAG_prompt(
+    query: str,
+    context_elements: List[str],
+    expected_answer_size="short",
+    custom_prompt=None,
+) -> str:
     """
     Generates RAG prompt using query and context.
     """
     context = "\n".join(context_elements)
-    expected_answer_size = "courte" if expected_answer_size=="short" else "détaillée"
+    expected_answer_size = "courte" if expected_answer_size == "short" else "détaillée"
     if custom_prompt:
-        return custom_prompt.format(context=context, query=query, expected_answer_size=expected_answer_size)
+        return custom_prompt.format(
+            context=context, query=query, expected_answer_size=expected_answer_size
+        )
     else:
-        return BASE_PROMPT.format(context=context, query=query, expected_answer_size=expected_answer_size)
+        return BASE_PROMPT.format(
+            context=context, query=query, expected_answer_size=expected_answer_size
+        )
 
 
 def generate_answer_locally(instruct_model, tokenizer, prompt) -> str:
@@ -79,17 +95,6 @@ def generate_answer_locally(instruct_model, tokenizer, prompt) -> str:
     logger.debug(f"Answer: {generated_text}")
     return generated_text
 
-
-def load_embeddings(cache_path: Path):
-    """Loads embeddings as pickle"""
-    with open(cache_path, "rb") as f_in:
-        return pickle.load(f_in)
-
-
-def save_embeddings(embeddings: List, cache_path: Path):
-    """Save embeddings as pickle"""
-    with open(cache_path, "wb") as f_out:
-        pickle.dump(embeddings, f_out)
 
 def load_data(
     data_file: Path, embedding_model: SentenceTransformer, use_cache: bool = True

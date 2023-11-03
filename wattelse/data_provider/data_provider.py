@@ -1,3 +1,4 @@
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Dict
@@ -9,6 +10,9 @@ from loguru import logger
 from newspaper import Article
 
 from wattelse.data_provider.utils import wait_if_seen_url
+
+# Ensures to write with +rw for both user and groups
+os.umask(0o002)
 
 # List of URLs we do not want to have results from (ex. obsolete or not pertinent)
 BLACKLISTED_URL = [

@@ -25,6 +25,9 @@ from sentence_transformers import SentenceTransformer
 
 DATA_DIR = BASE_DATA_DIR / "chatbot"
 
+# Ensures to write with +rw for both user and groups
+os.umask(0o002)
+
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 
 DEFAULT_MEMORY_DELAY = 2  # in minutes

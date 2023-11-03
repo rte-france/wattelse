@@ -8,12 +8,15 @@ import typer
 from loguru import logger
 from pathlib import Path
 
-from wattelse.common.utils import add_job_to_crontab
+from wattelse.common.crontab_utils import add_job_to_crontab
 from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
 from wattelse.data_provider.arxiv_provider import ArxivProvider
 from wattelse.data_provider.bing_news_provider import BingNewsProvider
 from wattelse.data_provider.google_news_provider import GoogleNewsProvider
 from wattelse.data_provider.newscatcher_provider import NewsCatcherProvider
+
+# Ensures to write with +rw for both user and groups
+os.umask(0o002)
 
 PROVIDERS = {
     "arxiv": ArxivProvider,
@@ -212,7 +215,7 @@ if __name__ == "__main__":
         schedule = data_feed_cfg.get("data-feed", "update_frequency")
         id = data_feed_cfg.get("data-feed", "id")
         proxy = os.getenv("https_proxy")
-        command = f"{sys.prefix}/bin/python -m wattelse.data_provider scrape-feed {feed_cfg.resolve()} > {LOG_DIR}/cron_feed_{id}.log 2>&1"
+        command = f"umask 002; {sys.prefix}/bin/python -m wattelse.data_provider scrape-feed {feed_cfg.resolve()} > {LOG_DIR}/cron_feed_{id}.log 2>&1"
         env_vars = f"http_proxy='{proxy}' https_proxy='{proxy}'"
         add_job_to_crontab(schedule, command, env_vars)
 

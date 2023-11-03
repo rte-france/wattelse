@@ -1,16 +1,18 @@
 import ast
 import gzip
-import hashlib
-import pickle
+import os
 import socket
 from loguru import logger
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 import nltk
 import pandas as pd
 
 from wattelse.common.vars import GPU_SERVERS, BASE_DATA_DIR
+
+# Ensures to write with +rw for both user and groups
+os.umask(0o002)
 
 nltk.download("stopwords")
 
@@ -65,23 +67,6 @@ def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
         dataset[TEXT_COLUMN].str.len() >= length_criteria
     ].reset_index(drop=True)
     return cleaned_dataset
-
-
-def load_embeddings(cache_path: Path):
-    """Loads embeddings as pickle"""
-    with open(cache_path, "rb") as f_in:
-        return pickle.load(f_in)
-
-
-def save_embeddings(embeddings: List, cache_path: Path):
-    """Save embeddings as pickle"""
-    with open(cache_path, "wb") as f_out:
-        pickle.dump(embeddings, f_out)
-
-
-def get_hash(data: Any) -> str:
-    """Returns a *stable* hash(persistent between different Python session) for any object. NB. The default hash() function does not guarantee this."""
-    return hashlib.md5(repr(data).encode("utf-8")).hexdigest()
 
 
 def split_df_by_paragraphs(dataset: pd.DataFrame):

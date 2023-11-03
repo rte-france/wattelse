@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import os
 # from md2pdf.core import md2pdf
 import markdown
 import pandas as pd
@@ -10,6 +10,8 @@ import wattelse.summary.abstractive_summarizer
 from wattelse.llm.openai_api import OpenAI_API
 from wattelse.llm.prompts import GENERATE_TOPIC_LABEL_TITLE
 
+# Ensures to write with +rw for both user and groups
+os.umask(0o002)
 
 def generate_newsletter(
     topic_model,

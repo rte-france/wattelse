@@ -5,7 +5,8 @@ import streamlit as st
 
 from wattelse.bertopic.app.state_utils import register_widget
 from wattelse.bertopic.utils import (TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN,
-                                     CITATION_COUNT_COL, BASE_CACHE_PATH, load_embeddings, load_data)
+                                     CITATION_COUNT_COL, BASE_CACHE_PATH, load_data)
+from wattelse.common.cache_utils import load_embeddings
 
 DEFAULT_PARAMETERS = {
     "embedding_model_name": "dangvantuan/sentence-camembert-large",
