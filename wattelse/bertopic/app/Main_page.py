@@ -97,9 +97,6 @@ def select_data():
         .reset_index()
     )
 
-    # Clean dataset
-    col1, col2 = st.columns(2)
-
     # Filter text length parameter
     register_widget("min_text_length")
     st.number_input(
