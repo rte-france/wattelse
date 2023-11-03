@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+
 # from md2pdf.core import md2pdf
 import markdown
 import pandas as pd
@@ -12,6 +13,7 @@ from wattelse.llm.prompts import GENERATE_TOPIC_LABEL_TITLE
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
+
 
 def generate_newsletter(
     topic_model,
@@ -54,11 +56,11 @@ def generate_newsletter(
             top_n_docs=top_n_docs,
         )
         if improve_topic_description:
-            titles = [doc.title for _, doc in sub_df.iterrows()]
+            titles = [doc.title for _, doc in df.loc[pd.Series(topics) == i].iterrows()]
             improved_topic_description = OpenAI_API().generate(
                 GENERATE_TOPIC_LABEL_TITLE.format(
                     keywords=", ".join(topics_info["Representation"].iloc[i]),
-                    title_list = ", ".join(titles),
+                    title_list=", ".join(titles),
                 )
             )
             md_lines.append(f"### Description : {improved_topic_description}")
