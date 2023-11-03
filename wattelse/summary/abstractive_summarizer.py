@@ -2,30 +2,42 @@ import re
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-from wattelse.summary.summarizer import Summarizer
+from wattelse.summary.summarizer import (
+    Summarizer,
+    DEFAULT_MAX_SENTENCES,
+    DEFAULT_SUMMARIZATION_RATIO,
+)
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-#DEFAULT_ABSTRACTIVE_MODEL =  "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
-#DEFAULT_ABSTRACTIVE_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
+# DEFAULT_ABSTRACTIVE_MODEL =  "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
+# DEFAULT_ABSTRACTIVE_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
 DEFAULT_ABSTRACTIVE_MODEL = "facebook/mbart-large-50"
+
 
 class AbstractiveSummarizer(Summarizer):
     ## class that performs auto summary using T multi langual model
     def __init__(self, model_name=DEFAULT_ABSTRACTIVE_MODEL):
         self.model_name = model_name
-        self.WHITESPACE_HANDLER = lambda k: re.sub('\s+', ' ', re.sub('\n+', ' ', k.strip()))
+        self.WHITESPACE_HANDLER = lambda k: re.sub(
+            "\s+", " ", re.sub("\n+", " ", k.strip())
+        )
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
         self.model = self.model.to(device)
 
-    def generate_summary(self, article_text, max_length_ratio=0.2) -> str:
+    def generate_summary(
+        self,
+        article_text,
+        max_sentences=DEFAULT_MAX_SENTENCES,
+        max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
+    ) -> str:
         inputs = self.tokenizer(
             [self.WHITESPACE_HANDLER(article_text)],
             return_tensors="pt",
             padding="max_length",
             truncation=True,
-            max_length=512
+            max_length=512,
         )
 
         input_ids = inputs.input_ids.to(device)
@@ -37,13 +49,11 @@ class AbstractiveSummarizer(Summarizer):
             attention_mask=attention_mask,
             max_length=round(len(article_text) * max_length_ratio),
             no_repeat_ngram_size=2,
-            num_beams=4
+            num_beams=4,
         )[0]
 
         summary = self.tokenizer.decode(
-            output_ids,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=False
+            output_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
         return summary
 
@@ -56,6 +66,6 @@ if __name__ == "__main__":
     model_name = "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
 
     summarizer = AbstractiveSummarizer(model_name)
-    summary = summarizer.generate_summary(text, 0.3)
+    summary = summarizer.generate_summary(text, 3,0.3)
 
     print(summary)

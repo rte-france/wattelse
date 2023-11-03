@@ -5,7 +5,11 @@ from pathlib import Path
 from loguru import logger
 from openai import APIError
 
-from wattelse.summary.summarizer import Summarizer
+from wattelse.summary.summarizer import (
+    Summarizer,
+    DEFAULT_SUMMARIZATION_RATIO,
+    DEFAULT_MAX_SENTENCES,
+)
 from wattelse.llm.prompts import BASE_PROMPT_SUMMARY
 
 MODEL = "gpt-3.5-turbo"
@@ -29,7 +33,13 @@ class GPTSummarizer(Summarizer):
         num_tokens = len(self.encoding.encode(string))
         return num_tokens
 
-    def generate_summary(self, article_text, max_summary_length_ratio=0.5, max_article_length=2000) -> str:
+    def generate_summary(
+        self,
+        article_text,
+        max_sentences=DEFAULT_MAX_SENTENCES,
+        max_summary_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
+        max_article_length=2000,
+    ) -> str:
         try:
             # Limit input length :
             encoded_article_text = self.encoding.encode(article_text)
@@ -39,12 +49,19 @@ class GPTSummarizer(Summarizer):
             # Create answer object
             answer = openai.ChatCompletion.create(
                 model=MODEL,
-                messages=[{"role": "user", "content": BASE_PROMPT_SUMMARY.format(text=article_text)}],
-                max_tokens=round(self.num_tokens_from_string(article_text)*max_summary_length_ratio),
+                messages=[
+                    {
+                        "role": "user",
+                        "content": BASE_PROMPT_SUMMARY.format(text=article_text),
+                    }
+                ],
+                max_tokens=round(
+                    self.num_tokens_from_string(article_text) * max_summary_length_ratio
+                ),
                 temperature=TEMPERATURE,
             )
             logger.debug(f"API returned: {answer}")
             return answer.choices[0].message.content
         except APIError as e:
-            return f"OpenAI API error : {e}"
             logger.error(f"OpenAI API error : {e}")
+            return f"OpenAI API error : {e}"

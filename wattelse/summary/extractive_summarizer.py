@@ -9,19 +9,21 @@ from sentence_transformers.models import Transformer, Pooling
 from torch import Tensor
 
 from wattelse.summary.lexrank import degree_centrality_scores
-from wattelse.summary.summarizer import Summarizer
+from wattelse.summary.summarizer import (
+    Summarizer,
+    DEFAULT_MAX_SENTENCES,
+    DEFAULT_SUMMARIZATION_RATIO,
+)
 
 RTE_MODEL_NAME = "models/language_model_rte/lm-distilcamembertbase-rte-saola2_20220826"
 DEFAULT_SUMMARIZER_MODEL = "camembert-base"
 
-DEFAULT_LENGTH_SUMMARY = 3
-DEFAULT_RATIO_SUMMARY = 0.1
 DEFAULT_CHUNKS_NUMBER_SUMMARY = 6
 
-nltk.download('punkt')
+nltk.download("punkt")
+
 
 class ExtractiveSummarizer(Summarizer):
-
     def __init__(self, model_name=DEFAULT_SUMMARIZER_MODEL):
         # Use BERT for mapping tokens to embeddings
         word_embedding_model = Transformer(model_name)
@@ -39,11 +41,14 @@ class ExtractiveSummarizer(Summarizer):
             modules=[word_embedding_model, pooling_model]
         )
 
-
-    def generate_summary(self, text, max_length_ratio=DEFAULT_RATIO_SUMMARY) -> str:
-        summary = self.summarize_text(text, DEFAULT_LENGTH_SUMMARY, max_length_ratio)
+    def generate_summary(
+        self,
+        text,
+        max_sentences=DEFAULT_MAX_SENTENCES,
+        max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
+    ) -> str:
+        summary = self.summarize_text(text, max_sentences, max_length_ratio)
         return " ".join(summary)
-
 
     def get_sentences_embeddings(self, sentences: List[str]) -> List[float]:
         """Compute the sentence embeddings"""
@@ -73,7 +78,9 @@ class ExtractiveSummarizer(Summarizer):
             nlp_doc = self.nlp(text)
 
             # extract sentences using spacy nlp object
-            sentences = list(filter(lambda t: len(t) > 5, [s.text for s in nlp_doc.sents]))
+            sentences = list(
+                filter(lambda t: len(t) > 5, [s.text for s in nlp_doc.sents])
+            )
         else:
             from nltk import sent_tokenize
 
@@ -87,15 +94,17 @@ class ExtractiveSummarizer(Summarizer):
         for chunk in chunks:
             # tokenize each chunk per sentence
             sents = self.get_sentences(chunk)
-            emb_sents = self.sentence_transformer_model.encode(sents, convert_to_tensor=True)
+            emb_sents = self.sentence_transformer_model.encode(
+                sents, convert_to_tensor=True
+            )
             chunk_embeddings.append(torch.mean(emb_sents, 0))
         return torch.stack(chunk_embeddings)
 
     def summarize_text(
         self,
         text: str,
-        max_nb: Optional[int] = DEFAULT_LENGTH_SUMMARY,
-        percentage: Optional[float] = DEFAULT_RATIO_SUMMARY,
+        max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
+        percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         """Summarizes a text using the maximum number of sentences given as parameter
 
@@ -137,7 +146,9 @@ class ExtractiveSummarizer(Summarizer):
         return summary
 
     def summarize_chunks(
-        self, chunks: List[str], max_nb_chunks: Optional[int] = DEFAULT_CHUNKS_NUMBER_SUMMARY,
+        self,
+        chunks: List[str],
+        max_nb_chunks: Optional[int] = DEFAULT_CHUNKS_NUMBER_SUMMARY,
     ) -> List[str]:
         """Summarizes a list of text chunks using their embedding representation
 
@@ -173,8 +184,8 @@ class ExtractiveSummarizer(Summarizer):
         text: str,
         function_to_compute_embeddings: Callable,
         ratio_for_additional_embeddings: Optional[float] = 0.5,
-        max_nb: Optional[int] = DEFAULT_LENGTH_SUMMARY,
-        percentage: Optional[float] = DEFAULT_RATIO_SUMMARY,
+        max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
+        percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         """Summarizes a text using the maximum number of sentences given as parameter.
         The summary is based on the combination of two embeddings: the "standard" sentence embeddings obtained by
@@ -209,8 +220,8 @@ class ExtractiveSummarizer(Summarizer):
         # Sentence tokenization
         sentences = self.get_sentences(text)
 
-        # Size of summary (max of values represented by max_nb_sentences and percentage in order to avoid conflits)
-        summary_size = round(max(max_nb, len(sentences) * percentage))
+        # Size of summary (min of values represented by max_nb_sentences and percentage in order to avoid conflits)
+        summary_size = round(min(max_nb, len(sentences) * percentage))
         logger.debug(f"Maximum size of summary: {summary_size}")
         if len(sentences) <= summary_size:
             logger.warning("Text too small, nothing changed.")
@@ -233,13 +244,17 @@ class ExtractiveSummarizer(Summarizer):
         )
 
         # Computes a summary based on the sentence embeddings
-        summary_indices = self._summarize_based_on_cos_scores(new_cos_scores, summary_size)
+        summary_indices = self._summarize_based_on_cos_scores(
+            new_cos_scores, summary_size
+        )
 
         # Export summary as a list of sentences
         summary = [sentences[idx].strip() for idx in summary_indices]
         return summary
 
-    def _summarize_based_on_cos_scores(self, cos_scores, summary_size: int) -> List[int]:
+    def _summarize_based_on_cos_scores(
+        self, cos_scores, summary_size: int
+    ) -> List[int]:
         """Summarizes "something" on the basis of a cosine similarity matrix.
         This approach may apply to text or a set of chunks.
 
