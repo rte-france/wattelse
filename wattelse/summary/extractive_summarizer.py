@@ -41,7 +41,7 @@ class ExtractiveSummarizer(Summarizer):
 
 
     def generate_summary(self, text, max_length_ratio=DEFAULT_RATIO_SUMMARY) -> str:
-        summary = self.summarize_text(text, 0, max_length_ratio)
+        summary = self.summarize_text(text, DEFAULT_LENGTH_SUMMARY, max_length_ratio)
         return " ".join(summary)
 
 
