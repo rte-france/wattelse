@@ -9,7 +9,7 @@ from loguru import logger
 
 import wattelse.summary.abstractive_summarizer
 from wattelse.llm.openai_api import OpenAI_API
-from wattelse.llm.prompts import GENERATE_TOPIC_LABEL_TITLE
+from wattelse.llm.prompts import FR_USER_GENERATE_TOPIC_LABEL_TITLE
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
@@ -58,7 +58,7 @@ def generate_newsletter(
         if improve_topic_description:
             titles = [doc.title for _, doc in df.loc[pd.Series(topics) == i].iterrows()]
             improved_topic_description = OpenAI_API().generate(
-                GENERATE_TOPIC_LABEL_TITLE.format(
+                FR_USER_GENERATE_TOPIC_LABEL_TITLE.format(
                     keywords=", ".join(topics_info["Representation"].iloc[i]),
                     title_list=", ".join(titles),
                 )

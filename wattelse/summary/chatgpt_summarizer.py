@@ -10,7 +10,8 @@ from wattelse.summary.summarizer import (
     DEFAULT_SUMMARIZATION_RATIO,
     DEFAULT_MAX_SENTENCES,
 )
-from wattelse.llm.prompts import BASE_PROMPT_SUMMARY
+from wattelse.summary.summarizer import Summarizer
+from wattelse.llm.prompts import FR_SYSTEM_SUMMARY
 
 MODEL = "gpt-3.5-turbo"
 TEMPERATURE = 0.1
@@ -50,14 +51,10 @@ class GPTSummarizer(Summarizer):
             answer = openai.ChatCompletion.create(
                 model=MODEL,
                 messages=[
-                    {
-                        "role": "user",
-                        "content": BASE_PROMPT_SUMMARY.format(text=article_text),
-                    }
-                ],
-                max_tokens=round(
-                    self.num_tokens_from_string(article_text) * max_summary_length_ratio
-                ),
+                    {"role": "system", "content": FR_SYSTEM_SUMMARY.format(num_sentences=max_sentences)},
+                    {"role": "user", "content": article_text}
+                    ],
+                max_tokens=round(self.num_tokens_from_string(article_text)*max_summary_length_ratio),
                 temperature=TEMPERATURE,
             )
             logger.debug(f"API returned: {answer}")
