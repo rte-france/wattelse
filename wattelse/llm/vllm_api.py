@@ -35,23 +35,22 @@ class vLLM_API:
             else None
         )
 
-    def generate_llm_specific_prompt(self, prompt) -> str:
+    def generate_llm_specific_prompt(self, user_prompt, system_prompt=None) -> str:
         """
         Takes a prompt as input and returns the prompt in the specific LLM format.
         """
-        chat = [
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ]
+        messages = [{"role": "user", "content": user_prompt}]
+        # add system prompt if one is provided
+        if system_prompt:
+            messages.insert(0, {"role": "system", "content": system_prompt})
         return self.tokenizer.apply_chat_template(
-            chat, add_generation_prompt=True, tokenize=False
+            messages, add_generation_prompt=True, tokenize=False
         )
 
     def generate(
         self,
-        prompt,
+        user_prompt,
+        system_prompt=None,
         temperature=0.1,
         max_tokens=512,
         transform_prompt=True,
@@ -60,7 +59,8 @@ class vLLM_API:
         """Uses the remote model (API) to generate the answer.
 
         Args:
-            prompt (str): prompt to send to the model.
+            user_prompt (str): prompt to send to the model with role=user.
+            system_prompt (str): prompt to send to the model with role=system. Useless if transform_prompt=False.
             temperature (float, optional): Temperature for generation.
             max_tokens (int, optional): Maximum tokens to be generated.
             transform_prompt (bool, optional): If True, transforms the input prompt to match the chat template used in LLM training.
@@ -74,7 +74,7 @@ class vLLM_API:
         logger.debug(f"Calling remote vLLM service...")
         try:
             if transform_prompt:
-                prompt = self.generate_llm_specific_prompt(prompt)
+                prompt = self.generate_llm_specific_prompt(user_prompt, system_prompt=system_prompt)
 
             # Use of completion API
             completion_result = openai.api_resources.Completion.create(
