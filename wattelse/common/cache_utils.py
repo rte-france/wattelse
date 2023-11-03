@@ -3,7 +3,7 @@ import pickle
 from pathlib import Path
 from typing import List, Any
 
-from aiofiles import os
+import os
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
