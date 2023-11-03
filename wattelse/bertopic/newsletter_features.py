@@ -26,6 +26,7 @@ def generate_newsletter(
     """
     Write a newsletter using trained BERTopic model.
     """
+    logger.debug("Generating newsletter...")
     # Instantiates summarizer
     summarizer = summarizer_class()
 
