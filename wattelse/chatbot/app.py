@@ -252,7 +252,7 @@ def display_side_bar():
         # Data
         t1, t2 = st.tabs(["SELECT", "UPLOAD"])
         with t1:
-            data_options = [""] + os.listdir(DATA_DIR)
+            data_options = [""] + sorted(os.listdir(DATA_DIR))
             st.selectbox(
                 "Select input data",
                 data_options,
