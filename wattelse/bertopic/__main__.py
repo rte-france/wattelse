@@ -10,6 +10,7 @@ from datetime import datetime
 
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
+from google.auth.exceptions import RefreshError
 from hdbscan import HDBSCAN
 from loguru import logger
 from pathlib import Path
@@ -164,13 +165,16 @@ if __name__ == "__main__":
 
         # send newsletter by email
         recipients = newsletter_params.getliteral("recipients", [])
-        if recipients:
-            credentials = get_credentials()
-            with open(output_path, "r") as file:
-                # Read the entire contents of the file into a string
-                content = file.read()
-            send_email(credentials, title, recipients, content, output_format)
-            logger.info(f"Newsletter sent to: {recipients}")
+        try:
+            if recipients:
+                credentials = get_credentials()
+                with open(output_path, "r") as file:
+                    # Read the entire contents of the file into a string
+                    content = file.read()
+                send_email(credentials, title, recipients, content, output_format)
+                logger.info(f"Newsletter sent to: {recipients}")
+        except RefreshError as re:
+            logger.error(f"Problem with token for email, please regenerate it: {re}")
 
     def _train_topic_model(config: configparser.ConfigParser, dataset: pd.DataFrame):
         # Step 1 - Embedding model
