@@ -18,8 +18,8 @@ from wattelse.common.vars import BASE_DATA_DIR
 
 SCOPES = ["https://mail.google.com/"] # full access to mail API
 FROM = "wattelse.ai@gmail.com"
-TOKEN_PATH = BASE_DATA_DIR / "gmail_token.json"
-DEFAULT_GMAIL_CREDENTIALS_PATH = Path(__file__).parent / "gmail_credentials.json"
+TOKEN_PATH = BASE_DATA_DIR / "gmail_token.json.bak"
+DEFAULT_GMAIL_CREDENTIALS_PATH = Path(__file__).parent.parent / "config" / "gmail_credentials.json"
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
@@ -30,6 +30,7 @@ def get_credentials(credentials_path: Path = DEFAULT_GMAIL_CREDENTIALS_PATH) -> 
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
+    logger.debug(f"Gmail credentials path: {credentials_path}")
     logger.debug(f"Gmail token path: {TOKEN_PATH}")
     if TOKEN_PATH.exists():
         creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
