@@ -215,8 +215,8 @@ if __name__ == "__main__":
         schedule = data_feed_cfg.get("data-feed", "update_frequency")
         id = data_feed_cfg.get("data-feed", "id")
         proxy = os.getenv("https_proxy")
-        command = f"umask 002 && {sys.prefix}/bin/python -m wattelse.data_provider scrape-feed {feed_cfg.resolve()} > {LOG_DIR}/cron_feed_{id}.log 2>&1"
-        env_vars = f"http_proxy='{proxy}'; https_proxy='{proxy}';"
+        command = f"{sys.prefix}/bin/python -m wattelse.data_provider scrape-feed {feed_cfg.resolve()} > {LOG_DIR}/cron_feed_{id}.log 2>&1"
+        env_vars = f"http_proxy='{proxy}' https_proxy='{proxy}'"
         add_job_to_crontab(schedule, command, env_vars)
 
     ##################
