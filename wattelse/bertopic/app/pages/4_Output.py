@@ -12,8 +12,8 @@ from wattelse.summary import GPTSummarizer, AbstractiveSummarizer, ExtractiveSum
 restore_widget_state()
 
 SUMMARIZER_OPTIONS_MAPPER = {
-    "GPTSummarizer": GPTSummarizer,
     "AbstractiveSummarizer": AbstractiveSummarizer,
+    "GPTSummarizer": GPTSummarizer,
     "ExtractiveSummarizer": ExtractiveSummarizer,
 }
 
@@ -60,7 +60,7 @@ with st.sidebar.form("newsletter_parameters"):
 
     st.selectbox(
         "Summarizer class",
-        ["AbstractiveSummarizer", "ExtractiveSummarizer", "GPTSummarizer"],
+        list(SUMMARIZER_OPTIONS_MAPPER.keys()),
         key="summarizer_classname",
     )
 

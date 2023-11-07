@@ -54,7 +54,7 @@ class AbstractiveSummarizer(Summarizer):
 
         attention_mask = inputs.attention_mask.to(device)
 
-        max_length = max([round(len(article_text) * max_length_ratio) for article_text in article_texts])
+        max_length = 512#max([round(len(article_text) * max_length_ratio) for article_text in article_texts])
 
         output_ids = self.model.generate(
             input_ids=input_ids,
@@ -69,10 +69,6 @@ class AbstractiveSummarizer(Summarizer):
         ) for output_id in output_ids]
         return summaries
 
-    def num_tokens_from_string(self, string: str) -> int:
-        """Returns the number of tokens in a text string."""
-        num_tokens = len(self.tokenizer.decode(string))
-        return num_tokens
 
 if __name__ == "__main__":
     #text = """Les vidéos qui disent que les vaccins approuvés sont dangereux et provoquent l'autisme, le cancer ou l'infertilité font partie de celles qui seront retirées, a indiqué la société. La politique comprend la résiliation des comptes des influenceurs anti-vaccins. Les géants de la technologie ont été critiqués pour ne pas en faire plus pour contrer les fausses informations sur la santé sur leurs sites. En juillet, le président américain Joe Biden a déclaré que les plateformes de médias sociaux étaient en grande partie responsables du scepticisme des gens à se faire vacciner en diffusant des informations erronées, et les a appelés à résoudre le problème. YouTube, qui appartient à Google, a déclaré que 130 000 vidéos avaient été supprimées de sa plateforme depuis l'année dernière, lorsqu'il a mis en place une interdiction de contenu diffusant des informations erronées sur les vaccins Covid. Dans un article de blog, la société a déclaré avoir vu de fausses allégations sur les piqûres de Covid "se transformer en désinformation sur les vaccins en général". La nouvelle politique couvre les vaccins approuvés depuis longtemps, tels que ceux contre la rougeole ou l'hépatite B. "Nous élargissons nos politiques de désinformation médicale sur YouTube avec de nouvelles directives sur les vaccins actuellement administrés qui sont approuvés et confirmés comme sûrs et efficaces par les autorités sanitaires locales. et l'OMS", indique le message, faisant référence à l'Organisation mondiale de la santé."""
