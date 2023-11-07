@@ -18,7 +18,7 @@ from wattelse.common.vars import BASE_DATA_DIR
 
 SCOPES = ["https://mail.google.com/"] # full access to mail API
 FROM = "wattelse.ai@gmail.com"
-TOKEN_PATH = BASE_DATA_DIR / "gmail_token.json.bak"
+TOKEN_PATH = BASE_DATA_DIR / "gmail_token.json"
 DEFAULT_GMAIL_CREDENTIALS_PATH = Path(__file__).parent.parent / "config" / "gmail_credentials.json"
 
 # Ensures to write with +rw for both user and groups
