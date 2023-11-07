@@ -65,10 +65,14 @@ def generate_newsletter(
             )
             md_lines.append(f"### Description : {improved_topic_description}")
 
-        for _, doc in sub_df.iterrows():
-            # Generates summary for article
-            summary = summarizer.generate_summary(doc.text)
+        # Generates summaries for article
+        texts = [doc.text for _, doc in sub_df.iterrows()]
+        summaries = summarizer.summarize_batch(texts)
 
+        assert len(summaries)==len(sub_df)
+
+        i = 0
+        for _, doc in sub_df.iterrows():
             # Write newsletter
             md_lines.append(f"### [*{doc.title}*]({doc.url})")
             try:
@@ -79,7 +83,8 @@ def generate_newsletter(
             md_lines.append(
                 f"<div class='timestamp'>{doc.timestamp.strftime('%d-%m-%Y')} | {domain}</div>"
             )
-            md_lines.append(summary)
+            md_lines.append(summaries[i])
+            i+=1
 
     # Write full file
     md_content = "\n\n".join(md_lines)

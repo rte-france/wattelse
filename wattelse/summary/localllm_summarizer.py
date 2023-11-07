@@ -1,3 +1,5 @@
+from typing import List
+
 from transformers import AutoTokenizer
 
 from wattelse.llm.vllm_api import vLLM_API
@@ -32,3 +34,11 @@ class LocalLLMSummarizer(Summarizer):
         prompt = FR_USER_SUMMARY.format(text=article_text)
         summary = self.api.generate(prompt)
         return summary
+
+    def summarize_batch(
+        self,
+        article_texts: List[str],
+        max_sentences: int=DEFAULT_MAX_SENTENCES,
+        max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+    ) -> List[str]:
+        return super().summarize_batch(article_texts, max_sentences, max_length_ratio)

@@ -1,4 +1,6 @@
 import configparser
+from typing import List
+
 import openai
 import tiktoken
 from pathlib import Path
@@ -62,3 +64,11 @@ class GPTSummarizer(Summarizer):
         except APIError as e:
             logger.error(f"OpenAI API error : {e}")
             return f"OpenAI API error : {e}"
+
+    def summarize_batch(
+        self,
+        article_texts: List[str],
+        max_sentences: int=DEFAULT_MAX_SENTENCES,
+        max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+    ) -> List[str]:
+        return super().summarize_batch(article_texts, max_sentences, max_length_ratio)

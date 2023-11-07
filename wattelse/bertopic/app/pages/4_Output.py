@@ -7,11 +7,15 @@ from wattelse.bertopic.app.state_utils import (
     register_widget,
     save_widget_state,
 )
-from wattelse.summary.chatgpt_summarizer import GPTSummarizer
-from wattelse.summary.abstractive_summarizer import AbstractiveSummarizer
-from wattelse.summary.extractive_summarizer import ExtractiveSummarizer
+from wattelse.summary import GPTSummarizer, AbstractiveSummarizer, ExtractiveSummarizer
 
 restore_widget_state()
+
+SUMMARIZER_OPTIONS_MAPPER = {
+    "GPTSummarizer": GPTSummarizer,
+    "AbstractiveSummarizer": AbstractiveSummarizer,
+    "ExtractiveSummarizer": ExtractiveSummarizer,
+}
 
 # Stop app if no topic is selected
 if "topic_model" not in st.session_state.keys():
@@ -25,13 +29,15 @@ if "newsletter_nb_topics" not in st.session_state:
     st.session_state["newsletter_nb_topics"] = 4
 if "newsletter_nb_docs" not in st.session_state:
     st.session_state["newsletter_nb_docs"] = 3
+if "summarizer_classname" not in st.session_state:
+    st.session_state["summarizer_classname"] = list(SUMMARIZER_OPTIONS_MAPPER.keys())[0]
 
 # Newsletter params
 with st.sidebar.form("newsletter_parameters"):
     register_widget("newsletter_nb_topics")
     register_widget("newsletter_nb_docs")
     register_widget("newsletter_improve_description")
-    register_widget("summarizer_class")
+    register_widget("summarizer_classname")
     st.slider(
         "Number of topics",
         min_value=1,
@@ -52,21 +58,10 @@ with st.sidebar.form("newsletter_parameters"):
         key="newsletter_improve_description",
     )
 
-
-    SUMMARIZER_OPTIONS_MAPPER = {
-        GPTSummarizer: "GPTSummarizer",
-        AbstractiveSummarizer: "AbstractiveSummarizer",
-        ExtractiveSummarizer: "ExtractiveSummarizer",
-    }
-
-    def map_summarizer_to_str(summarizer_class):
-        return SUMMARIZER_OPTIONS_MAPPER[summarizer_class]
-    
     st.selectbox(
-            "Summarizer class",
-            [AbstractiveSummarizer, ExtractiveSummarizer, GPTSummarizer],
-            key="summarizer_class",
-            format_func=map_summarizer_to_str,
+        "Summarizer class",
+        ["AbstractiveSummarizer", "ExtractiveSummarizer", "GPTSummarizer"],
+        key="summarizer_classname",
     )
 
     newsletter_parameters_clicked = st.form_submit_button(
@@ -89,8 +84,12 @@ if newsletter_parameters_clicked:
             df_split=df_split,
             top_n_topics=st.session_state["newsletter_nb_topics"],
             top_n_docs=st.session_state["newsletter_nb_docs"],
-            improve_topic_description=st.session_state["newsletter_improve_description"],
-            summarizer_class=GPTSummarizer,
+            improve_topic_description=st.session_state[
+                "newsletter_improve_description"
+            ],
+            summarizer_class=SUMMARIZER_OPTIONS_MAPPER[
+                st.session_state["summarizer_classname"]
+            ],
         )
         # st.markdown(md)
         st.components.v1.html(

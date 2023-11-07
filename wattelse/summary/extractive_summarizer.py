@@ -50,6 +50,14 @@ class ExtractiveSummarizer(Summarizer):
         summary = self.summarize_text(text, max_sentences, max_length_ratio)
         return " ".join(summary)
 
+    def summarize_batch(
+        self,
+        article_texts: List[str],
+        max_sentences: int=DEFAULT_MAX_SENTENCES,
+        max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+    ) -> List[str]:
+        return super().summarize_batch(article_texts, max_sentences, max_length_ratio)
+
     def get_sentences_embeddings(self, sentences: List[str]) -> List[float]:
         """Compute the sentence embeddings"""
         return self.sentence_transformer_model.encode(sentences, convert_to_tensor=True)
