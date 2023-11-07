@@ -111,6 +111,14 @@ a:hover { background: #c50000; color: #eee; text-decoration: none; }
 
 .timestamp{
   color: grey;
+  font-family: "Raleway", sans-serif;
   display: flex;
   align-items: stretch;
+}
+
+.date_range{
+  color: grey;
+  font-family: "Raleway", sans-serif;
+  font-size: 20px;
+  font-weight: bold;
 }

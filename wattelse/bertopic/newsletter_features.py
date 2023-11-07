@@ -39,8 +39,13 @@ def generate_newsletter(
     if len(topics_info) < top_n_topics:
         top_n_topics = len(topics_info)
 
+    # Date range
+    date_min = df.timestamp.min().strftime('%d-%m-%Y')
+    date_max = df.timestamp.max().strftime('%d-%m-%Y')
+
     # Store each line in a list
     md_lines = [f"# {newsletter_title}"]
+    md_lines.append(f"<div class='date_range'>du {date_min} au {date_max}</div>")
     # Iterate over topics
     for i in range(top_n_topics):
         md_lines.append(
