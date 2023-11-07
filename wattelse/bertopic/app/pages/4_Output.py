@@ -17,6 +17,22 @@ SUMMARIZER_OPTIONS_MAPPER = {
     "ExtractiveSummarizer": ExtractiveSummarizer,
 }
 
+
+def generate_newsletter_wrapper():
+    return generate_newsletter(
+        topic_model=st.session_state["topic_model"],
+        df=df,
+        topics=st.session_state["topics"],
+        df_split=df_split,
+        top_n_topics=st.session_state["newsletter_nb_topics"],
+        top_n_docs=st.session_state["newsletter_nb_docs"],
+        improve_topic_description=st.session_state["newsletter_improve_description"],
+        summarizer_class=SUMMARIZER_OPTIONS_MAPPER[
+            st.session_state["summarizer_classname"]
+        ],
+    )
+
+
 # Stop app if no topic is selected
 if "topic_model" not in st.session_state.keys():
     st.error("Train a model to explore generated topics.", icon="🚨")
@@ -77,23 +93,11 @@ if newsletter_parameters_clicked:
         df = st.session_state["timefiltered_df"]
         df_split = None
     with st.spinner("Generating newsletter..."):
-        md = generate_newsletter(
-            topic_model=st.session_state["topic_model"],
-            df=df,
-            topics=st.session_state["topics"],
-            df_split=df_split,
-            top_n_topics=st.session_state["newsletter_nb_topics"],
-            top_n_docs=st.session_state["newsletter_nb_docs"],
-            improve_topic_description=st.session_state[
-                "newsletter_improve_description"
-            ],
-            summarizer_class=SUMMARIZER_OPTIONS_MAPPER[
-                st.session_state["summarizer_classname"]
-            ],
-        )
-        # st.markdown(md)
-        st.components.v1.html(
-            md2html(md, Path(__file__).parent.parent.parent / "newsletter.css"),
-            height=800,
-            scrolling=True,
-        )
+        st.session_state["newsletter"] = generate_newsletter_wrapper()
+
+if "newsletter" in st.session_state:
+    st.components.v1.html(
+        md2html(st.session_state["newsletter"], Path(__file__).parent.parent.parent / "newsletter.css"),
+        height=800,
+        scrolling=True,
+    )
