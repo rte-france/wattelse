@@ -7,9 +7,9 @@ from wattelse.bertopic.utils import (
     split_df_by_paragraphs,
 )
 
-from state_utils import register_widget, save_widget_state, restore_widget_state
+from wattelse.bertopic.app.state_utils import register_widget, save_widget_state, restore_widget_state
 
-from app_utils import (
+from wattelse.bertopic.app.app_utils import (
     embedding_model_options,
     bertopic_options,
     umap_options,
@@ -21,8 +21,8 @@ from app_utils import (
     compute_topics_over_time,
     plot_docs_reparition_over_time,
     initialize_default_parameters_keys,
+    load_data_wrapper
 )
-from app_utils import load_data_wrapper
 from wattelse.bertopic.app.train_utils import train_BERTopic_wrapper
 
 
