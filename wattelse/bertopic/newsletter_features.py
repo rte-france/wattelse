@@ -48,9 +48,6 @@ def generate_newsletter(
     md_lines.append(f"<div class='date_range'>du {date_min} au {date_max}</div>")
     # Iterate over topics
     for i in range(top_n_topics):
-        md_lines.append(
-            f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
-        )
         sub_df = get_most_representative_docs(
             topic_model,
             df,
@@ -61,14 +58,21 @@ def generate_newsletter(
             top_n_docs=top_n_docs,
         )
         if improve_topic_description:
-            titles = [doc.title for _, doc in df.loc[pd.Series(topics) == i].iterrows()]
+            titles = [doc.title for _, doc in sub_df.iterrows()]
             improved_topic_description = OpenAI_API().generate(
                 FR_USER_GENERATE_TOPIC_LABEL_TITLE.format(
                     keywords=", ".join(topics_info["Representation"].iloc[i]),
                     title_list=", ".join(titles),
                 )
-            )
-            md_lines.append(f"### Description : {improved_topic_description}")
+            ).replace("\"","")
+            md_lines.append(f"## Sujet {i+1} : {improved_topic_description}")
+            md_lines.append(
+            f"### {' '.join(['#' + keyword for keyword in topics_info['Representation'].iloc[i]])}"
+        )
+        else:
+            md_lines.append(
+            f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
+        )
 
         # Generates summaries for article
         texts = [doc.text for _, doc in sub_df.iterrows()]
@@ -183,3 +187,12 @@ def get_most_representative_docs(
         docs = topic_model.get_representative_docs(topic=topic_number)
         sub_df = df[df["text"].isin(docs)].iloc[0:top_n_docs]
         return sub_df
+    
+def improve_topic_description():
+    titles = [doc.title for _, doc in df.loc[pd.Series(topics) == i].iterrows()]
+    improved_topic_description = OpenAI_API().generate(
+        FR_USER_GENERATE_TOPIC_LABEL_TITLE.format(
+            keywords=", ".join(topics_info["Representation"].iloc[i]),
+            title_list=", ".join(titles),
+        )
+    )
