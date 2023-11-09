@@ -9,7 +9,10 @@ from loguru import logger
 
 import wattelse.summary.abstractive_summarizer
 from wattelse.llm.openai_api import OpenAI_API
-from wattelse.llm.prompts import FR_USER_GENERATE_TOPIC_LABEL_TITLE
+from wattelse.llm.prompts import (
+    FR_USER_GENERATE_TOPIC_LABEL_TITLE,
+    FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
+)
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
@@ -40,8 +43,8 @@ def generate_newsletter(
         top_n_topics = len(topics_info)
 
     # Date range
-    date_min = df.timestamp.min().strftime('%d-%m-%Y')
-    date_max = df.timestamp.max().strftime('%d-%m-%Y')
+    date_min = df.timestamp.min().strftime("%d-%m-%Y")
+    date_max = df.timestamp.max().strftime("%d-%m-%Y")
 
     # Store each line in a list
     md_lines = [f"# {newsletter_title}"]
@@ -57,28 +60,44 @@ def generate_newsletter(
             topic_number=i,
             top_n_docs=top_n_docs,
         )
-        if improve_topic_description:
-            titles = [doc.title for _, doc in sub_df.iterrows()]
-            improved_topic_description = OpenAI_API().generate(
-                FR_USER_GENERATE_TOPIC_LABEL_TITLE.format(
-                    keywords=", ".join(topics_info["Representation"].iloc[i]),
-                    title_list=", ".join(titles),
-                )
-            ).replace("\"","")
-            md_lines.append(f"## Sujet {i+1} : {improved_topic_description}")
-            md_lines.append(
-            f"### {' '.join(['#' + keyword for keyword in topics_info['Representation'].iloc[i]])}"
-        )
-        else:
-            md_lines.append(
-            f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
-        )
 
-        # Generates summaries for article
+        # Generates summaries for articles
         texts = [doc.text for _, doc in sub_df.iterrows()]
         summaries = summarizer.summarize_batch(texts)
 
-        assert len(summaries)==len(sub_df)
+        if improve_topic_description:
+            titles = [doc.title for _, doc in sub_df.iterrows()]
+            improved_topic_description = (
+                OpenAI_API()
+                .generate(
+                    FR_USER_GENERATE_TOPIC_LABEL_TITLE.format(
+                        keywords=", ".join(topics_info["Representation"].iloc[i]),
+                        title_list=", ".join(titles),
+                    )
+                )
+                .replace('"', "")
+            )
+
+            improved_topic_description_v2 = (
+                OpenAI_API()
+                .generate(
+                    FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES.format(
+                        title_list=" ; ".join(summaries),
+                    )
+                )
+                .replace('"', "")
+            )
+
+            md_lines.append(f"## Sujet {i+1} : {improved_topic_description}")
+            md_lines.append(f"## Sujet {i+1} : {improved_topic_description_v2}")
+
+            md_lines.append(
+                f"### {' '.join(['#' + keyword for keyword in topics_info['Representation'].iloc[i]])}"
+            )
+        else:
+            md_lines.append(
+                f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
+            )
 
         i = 0
         for _, doc in sub_df.iterrows():
@@ -93,7 +112,7 @@ def generate_newsletter(
                 f"<div class='timestamp'>{doc.timestamp.strftime('%d-%m-%Y')} | {domain}</div>"
             )
             md_lines.append(summaries[i])
-            i+=1
+            i += 1
 
     # Write full file
     md_content = "\n\n".join(md_lines)
@@ -187,12 +206,3 @@ def get_most_representative_docs(
         docs = topic_model.get_representative_docs(topic=topic_number)
         sub_df = df[df["text"].isin(docs)].iloc[0:top_n_docs]
         return sub_df
-    
-def improve_topic_description():
-    titles = [doc.title for _, doc in df.loc[pd.Series(topics) == i].iterrows()]
-    improved_topic_description = OpenAI_API().generate(
-        FR_USER_GENERATE_TOPIC_LABEL_TITLE.format(
-            keywords=", ".join(topics_info["Representation"].iloc[i]),
-            title_list=", ".join(titles),
-        )
-    )

@@ -35,7 +35,9 @@ FR_USER_GENERATE_TOPIC_LABEL_TITLE = ("Vous êtes une IA hautement qualifiée, f
 # title_list: list of documents title belonging to the topic
 
 
-
+FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES = ("Décrit en une courte expression le thème associé à l'ensemble des extraits "
+										  "suivants. Le thème doit être court et spécifique en 4 mots maximum. "
+										  "\n\"{title_list}\"")
 
 
 
