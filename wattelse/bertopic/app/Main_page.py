@@ -1,13 +1,19 @@
 import streamlit as st
 from loguru import logger
+
+from wattelse.bertopic.app.data_utils import data_overview, choose_data
 from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN,
-    DATA_DIR,
     clean_dataset,
     split_df_by_paragraphs,
+    DATA_DIR,
 )
 
-from wattelse.bertopic.app.state_utils import register_widget, save_widget_state, restore_widget_state
+from wattelse.bertopic.app.state_utils import (
+    register_widget,
+    save_widget_state,
+    restore_widget_state,
+)
 
 from wattelse.bertopic.app.app_utils import (
     embedding_model_options,
@@ -19,74 +25,16 @@ from wattelse.bertopic.app.app_utils import (
     plot_2d_topics,
     plot_topics_over_time,
     compute_topics_over_time,
-    plot_docs_reparition_over_time,
     initialize_default_parameters_keys,
-    load_data_wrapper
+    load_data_wrapper,
 )
 from wattelse.bertopic.app.train_utils import train_BERTopic_wrapper
 
 
-def reset_topics():
-    # shall be called when we update data parameters (timestamp, min char, split, etc.)
-    st.session_state.pop("selected_topic_number", None)
-    st.session_state.pop("new_topics", None)
-    st.session_state.pop("new_topics_over_time", None)
-    save_widget_state()
-
-
-def reset_all():
-    # TODO: add here all state variables we want to reset when we change the data
-    st.session_state.pop("timestamp_range", None)
-    reset_topics()
-
-def reset_data():
-    # TODO: add here all state variables we want to reset when we change the data
-    st.session_state.pop("timestamp_range", None)
-    st.session_state.pop("data_name", None)
-    reset_topics()
-
 def select_data():
     st.write("## Data selection")
 
-    if "data_folder" not in st.session_state:
-        st.session_state["data_folder"] = DATA_DIR
-
-    data_folders = sorted(
-        set(
-            f.parent
-            for f in list(DATA_DIR.glob("**/*.csv")) + list(DATA_DIR.glob("**/*.jsonl"))
-        )
-    )
-    data_options = ["None"] + sorted(
-        [
-            p.name
-            for p in list(st.session_state["data_folder"].glob("*.csv"))
-            + list(st.session_state["data_folder"].glob("*.jsonl*"))
-        ]
-    )
-
-    # Select box with every file saved in DATA_DIR as options
-    if "data_name" not in st.session_state:
-        st.session_state["data_name"] = data_options[0]
-
-    register_widget("data_name")
-    register_widget("data_folder")
-    col1, col2 = st.columns([0.4, 0.6])
-    with col1:
-        st.selectbox(
-            "Base folder", data_folders, key="data_folder", on_change=reset_data
-        )
-    with col2:
-        st.selectbox(
-            "Select data to continue",
-            data_options,
-            key="data_name",
-            on_change=reset_all,
-        )
-
-    # Stop the app as long as no data is selected
-    if st.session_state["data_name"] == "None":
-        st.stop()
+    choose_data(DATA_DIR, ["*.csv", "*.jsonl*"])
 
     st.session_state["raw_df"] = (
         load_data_wrapper(
@@ -167,25 +115,6 @@ def select_data():
         .reset_index(drop=True)
     )
     st.write(f"Found {len(st.session_state['timefiltered_df'])} documents.")
-
-
-def data_overview():
-    with st.expander("Data overview"):
-        freq = st.select_slider(
-            "Time aggregation",
-            options=(
-                "1D",
-                "2D",
-                "1W",
-                "2W",
-                "1M",
-                "2M",
-                "1Y",
-                "2Y",
-            ),
-            value="1M",
-        )
-        plot_docs_reparition_over_time(st.session_state["timefiltered_df"], freq)
 
 
 def train_model():
@@ -328,7 +257,7 @@ with st.sidebar.form("parameters_sidebar"):
 select_data()
 
 # Data overview
-data_overview()
+data_overview(st.session_state["timefiltered_df"])
 
 # Train model
 train_model()
