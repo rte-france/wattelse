@@ -88,6 +88,9 @@ def generate_newsletter(
                 .replace('"', "")
             )
 
+            if improved_topic_description_v2.endswith("."):
+                improved_topic_description_v2 =  improved_topic_description_v2[:-1]
+
             md_lines.append(f"## Sujet {i+1} : {improved_topic_description}")
             md_lines.append(f"## Sujet {i+1} : {improved_topic_description_v2}")
 

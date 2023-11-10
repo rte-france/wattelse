@@ -102,40 +102,6 @@ class TopicMetrics():
 
         return topic_map
 
-        # def get_signal(row):
-        #     """ensures correct human labeling, assuming cluster labels are put in a correct order"""
-        #     x = row["x_clus"]
-        #     y = row["y_clus"]
-        #     if x:  # x True => x big
-        #         return STRONG_SIGNAL if y else NOISY_SIGNAL  # y True => y big
-        #     else:
-        #         return WEAK_SIGNAL if y else LATENT_SIGNAL
-        #
-        # try:
-        #     X = topic_map[[y_col]]
-        #     kmeans_y = KMeans(n_clusters=2, random_state=RANDOM_STATE, n_init="auto").fit(X)
-        #     topic_map["y_clus"] = kmeans_y.labels_.astype(bool)
-        #     # Labels obtained by kmeans may not match the "right" class... we check with one example
-        #     if topic_map.query("y_clus==0").iloc[0][y_col] > topic_map.query("y_clus==1").iloc[0][y_col]:
-        #         logger.warning("Needed to change the clustering labels in dim y to obtain meaningful signal labels")
-        #         topic_map["y_clus"] = ~topic_map["y_clus"]
-        #
-        #     topic_map["x_clus"] = 9999
-        #     for i in set(kmeans_y.labels_):
-        #         Xi = topic_map.query(f"y_clus == {i}")[[x_col]]
-        #         kmeans_xi = KMeans(n_clusters=2, random_state=RANDOM_STATE, n_init="auto").fit(Xi)
-        #         df2 = topic_map.query(f"y_clus == {i}")
-        #         df2["x_clus"] = kmeans_xi.labels_.astype(bool)
-        #         if df2.query("x_clus==0").iloc[0][x_col] > df2.query("x_clus==1").iloc[0][x_col]:
-        #             logger.warning("Needed to change the clustering labels in dim x to obtain meaningful signal labels")
-        #             df2["x_clus"] = ~df2["x_clus"]
-        #         topic_map.update(df2)
-        #
-        #     topic_map["signal"] = topic_map.apply(get_signal, axis=1)
-        # except ValueError as e:
-        #     logger.error(f"Cannot characterize signals: {e}")
-        #     topic_map["signal"] = UKNOWN_SIGNAL
-        # return topic_map
 
     @staticmethod
     def scatterplot_with_annotations(df, x_col, y_col, label_col, hover_data, title, x_label, y_label, animation_frame=None, animation_group=None):
