@@ -13,17 +13,10 @@ from transformers import GenerationConfig
 
 from wattelse.common.cache_utils import save_embeddings, load_embeddings
 from wattelse.common.vars import GPU_SERVERS
+from wattelse.llm.prompts import FR_USER_BASE_RAG
 
 TEMPERATURE = 0.1
 MAX_TOKENS = 512
-
-BASE_PROMPT = """Répond à la question en utilisant le contexte fourni.
-Contexte :
-\"\"\"
-{context}
-\"\"\"
-Question : {query}
-La réponse doit être {expected_answer_size} et se baser uniquement sur le contexte. Si le contexte ne contient pas d'éléments permettant de répondre à la question, répondre \"Le contexte ne fourni pas assez d'information pour répondre à la question.\""""
 
 BASE_CACHE_PATH = (
     Path("/data/weak_signals/cache/chatbot")
@@ -69,35 +62,16 @@ def generate_RAG_prompt(
             context=context, query=query, expected_answer_size=expected_answer_size
         )
     else:
-        return BASE_PROMPT.format(
+        return FR_USER_BASE_RAG.format(
             context=context, query=query, expected_answer_size=expected_answer_size
         )
 
 
-def generate_answer_locally(instruct_model, tokenizer, prompt) -> str:
-    """Uses the local model to generate the answer"""
-    input_ids = tokenizer(prompt, return_tensors="pt")["input_ids"].to(
-        instruct_model.device
-    )
-    input_length = input_ids.shape[1]
-    generated_outputs = instruct_model.generate(
-        input_ids=input_ids,
-        generation_config=GenerationConfig(
-            temperature=TEMPERATURE,
-            do_sample=True,
-            repetition_penalty=1.0,
-            max_new_tokens=MAX_TOKENS,
-        ),
-        return_dict_in_generate=True,
-    )
-    generated_tokens = generated_outputs.sequences[0, input_length:]
-    generated_text = tokenizer.decode(generated_tokens, skip_special_tokens=True)
-    logger.debug(f"Answer: {generated_text}")
-    return generated_text
-
-
 def load_data(
-    data_file: Path, embedding_model: SentenceTransformer, use_cache: bool = True
+    data_file: Path,
+    embedding_model: SentenceTransformer,
+    embedding_model_name: str = None,
+    use_cache: bool = True
 ):
     """Loads data and transform them into embeddings; data file shall contain a column 'processed_text' (preferred)
     or 'text'"""
@@ -113,7 +87,7 @@ def load_data(
         )
         sys.exit(-1)
 
-    cache_path = BASE_CACHE_PATH / f"{data_file.name}.pkl"
+    cache_path = BASE_CACHE_PATH / f"{embedding_model_name}_{data_file.name}.pkl"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     logger.debug(f"Using cache: {use_cache}")
     if not use_cache or not cache_path.exists():

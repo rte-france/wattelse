@@ -14,13 +14,13 @@ from wattelse.common.text_parsers.extract_text_from_MD import parse_md
 from wattelse.common.text_parsers.extract_text_from_PDF import parse_pdf
 from wattelse.common.text_parsers.extract_text_using_origami import parse_docx
 from wattelse.chatbot.utils import (
-    BASE_PROMPT,
     extract_n_most_relevant_extracts,
     generate_RAG_prompt,
     load_data,
 )
 from wattelse.common.vars import BASE_DATA_DIR
 from wattelse.llm.vllm_api import vLLM_API
+from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_SYSTEM_DODER_RAG
 from sentence_transformers import SentenceTransformer
 
 DATA_DIR = BASE_DATA_DIR / "chatbot"
@@ -42,23 +42,29 @@ EMBEDDING_MODEL_NAME = "antoinelouis/biencoder-camembert-base-mmarcoFR"
 
 if "prev_selected_file" not in st.session_state:
     st.session_state["prev_selected_file"] = None
+if "prev_embedding_model" not in st.session_state:
+    st.session_state["prev_embedding_model"] = None
 
 
 @st.cache_resource
-def initialize_embedding_model():
+def initialize_embedding_model(embedding_model_name):
     """Load embedding_model"""
     logger.info("Initializing embedding model...")
-    embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    embedding_model = SentenceTransformer(embedding_model_name)
     # Fix model max input length issue
     if embedding_model.max_seq_length == 514:
         embedding_model.max_seq_length = 512
     return embedding_model
 
 
-def initialize_data(data_path: Path):
+def initialize_data(data_path: Path, embedding_model, embedding_model_name, use_cache=True):
     if not data_path.is_file():
         st.error("Select a data file", icon="🚨")
-    docs, docs_embeddings = load_data(data_path, embedding_model, use_cache=True)
+    docs, docs_embeddings = load_data(data_path,
+                                      embedding_model,
+                                      embedding_model_name=embedding_model_name,
+                                      use_cache=use_cache,
+                                      )
     st.session_state["docs"] = docs
     st.session_state["docs_embeddings"] = docs_embeddings
     return docs, docs_embeddings
@@ -71,9 +77,6 @@ def initialize_db():
     table = db.table("messages")
     return table
 
-
-# initialize models
-embedding_model = initialize_embedding_model()
 
 # initialize DB
 db_table = initialize_db()
@@ -126,7 +129,7 @@ def enrich_query(query):
     return enriched_query
 
 
-def generate_assistant_response(query):
+def generate_assistant_response(query, embedding_model):
     if st.session_state.get("docs") is None:
         st.error("Select a document first", icon="🚨")
         return
@@ -157,7 +160,11 @@ def generate_assistant_response(query):
         )
 
         # Generates response
-        stream_response = API.generate(prompt, temperature=TEMPERATURE, max_tokens=MAX_TOKENS, stream=True)
+        stream_response = API.generate(prompt,
+                                       #system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
+                                       temperature=TEMPERATURE,
+                                       max_tokens=MAX_TOKENS,
+                                       stream=True)
 
         # HAL final response
         response = ""
@@ -224,16 +231,24 @@ def on_file_change():
         index_file()  # this will update st.session_state["data_file_from_parsing"]
         if st.session_state.get("data_file_from_parsing") is not None:
             logger.debug("Data file changed! Resetting chat history")
-            initialize_data(st.session_state["data_file_from_parsing"])
+            initialize_data(st.session_state["data_file_from_parsing"],
+                            st.session_state["embedding_model"],
+                            use_cache=st.session_state["use_cache"],
+                            )
             st.session_state["prev_selected_file"] = st.session_state[
                 "data_file_from_parsing"
             ]
             reset_messages_history()
 
-    elif st.session_state["selected_file"] != st.session_state["prev_selected_file"]:
+    elif (st.session_state["selected_file"] != st.session_state["prev_selected_file"]) or (st.session_state["prv_embedding_model"] != st.session_state["embedding_model"]):
         logger.debug("Data file changed! Resetting chat history")
-        initialize_data(DATA_DIR / st.session_state["selected_file"])
+        initialize_data(DATA_DIR / st.session_state["selected_file"],
+                        st.session_state["embedding_model"],
+                        embedding_model_name=st.session_state["embedding_model_name"],
+                        use_cache=st.session_state["use_cache"],
+                        )
         st.session_state["prev_selected_file"] = st.session_state["selected_file"]
+        st.session_state["prv_embedding_model"] = st.session_state["embedding_model"]
         reset_messages_history()
 
 
@@ -246,7 +261,6 @@ def on_instruct_prompt_change():
 def display_side_bar():
     with st.sidebar.form("parameters_sidebar"):
         st.markdown(f"**API** : *{API.model_name}*")
-        st.markdown(f"**Embedding** : *{EMBEDDING_MODEL_NAME}*")
         st.title("Parameters")
 
         # Data
@@ -267,12 +281,27 @@ def display_side_bar():
                 label_visibility="collapsed",
                 accept_multiple_files=False,
             )
+        
+        # Embedding model
+        st.selectbox(
+            "Embedding model",
+            ["antoinelouis/biencoder-camembert-base-mmarcoFR",
+             "dangvantuan/sentence-camembert-large"],
+             key="embedding_model_name",
+        )
 
         # Response size
         st.selectbox(
             "Response size",
             ["short", "detailed"],
             key="expected_answer_size",
+        )
+
+        # Use cache
+        st.toggle(
+            "Use cache",
+            value=True,
+            key="use_cache",
         )
 
         # Memory management
@@ -306,12 +335,13 @@ def display_side_bar():
         )
 
         # Custom prompt
-        st.text_area("Prompt", value=BASE_PROMPT, key="custom_prompt")
+        st.text_area("Prompt", value=FR_USER_BASE_RAG, key="custom_prompt")
 
         parameters_sidebar_clicked = st.form_submit_button("Apply")
 
         if parameters_sidebar_clicked:
             logger.debug("Parameters updated!")
+            st.session_state["embedding_model"] = initialize_embedding_model(st.session_state["embedding_model_name"])
             on_file_change()
             on_instruct_prompt_change()
             info = st.info("Parameters saved!")
@@ -324,7 +354,7 @@ def display_reset():
     with col1:
 
         def reset_prompt():
-            st.session_state["custom_prompt"] = BASE_PROMPT
+            st.session_state["custom_prompt"] = FR_USER_BASE_RAG
 
         st.button("Reset prompt", on_click=reset_prompt)
     with col2:
@@ -349,7 +379,7 @@ def main():
     if query:
         add_user_message_to_session(query)
 
-        response = generate_assistant_response(query)
+        response = generate_assistant_response(query, st.session_state["embedding_model"])
         add_to_database(query, response)
 
     display_reset()
