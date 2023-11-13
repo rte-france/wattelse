@@ -233,6 +233,7 @@ def on_file_change():
             logger.debug("Data file changed! Resetting chat history")
             initialize_data(st.session_state["data_file_from_parsing"],
                             st.session_state["embedding_model"],
+                            embedding_model_name=st.session_state["embedding_model_name"],
                             use_cache=st.session_state["use_cache"],
                             )
             st.session_state["prev_selected_file"] = st.session_state[
