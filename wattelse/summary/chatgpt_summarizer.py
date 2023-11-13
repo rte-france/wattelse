@@ -14,6 +14,7 @@ from wattelse.summary.summarizer import (
 )
 from wattelse.summary.summarizer import Summarizer
 from wattelse.llm.prompts import FR_SYSTEM_SUMMARY
+from wattelse.llm.openai_api import OpenAI_API
 
 MODEL = "gpt-3.5-turbo"
 TEMPERATURE = 0.1
@@ -24,10 +25,7 @@ class GPTSummarizer(Summarizer):
 
     def __init__(self):
         # retrieve chat GPT config
-        config = configparser.ConfigParser()
-        config.read(Path(__file__).parent.parent / "config" / "openai.cfg")
-        openai.api_key = config.get("OPENAI_CONFIG", "openai_key")
-        openai.organization = config.get("OPENAI_CONFIG", "openai_organization")
+        self.api = OpenAI_API()
         self.encoding = tiktoken.encoding_for_model(MODEL)
         logger.debug("GPTSummarizer initialized")
 
@@ -50,14 +48,12 @@ class GPTSummarizer(Summarizer):
                 encoded_article_text = encoded_article_text[0:max_article_length]
                 article_text = self.encoding.decode(encoded_article_text)
             # Create answer object
-            answer = openai.ChatCompletion.create(
-                model=MODEL,
-                messages=[
-                    {"role": "system", "content": FR_SYSTEM_SUMMARY.format(num_sentences=max_sentences)},
-                    {"role": "user", "content": article_text}
-                    ],
+            answer = self.api.generate(
+                system_prompt = FR_SYSTEM_SUMMARY.format(num_sentences=max_sentences),
+                user_prompt = article_text,
+                model_name = MODEL,
+                temperature = TEMPERATURE,
                 max_tokens=round(self.num_tokens_from_string(article_text)*max_summary_length_ratio),
-                temperature=TEMPERATURE,
             )
             logger.debug(f"API returned: {answer}")
             return answer.choices[0].message.content
