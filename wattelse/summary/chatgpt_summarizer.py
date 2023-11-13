@@ -41,25 +41,20 @@ class GPTSummarizer(Summarizer):
         max_summary_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
         max_article_length=2000,
     ) -> str:
-        try:
-            # Limit input length :
-            encoded_article_text = self.encoding.encode(article_text)
-            if len(encoded_article_text) > max_article_length:
-                encoded_article_text = encoded_article_text[0:max_article_length]
-                article_text = self.encoding.decode(encoded_article_text)
-            # Create answer object
-            answer = self.api.generate(
-                system_prompt = FR_SYSTEM_SUMMARY.format(num_sentences=max_sentences),
-                user_prompt = article_text,
-                model_name = MODEL,
-                temperature = TEMPERATURE,
-                max_tokens=round(self.num_tokens_from_string(article_text)*max_summary_length_ratio),
-            )
-            logger.debug(f"API returned: {answer}")
-            return answer.choices[0].message.content
-        except APIError as e:
-            logger.error(f"OpenAI API error : {e}")
-            return f"OpenAI API error : {e}"
+        # Limit input length :
+        encoded_article_text = self.encoding.encode(article_text)
+        if len(encoded_article_text) > max_article_length:
+            encoded_article_text = encoded_article_text[0:max_article_length]
+            article_text = self.encoding.decode(encoded_article_text)
+        # Create answer object
+        answer = self.api.generate(
+            system_prompt = FR_SYSTEM_SUMMARY.format(num_sentences=max_sentences),
+            user_prompt = article_text,
+            model_name = MODEL,
+            temperature = TEMPERATURE,
+            max_tokens=round(self.num_tokens_from_string(article_text)*max_summary_length_ratio),
+        )
+        return answer
 
     def summarize_batch(
         self,
