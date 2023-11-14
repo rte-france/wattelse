@@ -2,11 +2,13 @@ import streamlit as st
 from loguru import logger
 
 from wattelse.bertopic.app.data_utils import data_overview, choose_data
+from wattelse.bertopic.topic_metrics import get_coherence_value
 from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN,
     clean_dataset,
     split_df_by_paragraphs,
     DATA_DIR,
+    TEXT_COLUMN,
 )
 
 from wattelse.bertopic.app.state_utils import (
@@ -138,6 +140,16 @@ def train_model():
         st.session_state["topics_info"] = (
             st.session_state["topic_model"].get_topic_info().iloc[1:]
         )  # exclude -1 topic from topic list
+
+        # Computes coherence value
+        coherence_score_type = "c_npmi"
+        coherence = get_coherence_value(
+            st.session_state["topic_model"],
+            st.session_state["topics"],
+            full_dataset[TEXT_COLUMN],
+            coherence_score_type
+        )
+        logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
 
 
 def overall_results():
