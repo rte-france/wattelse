@@ -5,25 +5,26 @@ import typer
 from loguru import logger
 
 try:
-    from origami_indexers.indexers import OrigamiSummaryDocXIndexer
-    from origami_indexers.utils.s3 import download_file_if_not_exists
+    from origami_indexers.indexers import OrigamiSummaryPdfIndexer, OrigamiSummaryDocXIndexer
 except ImportError as e:
     logger.error("Origami module is required for .docx upload feature")
 
-DEFAULT_DATA_PATH = Path("./data")
+DEFAULT_DATA_PATH = Path("./")
 
-DEFAULT_S3_PATH = "Etudes/2EDR/chatrelanglin/Documents de travail/1 - note d'etude/NT-CDI-NTS-SED Etude Explo Chatre langlin.docx"
+#TODO: ideally, the call to the Origami indexer shall be done using a API call to avoid conflicts of versions, etc.
 
-def parse_docx(name: str = DEFAULT_S3_PATH, output_path: Path = DEFAULT_DATA_PATH) -> Path:
+def parse_docx(name: Path, output_path: Path = DEFAULT_DATA_PATH) -> Path:
     logger.info(f"Parsing {name}...")
 
-    local_fp = download_file_if_not_exists(
-        name
-    )
+    output_file = name.stem + ".csv"
 
-    output_file = local_fp.stem + ".csv"
-
-    indexer = OrigamiSummaryDocXIndexer(local_fp,"")
+    if name.suffix.lower() == ".docx":
+        indexer = OrigamiSummaryDocXIndexer(name,"")
+    elif name.suffix.lower() == ".pdf":
+        indexer = OrigamiSummaryPdfIndexer(name,"")
+    else:
+        logger.error("Format not supported")
+        return -1
 
     df = pd.DataFrame.from_dict([par[0] for par in indexer.paragraphs])
     full_path = output_path / output_file
