@@ -12,6 +12,7 @@ def extract_paragraphs_with_levels(markdown_text):
         "level1" : [], # "#" in MD
         "level2" : [], # "##" in MD
         "level3" : [], # "###" in MD
+        "level4" : [], # "###" in MD
         "paragraph" : [],
     }
 
@@ -21,13 +22,19 @@ def extract_paragraphs_with_levels(markdown_text):
             level1 = line.strip("#").strip()
             level2 = ""
             level3 = ""
+            level4 = ""
             paragraph = ""
         elif line.startswith("##") and line.count("#")==2:  # level 2 section
             level2 = line.strip("##").strip()
             level3 = ""
+            level4 = ""
             paragraph = ""
         elif line.startswith("###") and line.count("#")==3:  # level 3 section
             level3 = line.strip("###").strip()
+            level4 = ""
+            paragraph = ""
+        elif line.startswith("###") and line.count("#")==4:  # level 4 section
+            level4 = line.strip("###").strip()
             paragraph = ""
         elif line.strip() or lines[i+1].startswith("*"):  # Non-empty line (paragraph content) or next line starts a bullet list
             paragraph += line + "\n"
@@ -35,6 +42,7 @@ def extract_paragraphs_with_levels(markdown_text):
             dict_paragraphs["level1"].append(level1)
             dict_paragraphs["level2"].append(level2)
             dict_paragraphs["level3"].append(level3)
+            dict_paragraphs["level4"].append(level4)
             dict_paragraphs["paragraph"].append(paragraph)
             paragraph = ""
 
@@ -43,6 +51,7 @@ def extract_paragraphs_with_levels(markdown_text):
     dict_paragraphs["level1"].append(level1)
     dict_paragraphs["level2"].append(level2)
     dict_paragraphs["level3"].append(level3)
+    dict_paragraphs["level4"].append(level4)
     dict_paragraphs["paragraph"].append(paragraph)
     paragraph = ""
 
@@ -64,6 +73,7 @@ def parse_mds(md_directory: Path, output_file: Path = "./data/output_md.csv") ->
             "level1" : [], # "#" in MD
             "level2" : [], # "##" in MD
             "level3" : [], # "###" in MD
+            "level4" : [], # "####" in MD
             "paragraph" : [],
         }
         )
@@ -76,7 +86,7 @@ def parse_mds(md_directory: Path, output_file: Path = "./data/output_md.csv") ->
     
     df = df.fillna("")
     # Combine columns to enrich the text
-    df["processed_text"] = df.level1 + " | " + df.level2 + " | " + df.level3 + " | " + df.paragraph
+    df["processed_text"] = df.level1 + " | " + df.level2 + " | " + df.level3 + " | " + df.level4 + "\n" + df.paragraph
     df["processed_text"] = df["processed_text"].str.replace("|  |", "|")
 
     df.to_csv(output_file)
@@ -93,9 +103,8 @@ def parse_md(md_file: Path, output_path: Path) -> Path:
 
     df = pd.DataFrame(paragraphs).fillna("")
     # Combine columns to enrich the text
-    df["processed_text"] = (
-        "Fichier: " + df.file + "\nTitre: " + df.section_title + "\n" + df.text
-    )
+    df["processed_text"] = df.level1 + " | " + df.level2 + " | " + df.level3 + " | " + df.level4 + "\n" + df.paragraph
+    df["processed_text"] = df["processed_text"].str.replace("|  |", "|")
 
     output_file = md_file.stem + ".csv"
     full_output_path = output_path / output_file
