@@ -46,7 +46,7 @@ LEARN_FROM_LAST = "learn_from_last"  # only the last feed data to create the mod
 INFERENCE_ONLY = "inference_only"  # do not retrain model; reuse existing bertopic model if available, otherwise, fallback to learn_from_scratch for the first run"""
 
 # Linux command to find the index of the GPU device currently less used than the others
-BEST_CUDA_DEVICE = "`nvidia-smi --query-gpu=index,memory.used --format=csv,nounits | tail -n +2 | sort -t',' -k2 -n  | head -n 1 | cut -d',' -f1`"
+BEST_CUDA_DEVICE = "\`nvidia-smi --query-gpu=index,memory.used --format=csv,nounits | tail -n +2 | sort -t',' -k2 -n  | head -n 1 | cut -d',' -f1\`"
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
