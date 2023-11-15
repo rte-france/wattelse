@@ -45,6 +45,9 @@ LEARN_FROM_SCRATCH = (
 LEARN_FROM_LAST = "learn_from_last"  # only the last feed data to create the model
 INFERENCE_ONLY = "inference_only"  # do not retrain model; reuse existing bertopic model if available, otherwise, fallback to learn_from_scratch for the first run"""
 
+# Linux command to find the index of the GPU device currently less used than the others
+BEST_CUDA_DEVICE = "`nvidia-smi --query-gpu=index,memory.used --format=csv,nounits | tail -n +2 | sort -t',' -k2 -n  | head -n 1 | cut -d',' -f1`"
+
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
 
@@ -261,7 +264,7 @@ if __name__ == "__main__":
             help="Path to newsletter config file"
         ),
         data_feed_cfg_path: Path = typer.Argument(help="Path to data feed config file"),
-        cuda_devices: str = typer.Option("1", help="CUDA_VISIBLE_DEVICES parameters"),
+        cuda_devices: str = typer.Option(BEST_CUDA_DEVICE, help="CUDA_VISIBLE_DEVICES parameters"),
     ):
         """Schedule data scrapping on the basis of a feed configuration file"""
         newsletter_cfg = configparser.ConfigParser()
