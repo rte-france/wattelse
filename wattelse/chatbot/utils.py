@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import List
 import sys
@@ -9,14 +8,10 @@ import pandas as pd
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from transformers import GenerationConfig
 
 from wattelse.common.cache_utils import save_embeddings, load_embeddings
 from wattelse.common.vars import GPU_SERVERS
 from wattelse.llm.prompts import FR_USER_BASE_RAG
-
-TEMPERATURE = 0.1
-MAX_TOKENS = 512
 
 BASE_CACHE_PATH = (
     Path("/data/weak_signals/cache/chatbot")

@@ -1,12 +1,10 @@
 import configparser
 from typing import List
 
-import openai
 import tiktoken
-from pathlib import Path
 from loguru import logger
-from openai import APIError
 
+from wattelse.llm.vars import MODEL, TEMPERATURE
 from wattelse.summary.summarizer import (
     Summarizer,
     DEFAULT_SUMMARIZATION_RATIO,
@@ -15,9 +13,6 @@ from wattelse.summary.summarizer import (
 from wattelse.summary.summarizer import Summarizer
 from wattelse.llm.prompts import FR_SYSTEM_SUMMARY
 from wattelse.llm.openai_api import OpenAI_API
-
-MODEL = "gpt-3.5-turbo"
-TEMPERATURE = 0.1
 
 
 class GPTSummarizer(Summarizer):
@@ -48,18 +43,20 @@ class GPTSummarizer(Summarizer):
             article_text = self.encoding.decode(encoded_article_text)
         # Create answer object
         answer = self.api.generate(
-            system_prompt = FR_SYSTEM_SUMMARY.format(num_sentences=max_sentences),
-            user_prompt = article_text,
-            model_name = MODEL,
-            temperature = TEMPERATURE,
-            max_tokens=round(self.num_tokens_from_string(article_text)*max_summary_length_ratio),
+            system_prompt=FR_SYSTEM_SUMMARY.format(num_sentences=max_sentences),
+            user_prompt=article_text,
+            model_name=MODEL,
+            temperature=TEMPERATURE,
+            max_tokens=round(
+                self.num_tokens_from_string(article_text) * max_summary_length_ratio
+            ),
         )
         return answer
 
     def summarize_batch(
         self,
         article_texts: List[str],
-        max_sentences: int=DEFAULT_MAX_SENTENCES,
-        max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+        max_sentences: int = DEFAULT_MAX_SENTENCES,
+        max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         return super().summarize_batch(article_texts, max_sentences, max_length_ratio)

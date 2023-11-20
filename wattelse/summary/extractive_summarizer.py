@@ -8,6 +8,9 @@ from sentence_transformers import SentenceTransformer, util
 from sentence_transformers.models import Transformer, Pooling
 from torch import Tensor
 
+from wattelse.llm.openai_api import OpenAI_API
+from wattelse.llm.prompts import FR_SYSTEM_SUMMARY
+from wattelse.llm.vars import MODEL, TEMPERATURE
 from wattelse.summary.lexrank import degree_centrality_scores
 from wattelse.summary.summarizer import (
     Summarizer,
@@ -53,8 +56,8 @@ class ExtractiveSummarizer(Summarizer):
     def summarize_batch(
         self,
         article_texts: List[str],
-        max_sentences: int=DEFAULT_MAX_SENTENCES,
-        max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+        max_sentences: int = DEFAULT_MAX_SENTENCES,
+        max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         return super().summarize_batch(article_texts, max_sentences, max_length_ratio)
 
@@ -328,3 +331,35 @@ class ExtractiveSummarizer(Summarizer):
             text += s + " [...] "
         else:
             return text
+
+
+class EnhancedExtractiveSummarizer(ExtractiveSummarizer):
+    """Combination of extractive summarizer for quality of extraction and LLM for rephrasing and make the text more fluid"""
+
+    def __init__(self, model_name=DEFAULT_SUMMARIZER_MODEL):
+        super().__init__(model_name=model_name)
+        self.api = OpenAI_API()
+
+    def generate_summary(
+        self,
+        text,
+        max_sentences=DEFAULT_MAX_SENTENCES,
+        max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
+    ) -> str:
+        base_summary = super().generate_summary(text, max_sentences, max_length_ratio)
+        logger.debug(f"Base summary: {base_summary}")
+        improved_summary = self.api.generate(
+            system_prompt=FR_SYSTEM_SUMMARY.format(num_sentences=max_sentences),
+            user_prompt=base_summary,
+            model_name=MODEL,
+            temperature=TEMPERATURE,
+        )
+        return improved_summary
+
+    def summarize_batch(
+        self,
+        article_texts: List[str],
+        max_sentences: int = DEFAULT_MAX_SENTENCES,
+        max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
+    ) -> List[str]:
+        return super().summarize_batch(article_texts, max_sentences, max_length_ratio)

@@ -19,6 +19,7 @@ from wattelse.chatbot.utils import (
     load_data,
 )
 from wattelse.common.vars import BASE_DATA_DIR
+from wattelse.llm.vars import TEMPERATURE
 from wattelse.llm.vllm_api import vLLM_API
 from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_SYSTEM_DODER_RAG
 from sentence_transformers import SentenceTransformer
@@ -34,7 +35,6 @@ DEFAULT_MEMORY_DELAY = 2  # in minutes
 
 # Generation model API parameters
 API = vLLM_API()
-TEMPERATURE = 0.1
 MAX_TOKENS = 512
 
 # Embedding model parameters
