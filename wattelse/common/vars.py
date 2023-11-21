@@ -1,6 +1,8 @@
 import socket
 from pathlib import Path
 
+SEED = 666
+
 GPU_SERVERS = ["groesplu0", "GROESSLAO01"]
 
 BASE_DATA_DIR = (

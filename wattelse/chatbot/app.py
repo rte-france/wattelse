@@ -169,7 +169,7 @@ def generate_assistant_response(query, embedding_model):
         # HAL final response
         response = ""
         for chunk in stream_response:
-            response += chunk["choices"][0]["text"]
+            response += chunk.choices[0].text
             message_placeholder.markdown(response)
         st.session_state["messages"].append({"role": "assistant", "content": response})
 

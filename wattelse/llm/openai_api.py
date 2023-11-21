@@ -2,17 +2,23 @@ import configparser
 from pathlib import Path
 
 import openai
+from openai import OpenAI, Timeout
 from loguru import logger
+from openai._types import NotGiven
 
 MAX_ATTEMPTS = 3
-
+TIMEOUT = 60.0
 
 class OpenAI_API:
     def __init__(self):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent.parent / "config" / "openai.cfg")
-        openai.api_key = config.get("OPENAI_CONFIG", "openai_key")
-        openai.organization = config.get("OPENAI_CONFIG", "openai_organization")
+        self.llm_client = OpenAI(
+            api_key=config.get("OPENAI_CONFIG", "openai_key"),
+            organization=config.get("OPENAI_CONFIG", "openai_organization"),
+            timeout=Timeout(TIMEOUT, connect=10.0),
+            max_retries=MAX_ATTEMPTS,
+        )
 
     def generate(
         self,
@@ -21,6 +27,7 @@ class OpenAI_API:
         model_name="gpt-3.5-turbo",
         temperature=0.1,
         max_tokens=512,
+        seed=NotGiven,
         current_attempt=1,
     ) -> str:
         """Call openai model for generation.
@@ -36,20 +43,12 @@ class OpenAI_API:
             Returns:
                     str: model answer.
         """
-        if current_attempt >= MAX_ATTEMPTS:
-            logger.error(
-                "Maximum number of API call attempts reached. Request cancelled. Check previous logs for details."
-            )
-            return (
-                f"OpenAI API fatal error: Maximum number of API call attempts reached."
-            )
-
         messages = [{"role": "user", "content": user_prompt}]
         # add system prompt if one is provided
         if system_prompt:
             messages.insert(0, {"role": "system", "content": system_prompt})
         try:
-            answer = openai.ChatCompletion.create(
+            answer = self.llm_client.chat.completions.create(
                 model=model_name,
                 messages=messages,
                 max_tokens=max_tokens,
@@ -59,24 +58,25 @@ class OpenAI_API:
             return answer.choices[0].message.content
         # Details of errors available here: https://platform.openai.com/docs/guides/error-codes/api-errors
         except (
-            openai.error.APIConnectionError,
-            openai.error.APIError,
-            openai.error.AuthenticationError,
-            openai.error.InvalidAPIType,
-            openai.error.InvalidRequestError,
-            openai.error.PermissionError,
-            openai.error.SignatureVerificationError,
+            openai.APIConnectionError,
+            openai.APIError,
+            openai.APIStatusError,
+            openai.APIResponseValidationError,
+            openai.AuthenticationError,
+            openai.BadRequestError,
+            openai.PermissionDeniedError,
+            openai.NotFoundError,
+            openai.ConflictError,
+            openai.UnprocessableEntityError,
         ) as e:
             # Fatal errors, do not retry
             msg = f"OpenAI API fatal error: {e}"
             logger.error(msg)
             return msg
         except (
-            openai.error.APIError,
-            openai.error.RateLimitError,
-            openai.error.Timeout,
-            openai.error.TryAgain,
-            openai.error.ServiceUnavailableError,
+            openai.APITimeoutError,
+            openai.RateLimitError,
+            openai.InternalServerError,
         ) as e:
             # Non-fatal errors, handle retry request
             logger.error(f"OpenAI API non-fatal error: {e}")
@@ -87,5 +87,6 @@ class OpenAI_API:
                 model_name,
                 temperature,
                 max_tokens,
+                seed,
                 current_attempt + 1,
             )

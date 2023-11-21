@@ -1,32 +1,25 @@
 import configparser
 from pathlib import Path
-from typing import List
 
 import openai
+from openai import OpenAI
+
 from loguru import logger
+from openai._types import NotGiven
 from transformers import AutoTokenizer
-
-
-def get_api_model_name():
-    """
-    Return currently loaded model name in vLLM.
-    """
-    try:
-        # First model
-        models = openai.Model.list()
-        return models["data"][0]["id"]
-    except Exception as e:
-        return None
 
 
 class vLLM_API:
     def __init__(self):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent.parent / "config" / "llm_api.cfg")
-        openai.api_key = config.get("LLM_API_CONFIG", "openai_key")
-        openai.api_base = config.get("LLM_API_CONFIG", "openai_url")
+        self.base_url = config.get("LLM_API_CONFIG", "openai_url")
+        self.llm_client = OpenAI(
+            api_key=config.get("LLM_API_CONFIG", "openai_key"),
+            base_url=self.base_url,
+        )
 
-        self.model_name = get_api_model_name()
+        self.model_name = self.get_api_model_name()
         self.tokenizer = (
             AutoTokenizer.from_pretrained(
                 self.model_name, padding_side="right", use_fast=False
@@ -34,6 +27,17 @@ class vLLM_API:
             if self.model_name
             else None
         )
+
+    def get_api_model_name(self):
+        """
+        Return currently loaded model name in vLLM.
+        """
+        try:
+            # First model
+            models = self.llm_client.models.list()
+            return models.data[0].id
+        except Exception as e:
+            return None
 
     def generate_llm_specific_prompt(self, user_prompt, system_prompt=None) -> str:
         """
@@ -55,6 +59,7 @@ class vLLM_API:
         max_tokens=512,
         transform_prompt=True,
         stream=False,
+        seed=NotGiven
     ) -> str:
         """Uses the remote model (API) to generate the answer.
 
@@ -74,15 +79,20 @@ class vLLM_API:
         logger.debug(f"Calling remote vLLM service...")
         try:
             if transform_prompt:
-                prompt = self.generate_llm_specific_prompt(user_prompt, system_prompt=system_prompt)
+                prompt = self.generate_llm_specific_prompt(
+                    user_prompt, system_prompt=system_prompt
+                )
+            else:
+                prompt = user_prompt
 
             # Use of completion API
-            completion_result = openai.api_resources.Completion.create(
+            completion_result = self.llm_client.completions.create(
                 model=self.model_name,
                 prompt=prompt,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 stream=stream,
+                seed=seed
             )
             if stream:
                 return completion_result
@@ -90,6 +100,6 @@ class vLLM_API:
                 return completion_result["choices"][0]["text"]
 
         except Exception as e:
-            msg = f"Cannot reach the API endpoint: {openai.api_base}. Error: {e}"
+            msg = f"Exception occurred with API call to {self.base_url}. Error: {e}"
             logger.error(msg)
             return msg
