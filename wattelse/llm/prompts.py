@@ -48,7 +48,7 @@ FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES = ("Décrit en une courte expression le t
 FR_USER_BASE_RAG = ("Répondez à la question en utilisant le contexte fourni. La réponse doit être {expected_answer_size}. "
 					"Si le contexte ne fourni pas assez d'information pour répondre à la question, répondre : "
 					"\"Le contexte fourni n'est pas suffisant pour répondre.\n"
-					"---"
+					"---\n"
 					"Contexte :\n"
 					"\"\"\"\n"
 					"{context}\n"
@@ -58,8 +58,8 @@ FR_USER_BASE_RAG = ("Répondez à la question en utilisant le contexte fourni. L
 """
 FR_USER_BASE_RAG = ('Réponds à la question en résumant les éléments du contexte les plus pertinents. '
 					'Ce résumé doit être {expected_answer_size}, spécifique et percutant.\n'
-					'---Contexte:\n'
-					'"""{context}"""\n'
+					'---\nContexte:\n'
+					'"""\n{context}\n"""\n---\n'
 					'Question : {query}')
 
 
