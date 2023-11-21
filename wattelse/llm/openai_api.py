@@ -4,6 +4,8 @@ from pathlib import Path
 import openai
 from loguru import logger
 
+MAX_ATTEMPTS = 3
+
 
 class OpenAI_API:
     def __init__(self):
@@ -19,6 +21,7 @@ class OpenAI_API:
         model_name="gpt-3.5-turbo",
         temperature=0.1,
         max_tokens=512,
+        current_attempt=1,
     ) -> str:
         """Call openai model for generation.
 
@@ -28,10 +31,19 @@ class OpenAI_API:
                     model_name (str, optional): name of the openai model to use for generation.
                     temperature (float, optional): Temperature for generation.
         max_tokens (int, optional): Maximum tokens to be generated.
+                    current_try: id of current try (in case of failure, this is increased and another try is done)
 
             Returns:
                     str: model answer.
         """
+        if current_attempt >= MAX_ATTEMPTS:
+            logger.error(
+                "Maximum number of API call attempts reached. Request cancelled. Check previous logs for details."
+            )
+            return (
+                f"OpenAI API fatal error: Maximum number of API call attempts reached."
+            )
+
         messages = [{"role": "user", "content": user_prompt}]
         # add system prompt if one is provided
         if system_prompt:
@@ -45,38 +57,35 @@ class OpenAI_API:
             )
             logger.debug(f"API returned: {answer}")
             return answer.choices[0].message.content
-        except openai.error.Timeout as e:
-            # Handle timeout error, e.g. retry or log
-            msg = f"OpenAI API request timed out: {e}"
+        # Details of errors available here: https://platform.openai.com/docs/guides/error-codes/api-errors
+        except (
+            openai.error.APIConnectionError,
+            openai.error.APIError,
+            openai.error.AuthenticationError,
+            openai.error.InvalidAPIType,
+            openai.error.InvalidRequestError,
+            openai.error.PermissionError,
+            openai.error.SignatureVerificationError,
+        ) as e:
+            # Fatal errors, do not retry
+            msg = f"OpenAI API fatal error: {e}"
             logger.error(msg)
             return msg
-        except openai.error.APIError as e:
-            # Handle API error, e.g. retry or log
-            msg = f"OpenAI API returned an API Error: {e}"
-            logger.error(msg)
-            return msg
-        except openai.error.APIConnectionError as e:
-            # Handle connection error, e.g. check network or log
-            msg = f"OpenAI API request failed to connect: {e}"
-            logger.error(msg)
-            return msg
-        except openai.error.InvalidRequestError as e:
-            # Handle invalid request error, e.g. validate parameters or log
-            msg = f"OpenAI API request was invalid: {e}"
-            logger.error(msg)
-            return msg
-        except openai.error.AuthenticationError as e:
-            # Handle authentication error, e.g. check credentials or log
-            msg = f"OpenAI API request was not authorized: {e}"
-            logger.error(msg)
-            return msg
-        except openai.error.PermissionError as e:
-            # Handle permission error, e.g. check scope or log
-            msg = f"OpenAI API request was not permitted: {e}"
-            logger.error(msg)
-            return msg
-        except openai.error.RateLimitError as e:
-            # Handle rate limit error, e.g. wait or log
-            msg = f"OpenAI API request exceeded rate limit: {e}"
-            logger.error(msg)
-            return msg
+        except (
+            openai.error.APIError,
+            openai.error.RateLimitError,
+            openai.error.Timeout,
+            openai.error.TryAgain,
+            openai.error.ServiceUnavailableError,
+        ) as e:
+            # Non-fatal errors, handle retry request
+            logger.error(f"OpenAI API non-fatal error: {e}")
+            logger.warning(f"Retrying the same request...")
+            return self.generate(
+                user_prompt,
+                system_prompt,
+                model_name,
+                temperature,
+                max_tokens,
+                current_attempt + 1,
+            )
