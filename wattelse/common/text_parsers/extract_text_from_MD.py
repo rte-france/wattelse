@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import pandas as pd
 import typer
@@ -12,7 +13,7 @@ def extract_paragraphs_with_levels(markdown_text):
         "level1" : [], # "#" in MD
         "level2" : [], # "##" in MD
         "level3" : [], # "###" in MD
-        "level4" : [], # "###" in MD
+        "level4" : [], # "####" in MD
         "paragraph" : [],
     }
 
@@ -33,12 +34,12 @@ def extract_paragraphs_with_levels(markdown_text):
             level3 = line.strip("###").strip()
             level4 = ""
             paragraph = ""
-        elif line.startswith("###") and line.count("#")==4:  # level 4 section
-            level4 = line.strip("###").strip()
+        elif line.startswith("####") and line.count("#")==4:  # level 4 section
+            level4 = line.strip("####").strip()
             paragraph = ""
-        elif line.strip() or lines[i+1].startswith("*"):  # Non-empty line (paragraph content) or next line starts a bullet list
+        elif line:  # Non-empty line (paragraph content)
             paragraph += line + "\n"
-        elif paragraph:  # Empty line (end of paragraph)
+        elif paragraph and lines[i+1].startswith("#"):  # Empty line (end of paragraph)
             dict_paragraphs["level1"].append(level1)
             dict_paragraphs["level2"].append(level2)
             dict_paragraphs["level3"].append(level3)
@@ -86,8 +87,13 @@ def parse_mds(md_directory: Path, output_file: Path = "./data/output_md.csv") ->
     
     df = df.fillna("")
     # Combine columns to enrich the text
-    df["processed_text"] = df.level1 + " | " + df.level2 + " | " + df.level3 + " | " + df.level4 + "\n" + df.paragraph
-    df["processed_text"] = df["processed_text"].str.replace("|  |", "|")
+    df["processed_text"] = ("Titre du document : " + df.level1 + "\n"
+                            "Section : " + df.level2 + "\n"
+                            "Sous-section : " + df.level3 + "\n"
+                            "Sous-sous-section : " + df.level4 + "\n"
+                            "Contenu : " + df.paragraph
+                            )
+    df["processed_text"] = df["processed_text"].str.replace(r"Section : \n|Sous-section : \n|Sous-sous-section : \n", "", regex=True)
 
     df.to_csv(output_file)
 
