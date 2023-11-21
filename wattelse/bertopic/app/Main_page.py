@@ -146,7 +146,7 @@ def train_model():
         coherence = get_coherence_value(
             st.session_state["topic_model"],
             st.session_state["topics"],
-            full_dataset[TEXT_COLUMN],
+            st.session_state["timefiltered_df"][TEXT_COLUMN],
             coherence_score_type
         )
         logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
