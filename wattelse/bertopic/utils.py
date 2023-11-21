@@ -1,7 +1,6 @@
 import ast
 import gzip
 import os
-import socket
 from loguru import logger
 from pathlib import Path
 from typing import Any
@@ -9,7 +8,11 @@ from typing import Any
 import nltk
 import pandas as pd
 
-from wattelse.common.vars import GPU_SERVERS, BASE_DATA_DIR
+from wattelse.common.vars import (
+    BASE_DATA_DIR,
+    BASE_OUTPUT_DIR,
+    BASE_CACHE_PATH,
+)
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
@@ -17,12 +20,8 @@ os.umask(0o002)
 nltk.download("stopwords")
 
 DATA_DIR = BASE_DATA_DIR / "bertopic"
-
-OUTPUT_DIR = (
-    Path("/data/weak_signals/output/bertopic/")
-    if socket.gethostname() in GPU_SERVERS
-    else Path(__file__).parent.parent.parent / "output" / "bertopic"
-)
+OUTPUT_DIR = BASE_OUTPUT_DIR / "bertopic"
+CACHE_DIR = BASE_CACHE_PATH / "bertopic"
 
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
@@ -30,15 +29,10 @@ GROUPED_TIMESTAMP_COLUMN = "grouped_timestamp"
 URL_COLUMN = "url"
 TITLE_COLUMN = "title"
 CITATION_COUNT_COL = "citation_count"
-BASE_CACHE_PATH = (
-    Path("/data/weak_signals/cache/bertopic/")
-    if socket.gethostname() in GPU_SERVERS
-    else Path(__file__).parent.parent.parent / "cache" / "bertopic"
-)
 
 # Make dirs if not exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-BASE_CACHE_PATH.mkdir(parents=True, exist_ok=True)
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_data(full_data_name: Path):
@@ -71,7 +65,7 @@ def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
 
 def split_df_by_paragraphs(dataset: pd.DataFrame):
     """Split texts into multiple paragraphs and returns a concatenation of all extracts as a new pandas DF"""
-    df = dataset.copy() # to avoid modifying the original dataframe
+    df = dataset.copy()  # to avoid modifying the original dataframe
     df[TEXT_COLUMN] = df[TEXT_COLUMN].str.split("\n")
     df = df.explode(TEXT_COLUMN)
     df = df[df[TEXT_COLUMN] != ""].reset_index(drop=True)

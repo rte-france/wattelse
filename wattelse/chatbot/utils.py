@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import List
 import sys
-import socket
 
 import numpy as np
 import pandas as pd
@@ -10,14 +9,10 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from wattelse.common.cache_utils import save_embeddings, load_embeddings
-from wattelse.common.vars import GPU_SERVERS
+from wattelse.common.vars import BASE_CACHE_PATH
 from wattelse.llm.prompts import FR_USER_BASE_RAG
 
-BASE_CACHE_PATH = (
-    Path("/data/weak_signals/cache/chatbot")
-    if socket.gethostname() in GPU_SERVERS
-    else Path(__file__).parent.parent.parent / "cache" / "chatbot"
-)
+CACHE_DIR = BASE_CACHE_PATH / "chatbot"
 
 
 def make_docs_embedding(docs: List[str], embedding_model: SentenceTransformer):
@@ -66,7 +61,7 @@ def load_data(
     data_file: Path,
     embedding_model: SentenceTransformer,
     embedding_model_name: str = None,
-    use_cache: bool = True
+    use_cache: bool = True,
 ):
     """Loads data and transform them into embeddings; data file shall contain a column 'processed_text' (preferred)
     or 'text'"""
@@ -82,7 +77,7 @@ def load_data(
         )
         sys.exit(-1)
 
-    cache_path = BASE_CACHE_PATH / f"{embedding_model_name}_{data_file.name}.pkl"
+    cache_path = CACHE_DIR / f"{embedding_model_name}_{data_file.name}.pkl"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     logger.debug(f"Using cache: {use_cache}")
     if not use_cache or not cache_path.exists():

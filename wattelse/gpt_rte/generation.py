@@ -3,7 +3,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from loguru import logger
 
-from wattelse.gpt_rte.utils import MODEL_BASE_PATH
+from wattelse.common.vars import MODEL_BASE_PATH
 
 # Parameters
 
