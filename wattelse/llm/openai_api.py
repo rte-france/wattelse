@@ -4,7 +4,7 @@ from pathlib import Path
 import openai
 from openai import OpenAI, Timeout
 from loguru import logger
-from openai._types import NotGiven
+from openai._types import NOT_GIVEN
 
 MAX_ATTEMPTS = 3
 TIMEOUT = 60.0
@@ -27,7 +27,7 @@ class OpenAI_API:
         model_name="gpt-3.5-turbo",
         temperature=0.1,
         max_tokens=512,
-        seed=NotGiven,
+        seed=NOT_GIVEN,
         current_attempt=1,
     ) -> str:
         """Call openai model for generation.

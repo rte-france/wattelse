@@ -1,11 +1,10 @@
 import configparser
 from pathlib import Path
 
-import openai
 from openai import OpenAI
 
 from loguru import logger
-from openai._types import NotGiven
+from openai._types import NOT_GIVEN
 from transformers import AutoTokenizer
 
 
@@ -59,7 +58,7 @@ class vLLM_API:
         max_tokens=512,
         transform_prompt=True,
         stream=False,
-        seed=NotGiven
+        seed=NOT_GIVEN
     ) -> str:
         """Uses the remote model (API) to generate the answer.
 
