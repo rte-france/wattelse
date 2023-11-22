@@ -13,7 +13,8 @@ from wattelse.common.vars import BASE_CACHE_PATH
 from wattelse.llm.prompts import FR_USER_BASE_RAG
 
 CACHE_DIR = BASE_CACHE_PATH / "chatbot"
-
+# Make dirs if not exist
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 def make_docs_embedding(docs: List[str], embedding_model: SentenceTransformer):
     return embedding_model.encode(docs, show_progress_bar=True)
