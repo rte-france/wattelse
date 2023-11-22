@@ -38,7 +38,7 @@ def choose_data(base_dir: Path, filters: List[str]):
         )
     )
     if "data_folder" not in st.session_state:
-        st.session_state["data_folder"] = data_folders[0]
+        st.session_state["data_folder"] = data_folders[0] if data_folders else base_dir
 
     data_options = ["None"] + sorted(
         [
