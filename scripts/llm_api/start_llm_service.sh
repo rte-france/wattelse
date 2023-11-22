@@ -2,9 +2,10 @@
 # This script has to be run on a GPU server!
 # use the option "--load-8bit" to launch it in 8-bit mode
 
-MODEL=bofenghuang/vigogne-2-7b-chat
-#MODEL=mistralai/Mistral-7B-Instruct-v0.1
+#MODEL=bofenghuang/vigogne-2-7b-chat
 #MODEL=bofenghuang/vigogne-2-13b-instruct
+#MODEL=mistralai/Mistral-7B-Instruct-v0.1
+MODEL=bofenghuang/vigostral-7b-chat
 
 HOST=localhost
 PORT_API=8888
