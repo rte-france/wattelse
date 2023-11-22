@@ -25,6 +25,8 @@ from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_SYSTEM_DODER_RAG
 from sentence_transformers import SentenceTransformer
 
 DATA_DIR = BASE_DATA_DIR / "chatbot"
+# Make dirs if not exist
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
