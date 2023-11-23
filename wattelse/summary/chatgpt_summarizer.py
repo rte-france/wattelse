@@ -8,7 +8,7 @@ from wattelse.llm.vars import MODEL, TEMPERATURE
 from wattelse.summary.summarizer import (
     Summarizer,
     DEFAULT_SUMMARIZATION_RATIO,
-    DEFAULT_MAX_SENTENCES,
+    DEFAULT_MAX_WORDS,
 )
 from wattelse.summary.summarizer import Summarizer
 from wattelse.llm.prompts import FR_SYSTEM_SUMMARY
@@ -32,8 +32,7 @@ class GPTSummarizer(Summarizer):
     def generate_summary(
         self,
         article_text,
-        max_sentences=DEFAULT_MAX_SENTENCES,
-        max_summary_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
+        max_words=DEFAULT_MAX_WORDS,
         max_article_length=2000,
     ) -> str:
         # Limit input length :
@@ -43,20 +42,17 @@ class GPTSummarizer(Summarizer):
             article_text = self.encoding.decode(encoded_article_text)
         # Create answer object
         answer = self.api.generate(
-            system_prompt=FR_SYSTEM_SUMMARY.format(num_sentences=max_sentences),
+            system_prompt=FR_SYSTEM_SUMMARY.format(num_words=max_words),
             user_prompt=article_text,
             model_name=MODEL,
             temperature=TEMPERATURE,
-            max_tokens=round(
-                self.num_tokens_from_string(article_text) * max_summary_length_ratio
-            ),
         )
         return answer
 
     def summarize_batch(
         self,
         article_texts: List[str],
-        max_sentences: int = DEFAULT_MAX_SENTENCES,
+        max_words: int = DEFAULT_MAX_WORDS,
         max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
-        return super().summarize_batch(article_texts, max_sentences, max_length_ratio)
+        return super().summarize_batch(article_texts, max_words=max_words, max_length_ratio=max_length_ratio)
