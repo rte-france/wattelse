@@ -194,6 +194,9 @@ if __name__ == "__main__":
             ngram_range=config.getliteral(
                 "topic_model.count_vectorizer", "ngram_range"
             ),
+            min_df=config.getint(
+                "topic_model.count_vectorizer", "min_df"
+            )
         )
         # Step 5 - c-TF-IDF model
         ctfidf_model = ClassTfidfTransformer(

@@ -30,6 +30,7 @@ DEFAULT_EMBEDDING_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_TOP_N_WORDS = 10
 DEFAULT_NR_TOPICS = 10
 DEFAULT_NGRAM_RANGE = (1, 1)
+DEFAULT_MIN_DF = 2
 
 DEFAULT_UMAP_MODEL = UMAP(n_neighbors=15, n_components=5, min_dist=0.0, metric="cosine")
 DEFAULT_HBSCAN_MODEL = HDBSCAN(
@@ -42,6 +43,7 @@ DEFAULT_STOP_WORDS = stopwords.words("french")
 DEFAULT_VECTORIZER_MODEL = CountVectorizer(
     stop_words=DEFAULT_STOP_WORDS,
     ngram_range=DEFAULT_NGRAM_RANGE,
+    min_df=DEFAULT_MIN_DF,
 )
 DEFAULT_CTFIDF_MODEL = ClassTfidfTransformer(reduce_frequent_words=True)
 

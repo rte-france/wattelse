@@ -77,6 +77,7 @@ def countvectorizer_options():
         "countvectorizer_ngram_range": st.selectbox(
             "ngram_range", [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)], key="countvectorizer_ngram_range"
         ),
+        "countvectorizer_min_df": st.number_input("min_df", min_value=1, value=2, key="countvectorizer_min_df"),
     }
 
 
@@ -127,7 +128,11 @@ def plot_topics_over_time(topics_over_time, dynamic_topics_list, topic_model, ti
             dynamic_topics_list = [i for i in range(int(dynamic_topics_list.split(":")[0]), int(dynamic_topics_list.split(":")[1]))]
         else:
             dynamic_topics_list = [int(i) for i in dynamic_topics_list.split(",")]
-        fig = topic_model.visualize_topics_over_time(topics_over_time, topics=dynamic_topics_list, width=width)
+        fig = topic_model.visualize_topics_over_time(topics_over_time,
+                                                     topics=dynamic_topics_list,
+                                                     width=width,
+                                                     title="",
+                                                     )
         if time_split:
             fig.add_vline(x=time_split, line_width=3, line_dash="dash", line_color="black", opacity=1)
         return fig
@@ -135,11 +140,10 @@ def plot_topics_over_time(topics_over_time, dynamic_topics_list, topic_model, ti
 def print_docs_for_specific_topic(df, topics, topic_number):
     # Select column available in DF
     columns_list = [col for col in [TITLE_COLUMN, TEXT_COLUMN, URL_COLUMN, TIMESTAMP_COLUMN, CITATION_COUNT_COL] if col in df.keys()]
-    
-    st.dataframe(
-        df.loc[pd.Series(topics)==topic_number][columns_list],
-        column_config={"url": st.column_config.LinkColumn()}
-        )
+
+    df = df.loc[pd.Series(topics)==topic_number][columns_list]
+    for _, doc in df.iterrows():
+        st.write(f"[{doc.title}]({doc.url})")
 
 @st.cache_data
 def transform_new_data(_topic_model, df, data_name, embedding_model_name, form_parameters=None, split_by_paragraphs=False):

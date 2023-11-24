@@ -47,6 +47,7 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
     vectorizer_model = CountVectorizer(
         stop_words=stop_words,
         ngram_range=form_parameters["countvectorizer_ngram_range"],
+        min_df=form_parameters["countvectorizer_min_df"],
     )
 
     # Step 5 - c-TF-IDF model
