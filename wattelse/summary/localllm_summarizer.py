@@ -6,6 +6,7 @@ from wattelse.llm.vllm_api import vLLM_API
 from wattelse.summary.summarizer import (
     Summarizer,
     DEFAULT_MAX_SENTENCES,
+    DEFAULT_MAX_WORDS,
     DEFAULT_SUMMARIZATION_RATIO,
 )
 from wattelse.llm.prompts import FR_USER_SUMMARY
@@ -28,6 +29,7 @@ class LocalLLMSummarizer(Summarizer):
         self,
         article_text,
         max_sentences=DEFAULT_MAX_SENTENCES,
+        max_words=DEFAULT_MAX_WORDS,
         max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
     ) -> str:
         # Generate a doc summary
@@ -39,6 +41,7 @@ class LocalLLMSummarizer(Summarizer):
         self,
         article_texts: List[str],
         max_sentences: int=DEFAULT_MAX_SENTENCES,
+        max_words=DEFAULT_MAX_WORDS,
         max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         return super().summarize_batch(article_texts, max_sentences, max_length_ratio)

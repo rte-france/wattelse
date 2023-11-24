@@ -7,6 +7,7 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from wattelse.summary.summarizer import (
     Summarizer,
     DEFAULT_MAX_SENTENCES,
+    DEFAULT_MAX_WORDS,
     DEFAULT_SUMMARIZATION_RATIO,
 )
 
@@ -33,6 +34,7 @@ class AbstractiveSummarizer(Summarizer):
         self,
         article_text,
         max_sentences=DEFAULT_MAX_SENTENCES,
+        max_words=DEFAULT_MAX_WORDS,
         max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
     ) -> str:
         return self.summarize_batch([article_text], max_sentences, max_length_ratio)[0]
@@ -41,6 +43,7 @@ class AbstractiveSummarizer(Summarizer):
         self,
         article_texts: List[str],
         max_sentences: int=DEFAULT_MAX_SENTENCES,
+        max_words=DEFAULT_MAX_WORDS,
         max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         inputs = self.tokenizer(
