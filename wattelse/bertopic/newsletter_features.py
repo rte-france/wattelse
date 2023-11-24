@@ -67,16 +67,6 @@ def generate_newsletter(
 
         if improve_topic_description:
             titles = [doc.title for _, doc in sub_df.iterrows()]
-            improved_topic_description = (
-                OpenAI_API()
-                .generate(
-                    FR_USER_GENERATE_TOPIC_LABEL_TITLE.format(
-                        keywords=", ".join(topics_info["Representation"].iloc[i]),
-                        title_list=", ".join(titles),
-                    )
-                )
-                .replace('"', "")
-            )
 
             improved_topic_description_v2 = (
                 OpenAI_API()
@@ -91,7 +81,6 @@ def generate_newsletter(
             if improved_topic_description_v2.endswith("."):
                 improved_topic_description_v2 =  improved_topic_description_v2[:-1]
 
-            md_lines.append(f"## Sujet {i+1} : {improved_topic_description}")
             md_lines.append(f"## Sujet {i+1} : {improved_topic_description_v2}")
 
             md_lines.append(
