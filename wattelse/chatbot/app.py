@@ -181,7 +181,8 @@ def generate_assistant_response(query, embedding_model):
                 with st.chat_message("explanation", avatar="🔑"):
                     # Add score to text explanation
                     score = round(sim * 5) * "⭐"
-                    st.caption(f"{score}\n{expl}")
+                    expl = expl.replace("\n", "\n\n")
+                    st.write(f"{score}\n{expl}")
 
     return response
 
