@@ -4,9 +4,13 @@ import os
 import tempfile
 import time
 from pathlib import Path
+from typing import List
 
+import numpy as np
+import pandas as pd
 import streamlit as st
 from loguru import logger
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 
@@ -46,7 +50,8 @@ if "prev_selected_file" not in st.session_state:
     st.session_state["prev_selected_file"] = None
 if "prev_embedding_model" not in st.session_state:
     st.session_state["prev_embedding_model"] = None
-
+if "data_files_from_parsing" not in st.session_state:
+    st.session_state["data_files_from_parsing"] = []
 
 @st.cache_resource
 def initialize_embedding_model(embedding_model_name):
@@ -71,6 +76,16 @@ def initialize_data(data_path: Path, embedding_model, embedding_model_name, use_
     st.session_state["docs_embeddings"] = docs_embeddings
     return docs, docs_embeddings
 
+def initialize_data_list(data_paths: List[Path], embedding_model, embedding_model_name, use_cache=True):
+    docs_l = None
+    embs_a = None
+    for data_path in data_paths:
+        docs, embs = initialize_data(data_path, embedding_model, embedding_model_name, use_cache)
+        docs_l = docs if docs_l is None else pd.concat([docs_l, docs], axis=0).reset_index(drop=True)
+        embs_a = embs if embs_a is None else np.concatenate((embs_a, embs))
+    st.session_state["docs"] = docs_l
+    st.session_state["docs_embeddings"] = embs_a
+    return docs_l, embs_a
 
 @st.cache_resource
 def initialize_db():
@@ -200,58 +215,66 @@ def get_recent_context(delay=DEFAULT_MEMORY_DELAY):
         q.timestamp > (current_timestamp - datetime.timedelta(minutes=delay))
     )
 
+def index_file(uploaded_file: UploadedFile):
+    # NB: UploadedFile  can be used like a BytesIO
+    extension = uploaded_file.name.split(".")[-1].lower()
+    # create a temporary file using a context manager
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        with open(tmpdirname + "/" + uploaded_file.name, "wb") as file:
+            # store temporary file
+            file.write(uploaded_file.getbuffer())
+            # extract data from file
+            if extension == "pdf":
+                st.session_state["data_files_from_parsing"].append(parse_pdf(
+                    Path(file.name), DATA_DIR)
+                )
+            elif extension == "docx":
+                st.session_state["data_files_from_parsing"].append(parse_docx(
+                    Path(file.name), DATA_DIR
+                ))
+            elif extension == "md":
+                st.session_state["data_files_from_parsing"].append(parse_md(
+                    Path(file.name), DATA_DIR
+                ))
+            else:
+                st.error("File type not supported!")
 
-def index_file():
-    uploaded_file = st.session_state["uploaded_file"]
-    logger.debug(f"Uploading file: {uploaded_file}")
+def index_files():
+    uploaded_files = st.session_state["uploaded_files"]
+    logger.debug(f"Uploading file: {uploaded_files}")
 
-    if uploaded_file:  # can be used like a BytesIO
-        extension = uploaded_file.name.split(".")[-1].lower()
-        # create a temporary file using a context manager
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            with open(tmpdirname + "/" + uploaded_file.name, "wb") as file:
-                # store temporary file
-                file.write(uploaded_file.getbuffer())
-                # extract data from file
-                if extension == "pdf":
-                    st.session_state["data_file_from_parsing"] = parse_pdf(
-                        Path(file.name), DATA_DIR
-                    )
-                elif extension == "docx":
-                    st.session_state["data_file_from_parsing"] = parse_docx(
-                        Path(file.name), DATA_DIR
-                    )
-                elif extension == "md":
-                    st.session_state["data_file_from_parsing"] = parse_md(
-                        Path(file.name), DATA_DIR
-                    )
-                else:
-                    st.error("File type not supported!")
+    if uploaded_files:
+        if isinstance(uploaded_files, UploadedFile):
+            # single file
+            index_file(uploaded_files)
+        else: # multiple files
+            for f in uploaded_files:
+                index_file(f)
 
 
 def on_file_change():
-    if st.session_state.get("uploaded_file") is not None:
-        index_file()  # this will update st.session_state["data_file_from_parsing"]
-        if st.session_state.get("data_file_from_parsing") is not None:
+    if st.session_state.get("uploaded_files") is not None:
+        index_files()  # this will update st.session_state["data_files_from_parsing"]
+        if st.session_state.get("data_files_from_parsing") is not None:
             logger.debug("Data file changed! Resetting chat history")
-            initialize_data(st.session_state["data_file_from_parsing"],
+            initialize_data_list(st.session_state["data_files_from_parsing"],
                             st.session_state["embedding_model"],
                             embedding_model_name=st.session_state["embedding_model_name"],
                             use_cache=st.session_state["use_cache"],
                             )
             st.session_state["prev_selected_file"] = st.session_state[
-                "data_file_from_parsing"
+                "data_files_from_parsing"
             ]
             reset_messages_history()
 
-    elif (st.session_state["selected_file"] != st.session_state["prev_selected_file"]) or (st.session_state["prv_embedding_model"] != st.session_state["embedding_model"]):
+    elif (st.session_state["selected_files"] != st.session_state["prev_selected_file"]) or (st.session_state["prv_embedding_model"] != st.session_state["embedding_model"]):
         logger.debug("Data file changed! Resetting chat history")
-        initialize_data(DATA_DIR / st.session_state["selected_file"],
-                        st.session_state["embedding_model"],
-                        embedding_model_name=st.session_state["embedding_model_name"],
-                        use_cache=st.session_state["use_cache"],
+        initialize_data_list([DATA_DIR / sf for sf in st.session_state["selected_files"]],
+                             st.session_state["embedding_model"],
+                             embedding_model_name=st.session_state["embedding_model_name"],
+                             use_cache=st.session_state["use_cache"],
                         )
-        st.session_state["prev_selected_file"] = st.session_state["selected_file"]
+        st.session_state["prev_selected_file"] = st.session_state["selected_files"]
         st.session_state["prv_embedding_model"] = st.session_state["embedding_model"]
         reset_messages_history()
 
@@ -271,19 +294,19 @@ def display_side_bar():
         t1, t2 = st.tabs(["SELECT", "UPLOAD"])
         with t1:
             data_options = [""] + sorted(os.listdir(DATA_DIR))
-            st.selectbox(
+            st.multiselect(
                 "Select input data",
                 data_options,
-                key="selected_file",
-                disabled=st.session_state.get("uploaded_file") is not None,
+                key="selected_files",
+                disabled=st.session_state.get("uploaded_files") is not None,
             )
         with t2:
             st.file_uploader(
                 "File",
                 type=["pdf", "docx", "md"],
-                key="uploaded_file",
+                key="uploaded_files",
                 label_visibility="collapsed",
-                accept_multiple_files=False,
+                accept_multiple_files=True,
             )
         
         # Embedding model
@@ -333,7 +356,7 @@ def display_side_bar():
             "Similarity threshold for extracts",
             min_value=0.0,
             max_value=1.0,
-            value=0.4,
+            value=0.3,
             step=0.05,
             key="similarity_threshold",
         )

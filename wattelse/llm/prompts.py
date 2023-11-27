@@ -85,3 +85,12 @@ FR_SYSTEM_DODER_RAG = ("Vous êtes un assistant expert en réseau de transport d
 					   "qui serviront de contexte. "
 					   "Si le contexte ne contient pas d'éléments permettant de répondre à la question, "
 				       "répondre \"Le contexte ne fourni pas assez d'information pour répondre à la question.\"")
+
+FR_QUESTION_GENERATION = \
+"""A partir des  éléments du contexte les plus pertinents, génère des questions associées.
+---
+Contexte:
+\"\"\"
+{context}
+\"\"\"
+"""
