@@ -4,7 +4,10 @@ import os
 import tempfile
 import time
 from pathlib import Path
+from typing import List
 
+import numpy as np
+import pandas as pd
 import streamlit as st
 from loguru import logger
 from tinydb import TinyDB, Query
@@ -71,6 +74,16 @@ def initialize_data(data_path: Path, embedding_model, embedding_model_name, use_
     st.session_state["docs_embeddings"] = docs_embeddings
     return docs, docs_embeddings
 
+def initialize_data_list(data_paths: List[Path], embedding_model, embedding_model_name, use_cache=True):
+    docs_l = None
+    embs_a = None
+    for data_path in data_paths:
+        docs, embs = initialize_data(data_path, embedding_model, embedding_model_name, use_cache)
+        docs_l = docs if docs_l is None else pd.concat([docs_l, docs], axis=0).reset_index(drop=True)
+        embs_a = embs if embs_a is None else np.concatenate((embs_a, embs))
+    st.session_state["docs"] = docs_l
+    st.session_state["docs_embeddings"] = embs_a
+    return docs_l, embs_a
 
 @st.cache_resource
 def initialize_db():
@@ -244,14 +257,14 @@ def on_file_change():
             ]
             reset_messages_history()
 
-    elif (st.session_state["selected_file"] != st.session_state["prev_selected_file"]) or (st.session_state["prv_embedding_model"] != st.session_state["embedding_model"]):
+    elif (st.session_state["selected_files"] != st.session_state["prev_selected_file"]) or (st.session_state["prv_embedding_model"] != st.session_state["embedding_model"]):
         logger.debug("Data file changed! Resetting chat history")
-        initialize_data(DATA_DIR / st.session_state["selected_file"],
-                        st.session_state["embedding_model"],
-                        embedding_model_name=st.session_state["embedding_model_name"],
-                        use_cache=st.session_state["use_cache"],
+        initialize_data_list([DATA_DIR / sf for sf in st.session_state["selected_files"]],
+                             st.session_state["embedding_model"],
+                             embedding_model_name=st.session_state["embedding_model_name"],
+                             use_cache=st.session_state["use_cache"],
                         )
-        st.session_state["prev_selected_file"] = st.session_state["selected_file"]
+        st.session_state["prev_selected_file"] = st.session_state["selected_files"]
         st.session_state["prv_embedding_model"] = st.session_state["embedding_model"]
         reset_messages_history()
 
@@ -271,10 +284,10 @@ def display_side_bar():
         t1, t2 = st.tabs(["SELECT", "UPLOAD"])
         with t1:
             data_options = [""] + sorted(os.listdir(DATA_DIR))
-            st.selectbox(
+            st.multiselect(
                 "Select input data",
                 data_options,
-                key="selected_file",
+                key="selected_files",
                 disabled=st.session_state.get("uploaded_file") is not None,
             )
         with t2:
@@ -333,7 +346,7 @@ def display_side_bar():
             "Similarity threshold for extracts",
             min_value=0.0,
             max_value=1.0,
-            value=0.4,
+            value=0.3,
             step=0.05,
             key="similarity_threshold",
         )
