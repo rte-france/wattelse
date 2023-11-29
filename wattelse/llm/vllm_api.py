@@ -96,7 +96,7 @@ class vLLM_API:
             if stream:
                 return completion_result
             else:
-                return completion_result["choices"][0]["text"]
+                return completion_result["choices"][0].text
 
         except Exception as e:
             msg = f"Exception occurred with API call to {self.base_url}. Error: {e}"
