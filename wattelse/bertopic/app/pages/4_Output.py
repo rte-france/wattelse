@@ -7,14 +7,19 @@ from wattelse.bertopic.app.state_utils import (
     register_widget,
     save_widget_state,
 )
-from wattelse.summary import GPTSummarizer, AbstractiveSummarizer, ExtractiveSummarizer, LocalLLMSummarizer
+from wattelse.summary import (
+    GPTSummarizer,
+    AbstractiveSummarizer,
+    ExtractiveSummarizer,
+    LocalLLMSummarizer,
+)
 
 restore_widget_state()
 
 SUMMARIZER_OPTIONS_MAPPER = {
-    "LocalLLMSummarizer": LocalLLMSummarizer,
     "AbstractiveSummarizer": AbstractiveSummarizer,
     "GPTSummarizer": GPTSummarizer,
+    "LocalLLMSummarizer": LocalLLMSummarizer,
     "ExtractiveSummarizer": ExtractiveSummarizer,
 }
 
@@ -98,7 +103,10 @@ if newsletter_parameters_clicked:
 
 if "newsletter" in st.session_state:
     st.components.v1.html(
-        md2html(st.session_state["newsletter"], Path(__file__).parent.parent.parent / "newsletter.css"),
+        md2html(
+            st.session_state["newsletter"],
+            Path(__file__).parent.parent.parent / "newsletter.css",
+        ),
         height=800,
         scrolling=True,
     )

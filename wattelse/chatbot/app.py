@@ -253,9 +253,9 @@ def index_files():
 
 
 def on_file_change():
-    if st.session_state.get("uploaded_files") is not None:
+    if st.session_state.get("uploaded_files"):
         index_files()  # this will update st.session_state["data_files_from_parsing"]
-        if st.session_state.get("data_files_from_parsing") is not None:
+        if st.session_state.get("data_files_from_parsing"):
             logger.debug("Data file changed! Resetting chat history")
             initialize_data_list(st.session_state["data_files_from_parsing"],
                             st.session_state["embedding_model"],
@@ -298,7 +298,7 @@ def display_side_bar():
                 "Select input data",
                 data_options,
                 key="selected_files",
-                disabled=st.session_state.get("uploaded_files") is not None,
+                disabled=bool(st.session_state.get("uploaded_files")),
             )
         with t2:
             st.file_uploader(
