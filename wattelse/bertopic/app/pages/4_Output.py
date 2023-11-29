@@ -7,11 +7,12 @@ from wattelse.bertopic.app.state_utils import (
     register_widget,
     save_widget_state,
 )
-from wattelse.summary import GPTSummarizer, AbstractiveSummarizer, ExtractiveSummarizer
+from wattelse.summary import GPTSummarizer, AbstractiveSummarizer, ExtractiveSummarizer, LocalLLMSummarizer
 
 restore_widget_state()
 
 SUMMARIZER_OPTIONS_MAPPER = {
+    "LocalLLMSummarizer": LocalLLMSummarizer,
     "AbstractiveSummarizer": AbstractiveSummarizer,
     "GPTSummarizer": GPTSummarizer,
     "ExtractiveSummarizer": ExtractiveSummarizer,
