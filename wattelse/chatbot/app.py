@@ -242,14 +242,8 @@ def index_file(uploaded_file: UploadedFile):
 def index_files():
     uploaded_files = st.session_state["uploaded_files"]
     logger.debug(f"Uploading file: {uploaded_files}")
-
-    if uploaded_files:
-        if isinstance(uploaded_files, UploadedFile):
-            # single file
-            index_file(uploaded_files)
-        else: # multiple files
-            for f in uploaded_files:
-                index_file(f)
+    for f in uploaded_files:
+        index_file(f)
 
 
 def on_file_change():
@@ -369,6 +363,7 @@ def display_side_bar():
         if parameters_sidebar_clicked:
             logger.debug("Parameters updated!")
             st.session_state["embedding_model"] = initialize_embedding_model(st.session_state["embedding_model_name"])
+            st.session_state["data_files_from_parsing"] = [] # remove all previous files 
             on_file_change()
             on_instruct_prompt_change()
             info = st.info("Parameters saved!")
