@@ -7,7 +7,7 @@ import pandas as pd
 import tldextract
 from loguru import logger
 
-import wattelse.summary.abstractive_summarizer
+from wattelse.summary.abstractive_summarizer import AbstractiveSummarizer
 from wattelse.llm.openai_api import OpenAI_API
 from wattelse.llm.prompts import (
     FR_USER_GENERATE_TOPIC_LABEL_TITLE,
@@ -27,7 +27,7 @@ def generate_newsletter(
     top_n_docs=3,
     top_n_docs_mode="cluster_probability",
     newsletter_title="Newsletter",
-    summarizer_class=wattelse.summary.abstractive_summarizer.AbstractiveSummarizer,
+    summarizer_class=AbstractiveSummarizer,
     improve_topic_description=False,
 ) -> str:
     """

@@ -9,7 +9,7 @@ from wattelse.summary.summarizer import (
     DEFAULT_MAX_WORDS,
     DEFAULT_SUMMARIZATION_RATIO,
 )
-from wattelse.llm.prompts import FR_USER_SUMMARY
+from wattelse.llm.prompts import FR_USER_SUMMARY_WORDS
 
 TOKENIZER = AutoTokenizer.from_pretrained(
     "bofenghuang/vigogne-2-7b-chat",
@@ -33,7 +33,7 @@ class LocalLLMSummarizer(Summarizer):
         max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
     ) -> str:
         # Generate a doc summary
-        prompt = FR_USER_SUMMARY.format(text=article_text)
+        prompt = FR_USER_SUMMARY_WORDS.format(text=article_text, num_words=max_words)
         summary = self.api.generate(prompt)
         return summary
 
