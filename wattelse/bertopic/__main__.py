@@ -168,7 +168,7 @@ if __name__ == "__main__":
         logger.info(f"Newsletter exported in {output_format} format: {output_path}")
 
         # send newsletter by email
-        mail_title = title + f"({date_from}/{date_to})"
+        mail_title = title + f" ({date_from}/{date_to})"
         recipients = newsletter_params.getliteral("recipients", [])
         try:
             if recipients:
