@@ -11,27 +11,6 @@ If positional parameters are used, write a description below the prompt.
 """
 
 ### BERTOPIC ###
-
-FR_USER_SUMMARY_WORDS = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
-					 "J'aimerais que vous lisiez le texte suivant et que vous le résumiez en maximum {num_words} "
-					 "mots. Essayez de retenir les points les plus importants, "
-					 "en fournissant un résumé cohérent et lisible qui pourrait aider une personne à comprendre "
-					 "les points principaux du texte sans avoir besoin de lire le texte en entier. "
-					 "Veuillez éviter les détails inutiles ou les points tangentiels."
-					 "Texte :\n {text}"
-					 )
-# num_sentences: number of words the summary should contain
-# text: text to be summarized
-
-FR_SYSTEM_SUMMARY_SENTENCES = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
-					 "J'aimerais que vous lisiez le texte suivant et que vous le résumiez en maximum {num_sentences} "
-					 "phrases. Essayez de retenir les points les plus importants, "
-					 "en fournissant un résumé cohérent et lisible qui pourrait aider une personne à comprendre "
-					 "les points principaux du texte sans avoir besoin de lire le texte en entier. "
-					 "Veuillez éviter les détails inutiles ou les points tangentiels."
-					 )
-# num_sentences: number of sentences the summary should contain
-
 FR_SYSTEM_SUMMARY_WORDS = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
 					 "J'aimerais que vous lisiez le texte suivant et que vous le résumiez en maximum {num_words} "
 					 "mots. Essayez de retenir les points les plus importants, "
@@ -40,6 +19,33 @@ FR_SYSTEM_SUMMARY_WORDS = ("Vous êtes une IA hautement qualifiée, formée à l
 					 "Veuillez éviter les détails inutiles ou les points tangentiels."
 					 )
 # num_sentences: number of words the summary should contain
+
+EN_SYSTEM_SUMMARY_WORDS = ("You are a highly qualified AI, trained in language understanding and synthesis. "
+						"I would like you to read the following text and summarize it in a maximum of {num_words} "
+						"words. Try to capture the most important points, "
+						"providing a coherent and readable summary that could help a person understand "
+						"the main points of the text without needing to read the entire text. "
+						"Please avoid unnecessary details or tangential points."
+						)
+# num_sentences: number of words the summary should contain
+
+
+FR_USER_SUMMARY_WORDS = FR_SYSTEM_SUMMARY_WORDS + (
+						 " Texte :\n {text}"
+						 )
+# num_sentences: number of words the summary should contain
+# text: text to be summarized
+
+EN_USER_SUMMARY_WORDS = EN_SYSTEM_SUMMARY_WORDS + (
+	" Text :\n {text}"
+)
+# num_sentences: number of words the summary should contain
+# text: text to be summarized
+
+FR_SYSTEM_SUMMARY_SENTENCES = FR_SYSTEM_SUMMARY_WORDS.replace("{num_words} mots", "{num_sentences} phrases")
+EN_SYSTEM_SUMMARY_SENTENCES = EN_SYSTEM_SUMMARY_WORDS.replace("{num_words} words", "{num_sentences} sentences")
+# num_sentences: number of sentences the summary should contain
+
 
 FR_USER_GENERATE_TOPIC_LABEL_TITLE = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
 									  "Après utilisation d'un algorithme de topic modelling, un topic est représenté par les mots-clé suivants : \"\"\"{keywords}.\"\"\" "

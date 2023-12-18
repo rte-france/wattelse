@@ -12,7 +12,7 @@ from wattelse.summary.summarizer import (
     DEFAULT_SUMMARIZATION_RATIO,
 )
 from wattelse.summary.summarizer import Summarizer
-from wattelse.llm.prompts import FR_SYSTEM_SUMMARY_WORDS
+from wattelse.llm.prompts import FR_SYSTEM_SUMMARY_WORDS, EN_SYSTEM_SUMMARY_WORDS
 from wattelse.llm.openai_api import OpenAI_API
 
 
@@ -35,6 +35,8 @@ class GPTSummarizer(Summarizer):
         article_text,
         max_sentences=DEFAULT_MAX_SENTENCES,
         max_words=DEFAULT_MAX_WORDS,
+        max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language = "fr",
         max_article_length=2000,
     ) -> str:
         # Limit input length :
@@ -43,8 +45,9 @@ class GPTSummarizer(Summarizer):
             encoded_article_text = encoded_article_text[0:max_article_length]
             article_text = self.encoding.decode(encoded_article_text)
         # Create answer object
+        prompt = FR_SYSTEM_SUMMARY_WORDS if prompt_language=="fr" else EN_SYSTEM_SUMMARY_WORDS
         answer = self.api.generate(
-            system_prompt=FR_SYSTEM_SUMMARY_WORDS.format(num_words=max_words),
+            system_prompt=prompt.format(num_words=max_words),
             user_prompt=article_text,
             model_name=MODEL,
             temperature=TEMPERATURE,
@@ -57,5 +60,7 @@ class GPTSummarizer(Summarizer):
         max_sentences=DEFAULT_MAX_SENTENCES,
         max_words: int = DEFAULT_MAX_WORDS,
         max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language = "fr"
     ) -> List[str]:
-        return super().summarize_batch(article_texts, max_words=max_words, max_length_ratio=max_length_ratio)
+        return super().summarize_batch(article_texts, max_sentences=max_sentences, max_words=max_words,
+                                       max_length_ratio=max_length_ratio, prompt_language=prompt_language)

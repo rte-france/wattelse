@@ -36,6 +36,7 @@ class AbstractiveSummarizer(Summarizer):
         max_sentences=DEFAULT_MAX_SENTENCES,
         max_words=DEFAULT_MAX_WORDS,
         max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language="fr"
     ) -> str:
         return self.summarize_batch([article_text], max_sentences, max_length_ratio)[0]
 
@@ -45,6 +46,7 @@ class AbstractiveSummarizer(Summarizer):
         max_sentences: int=DEFAULT_MAX_SENTENCES,
         max_words=DEFAULT_MAX_WORDS,
         max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language="fr"
     ) -> List[str]:
         inputs = self.tokenizer(
             [self.WHITESPACE_HANDLER(text) for text in article_texts],

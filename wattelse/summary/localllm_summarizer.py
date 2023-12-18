@@ -31,9 +31,10 @@ class LocalLLMSummarizer(Summarizer):
         max_sentences=DEFAULT_MAX_SENTENCES,
         max_words=DEFAULT_MAX_WORDS,
         max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language="fr"
     ) -> str:
         # Generate a doc summary
-        prompt = FR_USER_SUMMARY_WORDS.format(text=article_text, num_words=max_words)
+        prompt = (FR_USER_SUMMARY_WORDS if prompt_language=="fr" else EN_USER_SUMMARY_WORDS).format(text=article_text, num_words=max_words)
         summary = self.api.generate(prompt)
         return summary
 
@@ -43,5 +44,6 @@ class LocalLLMSummarizer(Summarizer):
         max_sentences: int=DEFAULT_MAX_SENTENCES,
         max_words=DEFAULT_MAX_WORDS,
         max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language="fr"
     ) -> List[str]:
-        return super().summarize_batch(article_texts, max_sentences, max_length_ratio)
+        return super().summarize_batch(article_texts, max_sentences, max_words, max_length_ratio, prompt_language)

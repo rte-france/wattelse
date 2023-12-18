@@ -28,6 +28,7 @@ def generate_newsletter(
     top_n_docs_mode="cluster_probability",
     newsletter_title="Newsletter",
     summarizer_class=AbstractiveSummarizer,
+    prompt_language="fr",
     improve_topic_description=False,
 ) -> str:
     """
@@ -63,7 +64,7 @@ def generate_newsletter(
 
         # Generates summaries for articles
         texts = [doc.text for _, doc in sub_df.iterrows()]
-        summaries = summarizer.summarize_batch(texts)
+        summaries = summarizer.summarize_batch(texts, prompt_language=prompt_language)
 
         if improve_topic_description:
             titles = [doc.title for _, doc in sub_df.iterrows()]

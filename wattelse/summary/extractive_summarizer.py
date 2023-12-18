@@ -9,7 +9,7 @@ from sentence_transformers.models import Transformer, Pooling
 from torch import Tensor
 
 from wattelse.llm.openai_api import OpenAI_API
-from wattelse.llm.prompts import FR_SYSTEM_SUMMARY_SENTENCES
+from wattelse.llm.prompts import FR_SYSTEM_SUMMARY_SENTENCES, EN_SYSTEM_SUMMARY_SENTENCES
 from wattelse.llm.vars import MODEL, TEMPERATURE
 from wattelse.summary.lexrank import degree_centrality_scores
 from wattelse.summary.summarizer import (
@@ -51,6 +51,7 @@ class ExtractiveSummarizer(Summarizer):
         max_sentences=DEFAULT_MAX_SENTENCES,
         max_words=DEFAULT_MAX_WORDS,
         max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language = "fr"
     ) -> str:
         summary = self.summarize_text(text, max_sentences, max_length_ratio)
         return " ".join(summary)
@@ -61,8 +62,10 @@ class ExtractiveSummarizer(Summarizer):
         max_sentences: int = DEFAULT_MAX_SENTENCES,
         max_words=DEFAULT_MAX_WORDS,
         max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language = "fr"
     ) -> List[str]:
-        return super().summarize_batch(article_texts, max_sentences, max_length_ratio)
+        return super().summarize_batch(article_texts, max_sentences=max_sentences, max_words=max_words,
+                                       max_length_ratio=max_length_ratio, prompt_language=prompt_language)
 
     def get_sentences_embeddings(self, sentences: List[str]) -> List[float]:
         """Compute the sentence embeddings"""
@@ -347,12 +350,14 @@ class EnhancedExtractiveSummarizer(ExtractiveSummarizer):
         self,
         text,
         max_sentences=DEFAULT_MAX_SENTENCES,
-        max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
+        max_words=DEFAULT_MAX_WORDS,
+        max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language = "fr"
     ) -> str:
-        base_summary = super().generate_summary(text, max_sentences, max_length_ratio)
+        base_summary = super().generate_summary(text, max_sentences, max_words, max_length_ratio, prompt_language)
         logger.debug(f"Base summary: {base_summary}")
         improved_summary = self.api.generate(
-            system_prompt=FR_SYSTEM_SUMMARY_SENTENCES.format(num_sentences=max_sentences),
+            system_prompt=(FR_SYSTEM_SUMMARY_SENTENCES if prompt_language=="fr" else EN_SYSTEM_SUMMARY_SENTENCES).format(num_sentences=max_sentences),
             user_prompt=base_summary,
             model_name=MODEL,
             temperature=TEMPERATURE,
@@ -363,6 +368,8 @@ class EnhancedExtractiveSummarizer(ExtractiveSummarizer):
         self,
         article_texts: List[str],
         max_sentences: int = DEFAULT_MAX_SENTENCES,
+        max_words=DEFAULT_MAX_WORDS,
         max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language = "fr"
     ) -> List[str]:
-        return super().summarize_batch(article_texts, max_sentences, max_length_ratio)
+        return super().summarize_batch(article_texts, max_sentences, max_words, max_length_ratio, prompt_language)

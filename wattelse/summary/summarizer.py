@@ -14,6 +14,7 @@ class Summarizer(ABC):
         max_sentences: int=DEFAULT_MAX_SENTENCES,
         max_words: int=DEFAULT_MAX_WORDS,
         max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language = "fr"
     ) -> str:
         pass
 
@@ -24,5 +25,8 @@ class Summarizer(ABC):
         max_sentences: int=DEFAULT_MAX_SENTENCES,
         max_words: int=DEFAULT_MAX_WORDS,
         max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language = "fr"
     ) -> List[str]:
-        return [self.generate_summary(t) for t in article_texts]
+        return [self.generate_summary(article_text=t, max_sentences=max_sentences, max_words=max_words,
+                                      max_length_ratio=max_length_ratio, prompt_language=prompt_language)
+                for t in article_texts]
