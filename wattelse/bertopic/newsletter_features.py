@@ -49,7 +49,11 @@ def generate_newsletter(
 
     # Store each line in a list
     md_lines = [f"# {newsletter_title}"]
-    md_lines.append(f"<div class='date_range'>du {date_min} au {date_max}</div>")
+    if prompt_language=="fr":
+        md_lines.append(f"<div class='date_range'>du {date_min} au {date_max}</div>")
+    else:
+        md_lines.append(f"<div class='date_range'>from {date_min} to {date_max}</div>")
+
     # Iterate over topics
     for i in range(top_n_topics):
         sub_df = get_most_representative_docs(
@@ -109,7 +113,7 @@ def generate_newsletter(
 
     # Write full file
     md_content = "\n\n".join(md_lines)
-    return md_content
+    return md_content, date_min, date_max
 
 
 def export_md_string(newsletter_md: str, path: Path, format="md"):

@@ -140,7 +140,7 @@ if __name__ == "__main__":
         # generate newsletter
         logger.info(f"Generating newsletter...")
         title = newsletter_params.get("title")
-        newsletter_md = generate_newsletter(
+        newsletter_md, date_from, date_to = generate_newsletter(
             topic_model=topic_model,
             df=original_dataset,
             topics=topics,
@@ -168,6 +168,7 @@ if __name__ == "__main__":
         logger.info(f"Newsletter exported in {output_format} format: {output_path}")
 
         # send newsletter by email
+        mail_title = title + f"({date_from}/{date_to})"
         recipients = newsletter_params.getliteral("recipients", [])
         try:
             if recipients:
@@ -175,7 +176,7 @@ if __name__ == "__main__":
                 with open(output_path, "r") as file:
                     # Read the entire contents of the file into a string
                     content = file.read()
-                send_email(credentials, title, recipients, content, output_format)
+                send_email(credentials, mail_title, recipients, content, output_format)
                 logger.info(f"Newsletter sent to: {recipients}")
         except RefreshError as re:
             logger.error(f"Problem with token for email, please regenerate it: {re}")
