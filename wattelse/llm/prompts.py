@@ -77,15 +77,47 @@ FR_USER_BASE_RAG = ("Répondez à la question en utilisant le contexte fourni. L
 					"Question : {query}\n"
 					)
 """
-FR_USER_BASE_RAG = ('Réponds à la question en résumant les éléments du contexte les plus pertinents. '
-					'Ce résumé doit être {expected_answer_size}, spécifique et percutant.\n'
+FR_USER_BASE_RAG = ("Vous êtes une IA experte qui aide les utilisateurs à répondre à des "
+					"questions sur la base de documents provenant de l'entreprise RTE (Réseau de Transport de l'Électricité). "
+					"À partir des documents fournis dans le contexte, répondez à la question. "
+					"La réponse doit être {expected_answer_size}, spécifique et percutante.\n"
 					'---\nContexte:\n'
 					'"""\n{context}\n"""\n---\n'
 					'Question : {query}')
 
+# context : retrieved context
+# expected_answer_size : size of the answer
+# query : user query
+
+FR_USER_MULTITURN_RAG = ("Vous êtes une IA experte qui aide les utilisateurs à répondre à des "
+						 "questions sur la base de documents provenant de l'entreprise RTE (Réseau de Transport de l'Électricité). "
+						 "À partir des documents fournis dans le contexte et de l'historique de la conversation, "
+						 "répondez à la question finale. "
+						 "La réponse doit être {expected_answer_size}, spécifique et percutante.\n"
+						 '---\nContexte:\n'
+						 '"""\n{context}\n"""\n---\n'
+						 'Historique de conversation:\n'
+						 '"""\n{history}\n"""\n---\n'
+						 'Question finale : {query}')
 
 # context : retrieved context
 # expected_answer_size : size of the answer
+# history : history of the conversation including queries and answers
+# query : user query
+
+FR_USER_MULTITURN_QUESTION_SPECIFICATION = ("Vous êtes une IA experte qui aide les utilisateurs à répondre à des "
+											"questions sur la base de documents provenant de l'entreprise RTE (Réseau de Transport de l'Électricité). "
+											"À partir de l'historique de conversation et de la dernière question de l'utilisateur, "
+											"qui peut faire référence à l'histoirique de conversation, reformulez la dernière question "
+											"de l'utilisateur pour qu'elle soit comprégensible sans l'historique de la conversation. "
+											"Ne répondez PAS à la question. Reformulez la question si elle fait appel à des "
+											"éléments de l'historique de la conversation. Sinon, renvoyez-la sans reformulation. "
+											"---\nHistorique de conversation:\n"
+						 					'"""\n{history}\n"""\n---\n'
+						 					"Question finale de l'utilisateur: {query}\n"
+											"Question finale de l'utilisateur reformulée :")
+
+# history : history of the conversation including queries and answers
 # query : user query
 
 FR_SYSTEM_DODER_RAG = ("Vous êtes un assistant expert en réseau de transport de l'électricité "

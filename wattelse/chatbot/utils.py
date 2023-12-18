@@ -42,6 +42,7 @@ def generate_RAG_prompt(
     context_elements: List[str],
     expected_answer_size="short",
     custom_prompt=None,
+    history=None,
 ) -> str:
     """
     Generates RAG prompt using query and context.
@@ -50,7 +51,7 @@ def generate_RAG_prompt(
     expected_answer_size = "courte" if expected_answer_size == "short" else "détaillée"
     if custom_prompt:
         return custom_prompt.format(
-            context=context, query=query, expected_answer_size=expected_answer_size
+            context=context, query=query, expected_answer_size=expected_answer_size, history=history,
         )
     else:
         return FR_USER_BASE_RAG.format(

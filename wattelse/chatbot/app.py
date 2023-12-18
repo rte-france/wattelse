@@ -25,7 +25,7 @@ from wattelse.chatbot.utils import (
 from wattelse.common.vars import BASE_DATA_DIR
 from wattelse.llm.vars import TEMPERATURE
 from wattelse.llm.vllm_api import vLLM_API
-from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_SYSTEM_DODER_RAG
+from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_MULTITURN_RAG, FR_USER_MULTITURN_QUESTION_SPECIFICATION
 from sentence_transformers import SentenceTransformer
 
 DATA_DIR = BASE_DATA_DIR / "chatbot"
@@ -137,26 +137,36 @@ def display_existing_messages():
 
 def enrich_query(query):
     """Use recent interaction context to enrich the user query"""
-    context = get_recent_context()
-    tips = ""
-    for entry in context:
-        tips += entry["response"] + " "
-    enriched_query = tips + query
-    logger.debug(f"Query with short-time context: {enriched_query}")
+    history = get_history()
+    enriched_query = API.generate(FR_USER_MULTITURN_QUESTION_SPECIFICATION.format(history=history, query=query),
+                                  temperature=TEMPERATURE,
+                                  max_tokens=MAX_TOKENS,
+                                  )
     return enriched_query
 
+def get_history():
+    """Return the history of the conversation"""
+    context = get_recent_context()
+    history = ""
+    for entry in context:
+        history += "Utilisateur : {query}\nRéponse : {response}\n".format(query=entry["query"], response=entry["response"])
+    return history
 
 def generate_assistant_response(query, embedding_model):
     if st.session_state.get("docs") is None:
         st.error("Select a document first", icon="🚨")
         return
-
+        
+    history = ""
+    enriched_query = query
     if st.session_state["remember_recent_messages"]:
-        query = enrich_query(query)
-
+        enriched_query = enrich_query(query)
+        logger.debug(enriched_query)
+        history = get_history()
+    
     relevant_extracts, sims = extract_n_most_relevant_extracts(
         st.session_state["nb_extracts"],
-        query,
+        enriched_query,
         st.session_state["docs"],
         st.session_state["docs_embeddings"],
         embedding_model,
@@ -174,8 +184,9 @@ def generate_assistant_response(query, embedding_model):
             relevant_extracts,
             expected_answer_size=st.session_state["expected_answer_size"],
             custom_prompt=st.session_state["custom_prompt"],
+            history=history,
         )
-
+        logger.debug(f"Prompt : {prompt}")
         # Generates response
         stream_response = API.generate(prompt,
                                        #system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
@@ -280,96 +291,102 @@ def on_instruct_prompt_change():
 
 
 def display_side_bar():
-    with st.sidebar.form("parameters_sidebar"):
-        st.markdown(f"**API** : *{API.model_name}*")
-        st.title("Parameters")
+    with st.sidebar:
+        with st.form("parameters_sidebar"):
+            st.markdown(f"**API** : *{API.model_name}*")
+            st.title("Parameters")
 
-        # Data
-        t1, t2 = st.tabs(["SELECT", "UPLOAD"])
-        with t1:
-            data_options = [""] + sorted(os.listdir(DATA_DIR))
-            st.multiselect(
-                "Select input data",
-                data_options,
-                key="selected_files",
-                disabled=bool(st.session_state.get("uploaded_files")),
+            # Data
+            t1, t2 = st.tabs(["SELECT", "UPLOAD"])
+            with t1:
+                data_options = [""] + sorted(os.listdir(DATA_DIR))
+                st.multiselect(
+                    "Select input data",
+                    data_options,
+                    key="selected_files",
+                    disabled=bool(st.session_state.get("uploaded_files")),
+                )
+            with t2:
+                st.file_uploader(
+                    "File",
+                    type=["pdf", "docx", "md"],
+                    key="uploaded_files",
+                    label_visibility="collapsed",
+                    accept_multiple_files=True,
+                )
+            
+            # Embedding model
+            st.selectbox(
+                "Embedding model",
+                ["antoinelouis/biencoder-camembert-base-mmarcoFR",
+                "dangvantuan/sentence-camembert-large"],
+                key="embedding_model_name",
             )
-        with t2:
-            st.file_uploader(
-                "File",
-                type=["pdf", "docx", "md"],
-                key="uploaded_files",
-                label_visibility="collapsed",
-                accept_multiple_files=True,
+
+            # Response size
+            st.selectbox(
+                "Response size",
+                ["short", "detailed"],
+                key="expected_answer_size",
             )
-        
-        # Embedding model
-        st.selectbox(
-            "Embedding model",
-            ["antoinelouis/biencoder-camembert-base-mmarcoFR",
-             "dangvantuan/sentence-camembert-large"],
-             key="embedding_model_name",
-        )
 
-        # Response size
-        st.selectbox(
-            "Response size",
-            ["short", "detailed"],
-            key="expected_answer_size",
-        )
+            # Use cache
+            st.toggle(
+                "Use cache",
+                value=True,
+                key="use_cache",
+            )
 
-        # Use cache
-        st.toggle(
-            "Use cache",
-            value=True,
-            key="use_cache",
-        )
+            # Relevant references as explanations
+            st.toggle("Provide explanations", value=True, key="provide_explanations")
 
+            # Number of extracts to be considered
+            st.slider(
+                "Maximum number of extracts used",
+                min_value=1,
+                max_value=10,
+                value=5,
+                step=1,
+                key="nb_extracts",
+            )
+
+            # Similarity threshold
+            st.slider(
+                "Similarity threshold for extracts",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.3,
+                step=0.05,
+                key="similarity_threshold",
+            )
+
+            # Custom prompt
+            st.text_area("Prompt", value=FR_USER_BASE_RAG, key="custom_prompt")
+
+            parameters_sidebar_clicked = st.form_submit_button("Apply")
+
+            if parameters_sidebar_clicked:
+                logger.debug("Parameters updated!")
+                st.session_state["embedding_model"] = initialize_embedding_model(st.session_state["embedding_model_name"])
+                st.session_state["data_files_from_parsing"] = [] # remove all previous files 
+                on_file_change()
+                on_instruct_prompt_change()
+                info = st.info("Parameters saved!")
+                time.sleep(0.5)
+                info.empty()  # Clear the alert
         # Memory management
-        st.toggle(
-            "Use recent interaction history",
-            value=False,
-            key="remember_recent_messages",
-        )
+        st.toggle("Use recent interaction history",
+                value=False,
+                key="remember_recent_messages",
+                on_change=switch_prompt,
+                )
 
-        # Relevant references as explanations
-        st.toggle("Provide explanations", value=True, key="provide_explanations")
-
-        # Number of extracts to be considered
-        st.slider(
-            "Maximum number of extracts used",
-            min_value=1,
-            max_value=10,
-            value=5,
-            step=1,
-            key="nb_extracts",
-        )
-
-        # Similarity threshold
-        st.slider(
-            "Similarity threshold for extracts",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.3,
-            step=0.05,
-            key="similarity_threshold",
-        )
-
-        # Custom prompt
-        st.text_area("Prompt", value=FR_USER_BASE_RAG, key="custom_prompt")
-
-        parameters_sidebar_clicked = st.form_submit_button("Apply")
-
-        if parameters_sidebar_clicked:
-            logger.debug("Parameters updated!")
-            st.session_state["embedding_model"] = initialize_embedding_model(st.session_state["embedding_model_name"])
-            st.session_state["data_files_from_parsing"] = [] # remove all previous files 
-            on_file_change()
-            on_instruct_prompt_change()
-            info = st.info("Parameters saved!")
-            time.sleep(0.5)
-            info.empty()  # Clear the alert
-
+def switch_prompt():
+    """Switch prompt between hisotry and non history versions"""
+    if st.session_state["remember_recent_messages"]:
+        st.session_state["custom_prompt"] = FR_USER_MULTITURN_RAG
+    else:
+        st.session_state["custom_prompt"] = FR_USER_BASE_RAG
 
 def display_reset():
     col1, col2, col3 = st.columns(3, gap="small")
