@@ -44,8 +44,8 @@ def generate_newsletter(
         top_n_topics = len(topics_info)
 
     # Date range
-    date_min = df.timestamp.min().strftime("%d-%m-%Y")
-    date_max = df.timestamp.max().strftime("%d-%m-%Y")
+    date_min = df.timestamp.min().strftime("%A %d %b %Y")
+    date_max = df.timestamp.max().strftime("%A %d %b %Y")
 
     # Store each line in a list
     md_lines = [f"# {newsletter_title}"]
@@ -106,7 +106,7 @@ def generate_newsletter(
                 logger.warning(f"Cannot extract URL for {doc}")
                 domain = ""
             md_lines.append(
-                f"<div class='timestamp'>{doc.timestamp.strftime('%d-%m-%Y')} | {domain}</div>"
+                f"<div class='timestamp'>{doc.timestamp.strftime('%A %d %b %Y')} | {domain}</div>"
             )
             md_lines.append(summaries[i])
             i += 1
