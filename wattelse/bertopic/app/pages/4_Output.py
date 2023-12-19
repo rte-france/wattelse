@@ -104,7 +104,7 @@ if newsletter_parameters_clicked:
 if "newsletter" in st.session_state:
     st.components.v1.html(
         md2html(
-            st.session_state["newsletter"],
+            st.session_state["newsletter"][0],
             Path(__file__).parent.parent.parent / "newsletter.css",
         ),
         height=800,
