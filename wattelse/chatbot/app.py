@@ -14,6 +14,7 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 
+from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.common.text_parsers.extract_text_from_MD import parse_md
 from wattelse.common.text_parsers.extract_text_from_PDF import parse_pdf
 from wattelse.common.text_parsers.extract_text_using_origami import parse_docx
@@ -75,25 +76,24 @@ def initialize_reranker_model(reranker_model_name):
 def initialize_data(data_path: Path, embedding_model, embedding_model_name, use_cache=True):
     if not data_path.is_file():
         st.error("Select a data file", icon="🚨")
-    docs, docs_embeddings = load_data(data_path,
+    data, docs_embeddings = load_data(data_path,
                                       embedding_model,
                                       embedding_model_name=embedding_model_name,
                                       use_cache=use_cache,
                                       )
-    st.session_state["docs"] = docs
+    st.session_state["data"] = data
     st.session_state["docs_embeddings"] = docs_embeddings
-    return docs, docs_embeddings
+    return data, docs_embeddings
 
 def initialize_data_list(data_paths: List[Path], embedding_model, embedding_model_name, use_cache=True):
-    docs_l = None
+    data_l = None
     embs_a = None
     for data_path in data_paths:
-        docs, embs = initialize_data(data_path, embedding_model, embedding_model_name, use_cache)
-        docs_l = docs if docs_l is None else pd.concat([docs_l, docs], axis=0).reset_index(drop=True)
+        data, embs = initialize_data(data_path, embedding_model, embedding_model_name, use_cache)
+        data_l = data if data_l is None else pd.concat([data_l, data], axis=0).reset_index(drop=True)
         embs_a = embs if embs_a is None else np.concatenate((embs_a, embs))
     st.session_state["docs"] = docs_l
     st.session_state["docs_embeddings"] = embs_a
-    return docs_l, embs_a
 
 @st.cache_resource
 def initialize_db():
@@ -161,7 +161,7 @@ def get_history():
     return history
 
 def generate_assistant_response(query, embedding_model):
-    if st.session_state.get("docs") is None:
+    if st.session_state.get("data") is None:
         st.error("Select a document first", icon="🚨")
         return
         
@@ -175,7 +175,7 @@ def generate_assistant_response(query, embedding_model):
     relevant_extracts, relevant_extracts_similarity = extract_n_most_relevant_extracts(
         st.session_state["top_n_extracts"],
         enriched_query,
-        st.session_state["docs"],
+        st.session_state["data"],
         st.session_state["docs_embeddings"],
         embedding_model,
         st.session_state["bm25_model"],
@@ -192,7 +192,7 @@ def generate_assistant_response(query, embedding_model):
         # Generates prompt
         prompt = generate_RAG_prompt(
             query,
-            relevant_extracts,
+            [extract[TEXT_COLUMN] for extract in relevant_extracts],
             expected_answer_size=st.session_state["expected_answer_size"],
             custom_prompt=st.session_state["custom_prompt"],
             history=history,
@@ -214,12 +214,17 @@ def generate_assistant_response(query, embedding_model):
 
     if st.session_state["provide_explanations"]:
         with st.expander("Explanation"):
-            for expl, sim in zip(relevant_extracts, relevant_extracts_similarity):
+            for extract, sim in zip(relevant_extracts, relevant_extracts_similarity):
                 with st.chat_message("explanation", avatar="🔑"):
                     # Add score to text explanation
                     score = round(sim * 5) * "⭐"
+                    expl = extract[TEXT_COLUMN]
                     expl = expl.replace("\n", "\n\n")
                     st.write(f"{score}\n{expl}")
+                    # Add filename if available
+                    filename = extract.get(FILENAME_COLUMN)
+                    if filename:
+                        st.markdown(f"*Source: [{filename}]()*")
 
     return response
 

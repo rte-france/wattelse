@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 import sys
 import string
 
@@ -11,6 +11,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import Stemmer
 from rank_bm25 import BM25Plus
 
+from wattelse.common import TEXT_COLUMN
 from wattelse.common.cache_utils import save_embeddings, load_embeddings
 from wattelse.common.vars import BASE_CACHE_PATH
 from wattelse.llm.prompts import FR_USER_BASE_RAG
@@ -19,7 +20,7 @@ CACHE_DIR = BASE_CACHE_PATH / "chatbot"
 # Make dirs if not exist
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-STEMMER = Stemmer.Stemmer('french')
+STEMMER = Stemmer.Stemmer("french")
 
 def bm25_preprocessing(text : str):
     """Text preprocessing function before sending it to BM25"""
@@ -74,7 +75,7 @@ def rerank_extracts(query: str, docs: pd.DataFrame, top_n: int, reranker_model: 
 
 def extract_n_most_relevant_extracts(top_n: int,
                                      query: str,
-                                     docs: pd.DataFrame,
+                                     data: pd.DataFrame,
                                      docs_embeddings: np.ndarray,
                                      embedding_model: SentenceTransformer,
                                      bm25_model: BM25Plus,
@@ -114,7 +115,7 @@ def extract_n_most_relevant_extracts(top_n: int,
         relevant_extracts_similarity = similarity_score[top_n_indices].tolist()
     
     # Dense model
-    if retrieval_mode == "dense":
+    elif retrieval_mode == "dense":
         similarity_score = compute_dense_embeddings_score(query, docs_embeddings, embedding_model)
         above_threshold_indices = np.where(similarity_score > similarity_threshold)[0]
         top_n_indices = above_threshold_indices[np.argsort(similarity_score[above_threshold_indices])][::-1][:top_n]
@@ -122,7 +123,7 @@ def extract_n_most_relevant_extracts(top_n: int,
         relevant_extracts_similarity = similarity_score[top_n_indices].tolist()
     
     # Hybrid
-    if retrieval_mode == "hybrid":
+    elif retrieval_mode == "hybrid":
         dense_similarity_score = compute_dense_embeddings_score(query, docs_embeddings, embedding_model)
         bm25_similarity_score = compute_bm25_score(query, bm25_model)
         sorted_dense_indices = dense_similarity_score.argsort()[::-1]
@@ -137,7 +138,7 @@ def extract_n_most_relevant_extracts(top_n: int,
         relevant_extracts_similarity = np.zeros(len(relevant_extracts)).tolist() # TODO : get scores for each extract
 
     # Hybrid + Reranker
-    if retrieval_mode == "hybrid+reranker":
+    elif retrieval_mode == "hybrid+reranker":
         dense_similarity_score = compute_dense_embeddings_score(query, docs_embeddings, embedding_model)
         bm25_similarity_score = compute_bm25_score(query, bm25_model)
         top_n_dense_indices = dense_similarity_score.argsort()[::-1][:top_n*reranker_ratio]
@@ -186,13 +187,11 @@ def load_data(
     or 'text'"""
     logger.info(f"Using data from: {data_file}")
     data = pd.read_csv(data_file, keep_default_na=False)
-    if "processed_text" in data.columns:
-        docs = data["processed_text"]
-    elif "text" in data.columns:
-        docs = data["text"]
+    if TEXT_COLUMN in data.columns:
+        docs = data[TEXT_COLUMN]
     else:
         logger.error(
-            f"Data {data_file} not formatted correctly! (expecting 'processed_text' or 'text' column"
+            f"Data {data_file} not formatted correctly! (expecting {TEXT_COLUMN} column"
         )
         sys.exit(-1)
 
@@ -209,4 +208,4 @@ def load_data(
         docs_embeddings = load_embeddings(cache_path)
         logger.info(f"Embeddings loaded from cache file: {cache_path}")
 
-    return docs, docs_embeddings
+    return data, docs_embeddings

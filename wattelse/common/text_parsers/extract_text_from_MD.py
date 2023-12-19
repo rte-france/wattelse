@@ -4,6 +4,8 @@ import pandas as pd
 import typer
 from loguru import logger
 
+from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
+
 
 def extract_paragraphs_with_levels(markdown_text):
     lines = markdown_text.split("\n")
@@ -63,6 +65,7 @@ def extract_text_from_md(markdown_file_path: Path):
         markdown_text = file.read()
         # Extract paragraphs with titles
         paragraphs_with_levels = extract_paragraphs_with_levels(markdown_text)
+        paragraphs_with_levels[FILENAME_COLUMN] = markdown_file_path
         return paragraphs_with_levels
 
 def parse_mds(md_directory: Path, output_file: Path = "./data/output_md.csv") -> Path:
@@ -86,13 +89,13 @@ def parse_mds(md_directory: Path, output_file: Path = "./data/output_md.csv") ->
     
     df = df.fillna("")
     # Combine columns to enrich the text
-    df["processed_text"] = ("Titre du document : " + df.level1 + "\n"
+    df[TEXT_COLUMN] = ("Titre du document : " + df.level1 + "\n"
                             "Section : " + df.level2 + "\n"
                             "Sous-section : " + df.level3 + "\n"
                             "Sous-sous-section : " + df.level4 + "\n"
                             "Contenu : " + df.paragraph
                             )
-    df["processed_text"] = df["processed_text"].str.replace(r"Section : \n|Sous-section : \n|Sous-sous-section : \n", "", regex=True)
+    df[TEXT_COLUMN] = df[TEXT_COLUMN].str.replace(r"Section : \n|Sous-section : \n|Sous-sous-section : \n", "", regex=True)
 
     df.to_csv(output_file)
 
@@ -108,8 +111,8 @@ def parse_md(md_file: Path, output_path: Path) -> Path:
 
     df = pd.DataFrame(paragraphs).fillna("")
     # Combine columns to enrich the text
-    df["processed_text"] = df.level1 + " | " + df.level2 + " | " + df.level3 + " | " + df.level4 + "\n" + df.paragraph
-    df["processed_text"] = df["processed_text"].str.replace("|  |", "|")
+    df[TEXT_COLUMN] = df.level1 + " | " + df.level2 + " | " + df.level3 + " | " + df.level4 + "\n" + df.paragraph
+    df[TEXT_COLUMN] = df[TEXT_COLUMN].str.replace("|  |", "|")
 
     output_file = md_file.stem + ".csv"
     full_output_path = output_path / output_file
