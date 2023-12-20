@@ -21,12 +21,13 @@ from wattelse.chatbot.utils import (
     extract_n_most_relevant_extracts,
     generate_RAG_prompt,
     load_data,
+    make_docs_BM25_indexing,
 )
 from wattelse.common.vars import BASE_DATA_DIR
 from wattelse.llm.vars import TEMPERATURE
 from wattelse.llm.vllm_api import vLLM_API
 from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_MULTITURN_RAG, FR_USER_MULTITURN_QUESTION_SPECIFICATION
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, CrossEncoder
 
 DATA_DIR = BASE_DATA_DIR / "chatbot"
 # Make dirs if not exist
@@ -62,6 +63,13 @@ def initialize_embedding_model(embedding_model_name):
     if embedding_model.max_seq_length == 514:
         embedding_model.max_seq_length = 512
     return embedding_model
+
+@st.cache_resource
+def initialize_reranker_model(reranker_model_name):
+    """Load embedding_model and reranker_model"""
+    logger.info("Initializing embedding and reranker models...")
+    reranker_model = CrossEncoder(reranker_model_name)
+    return reranker_model
 
 
 def initialize_data(data_path: Path, embedding_model, embedding_model_name, use_cache=True):
@@ -163,14 +171,17 @@ def generate_assistant_response(query, embedding_model):
         enriched_query = enrich_query(query)
         logger.debug(enriched_query)
         history = get_history()
-    
-    relevant_extracts, sims = extract_n_most_relevant_extracts(
-        st.session_state["nb_extracts"],
+        
+    relevant_extracts, relevant_extracts_similarity = extract_n_most_relevant_extracts(
+        st.session_state["top_n_extracts"],
         enriched_query,
         st.session_state["docs"],
         st.session_state["docs_embeddings"],
         embedding_model,
-        st.session_state["similarity_threshold"],
+        st.session_state["bm25_model"],
+        retrieval_mode=st.session_state["retrieval_mode"],
+        reranker_model=st.session_state.get("reranker_model"),
+        similarity_threshold=st.session_state["similarity_threshold"],
     )
 
     with st.chat_message("assistant"):
@@ -203,7 +214,7 @@ def generate_assistant_response(query, embedding_model):
 
     if st.session_state["provide_explanations"]:
         with st.expander("Explanation"):
-            for expl, sim in zip(relevant_extracts, sims):
+            for expl, sim in zip(relevant_extracts, relevant_extracts_similarity):
                 with st.chat_message("explanation", avatar="🔑"):
                     # Add score to text explanation
                     score = round(sim * 5) * "⭐"
@@ -323,6 +334,14 @@ def display_side_bar():
                 key="embedding_model_name",
             )
 
+            # Reranker model
+            st.selectbox(
+                "Reranker model",
+                ["antoinelouis/crossencoder-camembert-base-mmarcoFR",
+                 "dangvantuan/CrossEncoder-camembert-large"],
+                key="reranker_model_name",
+            )
+
             # Response size
             st.selectbox(
                 "Response size",
@@ -342,12 +361,20 @@ def display_side_bar():
 
             # Number of extracts to be considered
             st.slider(
-                "Maximum number of extracts used",
+                "Top n extracts",
                 min_value=1,
                 max_value=10,
                 value=5,
                 step=1,
-                key="nb_extracts",
+                key="top_n_extracts",
+            )
+
+            # Balance between dense and bm25 retrieval
+            st.selectbox(
+                "Retrieval mode",
+                ["bm25", "dense", "hybrid", "hybrid+reranker"],
+                index=2,
+                key="retrieval_mode",
             )
 
             # Similarity threshold
@@ -368,9 +395,13 @@ def display_side_bar():
             if parameters_sidebar_clicked:
                 logger.debug("Parameters updated!")
                 st.session_state["embedding_model"] = initialize_embedding_model(st.session_state["embedding_model_name"])
-                st.session_state["data_files_from_parsing"] = [] # remove all previous files 
+                if st.session_state["retrieval_mode"] == "hybrid+reranking":
+                    st.session_state["reranker_model"] = initialize_reranker_model(st.session_state["reranker_model_name"])
+                st.session_state["data_files_from_parsing"] = [] # remove all previous files
                 on_file_change()
                 on_instruct_prompt_change()
+                if st.session_state["retrieval_mode"] in ("bm25", "hybrid", "hybrid+reranker"):
+                    st.session_state["bm25_model"] = make_docs_BM25_indexing(st.session_state["docs"])
                 info = st.info("Parameters saved!")
                 time.sleep(0.5)
                 info.empty()  # Clear the alert
