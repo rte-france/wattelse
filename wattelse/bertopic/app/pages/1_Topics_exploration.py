@@ -11,7 +11,7 @@ from app_utils import print_docs_for_specific_topic, plot_topics_over_time, load
 from state_utils import register_widget, save_widget_state, restore_widget_state
 
 # Set locale to get french date names
-locale.setlocale(locale.LC_ALL, 'fr_FR.UTF-8')
+locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
 
 # Restore widget state
 restore_widget_state()
