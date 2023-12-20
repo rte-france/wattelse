@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import locale
 
 # from md2pdf.core import md2pdf
 import markdown
@@ -35,6 +36,13 @@ def generate_newsletter(
     Write a newsletter using trained BERTopic model.
     """
     logger.debug("Generating newsletter...")
+    # Adapt language for date
+    current_local = locale.getlocale()
+    if prompt_language == "en":
+        locale.setlocale(locale.LC_TIME, 'en_US.UTF-8')
+    elif prompt_language == "fr":
+        locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+
     # Instantiates summarizer
     summarizer = summarizer_class()
 
@@ -113,6 +121,9 @@ def generate_newsletter(
 
     # Write full file
     md_content = "\n\n".join(md_lines)
+
+    # Reset locale
+    locale.setlocale(locale.LC_TIME, '.'.join(current_local))
     return md_content, date_min, date_max
 
 
