@@ -1,5 +1,3 @@
-import datetime
-import json
 import os
 import tempfile
 import time
@@ -11,9 +9,8 @@ import pandas as pd
 import streamlit as st
 from loguru import logger
 from streamlit.runtime.uploaded_file_manager import UploadedFile
-from tinydb import TinyDB, Query
-from tinydb.storages import MemoryStorage
 
+from wattelse.chatbot.chat_history import get_history, add_to_database, export_history, reset_messages_history
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.common.text_parsers.extract_text_from_MD import parse_md
 from wattelse.common.text_parsers.extract_text_from_PDF import parse_pdf
@@ -22,7 +19,7 @@ from wattelse.chatbot.utils import (
     extract_n_most_relevant_extracts,
     generate_RAG_prompt,
     load_data,
-    make_docs_BM25_indexing,
+    make_docs_BM25_indexing, RETRIEVAL_BM25, RETRIEVAL_DENSE, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER,
 )
 from wattelse.common.vars import BASE_DATA_DIR
 from wattelse.llm.vars import TEMPERATURE
@@ -38,8 +35,6 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 os.umask(0o002)
 
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
-
-DEFAULT_MEMORY_DELAY = 2  # in minutes
 
 # Generation model API parameters
 API = vLLM_API()
@@ -92,32 +87,8 @@ def initialize_data_list(data_paths: List[Path], embedding_model, embedding_mode
         data, embs = initialize_data(data_path, embedding_model, embedding_model_name, use_cache)
         data_l = data if data_l is None else pd.concat([data_l, data], axis=0).reset_index(drop=True)
         embs_a = embs if embs_a is None else np.concatenate((embs_a, embs))
-    st.session_state["docs"] = docs_l
+    st.session_state["data"] = data_l
     st.session_state["docs_embeddings"] = embs_a
-
-@st.cache_resource
-def initialize_db():
-    # in memory small DB for handling messages
-    db = TinyDB(storage=MemoryStorage)
-    table = db.table("messages")
-    return table
-
-
-# initialize DB
-db_table = initialize_db()
-
-
-def export_history():
-    """Export messages in JSON from the database"""
-    return json.dumps(
-        [
-            {
-                k: v if k != "timestamp" else v.strftime("%d-%m-%Y %H:%M:%S")
-                for k, v in d.items()
-            }
-            for d in db_table.all()
-        ]
-    )
 
 
 def add_user_message_to_session(prompt):
@@ -125,14 +96,6 @@ def add_user_message_to_session(prompt):
         st.session_state["messages"].append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
-
-
-def reset_messages_history():
-    # clear messages
-    st.session_state["messages"] = []
-    # clean database
-    db_table.truncate()
-    logger.debug("History now empty")
 
 
 def display_existing_messages():
@@ -152,13 +115,6 @@ def enrich_query(query):
                                   )
     return enriched_query
 
-def get_history():
-    """Return the history of the conversation"""
-    context = get_recent_context()
-    history = ""
-    for entry in context:
-        history += "Utilisateur : {query}\nRéponse : {response}\n".format(query=entry["query"], response=entry["response"])
-    return history
 
 def generate_assistant_response(query, embedding_model):
     if st.session_state.get("data") is None:
@@ -228,19 +184,6 @@ def generate_assistant_response(query, embedding_model):
 
     return response
 
-
-def add_to_database(query, response):
-    timestamp = datetime.datetime.now()
-    db_table.insert({"query": query, "response": response, "timestamp": timestamp})
-
-
-def get_recent_context(delay=DEFAULT_MEMORY_DELAY):
-    """Returns a list of recent answers from the bot that occured during the indicated delay in minutes"""
-    current_timestamp = datetime.datetime.now()
-    q = Query()
-    return db_table.search(
-        q.timestamp > (current_timestamp - datetime.timedelta(minutes=delay))
-    )
 
 def index_file(uploaded_file: UploadedFile):
     # NB: UploadedFile  can be used like a BytesIO
@@ -377,7 +320,7 @@ def display_side_bar():
             # Balance between dense and bm25 retrieval
             st.selectbox(
                 "Retrieval mode",
-                ["bm25", "dense", "hybrid", "hybrid+reranker"],
+                [RETRIEVAL_BM25, RETRIEVAL_DENSE, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER],
                 index=2,
                 key="retrieval_mode",
             )
@@ -400,13 +343,13 @@ def display_side_bar():
             if parameters_sidebar_clicked:
                 logger.debug("Parameters updated!")
                 st.session_state["embedding_model"] = initialize_embedding_model(st.session_state["embedding_model_name"])
-                if st.session_state["retrieval_mode"] == "hybrid+reranking":
+                if st.session_state["retrieval_mode"] == RETRIEVAL_HYBRID_RERANKER:
                     st.session_state["reranker_model"] = initialize_reranker_model(st.session_state["reranker_model_name"])
                 st.session_state["data_files_from_parsing"] = [] # remove all previous files
                 on_file_change()
                 on_instruct_prompt_change()
-                if st.session_state["retrieval_mode"] in ("bm25", "hybrid", "hybrid+reranker"):
-                    st.session_state["bm25_model"] = make_docs_BM25_indexing(st.session_state["docs"])
+                if st.session_state["retrieval_mode"] in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER):
+                    st.session_state["bm25_model"] = make_docs_BM25_indexing(st.session_state["data"])
                 info = st.info("Parameters saved!")
                 time.sleep(0.5)
                 info.empty()  # Clear the alert
