@@ -63,23 +63,15 @@ def initialize_llm_api(llm_api_name: str):
     logger.info(f"Initializing LLM API: {llm_api_name}")
     return vLLM_API() if llm_api_name==LOCAL_LLM else OpenAI_API()
 
-def initialize_data(data_path: Path, embedding_model, embedding_model_name, use_cache=True):
-    if not data_path.is_file():
-        st.error("Select a data file", icon="🚨")
-    data, docs_embeddings = load_data(data_path,
-                                      embedding_model,
-                                      embedding_model_name=embedding_model_name,
-                                      use_cache=use_cache,
-                                      )
-    st.session_state["data"] = data
-    st.session_state["docs_embeddings"] = docs_embeddings
-    return data, docs_embeddings
-
 def initialize_data_list(data_paths: List[Path], embedding_model, embedding_model_name, use_cache=True):
     data_l = None
     embs_a = None
     for data_path in data_paths:
-        data, embs = initialize_data(data_path, embedding_model, embedding_model_name, use_cache)
+        data, embs = load_data(data_path,
+                               embedding_model,
+                               embedding_model_name=embedding_model_name,
+                               use_cache=use_cache,
+                               )
         data_l = data if data_l is None else pd.concat([data_l, data], axis=0).reset_index(drop=True)
         embs_a = embs if embs_a is None else np.concatenate((embs_a, embs))
     st.session_state["data"] = data_l
@@ -101,25 +93,28 @@ def display_existing_messages():
             st.markdown(message["content"])
 
 
-def enrich_query(query):
+def enrich_query(llm_api, query: str):
     """Use recent interaction context to enrich the user query"""
     history = get_history()
-    enriched_query = st.session_state["llm_api"].generate(FR_USER_MULTITURN_QUESTION_SPECIFICATION.format(history=history, query=query),
+    enriched_query = llm_api.generate(FR_USER_MULTITURN_QUESTION_SPECIFICATION.format(history=history, query=query),
                                   temperature=TEMPERATURE,
                                   max_tokens=MAX_TOKENS,
                                   )
     return enriched_query
 
 
-def generate_assistant_response(query, embedding_model):
+def check_data():
     if st.session_state.get("data") is None:
-        st.error("Select a document first", icon="🚨")
-        return
+        st.error("Select data files", icon="🚨")
+        st.stop()
+
+def generate_assistant_response(llm_api, query, embedding_model):
+    check_data()
         
     history = ""
     enriched_query = query
     if st.session_state["remember_recent_messages"]:
-        enriched_query = enrich_query(query)
+        enriched_query = enrich_query(llm_api,query)
         logger.debug(enriched_query)
         history = get_history()
         
@@ -150,7 +145,7 @@ def generate_assistant_response(query, embedding_model):
         )
         logger.debug(f"Prompt : {prompt}")
         # Generates response
-        stream_response = st.session_state["llm_api"].generate(prompt,
+        stream_response = llm_api.generate(prompt,
                                        #system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
                                        temperature=TEMPERATURE,
                                        max_tokens=MAX_TOKENS,
@@ -159,7 +154,7 @@ def generate_assistant_response(query, embedding_model):
         # HAL final response
         response = ""
         for chunk in stream_response:
-            if st.session_state["llm_api_name"] == LOCAL_LLM:
+            if isinstance(llm_api, vLLM_API):
                 response += chunk.choices[0].text
             else:
                 answer = chunk.choices[0].delta.content
@@ -360,6 +355,7 @@ def display_side_bar():
                 st.session_state["data_files_from_parsing"] = [] # remove all previous files
                 on_file_change()
                 on_instruct_prompt_change()
+                check_data()
                 if st.session_state["retrieval_mode"] in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER):
                     st.session_state["bm25_model"] = make_docs_BM25_indexing(st.session_state["data"])
                 info = st.info("Parameters saved!")
@@ -411,7 +407,7 @@ def main():
     if query:
         add_user_message_to_session(query)
 
-        response = generate_assistant_response(query, st.session_state["embedding_model"])
+        response = generate_assistant_response(st.session_state["llm_api"], query, st.session_state["embedding_model"])
         add_to_database(query, response)
 
     display_reset()
