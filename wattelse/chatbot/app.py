@@ -11,6 +11,8 @@ from loguru import logger
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from wattelse.chatbot.chat_history import get_history, add_to_database, export_history, reset_messages_history
+from wattelse.chatbot import DATA_DIR, MAX_TOKENS, RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, \
+    RETRIEVAL_HYBRID_RERANKER, LOCAL_LLM, CHATGPT_LLM
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.common.text_parsers.extract_text_from_MD import parse_md
 from wattelse.common.text_parsers.extract_text_from_PDF import parse_pdf
@@ -19,29 +21,18 @@ from wattelse.chatbot.utils import (
     extract_n_most_relevant_extracts,
     generate_RAG_prompt,
     load_data,
-    make_docs_BM25_indexing, RETRIEVAL_BM25, RETRIEVAL_DENSE, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER,
-)
-from wattelse.common.vars import BASE_DATA_DIR
+    make_docs_BM25_indexing, )
+from wattelse.llm.openai_api import OpenAI_API
 from wattelse.llm.vars import TEMPERATURE
 from wattelse.llm.vllm_api import vLLM_API
 from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_MULTITURN_RAG, FR_USER_MULTITURN_QUESTION_SPECIFICATION
 from sentence_transformers import SentenceTransformer, CrossEncoder
-
-DATA_DIR = BASE_DATA_DIR / "chatbot"
-# Make dirs if not exist
-DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
 
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 
-# Generation model API parameters
-API = vLLM_API()
-MAX_TOKENS = 512
-
-# Embedding model parameters
-EMBEDDING_MODEL_NAME = "antoinelouis/biencoder-camembert-base-mmarcoFR"
 
 if "prev_selected_file" not in st.session_state:
     st.session_state["prev_selected_file"] = None
@@ -67,6 +58,10 @@ def initialize_reranker_model(reranker_model_name):
     reranker_model = CrossEncoder(reranker_model_name)
     return reranker_model
 
+@st.cache_resource
+def initialize_llm_api(llm_api_name: str):
+    logger.info(f"Initializing LLM API: {llm_api_name}")
+    return vLLM_API() if llm_api_name==LOCAL_LLM else OpenAI_API()
 
 def initialize_data(data_path: Path, embedding_model, embedding_model_name, use_cache=True):
     if not data_path.is_file():
@@ -109,7 +104,7 @@ def display_existing_messages():
 def enrich_query(query):
     """Use recent interaction context to enrich the user query"""
     history = get_history()
-    enriched_query = API.generate(FR_USER_MULTITURN_QUESTION_SPECIFICATION.format(history=history, query=query),
+    enriched_query = st.session_state["llm_api"].generate(FR_USER_MULTITURN_QUESTION_SPECIFICATION.format(history=history, query=query),
                                   temperature=TEMPERATURE,
                                   max_tokens=MAX_TOKENS,
                                   )
@@ -155,7 +150,7 @@ def generate_assistant_response(query, embedding_model):
         )
         logger.debug(f"Prompt : {prompt}")
         # Generates response
-        stream_response = API.generate(prompt,
+        stream_response = st.session_state["llm_api"].generate(prompt,
                                        #system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
                                        temperature=TEMPERATURE,
                                        max_tokens=MAX_TOKENS,
@@ -164,7 +159,12 @@ def generate_assistant_response(query, embedding_model):
         # HAL final response
         response = ""
         for chunk in stream_response:
-            response += chunk.choices[0].text
+            if st.session_state["llm_api_name"] == LOCAL_LLM:
+                response += chunk.choices[0].text
+            else:
+                answer = chunk.choices[0].delta.content
+                if answer:
+                    response += answer
             message_placeholder.markdown(response)
         st.session_state["messages"].append({"role": "assistant", "content": response})
 
@@ -209,6 +209,7 @@ def index_file(uploaded_file: UploadedFile):
             else:
                 st.error("File type not supported!")
 
+
 def index_files():
     uploaded_files = st.session_state["uploaded_files"]
     logger.debug(f"Uploading file: {uploaded_files}")
@@ -237,7 +238,7 @@ def on_file_change():
                              st.session_state["embedding_model"],
                              embedding_model_name=st.session_state["embedding_model_name"],
                              use_cache=st.session_state["use_cache"],
-                        )
+                             )
         st.session_state["prev_selected_file"] = st.session_state["selected_files"]
         st.session_state["prv_embedding_model"] = st.session_state["embedding_model"]
         reset_messages_history()
@@ -252,7 +253,9 @@ def on_instruct_prompt_change():
 def display_side_bar():
     with st.sidebar:
         with st.form("parameters_sidebar"):
-            st.markdown(f"**API** : *{API.model_name}*")
+            if not st.session_state.get("llm_api"):
+                st.session_state["llm_api"] = initialize_llm_api(st.session_state.get("llm_api_name", LOCAL_LLM))
+            st.markdown(f"**API** : *{st.session_state['llm_api'].model_name}*")
             st.title("Parameters")
 
             # Data
@@ -338,10 +341,19 @@ def display_side_bar():
             # Custom prompt
             st.text_area("Prompt", value=FR_USER_BASE_RAG, key="custom_prompt")
 
+            # Choice of LLM API
+            st.selectbox(
+                "LLM API type",
+                [LOCAL_LLM, CHATGPT_LLM],
+                key="llm_api_name",
+                index=0
+            )
+
             parameters_sidebar_clicked = st.form_submit_button("Apply")
 
             if parameters_sidebar_clicked:
                 logger.debug("Parameters updated!")
+                st.session_state["llm_api"] = initialize_llm_api(st.session_state.get("llm_api_name"))
                 st.session_state["embedding_model"] = initialize_embedding_model(st.session_state["embedding_model_name"])
                 if st.session_state["retrieval_mode"] == RETRIEVAL_HYBRID_RERANKER:
                     st.session_state["reranker_model"] = initialize_reranker_model(st.session_state["reranker_model_name"])
@@ -353,12 +365,14 @@ def display_side_bar():
                 info = st.info("Parameters saved!")
                 time.sleep(0.5)
                 info.empty()  # Clear the alert
+
         # Memory management
         st.toggle("Use recent interaction history",
                 value=False,
                 key="remember_recent_messages",
                 on_change=switch_prompt,
                 )
+
 
 def switch_prompt():
     """Switch prompt between hisotry and non history versions"""

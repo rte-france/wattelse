@@ -10,10 +10,10 @@ import nltk
 import pandas as pd
 
 from wattelse.common.vars import (
-    BASE_DATA_DIR,
     BASE_OUTPUT_DIR,
     BASE_CACHE_PATH,
 )
+from wattelse.common import BASE_DATA_DIR
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)

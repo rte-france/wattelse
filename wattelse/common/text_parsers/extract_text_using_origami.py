@@ -4,8 +4,7 @@ import pandas as pd
 import typer
 from loguru import logger
 
-from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
-from wattelse.common.vars import BASE_DATA_DIR
+from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_DIR
 
 try:
     from origami_indexers.indexers import OrigamiSummaryPdfIndexer, OrigamiSummaryDocXIndexer

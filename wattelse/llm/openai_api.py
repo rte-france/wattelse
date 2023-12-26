@@ -19,6 +19,7 @@ class OpenAI_API:
             timeout=Timeout(TIMEOUT, connect=10.0),
             max_retries=MAX_ATTEMPTS,
         )
+        self.model_name = "openai_gpt"
 
     def generate(
         self,
@@ -28,6 +29,7 @@ class OpenAI_API:
         temperature=0.1,
         max_tokens=512,
         seed=NOT_GIVEN,
+        stream=NOT_GIVEN,
         current_attempt=1,
     ) -> str:
         """Call openai model for generation.
@@ -53,9 +55,13 @@ class OpenAI_API:
                 messages=messages,
                 max_tokens=max_tokens,
                 temperature=temperature,
+                stream=stream
             )
             logger.debug(f"API returned: {answer}")
-            return answer.choices[0].message.content
+            if stream:
+                return answer
+            else:
+                return answer.choices[0].message.content
         # Details of errors available here: https://platform.openai.com/docs/guides/error-codes/api-errors
         except (
             openai.APIConnectionError,

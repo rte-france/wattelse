@@ -11,22 +11,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 import Stemmer
 from rank_bm25 import BM25Plus
 
+from wattelse.chatbot import RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, CACHE_DIR
 from wattelse.common import TEXT_COLUMN
 from wattelse.common.cache_utils import save_embeddings, load_embeddings
-from wattelse.common.vars import BASE_CACHE_PATH
 from wattelse.llm.prompts import FR_USER_BASE_RAG
-
-CACHE_DIR = BASE_CACHE_PATH / "chatbot"
-# Make dirs if not exist
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 STEMMER = Stemmer.Stemmer("french")
 
-# Retrieval modes
-RETRIEVAL_DENSE = "dense"
-RETRIEVAL_BM25 = "bm25"
-RETRIEVAL_HYBRID = "hybrid"
-RETRIEVAL_HYBRID_RERANKER = "hybrid+reranker"
 
 
 def bm25_preprocessing(text : str):

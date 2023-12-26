@@ -213,7 +213,7 @@ def dynamic_topic_modelling():
 ################################################
 
 # Wide layout
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Wattelse® topic", layout="wide")
 
 # Restore widget state
 restore_widget_state()
