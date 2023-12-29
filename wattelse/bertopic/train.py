@@ -74,6 +74,7 @@ class EmbeddingModel(BaseEmbedder):
 def train_BERTopic(
     full_dataset: pd.DataFrame,
     indices: pd.Series = None,
+    column: str = TEXT_COLUMN,
     embedding_model_name: str = DEFAULT_EMBEDDING_MODEL_NAME,
     umap_model: UMAP = DEFAULT_UMAP_MODEL,
     hdbscan_model: HDBSCAN = DEFAULT_HBSCAN_MODEL,
@@ -125,7 +126,7 @@ def train_BERTopic(
     """
 
     if use_cache and cache_base_name is None:
-        cache_base_name = get_hash(full_dataset[TEXT_COLUMN])
+        cache_base_name = get_hash(full_dataset[column])
 
     cache_path = BASE_CACHE_PATH / f"{embedding_model_name}_{cache_base_name}.pkl"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,7 +139,7 @@ def train_BERTopic(
         logger.info(f"Embeddings loaded from cache file: {cache_path}")
     else:
         logger.info("Computing embeddings")
-        embeddings = embedding_model.embed(full_dataset[TEXT_COLUMN])
+        embeddings = embedding_model.embed(full_dataset[column])
         if use_cache:
             save_embeddings(embeddings, cache_path)
             logger.info(f"Embeddings stored to cache file: {cache_path}")
@@ -159,9 +160,9 @@ def train_BERTopic(
 
     logger.info("Fitting BERTopic...")
     if indices is None:
-        indices = full_dataset["index"]
+        indices = full_dataset.index
     topics, probs = topic_model.fit_transform(
-        full_dataset[TEXT_COLUMN][indices], embeddings[indices]
+        full_dataset[column][indices], embeddings[indices]
     )
 
     return topic_model, topics, probs
