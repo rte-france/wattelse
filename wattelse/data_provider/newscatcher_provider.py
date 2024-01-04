@@ -1,7 +1,6 @@
 from typing import List, Dict, Optional
 
 import dateparser
-from joblib import Parallel, delayed
 from loguru import logger
 from newscatcherapi import NewsCatcherApiClient
 
@@ -23,28 +22,20 @@ class NewsCatcherProvider(DataProvider):
 
 
     @wait(1)
-    def get_articles(self, keywords: str, after: str, before: str, max_results: int) -> List[Dict]:
+    def get_articles(self, query: str, after: str, before: str, max_results: int, language: str = None) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
 
         # Use the API to search articles
-        logger.info(f"Querying NewsCatcher: {keywords}")
-        result = self.api_client.get_search(q=keywords,
+        logger.info(f"Querying NewsCatcher: {query}")
+        result = self.api_client.get_search(q=query,
                                             lang='fr',
                                             page_size=max_results,
                                             from_=after,
                                             to_=before)
 
         entries = result["articles"][:max_results]
-        logger.info(f"Returned: {len(entries)} entries")
+        return self.process_entries(entries, language)
 
-        # Number of parallel jobs you want to run (adjust as needed)
-        num_jobs = -1 # all available cpus
-
-        # Parallelize the loop using joblib
-        results = Parallel(n_jobs=num_jobs)(
-            delayed(self._parse_entry)(res) for res in entries
-        )
-        return [res for res in results if res is not None]
 
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a NewsCatcher news entry"""

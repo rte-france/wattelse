@@ -2,7 +2,6 @@ import urllib.parse
 from typing import List, Dict, Optional
 
 import dateparser
-from joblib import Parallel, delayed
 from loguru import logger
 from pygooglenews import GoogleNews
 
@@ -25,26 +24,21 @@ class GoogleNewsProvider(DataProvider):
 
     def __init__(self):
         super().__init__()
-        self.gn = GoogleNews(lang = 'fr', country = 'FR')
+        self.gn = GoogleNews()
 
     @wait(1)
-    def get_articles(self, keywords: str, after: str, before: str, max_results: int) -> List[Dict]:
+    def get_articles(self, query: str, after: str, before: str, max_results: int, language: str = "fr") -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
         #FIXME: this may be blocked by google
-        logger.info(f"Querying Google: {keywords}")
-        result = self.gn.search(keywords, from_=after, to_=before)
+        if language and language != "en":
+            self.gn.lang = language.lower()
+            self.gn.country = language.upper()
+
+        logger.info(f"Querying Google: {query}")
+        result = self.gn.search(query, from_=after, to_=before)
         entries = result["entries"][:max_results]
-        logger.info(f"Returned: {len(entries)} entries")
 
-        # Number of parallel jobs you want to run (adjust as needed)
-        num_jobs = -1 # all available cpus
-
-        # Parallelize the loop using joblib
-        results = Parallel(n_jobs=num_jobs)(
-            delayed(self._parse_entry)(res) for res in entries
-        )
-
-        return [res for res in results if res is not None]
+        return self.process_entries(entries, language)
 
 
     def _build_query(self, keywords: str, after: str = None, before: str = None) -> str:

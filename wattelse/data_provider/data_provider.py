@@ -1,11 +1,13 @@
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 import jsonlines
+import langdetect
 import pandas as pd
 from goose3 import Goose
+from joblib import delayed, Parallel
 from loguru import logger
 from newspaper import Article
 
@@ -39,7 +41,7 @@ class DataProvider(ABC):
 
     @abstractmethod
     def get_articles(
-        self, query: str, after: str, before: str, max_results: int
+        self, query: str, after: str, before: str, max_results: int, language: str = None
     ) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines.
 
@@ -53,6 +55,8 @@ class DataProvider(ABC):
             date before which to consider articles, formatted as YYYY-MM-DD
         max_results: int
             Maximum number of results per request
+        language: str
+            Language filter
 
         Returns
         -------
@@ -62,14 +66,14 @@ class DataProvider(ABC):
         pass
 
     def get_articles_batch(
-        self, queries_batch: List[List], max_results: int
+        self, queries_batch: List[List], max_results: int, language: str = None
     ) -> List[Dict]:
         """Requests the news data provider for a list of queries, collects a set of URLs to be parsed,
         return results as json lines"""
         articles = []
         for entry in queries_batch:
             logger.info(f"Processing query: {entry}")
-            articles += self.get_articles(entry[0], entry[1], entry[2], max_results)
+            articles += self.get_articles(query=entry[0], after=entry[1], before=entry[2], max_results=max_results, language=language)
         # remove duplicates
         articles = [dict(t) for t in {tuple(d.items()) for d in articles}]
         logger.info(f"Collected {len(articles)} articles")
@@ -131,3 +135,25 @@ class DataProvider(ABC):
             logger.warning(f"Bad text: {text}")
             return None
         return text
+
+
+    @abstractmethod
+    def _parse_entry(self, entry: Dict) -> Optional[Dict]:
+        """Parses a NewsCatcher news entry"""
+        pass
+
+
+    def process_entries(self, entries: List, lang_filter: str = None):
+        # Number of parallel jobs you want to run (adjust as needed)
+        num_jobs = -1 # all available cpus
+
+        # Parallelize the loop using joblib
+        results = Parallel(n_jobs=num_jobs)(
+            delayed(self._parse_entry)(res) for res in entries
+        )
+        results = [res for res in results if res is not None]
+        if lang_filter is not None:
+            results = [res for res in results if res["text"] and lang_filter == langdetect.detect(res["text"])]
+
+        logger.info(f"Returned: {len(results)} entries")
+        return results

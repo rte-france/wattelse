@@ -3,7 +3,6 @@ from typing import List, Dict, Optional
 
 import dateparser
 import feedparser
-from joblib import Parallel, delayed
 from loguru import logger
 
 from wattelse.data_provider.data_provider import DataProvider
@@ -25,22 +24,14 @@ class BingNewsProvider(DataProvider):
         super().__init__()
 
     @wait(0.2)
-    def get_articles(self, keywords: str, after: str, before: str, max_results: int) -> List[Dict]:
+    def get_articles(self, query: str, after: str, before: str, max_results: int, language: str=None) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
-        query = self._build_query(keywords, after, before)
-        logger.info(f"Querying Bing: {query}")
-        result = feedparser.parse(query)
+        q = self._build_query(query, after, before)
+        logger.info(f"Querying Bing: {q}")
+        result = feedparser.parse(q)
         entries = result["entries"][:max_results]
-        logger.info(f"Returned: {len(entries)} entries")
+        return self.process_entries(entries, language)
 
-        # Number of parallel jobs you want to run (adjust as needed)
-        num_jobs = -1 # all available cpus
-
-        # Parallelize the loop using joblib
-        results = Parallel(n_jobs=num_jobs)(
-            delayed(self._parse_entry)(res) for res in entries
-        )
-        return [res for res in results if res is not None]
 
 
     def _build_query(self, keywords: str, after: str = None, before: str = None) -> str:

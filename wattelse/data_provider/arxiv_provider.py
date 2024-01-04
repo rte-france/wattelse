@@ -41,7 +41,7 @@ class ArxivProvider(DataProvider):
         )
 
     def get_articles(
-        self, query: str, after: str, before: str, max_results: int
+        self, query: str, after: str, before: str, max_results: int, language: str = None
     ) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines.
 
@@ -55,6 +55,8 @@ class ArxivProvider(DataProvider):
             date before which to consider articles, formatted as YYYY-MM-DD, currently ignored
         max_results: int
             Maximum number of results per request
+        language: str
+            Language filter
 
         Returns
         -------
@@ -74,14 +76,11 @@ class ArxivProvider(DataProvider):
                 )
             )
         )
-        logger.info(f"Returned: {len(entries)} entries")
-
-        results = [self._parse_entry(res) for res in entries ]
+        results = self.process_entries(entries, language)
         # post-filtering by date
         results = [res for res in results if  begin <= datetime.strptime(res["timestamp"],DATE_FORMAT_YYYYMMDD_TIME) <= end]
-
         # add citations count
-        return self.add_citations_count([res for res in results if res is not None])
+        return self.add_citations_count(results)
 
     def _parse_entry(self, entry: arxiv.Result) -> Optional[Dict]:
         """Parses a Arxiv entry"""
