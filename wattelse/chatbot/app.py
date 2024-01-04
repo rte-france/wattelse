@@ -10,7 +10,7 @@ import streamlit as st
 from loguru import logger
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-from wattelse.chatbot.chat_history import get_history, add_to_database, export_history, reset_messages_history
+from wattelse.chatbot.chat_history import ChatHistory
 from wattelse.chatbot import DATA_DIR, MAX_TOKENS, RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, \
     RETRIEVAL_HYBRID_RERANKER, LOCAL_LLM, CHATGPT_LLM
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
@@ -42,6 +42,8 @@ if "prev_embedding_model" not in st.session_state:
     st.session_state["prev_embedding_model"] = None
 if "data_files_from_parsing" not in st.session_state:
     st.session_state["data_files_from_parsing"] = []
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = ChatHistory()
 
 @st.cache_resource
 def initialize_embedding_model(embedding_model_name: SentenceTransformer):
@@ -97,7 +99,7 @@ def display_existing_messages():
 
 def enrich_query(llm_api, query: str):
     """Use recent interaction context to enrich the user query"""
-    history = get_history()
+    history = st.session_state["chat_history"].get_history()
     enriched_query = llm_api.generate(FR_USER_MULTITURN_QUESTION_SPECIFICATION.format(history=history, query=query),
                                   temperature=TEMPERATURE,
                                   max_tokens=MAX_TOKENS,
@@ -118,7 +120,7 @@ def generate_assistant_response(llm_api, query, embedding_model):
     if st.session_state["remember_recent_messages"]:
         enriched_query = enrich_query(llm_api,query)
         logger.debug(enriched_query)
-        history = get_history()
+        history = st.session_state["chat_history"].get_history()
         
     relevant_extracts, relevant_extracts_similarity = extract_n_most_relevant_extracts(
         st.session_state["top_n_extracts"],
@@ -392,8 +394,16 @@ def display_reset():
         st.button("Clear discussion", on_click=reset_messages_history)
     with col3:
         st.download_button(
-            "Export discussion", data=export_history(), file_name="history.json"
+            "Export discussion", data=st.session_state["chat_history"].export_history(), file_name="history.json"
         )
+
+
+def reset_messages_history():
+    # clear messages
+    st.session_state["messages"] = []
+    # clean database
+    st.session_state["chat_history"].db_table.truncate()
+    logger.debug("History now empty")
 
 
 def main():
@@ -411,7 +421,7 @@ def main():
         add_user_message_to_session(query)
 
         response = generate_assistant_response(st.session_state["llm_api"], query, st.session_state["embedding_model"])
-        add_to_database(query, response)
+        st.session_state["chat_history"].add_to_database(query, response)
 
     display_reset()
 
