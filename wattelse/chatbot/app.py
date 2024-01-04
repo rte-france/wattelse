@@ -21,7 +21,9 @@ from wattelse.chatbot.utils import (
     extract_n_most_relevant_extracts,
     generate_RAG_prompt,
     load_data,
-    make_docs_BM25_indexing, )
+    make_docs_BM25_indexing,
+    highlight_answer,
+    )
 from wattelse.llm.openai_api import OpenAI_API
 from wattelse.llm.vars import TEMPERATURE
 from wattelse.llm.vllm_api import vLLM_API
@@ -33,7 +35,7 @@ os.umask(0o002)
 
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 
-
+# Initialize st.session_state
 if "prev_selected_file" not in st.session_state:
     st.session_state["prev_selected_file"] = None
 if "prev_embedding_model" not in st.session_state:
@@ -42,7 +44,7 @@ if "data_files_from_parsing" not in st.session_state:
     st.session_state["data_files_from_parsing"] = []
 
 @st.cache_resource
-def initialize_embedding_model(embedding_model_name):
+def initialize_embedding_model(embedding_model_name: SentenceTransformer):
     """Load embedding_model"""
     logger.info("Initializing embedding model...")
     embedding_model = SentenceTransformer(embedding_model_name)
@@ -52,7 +54,7 @@ def initialize_embedding_model(embedding_model_name):
     return embedding_model
 
 @st.cache_resource
-def initialize_reranker_model(reranker_model_name):
+def initialize_reranker_model(reranker_model_name: CrossEncoder):
     """Load embedding_model and reranker_model"""
     logger.info("Initializing embedding and reranker models...")
     reranker_model = CrossEncoder(reranker_model_name)
@@ -163,15 +165,16 @@ def generate_assistant_response(llm_api, query, embedding_model):
             message_placeholder.markdown(response)
         st.session_state["messages"].append({"role": "assistant", "content": response})
 
+    highlighted_relevant_extracts = highlight_answer(response, relevant_extracts)
     if st.session_state["provide_explanations"]:
         with st.expander("Explanation"):
-            for extract, sim in zip(relevant_extracts, relevant_extracts_similarity):
+            for extract, sim in zip(highlighted_relevant_extracts, relevant_extracts_similarity):
                 with st.chat_message("explanation", avatar="🔑"):
                     # Add score to text explanation
                     score = round(sim * 5) * "⭐"
                     expl = extract[TEXT_COLUMN]
                     expl = expl.replace("\n", "\n\n")
-                    st.write(f"{score}\n{expl}")
+                    st.markdown(f"{score}\n{expl}", unsafe_allow_html=True)
                     # Add filename if available
                     filename = extract.get(FILENAME_COLUMN)
                     if filename:
