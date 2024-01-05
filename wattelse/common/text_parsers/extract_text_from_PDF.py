@@ -7,7 +7,7 @@ import typer
 from loguru import logger
 
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_DIR
-
+from llama_index.node_parser import SentenceSplitter
 
 def _clean_text(x):
     """
@@ -62,8 +62,8 @@ def extract_pages_from_pdf(pdf_file_path, filter_value = 10) -> pd.DataFrame:
     logger.debug(f"{len(df)} pages remaining")
     return df
 
-def extract_chunks_from_pdf(pdf_file_path, chunk_size = 100, chunk_overlap = 20) -> pd.DataFrame:
-    """Extracts text from PDF. Each extract correspond to the content of 1 PDF page.
+def extract_chunks_from_pdf(pdf_file_path, chunk_size = 200, chunk_overlap = 50) -> pd.DataFrame:
+    """Extracts text from PDF. Each extract correspond to a chunk with some overlap with nearby other chunks.
     
     Args:
         pdf_file_path (string): path to the pdf to parse.
@@ -80,12 +80,10 @@ def extract_chunks_from_pdf(pdf_file_path, chunk_size = 100, chunk_overlap = 20)
             full_text += page.get_text()
     
     full_text = _clean_text(full_text) # clean text
-    full_text = full_text.split(" ")
 
-    text_chunks = []
-    for i in range((len(full_text)-chunk_size+chunk_overlap)//(chunk_size-chunk_overlap)):
-        text_chunks.append(" ".join(full_text[i*chunk_size-i*chunk_overlap:(i+1)*chunk_size-i*chunk_overlap]))
-    text_chunks.append(" ".join(full_text[-chunk_size:])) # add last chunk
+    # split text per sentence using llama_index
+    sentence_parser = SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, paragraph_separator="\n\n")
+    text_chunks = sentence_parser.split_text(full_text)
 
     # Transform into a pandas DataFrame
     df = pd.DataFrame.from_dict({TEXT_COLUMN: text_chunks})
