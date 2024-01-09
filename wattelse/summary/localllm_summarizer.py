@@ -9,7 +9,7 @@ from wattelse.summary.summarizer import (
     DEFAULT_MAX_WORDS,
     DEFAULT_SUMMARIZATION_RATIO,
 )
-from wattelse.llm.prompts import FR_USER_SUMMARY_WORDS
+from wattelse.llm.prompts import FR_USER_SUMMARY_WORDS, EN_USER_SUMMARY_WORDS
 
 TOKENIZER = AutoTokenizer.from_pretrained(
     "bofenghuang/vigogne-2-7b-chat",
