@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 from typing import List, Dict
 
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
+from wattelse.common.text_parsers.extract_text_from_MD import extract_paragraphs_with_levels
 
 def clean_text(text: str) -> str:
 	"""Clean text removing newlines and multiple spaces"""
@@ -19,7 +20,7 @@ def clean_text(text: str) -> str:
 def html_table_to_md(html_table: Tag) -> str:
 	"""Convert HTML table into MarkDown string"""
 	# Get headers
-	headers = [clean_text(th.get_text(" ")) for th in html_table.find("tr").find_all(["th", "td"])]
+	headers = [clean_text(th.get_text(" ")) for th in html_table.find("tr").find_all(["th", "td", "col"])]
 
 	# Get data for each row
 	table_rows = []
@@ -42,7 +43,7 @@ def html_list_to_md(html_list: Tag) -> str:
 	md_list = ""
 	# Iterate over each bulletpoint
 	for line in html_list.find_all("li", recursive=False): # TODO: handle multi-level lists
-		md_list += "* " + line.get_text(" ") + "\n"
+		md_list += "* " + clean_text(line.get_text(" ")) + "\n"
 	return md_list + "\n"
 
 
@@ -120,14 +121,39 @@ def html_to_md(html_file_path: Path,
 	return md_content
 		
 
-def parse_html(html_directory: Path, output_file: Path = "./data/output_md.csv"):
-	"""Parse HTML files in a directory"""
+def parse_html(html_directory: Path,
+			   output_file: Path = "./data/output_md.csv",
+			   split_by_section = True
+			   ) -> None:
+	"""Parse HTML files in a directory and save as csv file.
+
+	Args:
+		html_directory: path to the HTML directory
+		output_file: path + name of the output csv file
+		split_by_section: - if True, each extract is a subsection of a HTML page (#, ##, ### or ####)
+						  - if False, each extract is the full HTML page
+	"""
 	data_dict = {FILENAME_COLUMN: [], TEXT_COLUMN: []}
 	for path in Path(html_directory).iterdir():
 		if path.is_file() and path.suffix == ".html":
 			logger.info(f"Parsing file: {path}")
-			data_dict[FILENAME_COLUMN].append(str(path).split("\\")[-1])
-			data_dict[TEXT_COLUMN].append(html_to_md(path))
-	df = pd.DataFrame(data_dict)
-	df.to_csv(output_file)
+			html_as_md = html_to_md(path)
+			if split_by_section: # split parsed text by section
+				sections = extract_paragraphs_with_levels(html_as_md).fillna("")
+				for section in sections.itertuples():
+					section_text = ("# " + section.level1 + "\n"
+	                                "## " + section.level2 + "\n"
+						  			"### " + section.level3 + "\n"
+						 			"#### " + section.level4 + "\n"
+						 			"" + section.paragraph
+									)
+					section_text = re.sub(r"#+ \n", "", section_text) # remove empty titles
+					data_dict[TEXT_COLUMN].append(section_text)
+					data_dict[FILENAME_COLUMN].append(str(path).split("\\")[-1])
+			else: # save the entire html page
+				data_dict[TEXT_COLUMN].append(html_as_md)
+				data_dict[FILENAME_COLUMN].append(str(path).split("\\")[-1])
+			
+	sections = pd.DataFrame(data_dict)
+	sections.to_csv(output_file)
 	logger.info(f"Output stored in: {output_file}")
