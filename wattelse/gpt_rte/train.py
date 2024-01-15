@@ -10,6 +10,7 @@ from transformers import Trainer, TrainingArguments
 from loguru import logger
 
 # Parameters
+MAX_TOKENS = 512
 
 training_args_config_file = ""
 series_tokenized_document_path = "./data/processed_data/series_tokenized_paragraphs_asi-gpt-fr-cased-base.pickle"
@@ -89,7 +90,7 @@ class ParagraphsExtractDataset(Dataset):
 # Load model
 
 model = AutoModelForCausalLM.from_pretrained(model_name)
-model_max_input_length = model.config.max_position_embeddings
+model_max_input_length = MAX_TOKENS
 
 
 # Make train and valid Datasets

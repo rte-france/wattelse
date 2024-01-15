@@ -1,5 +1,4 @@
 import os
-import tempfile
 import time
 from pathlib import Path
 from typing import List
@@ -8,30 +7,23 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from loguru import logger
-from streamlit.runtime.uploaded_file_manager import UploadedFile
 
+from wattelse.chatbot.backend.backend import query_oracle, initialize_embedding_model, initialize_reranker_model
 from wattelse.chatbot.chat_history import ChatHistory
-from wattelse.chatbot import DATA_DIR, MAX_TOKENS, RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, \
-    RETRIEVAL_HYBRID_RERANKER, LOCAL_LLM, CHATGPT_LLM
+from wattelse.chatbot import RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, \
+    RETRIEVAL_HYBRID_RERANKER, LOCAL_LLM, CHATGPT_LLM, retriever_config, generator_config, DATA_DIR
+from wattelse.chatbot.indexer import index_files
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
-from wattelse.common.text_parsers.extract_text_from_MD import parse_md
-from wattelse.common.text_parsers.extract_text_from_PDF import parse_pdf
-from wattelse.common.text_parsers.extract_text_using_origami import parse_docx
-from wattelse.chatbot.utils import (
-    extract_n_most_relevant_extracts,
-    generate_RAG_prompt,
+from wattelse.chatbot.backend.utils import (
     load_data,
     make_docs_BM25_indexing,
-    highlight_answer,
-    )
+)
+from wattelse.chatbot.utils import highlight_answer
 from wattelse.llm.openai_api import OpenAI_API
-from wattelse.llm.vars import TEMPERATURE
 from wattelse.llm.vllm_api import vLLM_API
-from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_MULTITURN_RAG, FR_USER_MULTITURN_QUESTION_SPECIFICATION
-from sentence_transformers import SentenceTransformer, CrossEncoder
+from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_MULTITURN_RAG
 
-# Ensures to write with +rw for both user and groups
-os.umask(0o002)
+
 
 # inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
 
@@ -45,22 +37,31 @@ if "data_files_from_parsing" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = ChatHistory()
 
-@st.cache_resource
-def initialize_embedding_model(embedding_model_name: SentenceTransformer):
-    """Load embedding_model"""
-    logger.info("Initializing embedding model...")
-    embedding_model = SentenceTransformer(embedding_model_name)
-    # Fix model max input length issue
-    if embedding_model.max_seq_length == 514:
-        embedding_model.max_seq_length = 512
-    return embedding_model
+def initialize_options_from_config():
+    keypairs = retriever_config | generator_config
+    for k, v in keypairs.items():
+        # set session values
+        if k not in st.session_state:
+            st.session_state[k] = v
+
+def update_config_from_gui():
+    for k in ["embedding_model_name", "reranker_model_name", "top_n_extracts",
+              "retrieval_mode", "similarity_threshold", "use_cache"]:
+        retriever_config[k] = st.session_state[k]
+    for k in ["api_type", "expected_answer_size", "provide_explanations",
+              "custom_prompt", "remember_recent_messages"]:
+        generator_config[k] = st.session_state[k]
+
 
 @st.cache_resource
-def initialize_reranker_model(reranker_model_name: CrossEncoder):
+def initialize_embedding_model_wrapper(embedding_model_name: str):
+    """Load embedding_model"""
+    return initialize_embedding_model(embedding_model_name)
+
+@st.cache_resource
+def initialize_reranker_model_wrapper(reranker_model_name: str):
     """Load embedding_model and reranker_model"""
-    logger.info("Initializing embedding and reranker models...")
-    reranker_model = CrossEncoder(reranker_model_name)
-    return reranker_model
+    return initialize_reranker_model(reranker_model_name)
 
 @st.cache_resource
 def initialize_llm_api(llm_api_name: str):
@@ -97,68 +98,37 @@ def display_existing_messages():
             st.markdown(message["content"])
 
 
-def enrich_query(llm_api, query: str):
-    """Use recent interaction context to enrich the user query"""
-    history = st.session_state["chat_history"].get_history()
-    enriched_query = llm_api.generate(FR_USER_MULTITURN_QUESTION_SPECIFICATION.format(history=history, query=query),
-                                  temperature=TEMPERATURE,
-                                  max_tokens=MAX_TOKENS,
-                                  )
-    return enriched_query
-
-
 def check_data():
     if st.session_state.get("data") is None:
         st.error("Select data files", icon="🚨")
         st.stop()
 
-def generate_assistant_response(llm_api, query, embedding_model):
+
+def generate_assistant_response(query):
     check_data()
-        
-    history = ""
-    enriched_query = query
-    if st.session_state["remember_recent_messages"]:
-        enriched_query = enrich_query(llm_api,query)
-        logger.debug(enriched_query)
-        history = st.session_state["chat_history"].get_history()
-        
-    relevant_extracts, relevant_extracts_similarity = extract_n_most_relevant_extracts(
-        st.session_state["top_n_extracts"],
-        enriched_query,
-        st.session_state["data"],
-        st.session_state["docs_embeddings"],
-        embedding_model,
-        st.session_state["bm25_model"],
-        retrieval_mode=st.session_state["retrieval_mode"],
-        reranker_model=st.session_state.get("reranker_model"),
-        similarity_threshold=st.session_state["similarity_threshold"],
-    )
+
+
+    # FIXME: temporary workaround before clear separation back/front
+    # These values shall not be computed on the front side...
+    other_options = {
+        "llm_api": st.session_state["llm_api"],
+        "docs_embeddings" : st.session_state["docs_embeddings"],
+        "embedding_model": st.session_state["embedding_model"],
+        "bm25_model": st.session_state["bm25_model"],
+    }
+
+    # Query the backend
+    relevant_extracts, relevant_extracts_similarity, stream_response = query_oracle(query, st.session_state["data"], st.session_state["chat_history"].get_history(), **retriever_config, **generator_config, **other_options)
 
     with st.chat_message("assistant"):
         # HAL answer GUI initialization
         message_placeholder = st.empty()
         message_placeholder.markdown("...")
 
-        # Generates prompt
-        prompt = generate_RAG_prompt(
-            query,
-            [extract[TEXT_COLUMN] for extract in relevant_extracts],
-            expected_answer_size=st.session_state["expected_answer_size"],
-            custom_prompt=st.session_state["custom_prompt"],
-            history=history,
-        )
-        logger.debug(f"Prompt : {prompt}")
-        # Generates response
-        stream_response = llm_api.generate(prompt,
-                                       #system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
-                                       temperature=TEMPERATURE,
-                                       max_tokens=MAX_TOKENS,
-                                       stream=True)
-
         # HAL final response
         response = ""
         for chunk in stream_response:
-            if isinstance(llm_api, vLLM_API):
+            if isinstance(st.session_state["llm_api"], vLLM_API):
                 response += chunk.choices[0].text
             else:
                 answer = chunk.choices[0].delta.content
@@ -183,38 +153,6 @@ def generate_assistant_response(llm_api, query, embedding_model):
                         st.markdown(f"*Source: [{filename}]()*")
 
     return response
-
-
-def index_file(uploaded_file: UploadedFile):
-    # NB: UploadedFile  can be used like a BytesIO
-    extension = uploaded_file.name.split(".")[-1].lower()
-    # create a temporary file using a context manager
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        with open(tmpdirname + "/" + uploaded_file.name, "wb") as file:
-            # store temporary file
-            file.write(uploaded_file.getbuffer())
-            # extract data from file
-            if extension == "pdf":
-                st.session_state["data_files_from_parsing"].append(parse_pdf(
-                    Path(file.name), DATA_DIR)
-                )
-            elif extension == "docx":
-                st.session_state["data_files_from_parsing"].append(parse_docx(
-                    Path(file.name), DATA_DIR
-                ))
-            elif extension == "md":
-                st.session_state["data_files_from_parsing"].append(parse_md(
-                    Path(file.name), DATA_DIR
-                ))
-            else:
-                st.error("File type not supported!")
-
-
-def index_files():
-    uploaded_files = st.session_state["uploaded_files"]
-    logger.debug(f"Uploading file: {uploaded_files}")
-    for f in uploaded_files:
-        index_file(f)
 
 
 def on_file_change():
@@ -303,19 +241,17 @@ def display_side_bar():
             # Use cache
             st.toggle(
                 "Use cache",
-                value=True,
                 key="use_cache",
             )
 
             # Relevant references as explanations
-            st.toggle("Provide explanations", value=True, key="provide_explanations")
+            st.toggle("Provide explanations", key="provide_explanations")
 
             # Number of extracts to be considered
             st.slider(
                 "Top n extracts",
                 min_value=1,
                 max_value=10,
-                value=5,
                 step=1,
                 key="top_n_extracts",
             )
@@ -324,7 +260,6 @@ def display_side_bar():
             st.selectbox(
                 "Retrieval mode",
                 [RETRIEVAL_BM25, RETRIEVAL_DENSE, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER],
-                index=2,
                 key="retrieval_mode",
             )
 
@@ -333,13 +268,12 @@ def display_side_bar():
                 "Similarity threshold for extracts",
                 min_value=0.0,
                 max_value=1.0,
-                value=0.3,
                 step=0.05,
                 key="similarity_threshold",
             )
 
             # Custom prompt
-            st.text_area("Prompt", value=FR_USER_BASE_RAG, key="custom_prompt")
+            st.text_area("Prompt", key="custom_prompt")
 
             # Choice of LLM API
             st.selectbox(
@@ -353,10 +287,12 @@ def display_side_bar():
 
             if parameters_sidebar_clicked:
                 logger.debug("Parameters updated!")
+                update_config_from_gui()
+
                 st.session_state["llm_api"] = initialize_llm_api(st.session_state.get("llm_api_name"))
-                st.session_state["embedding_model"] = initialize_embedding_model(st.session_state["embedding_model_name"])
+                st.session_state["embedding_model"] = initialize_embedding_model_wrapper(st.session_state["embedding_model_name"])
                 if st.session_state["retrieval_mode"] == RETRIEVAL_HYBRID_RERANKER:
-                    st.session_state["reranker_model"] = initialize_reranker_model(st.session_state["reranker_model_name"])
+                    st.session_state["reranker_model"] = initialize_reranker_model_wrapper(st.session_state["reranker_model_name"])
                 st.session_state["data_files_from_parsing"] = [] # remove all previous files
                 on_file_change()
                 on_instruct_prompt_change()
@@ -385,7 +321,6 @@ def switch_prompt():
 def display_reset():
     col1, col2, col3 = st.columns(3, gap="small")
     with col1:
-
         def reset_prompt():
             st.session_state["custom_prompt"] = FR_USER_BASE_RAG
 
@@ -412,6 +347,9 @@ def main():
     st.markdown(
         "**W**holistic **A**nalysis of  **T**ex**T** with an **E**nhanced **L**anguage model **S**earch **E**ngine"
     )
+
+    initialize_options_from_config()
+
     display_side_bar()
 
     display_existing_messages()
@@ -420,7 +358,7 @@ def main():
     if query:
         add_user_message_to_session(query)
 
-        response = generate_assistant_response(st.session_state["llm_api"], query, st.session_state["embedding_model"])
+        response = generate_assistant_response(query)
         st.session_state["chat_history"].add_to_database(query, response)
 
     display_reset()

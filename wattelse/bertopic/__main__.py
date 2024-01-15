@@ -22,12 +22,12 @@ from umap import UMAP
 from wattelse.bertopic.newsletter_features import generate_newsletter, export_md_string
 from wattelse.bertopic.utils import (
     load_data,
-    parse_literal,
     OUTPUT_DIR,
     TEXT_COLUMN,
     TIMESTAMP_COLUMN,
     split_df_by_paragraphs,
 )
+from wattelse.common.config_utils import parse_literal
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
 from wattelse.common.mail_utils import get_credentials, send_email
 from wattelse.common.crontab_utils import add_job_to_crontab
