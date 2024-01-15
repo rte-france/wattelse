@@ -48,7 +48,9 @@ def load_data(full_data_name: Path):
     df = file_to_pd(full_data_name)
     # convert timestamp column
     df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
-    return df
+    return df.drop_duplicates(
+                subset=["title"], keep="first", inplace=False
+            )
 
 
 def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:

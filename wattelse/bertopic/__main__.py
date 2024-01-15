@@ -241,7 +241,7 @@ if __name__ == "__main__":
             # use all data available in the feed dir
             dfs = [load_data(f) for f in list_all_files]
             new_df = pd.concat(dfs).drop_duplicates(
-                subset=None, keep="first", inplace=False
+                subset=["title"], keep="first", inplace=False
             )
             return new_df
 
