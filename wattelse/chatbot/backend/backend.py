@@ -1,26 +1,43 @@
+from functools import lru_cache
+
 from loguru import logger
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
-from wattelse.chatbot import MAX_TOKENS
-from wattelse.chatbot.backend.utils import extract_n_most_relevant_extracts, generate_RAG_prompt
+from wattelse.chatbot import MAX_TOKENS, RETRIEVAL_HYBRID_RERANKER, RETRIEVAL_BM25, RETRIEVAL_HYBRID, LOCAL_LLM, \
+    CHATGPT_LLM
+from wattelse.chatbot.backend.utils import extract_n_most_relevant_extracts, generate_RAG_prompt, \
+    make_docs_BM25_indexing
 from wattelse.common import TEXT_COLUMN
+from wattelse.llm.openai_api import OpenAI_API
 from wattelse.llm.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
 from wattelse.llm.vars import TEMPERATURE
+from wattelse.llm.vllm_api import vLLM_API
 
+
+@lru_cache(maxsize=3)
 def initialize_embedding_model(embedding_model_name: str):
     """Load embedding_model"""
-    logger.info("Initializing embedding model...")
+    logger.info(f"Initializing embedding model: {embedding_model_name}")
     embedding_model = SentenceTransformer(embedding_model_name)
     # Fix model max input length issue
     if embedding_model.max_seq_length == 514:
         embedding_model.max_seq_length = 512
     return embedding_model
 
+
+@lru_cache(maxsize=2)
 def initialize_reranker_model(reranker_model_name: str):
     """Load embedding_model and reranker_model"""
-    logger.info("Initializing embedding and reranker models...")
+    logger.info(f"Initializing reranker model: {reranker_model_name}")
     reranker_model = CrossEncoder(reranker_model_name)
     return reranker_model
+
+
+@lru_cache(maxsize=3)
+def initialize_llm_api(llm_api_name: str):
+    name=llm_api_name if LOCAL_LLM==llm_api_name else CHATGPT_LLM
+    logger.info(f"Initializing LLM API: {name}")
+    return vLLM_API() if LOCAL_LLM==llm_api_name else OpenAI_API()
 
 
 def enrich_query(llm_api, query: str, history):
@@ -32,39 +49,67 @@ def enrich_query(llm_api, query: str, history):
     return enriched_query
 
 
-def query_oracle(query: str, data, history=None, **kwargs):
-    enriched_query = query
-    if kwargs["remember_recent_messages"]:
-        enriched_query = enrich_query(kwargs["llm_api"],query, history)
-        logger.debug(enriched_query)
-    else:
-        history = ""
+class ChatbotBackEnd:
 
+    def __init__(self, **kwargs):
+        logger.debug("(Re)Initialization of chatbot backend")
+        self._llm_api = initialize_llm_api(kwargs.get("llm_api_name"))
+        self._embedding_model = initialize_embedding_model(kwargs.get("embedding_model_name"))
+        self._reranker_model = initialize_reranker_model(kwargs.get("reranker_model_name")) if kwargs.get("retrieval_mode") == RETRIEVAL_HYBRID_RERANKER else None
 
-    relevant_extracts, relevant_extracts_similarity = extract_n_most_relevant_extracts(
-        kwargs["top_n_extracts"],
-        enriched_query,
-        data,
-        kwargs["docs_embeddings"],
-        kwargs["embedding_model"],
-        kwargs["bm25_model"],
-        retrieval_mode=kwargs["retrieval_mode"],
-        reranker_model=kwargs.get("reranker_model"),
-        similarity_threshold=kwargs["similarity_threshold"],
-    )
-    # Generates prompt
-    prompt = generate_RAG_prompt(
-        query,
-        [extract[TEXT_COLUMN] for extract in relevant_extracts],
-        expected_answer_size=kwargs["expected_answer_size"],
-        custom_prompt=kwargs["custom_prompt"],
-        history=history,
-    )
-    logger.debug(f"Prompt : {prompt}")
-    # Generates response
-    stream_response = kwargs["llm_api"].generate(prompt,
-                                       # system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
-                                       temperature=TEMPERATURE,
-                                       max_tokens=MAX_TOKENS,
-                                       stream=True)
-    return relevant_extracts, relevant_extracts_similarity, stream_response
+    @property
+    def llm_api(self):
+        return self._llm_api
+
+    @property
+    def embedding_model(self):
+        return self._embedding_model
+
+    @property
+    def reranker_model(self):
+        return self._reranker_model
+
+    @property
+    def bm25_model(self):
+        return self._bm25_model
+
+    def initializeBM25_model(self, data, **kwargs):
+        self._bm25_model = make_docs_BM25_indexing(data) if kwargs.get("retrieval_mode") in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER) else None
+
+    def query_oracle(self, query: str, data, history=None, **kwargs):
+        self.initializeBM25_model(data, **kwargs)
+
+        enriched_query = query
+        if kwargs["remember_recent_messages"]:
+            enriched_query = enrich_query(self.llm_api, query, history)
+            logger.debug(enriched_query)
+        else:
+            history = ""
+
+        relevant_extracts, relevant_extracts_similarity = extract_n_most_relevant_extracts(
+            query = enriched_query,
+            top_n = kwargs["top_n_extracts"],
+            data = data,
+            docs_embeddings = kwargs["docs_embeddings"],
+            embedding_model = self.embedding_model,
+            bm25_model = self.bm25_model,
+            retrieval_mode=kwargs["retrieval_mode"],
+            reranker_model=self.reranker_model,
+            similarity_threshold=kwargs["similarity_threshold"],
+        )
+        # Generates prompt
+        prompt = generate_RAG_prompt(
+            query,
+            [extract[TEXT_COLUMN] for extract in relevant_extracts],
+            expected_answer_size=kwargs["expected_answer_size"],
+            custom_prompt=kwargs["custom_prompt"],
+            history=history,
+        )
+        logger.debug(f"Prompt : {prompt}")
+        # Generates response
+        stream_response = self.llm_api.generate(prompt,
+                                                # system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
+                                                temperature=TEMPERATURE,
+                                                max_tokens=MAX_TOKENS,
+                                                stream=True)
+        return relevant_extracts, relevant_extracts_similarity, stream_response

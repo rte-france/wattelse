@@ -7,8 +7,9 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from loguru import logger
+from watchpoints import watch
 
-from wattelse.chatbot.backend.backend import query_oracle, initialize_embedding_model, initialize_reranker_model
+from wattelse.chatbot.backend.backend import ChatbotBackEnd
 from wattelse.chatbot.chat_history import ChatHistory
 from wattelse.chatbot import RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, \
     RETRIEVAL_HYBRID_RERANKER, LOCAL_LLM, CHATGPT_LLM, retriever_config, generator_config, DATA_DIR
@@ -16,16 +17,21 @@ from wattelse.chatbot.indexer import index_files
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.chatbot.backend.utils import (
     load_data,
-    make_docs_BM25_indexing,
 )
 from wattelse.chatbot.utils import highlight_answer
-from wattelse.llm.openai_api import OpenAI_API
 from wattelse.llm.vllm_api import vLLM_API
 from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_MULTITURN_RAG
 
 
+@st.cache_resource
+def initialize_backend(**kwargs):
+    """Initializes a backend based on the 'right' parameters"""
+    return ChatbotBackEnd(**kwargs)
 
-# inspired by: https://github.com/mobarski/ask-my-pdf &  https://github.com/cefege/seo-chat-bot/blob/master/streamlit_app.py
+def on_options_change(frame, elem, exec_info):
+    st.session_state["backend"] = initialize_backend(**retriever_config, **generator_config)
+
+watch(retriever_config, generator_config, callback=on_options_change)
 
 # Initialize st.session_state
 if "prev_selected_file" not in st.session_state:
@@ -36,6 +42,10 @@ if "data_files_from_parsing" not in st.session_state:
     st.session_state["data_files_from_parsing"] = []
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = ChatHistory()
+
+if "backend" not in st.session_state:
+    st.session_state["backend"] = initialize_backend(**retriever_config, **generator_config)
+
 
 def initialize_options_from_config():
     keypairs = retriever_config | generator_config
@@ -48,25 +58,10 @@ def update_config_from_gui():
     for k in ["embedding_model_name", "reranker_model_name", "top_n_extracts",
               "retrieval_mode", "similarity_threshold", "use_cache"]:
         retriever_config[k] = st.session_state[k]
-    for k in ["api_type", "expected_answer_size", "provide_explanations",
+    for k in ["llm_api_name", "expected_answer_size", "provide_explanations",
               "custom_prompt", "remember_recent_messages"]:
         generator_config[k] = st.session_state[k]
 
-
-@st.cache_resource
-def initialize_embedding_model_wrapper(embedding_model_name: str):
-    """Load embedding_model"""
-    return initialize_embedding_model(embedding_model_name)
-
-@st.cache_resource
-def initialize_reranker_model_wrapper(reranker_model_name: str):
-    """Load embedding_model and reranker_model"""
-    return initialize_reranker_model(reranker_model_name)
-
-@st.cache_resource
-def initialize_llm_api(llm_api_name: str):
-    logger.info(f"Initializing LLM API: {llm_api_name}")
-    return vLLM_API() if llm_api_name==LOCAL_LLM else OpenAI_API()
 
 def initialize_data_list(data_paths: List[Path], embedding_model, embedding_model_name, use_cache=True):
     data_l = None
@@ -111,14 +106,12 @@ def generate_assistant_response(query):
     # FIXME: temporary workaround before clear separation back/front
     # These values shall not be computed on the front side...
     other_options = {
-        "llm_api": st.session_state["llm_api"],
         "docs_embeddings" : st.session_state["docs_embeddings"],
-        "embedding_model": st.session_state["embedding_model"],
-        "bm25_model": st.session_state["bm25_model"],
     }
 
+
     # Query the backend
-    relevant_extracts, relevant_extracts_similarity, stream_response = query_oracle(query, st.session_state["data"], st.session_state["chat_history"].get_history(), **retriever_config, **generator_config, **other_options)
+    relevant_extracts, relevant_extracts_similarity, stream_response = st.session_state["backend"].query_oracle(query, st.session_state["data"], st.session_state["chat_history"].get_history(), **retriever_config, **generator_config, **other_options)
 
     with st.chat_message("assistant"):
         # HAL answer GUI initialization
@@ -128,7 +121,7 @@ def generate_assistant_response(query):
         # HAL final response
         response = ""
         for chunk in stream_response:
-            if isinstance(st.session_state["llm_api"], vLLM_API):
+            if LOCAL_LLM==st.session_state["llm_api_name"]:
                 response += chunk.choices[0].text
             else:
                 answer = chunk.choices[0].delta.content
@@ -161,7 +154,7 @@ def on_file_change():
         if st.session_state.get("data_files_from_parsing"):
             logger.debug("Data file changed! Resetting chat history")
             initialize_data_list(st.session_state["data_files_from_parsing"],
-                            st.session_state["embedding_model"],
+                            st.session_state["backend"].embedding_model,
                             embedding_model_name=st.session_state["embedding_model_name"],
                             use_cache=st.session_state["use_cache"],
                             )
@@ -170,15 +163,15 @@ def on_file_change():
             ]
             reset_messages_history()
 
-    elif (st.session_state["selected_files"] != st.session_state["prev_selected_file"]) or (st.session_state["prv_embedding_model"] != st.session_state["embedding_model"]):
+    elif (st.session_state["selected_files"] != st.session_state["prev_selected_file"]) or (st.session_state["prv_embedding_model_name"] != st.session_state["embedding_model_name"]):
         logger.debug("Data file changed! Resetting chat history")
         initialize_data_list([DATA_DIR / sf for sf in st.session_state["selected_files"]],
-                             st.session_state["embedding_model"],
+                             st.session_state["backend"].embedding_model,
                              embedding_model_name=st.session_state["embedding_model_name"],
                              use_cache=st.session_state["use_cache"],
                              )
         st.session_state["prev_selected_file"] = st.session_state["selected_files"]
-        st.session_state["prv_embedding_model"] = st.session_state["embedding_model"]
+        st.session_state["prv_embedding_model_name"] = st.session_state["embedding_model_name"]
         reset_messages_history()
 
 
@@ -191,9 +184,9 @@ def on_instruct_prompt_change():
 def display_side_bar():
     with st.sidebar:
         with st.form("parameters_sidebar"):
-            if not st.session_state.get("llm_api"):
-                st.session_state["llm_api"] = initialize_llm_api(st.session_state.get("llm_api_name", LOCAL_LLM))
-            st.markdown(f"**API** : *{st.session_state['llm_api'].model_name}*")
+#            if not st.session_state.get("llm_api"):
+#                st.session_state["llm_api"] = initialize_llm_api_wrapper(st.session_state.get("llm_api_name", LOCAL_LLM))
+#            st.markdown(f"**API** : *{st.session_state['llm_api'].model_name}*")
             st.title("Parameters")
 
             # Data
@@ -286,19 +279,14 @@ def display_side_bar():
             parameters_sidebar_clicked = st.form_submit_button("Apply")
 
             if parameters_sidebar_clicked:
-                logger.debug("Parameters updated!")
+                logger.debug("Parameters saved!")
                 update_config_from_gui()
 
-                st.session_state["llm_api"] = initialize_llm_api(st.session_state.get("llm_api_name"))
-                st.session_state["embedding_model"] = initialize_embedding_model_wrapper(st.session_state["embedding_model_name"])
-                if st.session_state["retrieval_mode"] == RETRIEVAL_HYBRID_RERANKER:
-                    st.session_state["reranker_model"] = initialize_reranker_model_wrapper(st.session_state["reranker_model_name"])
                 st.session_state["data_files_from_parsing"] = [] # remove all previous files
                 on_file_change()
                 on_instruct_prompt_change()
                 check_data()
-                if st.session_state["retrieval_mode"] in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER):
-                    st.session_state["bm25_model"] = make_docs_BM25_indexing(st.session_state["data"])
+
                 info = st.info("Parameters saved!")
                 time.sleep(0.5)
                 info.empty()  # Clear the alert
