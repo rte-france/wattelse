@@ -1,10 +1,6 @@
 import os
 import time
-from pathlib import Path
-from typing import List
 
-import numpy as np
-import pandas as pd
 import streamlit as st
 from loguru import logger
 from watchpoints import watch
@@ -15,11 +11,7 @@ from wattelse.chatbot import RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, 
     RETRIEVAL_HYBRID_RERANKER, LOCAL_LLM, CHATGPT_LLM, retriever_config, generator_config, DATA_DIR
 from wattelse.chatbot.indexer import index_files
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
-from wattelse.chatbot.backend.utils import (
-    load_data,
-)
 from wattelse.chatbot.utils import highlight_answer
-from wattelse.llm.vllm_api import vLLM_API
 from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_MULTITURN_RAG
 
 
@@ -63,21 +55,6 @@ def update_config_from_gui():
         generator_config[k] = st.session_state[k]
 
 
-def initialize_data_list(data_paths: List[Path], embedding_model, embedding_model_name, use_cache=True):
-    data_l = None
-    embs_a = None
-    for data_path in data_paths:
-        data, embs = load_data(data_path,
-                               embedding_model,
-                               embedding_model_name=embedding_model_name,
-                               use_cache=use_cache,
-                               )
-        data_l = data if data_l is None else pd.concat([data_l, data], axis=0).reset_index(drop=True)
-        embs_a = embs if embs_a is None else np.concatenate((embs_a, embs))
-    st.session_state["data"] = data_l
-    st.session_state["docs_embeddings"] = embs_a
-
-
 def add_user_message_to_session(prompt):
     if prompt:
         st.session_state["messages"].append({"role": "user", "content": prompt})
@@ -94,7 +71,8 @@ def display_existing_messages():
 
 
 def check_data():
-    if st.session_state.get("data") is None:
+    if (st.session_state.get("selected_files") is None
+            and st.session_state.get("data_files_from_parsing") is None):
         st.error("Select data files", icon="🚨")
         st.stop()
 
@@ -102,16 +80,8 @@ def check_data():
 def generate_assistant_response(query):
     check_data()
 
-
-    # FIXME: temporary workaround before clear separation back/front
-    # These values shall not be computed on the front side...
-    other_options = {
-        "docs_embeddings" : st.session_state["docs_embeddings"],
-    }
-
-
     # Query the backend
-    relevant_extracts, relevant_extracts_similarity, stream_response = st.session_state["backend"].query_oracle(query, st.session_state["data"], st.session_state["chat_history"].get_history(), **retriever_config, **generator_config, **other_options)
+    relevant_extracts, relevant_extracts_similarity, stream_response = st.session_state["backend"].query_oracle(query, st.session_state["chat_history"].get_history(), **retriever_config, **generator_config)
 
     with st.chat_message("assistant"):
         # HAL answer GUI initialization
@@ -153,11 +123,7 @@ def on_file_change():
         index_files()  # this will update st.session_state["data_files_from_parsing"]
         if st.session_state.get("data_files_from_parsing"):
             logger.debug("Data file changed! Resetting chat history")
-            initialize_data_list(st.session_state["data_files_from_parsing"],
-                            st.session_state["backend"].embedding_model,
-                            embedding_model_name=st.session_state["embedding_model_name"],
-                            use_cache=st.session_state["use_cache"],
-                            )
+            st.session_state["backend"].initialize_data(st.session_state["data_files_from_parsing"])
             st.session_state["prev_selected_file"] = st.session_state[
                 "data_files_from_parsing"
             ]
@@ -165,11 +131,7 @@ def on_file_change():
 
     elif (st.session_state["selected_files"] != st.session_state["prev_selected_file"]) or (st.session_state["prv_embedding_model_name"] != st.session_state["embedding_model_name"]):
         logger.debug("Data file changed! Resetting chat history")
-        initialize_data_list([DATA_DIR / sf for sf in st.session_state["selected_files"]],
-                             st.session_state["backend"].embedding_model,
-                             embedding_model_name=st.session_state["embedding_model_name"],
-                             use_cache=st.session_state["use_cache"],
-                             )
+        st.session_state["backend"].initialize_data([DATA_DIR / sf for sf in st.session_state["selected_files"]])
         st.session_state["prev_selected_file"] = st.session_state["selected_files"]
         st.session_state["prv_embedding_model_name"] = st.session_state["embedding_model_name"]
         reset_messages_history()
