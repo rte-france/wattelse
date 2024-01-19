@@ -8,7 +8,7 @@ from openai._types import NOT_GIVEN
 from transformers import AutoTokenizer
 
 
-class vLLM_API:
+class FastchatAPI:
     def __init__(self):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent.parent / "config" / "llm_api.cfg")
@@ -29,7 +29,7 @@ class vLLM_API:
 
     def get_api_model_name(self):
         """
-        Return currently loaded model name in vLLM.
+        Return currently loaded model name in Fastchat.
         """
         try:
             # First model
@@ -52,14 +52,14 @@ class vLLM_API:
 
     def generate(
         self,
-        user_prompt,
-        system_prompt=None,
-        temperature=0.1,
-        max_tokens=512,
-        transform_prompt=True,
-        stream=False,
+        user_prompt: str,
+        system_prompt:str = None,
+        temperature: float = 0.1,
+        max_tokens: int = 512,
+        transform_prompt: bool = True,
+        stream: bool = False,
         seed=NOT_GIVEN
-    ) -> str:
+    ):
         """Uses the remote model (API) to generate the answer.
 
         Args:
@@ -75,7 +75,7 @@ class vLLM_API:
                     - full text once generated if stream=False
                     - Completion object if stream=True
         """
-        logger.debug(f"Calling remote vLLM service...")
+        logger.debug(f"Calling remote Fastchat service...")
         try:
             if transform_prompt:
                 prompt = self.generate_llm_specific_prompt(

@@ -8,7 +8,7 @@ from watchpoints import watch
 from wattelse.chatbot.backend.backend import ChatbotBackEnd
 from wattelse.chatbot.chat_history import ChatHistory
 from wattelse.chatbot import RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, \
-    RETRIEVAL_HYBRID_RERANKER, LOCAL_LLM, CHATGPT_LLM, retriever_config, generator_config, DATA_DIR
+    RETRIEVAL_HYBRID_RERANKER, FASTCHAT_LLM, CHATGPT_LLM, retriever_config, generator_config, DATA_DIR
 from wattelse.chatbot.indexer import index_files
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.chatbot.utils import highlight_answer
@@ -91,7 +91,7 @@ def generate_assistant_response(query):
         # HAL final response
         response = ""
         for chunk in stream_response:
-            if LOCAL_LLM==st.session_state["llm_api_name"]:
+            if FASTCHAT_LLM==st.session_state["llm_api_name"]:
                 response += chunk.choices[0].text
             else:
                 answer = chunk.choices[0].delta.content
@@ -233,7 +233,7 @@ def display_side_bar():
             # Choice of LLM API
             st.selectbox(
                 "LLM API type",
-                [LOCAL_LLM, CHATGPT_LLM],
+                [FASTCHAT_LLM, CHATGPT_LLM],
                 key="llm_api_name",
                 index=0
             )

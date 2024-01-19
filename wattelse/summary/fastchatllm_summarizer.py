@@ -2,7 +2,7 @@ from typing import List
 
 from transformers import AutoTokenizer
 
-from wattelse.llm.vllm_api import vLLM_API
+from wattelse.llm.fastchat_api import FastchatAPI
 from wattelse.summary.summarizer import (
     Summarizer,
     DEFAULT_MAX_SENTENCES,
@@ -19,11 +19,11 @@ TOKENIZER = AutoTokenizer.from_pretrained(
 )
 
 
-class LocalLLMSummarizer(Summarizer):
-    """Class that uses a local LLM service to provide a sumary of a text"""
+class FastchatLLMSummarizer(Summarizer):
+    """Class that uses Fastchat LLM service to provide a sumary of a text"""
 
     def __init__(self):
-        self.api = vLLM_API()
+        self.api = FastchatAPI()
 
     def generate_summary(
         self,
