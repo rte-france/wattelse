@@ -22,6 +22,7 @@ def initialize_backend(**kwargs):
     return ChatbotBackEnd(**kwargs)
 
 def on_options_change(frame, elem, exec_info):
+    """Callback function used by watch()"""
     st.session_state["backend"] = initialize_backend(**retriever_config, **generator_config)
 
 watch(retriever_config, generator_config, callback=on_options_change)
@@ -146,12 +147,6 @@ def on_file_change():
         reset_messages_history()
 
 
-def on_instruct_prompt_change():
-    logger.debug(
-        f"New instruct prompt size: {st.session_state['expected_answer_size']}"
-    )
-
-
 def display_side_bar():
     with st.sidebar:
         with st.form("parameters_sidebar"):
@@ -178,74 +173,78 @@ def display_side_bar():
                     label_visibility="collapsed",
                     accept_multiple_files=True,
                 )
-            
-            # Embedding model
-            st.selectbox(
-                "Embedding model",
-                ["antoinelouis/biencoder-camembert-base-mmarcoFR",
-                "dangvantuan/sentence-camembert-large"],
-                key="embedding_model_name",
-            )
 
-            # Reranker model
-            st.selectbox(
-                "Reranker model",
-                ["antoinelouis/crossencoder-camembert-base-mmarcoFR",
-                 "dangvantuan/CrossEncoder-camembert-large"],
-                key="reranker_model_name",
-            )
+            with st.expander("Retriever configuration"):
+                te1, te2 = st.tabs(["Embedding model", "Reranker model"])
+                with te1:
+                    # Embedding model
+                    st.selectbox(
+                        "Embedding model",
+                        ["antoinelouis/biencoder-camembert-base-mmarcoFR",
+                        "dangvantuan/sentence-camembert-large"],
+                        key="embedding_model_name",
+                    )
+                with te2:
+                    # Reranker model
+                    st.selectbox(
+                        "Reranker model",
+                        ["antoinelouis/crossencoder-camembert-base-mmarcoFR",
+                         "dangvantuan/CrossEncoder-camembert-large"],
+                        key="reranker_model_name",
+                    )
 
-            # Response size
-            st.selectbox(
-                "Response size",
-                ["short", "detailed"],
-                key="expected_answer_size",
-            )
+                # Number of extracts to be considered
+                st.slider(
+                    "Top n extracts",
+                    min_value=1,
+                    max_value=10,
+                    step=1,
+                    key="top_n_extracts",
+                )
 
-            # Use cache
-            st.toggle(
-                "Use cache",
-                key="use_cache",
-            )
+                # Balance between dense and bm25 retrieval
+                st.selectbox(
+                    "Retrieval mode",
+                    [RETRIEVAL_BM25, RETRIEVAL_DENSE, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER],
+                    key="retrieval_mode",
+                )
 
-            # Relevant references as explanations
-            st.toggle("Provide explanations", key="provide_explanations")
+                # Similarity threshold
+                st.slider(
+                    "Similarity threshold for extracts",
+                    min_value=0.0,
+                    max_value=1.0,
+                    step=0.05,
+                    key="similarity_threshold",
+                )
 
-            # Number of extracts to be considered
-            st.slider(
-                "Top n extracts",
-                min_value=1,
-                max_value=10,
-                step=1,
-                key="top_n_extracts",
-            )
+                # Use cache
+                st.toggle(
+                    "Use cache",
+                    key="use_cache",
+                )
 
-            # Balance between dense and bm25 retrieval
-            st.selectbox(
-                "Retrieval mode",
-                [RETRIEVAL_BM25, RETRIEVAL_DENSE, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER],
-                key="retrieval_mode",
-            )
+            with st.expander("LLM generator configuration"):
+                # Response size
+                st.selectbox(
+                    "Response size",
+                    ["short", "detailed"],
+                    key="expected_answer_size",
+                )
 
-            # Similarity threshold
-            st.slider(
-                "Similarity threshold for extracts",
-                min_value=0.0,
-                max_value=1.0,
-                step=0.05,
-                key="similarity_threshold",
-            )
+                # Relevant references as explanations
+                st.toggle("Provide explanations", key="provide_explanations")
 
-            # Custom prompt
-            st.text_area("Prompt", key="custom_prompt")
+                # Custom prompt
+                st.text_area("Prompt", key="custom_prompt")
 
-            # Choice of LLM API
-            st.selectbox(
-                "LLM API type",
-                [FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM],
-                key="llm_api_name",
-                index=0
-            )
+                # Choice of LLM API
+                st.selectbox(
+                    "LLM API type",
+                    [FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM],
+                    key="llm_api_name",
+                    index=0
+                )
 
             parameters_sidebar_clicked = st.form_submit_button("Apply", type="primary")
 
@@ -255,7 +254,6 @@ def display_side_bar():
 
                 st.session_state["data_files_from_parsing"] = [] # remove all previous files
                 on_file_change()
-                on_instruct_prompt_change()
                 check_data()
 
                 info = st.info("Parameters saved!")
