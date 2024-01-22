@@ -11,10 +11,10 @@ from transformers import AutoTokenizer
 class FastchatAPI:
     def __init__(self):
         config = configparser.ConfigParser()
-        config.read(Path(__file__).parent.parent / "config" / "llm_api.cfg")
-        self.base_url = config.get("LLM_API_CONFIG", "openai_url")
+        config.read(Path(__file__).parent.parent / "config" / "fastchat_api.cfg")
+        self.base_url = config.get("FASTCHAT_API_CONFIG", "openai_url")
         self.llm_client = OpenAI(
-            api_key=config.get("LLM_API_CONFIG", "openai_key"),
+            api_key=config.get("FASTCHAT_API_CONFIG", "openai_key"),
             base_url=self.base_url,
         )
 

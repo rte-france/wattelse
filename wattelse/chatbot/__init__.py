@@ -29,6 +29,7 @@ RETRIEVAL_HYBRID_RERANKER = "hybrid+reranker"
 
 # LLM API
 FASTCHAT_LLM = "Fastchat LLM"
+OLLAMA_LLM = "Ollama LLM"
 CHATGPT_LLM = "ChatGPT"
 
 # Config for retriever and generator

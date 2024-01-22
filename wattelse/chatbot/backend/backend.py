@@ -7,8 +7,8 @@ from loguru import logger
 from pathlib import Path
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
-from wattelse.chatbot import MAX_TOKENS, RETRIEVAL_HYBRID_RERANKER, RETRIEVAL_BM25, RETRIEVAL_HYBRID, FASTCHAT_LLM, \
-    CHATGPT_LLM
+from wattelse.chatbot import MAX_TOKENS, RETRIEVAL_HYBRID_RERANKER, RETRIEVAL_BM25, \
+    RETRIEVAL_HYBRID, FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM
 from wattelse.chatbot.backend.utils import extract_n_most_relevant_extracts, generate_RAG_prompt, \
     make_docs_BM25_indexing, load_data
 from wattelse.common import TEXT_COLUMN
@@ -16,6 +16,7 @@ from wattelse.llm.openai_api import OpenAI_API
 from wattelse.llm.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
 from wattelse.llm.vars import TEMPERATURE
 from wattelse.llm.fastchat_api import FastchatAPI
+from wattelse.llm.ollama_api import OllamaAPI
 
 
 @lru_cache(maxsize=3)
@@ -39,9 +40,15 @@ def initialize_reranker_model(reranker_model_name: str):
 
 @lru_cache(maxsize=3)
 def initialize_llm_api(llm_api_name: str):
-    name=llm_api_name if FASTCHAT_LLM==llm_api_name else CHATGPT_LLM
-    logger.info(f"Initializing LLM API: {name}")
-    return FastchatAPI() if FASTCHAT_LLM==llm_api_name else OpenAI_API()
+    logger.info(f"Initializing LLM API: {llm_api_name}")
+    if llm_api_name==FASTCHAT_LLM:
+        return FastchatAPI()
+    elif llm_api_name==OLLAMA_LLM:
+        return OllamaAPI()
+    elif llm_api_name==CHATGPT_LLM:
+        return OpenAI_API()
+    else:
+        logger.error(f"Unknow API name : {llm_api_name}")
 
 
 def enrich_query(llm_api, query: str, history):

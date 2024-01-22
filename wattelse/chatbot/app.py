@@ -1,5 +1,6 @@
 import os
 import time
+import json
 
 import streamlit as st
 from loguru import logger
@@ -8,7 +9,7 @@ from watchpoints import watch
 from wattelse.chatbot.backend.backend import ChatbotBackEnd
 from wattelse.chatbot.chat_history import ChatHistory
 from wattelse.chatbot import RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, \
-    RETRIEVAL_HYBRID_RERANKER, FASTCHAT_LLM, CHATGPT_LLM, retriever_config, generator_config, DATA_DIR
+    RETRIEVAL_HYBRID_RERANKER, FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM, retriever_config, generator_config, DATA_DIR
 from wattelse.chatbot.indexer import index_files
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.chatbot.utils import highlight_answer
@@ -91,9 +92,17 @@ def generate_assistant_response(query):
         # HAL final response
         response = ""
         for chunk in stream_response:
-            if FASTCHAT_LLM==st.session_state["llm_api_name"]:
+            if st.session_state["llm_api_name"]==FASTCHAT_LLM:
                 response += chunk.choices[0].text
-            else:
+            elif st.session_state["llm_api_name"]==OLLAMA_LLM:
+                # Last streamed chunk is always incomplete. Catch it and remove it.
+                # TODO : why is last chunk not complete only in Streamlit ?
+                # The streaming response works well outside Streamlit...
+                try:
+                    response += json.loads(chunk.decode('utf-8'))["response"]
+                except Exception as e:
+                    logger.error(e)
+            elif st.session_state["llm_api_name"]==CHATGPT_LLM:
                 answer = chunk.choices[0].delta.content
                 if answer:
                     response += answer
@@ -233,7 +242,7 @@ def display_side_bar():
             # Choice of LLM API
             st.selectbox(
                 "LLM API type",
-                [FASTCHAT_LLM, CHATGPT_LLM],
+                [FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM],
                 key="llm_api_name",
                 index=0
             )
