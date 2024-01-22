@@ -81,13 +81,13 @@ def check_data():
 def generate_assistant_response(query):
     check_data()
 
-    # Query the backend
-    relevant_extracts, relevant_extracts_similarity, stream_response = st.session_state["backend"].query_oracle(query, st.session_state["chat_history"].get_history(), **retriever_config, **generator_config)
-
     with st.chat_message("assistant"):
         # HAL answer GUI initialization
         message_placeholder = st.empty()
         message_placeholder.markdown("...")
+
+        # Query the backend
+        relevant_extracts, relevant_extracts_similarity, stream_response = st.session_state["backend"].query_oracle(query, st.session_state["chat_history"].get_history(), **retriever_config, **generator_config)
 
         # HAL final response
         response = ""
