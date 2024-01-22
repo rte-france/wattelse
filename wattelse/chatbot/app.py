@@ -247,7 +247,7 @@ def display_side_bar():
                 index=0
             )
 
-            parameters_sidebar_clicked = st.form_submit_button("Apply")
+            parameters_sidebar_clicked = st.form_submit_button("Apply", type="primary")
 
             if parameters_sidebar_clicked:
                 logger.debug("Parameters saved!")

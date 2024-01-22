@@ -71,7 +71,8 @@ class ChatbotBackEnd:
         self._use_cache = kwargs.get("use_cache")
         self._llm_api = initialize_llm_api(kwargs.get("llm_api_name"))
         self._embedding_model = initialize_embedding_model(self._embedding_model_name)
-        self._reranker_model = initialize_reranker_model(kwargs.get("reranker_model_name")) if kwargs.get("retrieval_mode") == RETRIEVAL_HYBRID_RERANKER else None
+        self._retrieval_mode = kwargs.get("retrieval_mode")
+        self._reranker_model = initialize_reranker_model(kwargs.get("reranker_model_name")) if self._retrieval_mode == RETRIEVAL_HYBRID_RERANKER else None
         self.data = None
         self.embeddings = None
 
@@ -91,8 +92,6 @@ class ChatbotBackEnd:
     def bm25_model(self):
         return self._bm25_model
 
-    def initializeBM25_model(self, data, **kwargs):
-        self._bm25_model = make_docs_BM25_indexing(data) if kwargs.get("retrieval_mode") in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER) else None
 
     def initialize_data(self, data_paths: List[Path]):
         """Initializes data (list of paths, may be limited to a single element if
@@ -110,6 +109,7 @@ class ChatbotBackEnd:
             embeddings_array = embs if embeddings_array is None else np.concatenate((embeddings_array, embs))
         self.data = data_list
         self.embeddings = embeddings_array
+        self._bm25_model = make_docs_BM25_indexing(data) if self._retrieval_mode in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER) else None
 
     def query_oracle(self, query: str, history=None, **kwargs):
         if self.data is None:
@@ -120,8 +120,6 @@ class ChatbotBackEnd:
             msg = "Embeddings not computed!"
             logger.error(msg)
             raise ChatBotError(msg)
-
-        self.initializeBM25_model(self.data, **kwargs)
 
         enriched_query = query
         if kwargs["remember_recent_messages"]:
@@ -141,6 +139,7 @@ class ChatbotBackEnd:
             reranker_model=self.reranker_model,
             similarity_threshold=kwargs["similarity_threshold"],
         )
+
         # Generates prompt
         prompt = generate_RAG_prompt(
             query,
