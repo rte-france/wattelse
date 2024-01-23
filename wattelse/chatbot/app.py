@@ -75,8 +75,7 @@ def display_existing_messages():
 
 
 def check_data():
-    if (st.session_state.get("selected_files") is None
-            and st.session_state.get("data_files_from_parsing") is None):
+    if not st.session_state.get("selected_files") and not st.session_state.get("data_files_from_parsing"):
         st.error("Select data files", icon="🚨")
         st.stop()
 
@@ -252,11 +251,11 @@ def display_side_bar():
 
             if parameters_sidebar_clicked:
                 logger.debug("Parameters saved!")
+                check_data()
                 update_config_from_gui()
 
                 st.session_state["data_files_from_parsing"] = [] # remove all previous files
                 on_file_change()
-                check_data()
 
                 info = st.info("Parameters saved!")
                 time.sleep(0.5)
