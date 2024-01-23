@@ -24,8 +24,10 @@ def initialize_backend(**kwargs):
 def on_options_change(frame, elem, exec_info):
     """Callback function used by watch()"""
     st.session_state["backend"] = initialize_backend(**retriever_config, **generator_config)
-
-watch(retriever_config, generator_config, callback=on_options_change)
+    if st.session_state.get("data_files_from_parsing"):
+        st.session_state["backend"].initialize_data(st.session_state["data_files_from_parsing"])
+    elif st.session_state.get("selected_files"):
+        st.session_state["backend"].initialize_data([DATA_DIR / sf for sf in st.session_state["selected_files"]])
 
 # Initialize st.session_state
 if "prev_selected_file" not in st.session_state:
@@ -304,6 +306,8 @@ def main():
     st.markdown(
         "**W**holistic **A**nalysis of  **T**ex**T** with an **E**nhanced **L**anguage model **S**earch **E**ngine"
     )
+
+    watch(retriever_config, generator_config, callback=on_options_change)
 
     initialize_options_from_config()
 

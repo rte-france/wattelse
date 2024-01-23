@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple, Dict
 import sys
@@ -182,7 +183,7 @@ def generate_RAG_prompt(
             context=context, query=query, expected_answer_size=expected_answer_size
         )
 
-
+@lru_cache(maxsize=5)
 def load_data(
     data_file: Path,
     embedding_model: SentenceTransformer,

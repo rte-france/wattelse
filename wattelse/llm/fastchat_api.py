@@ -53,12 +53,12 @@ class FastchatAPI:
     def generate(
         self,
         user_prompt: str,
-        system_prompt:str = None,
+        system_prompt: str = None,
         temperature: float = 0.1,
         max_tokens: int = 512,
         transform_prompt: bool = True,
         stream: bool = False,
-        seed=NOT_GIVEN
+        seed=NOT_GIVEN,
     ):
         """Uses the remote model (API) to generate the answer.
 
@@ -91,8 +91,9 @@ class FastchatAPI:
                 max_tokens=max_tokens,
                 temperature=temperature,
                 stream=stream,
-                seed=seed
+                seed=seed,
             )
+            logger.debug(f"API returned: {completion_result}")
             if stream:
                 return completion_result
             else:

@@ -92,7 +92,6 @@ class ChatbotBackEnd:
     def bm25_model(self):
         return self._bm25_model
 
-
     def initialize_data(self, data_paths: List[Path]):
         """Initializes data (list of paths, may be limited to a single element if
         only one file is loaded: load the data, recreates embedding if needed or use previously
