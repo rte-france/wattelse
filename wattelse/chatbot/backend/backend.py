@@ -108,7 +108,7 @@ class ChatbotBackEnd:
             embeddings_array = embs if embeddings_array is None else np.concatenate((embeddings_array, embs))
         self.data = data_list
         self.embeddings = embeddings_array
-        self._bm25_model = make_docs_BM25_indexing(data) if self._retrieval_mode in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER) else None
+        self._bm25_model = make_docs_BM25_indexing(self.data) if self._retrieval_mode in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER) else None
 
     def query_oracle(self, query: str, history=None, **kwargs):
         if self.data is None:
