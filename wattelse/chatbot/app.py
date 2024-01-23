@@ -8,8 +8,18 @@ from watchpoints import watch
 
 from wattelse.chatbot.backend.backend import ChatbotBackEnd
 from wattelse.chatbot.chat_history import ChatHistory
-from wattelse.chatbot import RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID, \
-    RETRIEVAL_HYBRID_RERANKER, FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM, retriever_config, generator_config, DATA_DIR
+from wattelse.chatbot import (
+    RETRIEVAL_DENSE,
+    RETRIEVAL_BM25,
+    RETRIEVAL_HYBRID,
+    RETRIEVAL_HYBRID_RERANKER,
+    FASTCHAT_LLM,
+    OLLAMA_LLM,
+    CHATGPT_LLM,
+    retriever_config,
+    generator_config,
+    DATA_DIR,
+)
 from wattelse.chatbot.indexer import index_files
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.chatbot.utils import highlight_answer
@@ -21,13 +31,23 @@ def initialize_backend(**kwargs):
     """Initializes a backend based on the 'right' parameters"""
     return ChatbotBackEnd(**kwargs)
 
+
 def on_options_change(frame, elem, exec_info):
     """Callback function used by watch()"""
-    st.session_state["backend"] = initialize_backend(**retriever_config, **generator_config)
+    st.session_state["backend"] = initialize_backend(
+        **retriever_config, **generator_config
+    )
     if st.session_state.get("data_files_from_parsing"):
-        st.session_state["backend"].initialize_data(st.session_state["data_files_from_parsing"])
+        st.session_state["backend"].initialize_data(
+            st.session_state["data_files_from_parsing"]
+        )
     elif st.session_state.get("selected_files"):
-        st.session_state["backend"].initialize_data([DATA_DIR / sf for sf in st.session_state["selected_files"]])
+        st.session_state["backend"].initialize_data(
+            [DATA_DIR / sf for sf in st.session_state["selected_files"]]
+        )
+
+
+watch(retriever_config, generator_config, callback=on_options_change)
 
 # Initialize st.session_state
 if "prev_selected_file" not in st.session_state:
@@ -40,7 +60,9 @@ if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = ChatHistory()
 
 if "backend" not in st.session_state:
-    st.session_state["backend"] = initialize_backend(**retriever_config, **generator_config)
+    st.session_state["backend"] = initialize_backend(
+        **retriever_config, **generator_config
+    )
 
 
 def initialize_options_from_config():
@@ -50,12 +72,24 @@ def initialize_options_from_config():
         if k not in st.session_state:
             st.session_state[k] = v
 
+
 def update_config_from_gui():
-    for k in ["embedding_model_name", "reranker_model_name", "top_n_extracts",
-              "retrieval_mode", "similarity_threshold", "use_cache"]:
+    for k in [
+        "embedding_model_name",
+        "reranker_model_name",
+        "top_n_extracts",
+        "retrieval_mode",
+        "similarity_threshold",
+        "use_cache",
+    ]:
         retriever_config[k] = st.session_state[k]
-    for k in ["llm_api_name", "expected_answer_size", "provide_explanations",
-              "custom_prompt", "remember_recent_messages"]:
+    for k in [
+        "llm_api_name",
+        "expected_answer_size",
+        "provide_explanations",
+        "custom_prompt",
+        "remember_recent_messages",
+    ]:
         generator_config[k] = st.session_state[k]
 
 
@@ -75,7 +109,9 @@ def display_existing_messages():
 
 
 def check_data():
-    if not st.session_state.get("selected_files") and not st.session_state.get("uploaded_files"):
+    if not st.session_state.get("selected_files") and not st.session_state.get(
+        "uploaded_files"
+    ):
         st.error("Select data files", icon="🚨")
         st.stop()
 
@@ -89,22 +125,31 @@ def generate_assistant_response(query):
         message_placeholder.markdown("...")
 
         # Query the backend
-        relevant_extracts, relevant_extracts_similarity, stream_response = st.session_state["backend"].query_oracle(query, st.session_state["chat_history"].get_history(), **retriever_config, **generator_config)
+        (
+            relevant_extracts,
+            relevant_extracts_similarity,
+            stream_response,
+        ) = st.session_state["backend"].query_oracle(
+            query,
+            st.session_state["chat_history"].get_history(),
+            **retriever_config,
+            **generator_config,
+        )
 
         # HAL final response
         response = ""
         for chunk in stream_response:
-            if st.session_state["llm_api_name"]==FASTCHAT_LLM:
+            if st.session_state["llm_api_name"] == FASTCHAT_LLM:
                 response += chunk.choices[0].text
-            elif st.session_state["llm_api_name"]==OLLAMA_LLM:
+            elif st.session_state["llm_api_name"] == OLLAMA_LLM:
                 # Last streamed chunk is always incomplete. Catch it and remove it.
                 # TODO : why is last chunk not complete only in Streamlit ?
                 # The streaming response works well outside Streamlit...
                 try:
-                    response += json.loads(chunk.decode('utf-8'))["response"]
+                    response += json.loads(chunk.decode("utf-8"))["response"]
                 except Exception as e:
                     logger.error(e)
-            elif st.session_state["llm_api_name"]==CHATGPT_LLM:
+            elif st.session_state["llm_api_name"] == CHATGPT_LLM:
                 answer = chunk.choices[0].delta.content
                 if answer:
                     response += answer
@@ -114,7 +159,9 @@ def generate_assistant_response(query):
     highlighted_relevant_extracts = highlight_answer(response, relevant_extracts)
     if st.session_state["provide_explanations"]:
         with st.expander("Explanation"):
-            for extract, sim in zip(highlighted_relevant_extracts, relevant_extracts_similarity):
+            for extract, sim in zip(
+                highlighted_relevant_extracts, relevant_extracts_similarity
+            ):
                 with st.chat_message("explanation", avatar="🔑"):
                     # Add score to text explanation
                     score = round(sim * 5) * "⭐"
@@ -134,26 +181,37 @@ def on_file_change():
         index_files()  # this will update st.session_state["data_files_from_parsing"]
         if st.session_state.get("data_files_from_parsing"):
             logger.debug("Data file changed! Resetting chat history")
-            st.session_state["backend"].initialize_data(st.session_state["data_files_from_parsing"])
+            st.session_state["backend"].initialize_data(
+                st.session_state["data_files_from_parsing"]
+            )
             st.session_state["prev_selected_file"] = st.session_state[
                 "data_files_from_parsing"
             ]
             reset_messages_history()
 
-    elif (st.session_state["selected_files"] != st.session_state["prev_selected_file"]) or (st.session_state["prv_embedding_model_name"] != st.session_state["embedding_model_name"]):
+    elif (
+        st.session_state["selected_files"] != st.session_state["prev_selected_file"]
+    ) or (
+        st.session_state["prv_embedding_model_name"]
+        != st.session_state["embedding_model_name"]
+    ):
         logger.debug("Data file changed! Resetting chat history")
-        st.session_state["backend"].initialize_data([DATA_DIR / sf for sf in st.session_state["selected_files"]])
+        st.session_state["backend"].initialize_data(
+            [DATA_DIR / sf for sf in st.session_state["selected_files"]]
+        )
         st.session_state["prev_selected_file"] = st.session_state["selected_files"]
-        st.session_state["prv_embedding_model_name"] = st.session_state["embedding_model_name"]
+        st.session_state["prv_embedding_model_name"] = st.session_state[
+            "embedding_model_name"
+        ]
         reset_messages_history()
 
 
 def display_side_bar():
     with st.sidebar:
         with st.form("parameters_sidebar"):
-#            if not st.session_state.get("llm_api"):
-#                st.session_state["llm_api"] = initialize_llm_api_wrapper(st.session_state.get("llm_api_name", LOCAL_LLM))
-#            st.markdown(f"**API** : *{st.session_state['llm_api'].model_name}*")
+            #            if not st.session_state.get("llm_api"):
+            #                st.session_state["llm_api"] = initialize_llm_api_wrapper(st.session_state.get("llm_api_name", LOCAL_LLM))
+            #            st.markdown(f"**API** : *{st.session_state['llm_api'].model_name}*")
             st.title("Parameters")
 
             # Data
@@ -181,16 +239,20 @@ def display_side_bar():
                     # Embedding model
                     st.selectbox(
                         "Embedding model",
-                        ["antoinelouis/biencoder-camembert-base-mmarcoFR",
-                        "dangvantuan/sentence-camembert-large"],
+                        [
+                            "antoinelouis/biencoder-camembert-base-mmarcoFR",
+                            "dangvantuan/sentence-camembert-large",
+                        ],
                         key="embedding_model_name",
                     )
                 with te2:
                     # Reranker model
                     st.selectbox(
                         "Reranker model",
-                        ["antoinelouis/crossencoder-camembert-base-mmarcoFR",
-                         "dangvantuan/CrossEncoder-camembert-large"],
+                        [
+                            "antoinelouis/crossencoder-camembert-base-mmarcoFR",
+                            "dangvantuan/CrossEncoder-camembert-large",
+                        ],
                         key="reranker_model_name",
                     )
 
@@ -206,7 +268,12 @@ def display_side_bar():
                 # Balance between dense and bm25 retrieval
                 st.selectbox(
                     "Retrieval mode",
-                    [RETRIEVAL_BM25, RETRIEVAL_DENSE, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER],
+                    [
+                        RETRIEVAL_BM25,
+                        RETRIEVAL_DENSE,
+                        RETRIEVAL_HYBRID,
+                        RETRIEVAL_HYBRID_RERANKER,
+                    ],
                     key="retrieval_mode",
                 )
 
@@ -244,7 +311,7 @@ def display_side_bar():
                     "LLM API type",
                     [FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM],
                     key="llm_api_name",
-                    index=0
+                    index=0,
                 )
 
             parameters_sidebar_clicked = st.form_submit_button("Apply", type="primary")
@@ -255,18 +322,19 @@ def display_side_bar():
                 update_config_from_gui()
 
                 on_file_change()
-                #st.session_state["data_files_from_parsing"] = [] # remove all previous files
+                # st.session_state["data_files_from_parsing"] = [] # remove all previous files
 
                 info = st.info("Parameters saved!")
                 time.sleep(0.5)
                 info.empty()  # Clear the alert
 
         # Memory management
-        st.toggle("Use recent interaction history",
-                value=False,
-                key="remember_recent_messages",
-                on_change=switch_prompt,
-                )
+        st.toggle(
+            "Use recent interaction history",
+            value=False,
+            key="remember_recent_messages",
+            on_change=switch_prompt,
+        )
 
 
 def switch_prompt():
@@ -275,10 +343,13 @@ def switch_prompt():
         st.session_state["custom_prompt"] = FR_USER_MULTITURN_RAG
     else:
         st.session_state["custom_prompt"] = FR_USER_BASE_RAG
+    update_config_from_gui()
+
 
 def display_reset():
     col1, col2, col3 = st.columns(3, gap="small")
     with col1:
+
         def reset_prompt():
             st.session_state["custom_prompt"] = FR_USER_BASE_RAG
 
@@ -287,7 +358,9 @@ def display_reset():
         st.button("Clear discussion", on_click=reset_messages_history)
     with col3:
         st.download_button(
-            "Export discussion", data=st.session_state["chat_history"].export_history(), file_name="history.json"
+            "Export discussion",
+            data=st.session_state["chat_history"].export_history(),
+            file_name="history.json",
         )
 
 
@@ -305,8 +378,6 @@ def main():
     st.markdown(
         "**W**holistic **A**nalysis of  **T**ex**T** with an **E**nhanced **L**anguage model **S**earch **E**ngine"
     )
-
-    watch(retriever_config, generator_config, callback=on_options_change)
 
     initialize_options_from_config()
 
