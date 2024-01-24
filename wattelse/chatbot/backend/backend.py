@@ -7,10 +7,22 @@ from loguru import logger
 from pathlib import Path
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
-from wattelse.chatbot import MAX_TOKENS, RETRIEVAL_HYBRID_RERANKER, RETRIEVAL_BM25, \
-    RETRIEVAL_HYBRID, FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM
-from wattelse.chatbot.backend.utils import extract_n_most_relevant_extracts, generate_RAG_prompt, \
-    make_docs_BM25_indexing, load_data
+from wattelse.chatbot import (
+    MAX_TOKENS,
+    RETRIEVAL_HYBRID_RERANKER,
+    RETRIEVAL_BM25,
+    RETRIEVAL_HYBRID,
+    FASTCHAT_LLM,
+    OLLAMA_LLM,
+    CHATGPT_LLM,
+)
+from wattelse.chatbot.backend.utils import (
+    extract_n_most_relevant_extracts,
+    generate_RAG_prompt,
+    make_docs_BM25_indexing,
+    load_data,
+    generate_query_prompt,
+)
 from wattelse.common import TEXT_COLUMN
 from wattelse.llm.openai_api import OpenAI_API
 from wattelse.llm.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
@@ -41,11 +53,11 @@ def initialize_reranker_model(reranker_model_name: str):
 @lru_cache(maxsize=3)
 def initialize_llm_api(llm_api_name: str):
     logger.info(f"Initializing LLM API: {llm_api_name}")
-    if llm_api_name==FASTCHAT_LLM:
+    if llm_api_name == FASTCHAT_LLM:
         return FastchatAPI()
-    elif llm_api_name==OLLAMA_LLM:
+    elif llm_api_name == OLLAMA_LLM:
         return OllamaAPI()
-    elif llm_api_name==CHATGPT_LLM:
+    elif llm_api_name == CHATGPT_LLM:
         return OpenAI_API()
     else:
         logger.error(f"Unknow API name : {llm_api_name}")
@@ -53,18 +65,19 @@ def initialize_llm_api(llm_api_name: str):
 
 def enrich_query(llm_api, query: str, history):
     """Use recent interaction context to enrich the user query"""
-    enriched_query = llm_api.generate(FR_USER_MULTITURN_QUESTION_SPECIFICATION.format(history=history, query=query),
-                                      temperature=TEMPERATURE,
-                                      max_tokens=MAX_TOKENS,
-                                      )
+    enriched_query = llm_api.generate(
+        FR_USER_MULTITURN_QUESTION_SPECIFICATION.format(history=history, query=query),
+        temperature=TEMPERATURE,
+        max_tokens=MAX_TOKENS,
+    )
     return enriched_query
+
 
 class ChatBotError(Exception):
     pass
 
 
 class ChatbotBackEnd:
-
     def __init__(self, **kwargs):
         logger.debug("(Re)Initialization of chatbot backend")
         self._embedding_model_name = kwargs.get("embedding_model_name")
@@ -72,7 +85,11 @@ class ChatbotBackEnd:
         self._llm_api = initialize_llm_api(kwargs.get("llm_api_name"))
         self._embedding_model = initialize_embedding_model(self._embedding_model_name)
         self._retrieval_mode = kwargs.get("retrieval_mode")
-        self._reranker_model = initialize_reranker_model(kwargs.get("reranker_model_name")) if self._retrieval_mode == RETRIEVAL_HYBRID_RERANKER else None
+        self._reranker_model = (
+            initialize_reranker_model(kwargs.get("reranker_model_name"))
+            if self._retrieval_mode == RETRIEVAL_HYBRID_RERANKER
+            else None
+        )
         self.data = None
         self.embeddings = None
 
@@ -99,16 +116,30 @@ class ChatbotBackEnd:
         data_list = None
         embeddings_array = None
         for data_path in data_paths:
-            data, embs = load_data(data_path,
-                                   self.embedding_model,
-                                   embedding_model_name=self._embedding_model_name,
-                                   use_cache=self._use_cache,
-                                   )
-            data_list = data if data_list is None else pd.concat([data_list, data], axis=0).reset_index(drop=True)
-            embeddings_array = embs if embeddings_array is None else np.concatenate((embeddings_array, embs))
+            data, embs = load_data(
+                data_path,
+                self.embedding_model,
+                embedding_model_name=self._embedding_model_name,
+                use_cache=self._use_cache,
+            )
+            data_list = (
+                data
+                if data_list is None
+                else pd.concat([data_list, data], axis=0).reset_index(drop=True)
+            )
+            embeddings_array = (
+                embs
+                if embeddings_array is None
+                else np.concatenate((embeddings_array, embs))
+            )
         self.data = data_list
         self.embeddings = embeddings_array
-        self._bm25_model = make_docs_BM25_indexing(self.data) if self._retrieval_mode in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER) else None
+        self._bm25_model = (
+            make_docs_BM25_indexing(self.data)
+            if self._retrieval_mode
+            in (RETRIEVAL_BM25, RETRIEVAL_HYBRID, RETRIEVAL_HYBRID_RERANKER)
+            else None
+        )
 
     def query_oracle(self, query: str, history=None, **kwargs):
         if self.data is None:
@@ -121,37 +152,67 @@ class ChatbotBackEnd:
             raise ChatBotError(msg)
 
         enriched_query = query
-        if kwargs["remember_recent_messages"]:
+        if kwargs.get("remember_recent_messages"):
             enriched_query = enrich_query(self.llm_api, query, history)
             logger.debug(enriched_query)
         else:
             history = ""
 
-        relevant_extracts, relevant_extracts_similarity = extract_n_most_relevant_extracts(
-            query = enriched_query,
-            top_n = kwargs["top_n_extracts"],
-            data = self.data,
-            docs_embeddings = self.embeddings,
-            embedding_model = self.embedding_model,
-            bm25_model = self.bm25_model,
-            retrieval_mode=kwargs["retrieval_mode"],
+        (
+            relevant_extracts,
+            relevant_extracts_similarity,
+        ) = extract_n_most_relevant_extracts(
+            query=enriched_query,
+            top_n=kwargs.get("top_n_extracts"),
+            data=self.data,
+            docs_embeddings=self.embeddings,
+            embedding_model=self.embedding_model,
+            bm25_model=self.bm25_model,
+            retrieval_mode=kwargs.get("retrieval_mode"),
             reranker_model=self.reranker_model,
-            similarity_threshold=kwargs["similarity_threshold"],
+            similarity_threshold=kwargs.get("similarity_threshold"),
         )
 
         # Generates prompt
         prompt = generate_RAG_prompt(
             query,
             [extract[TEXT_COLUMN] for extract in relevant_extracts],
-            expected_answer_size=kwargs["expected_answer_size"],
-            custom_prompt=kwargs["custom_prompt"],
+            expected_answer_size=kwargs.get("expected_answer_size"),
+            custom_prompt=kwargs.get("custom_prompt"),
             history=history,
         )
         logger.debug(f"Prompt : {prompt}")
         # Generates response
-        stream_response = self.llm_api.generate(prompt,
-                                                # system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
-                                                temperature=TEMPERATURE,
-                                                max_tokens=MAX_TOKENS,
-                                                stream=True)
+        stream_response = self.llm_api.generate(
+            prompt,
+            # system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+            stream=True,
+        )
         return relevant_extracts, relevant_extracts_similarity, stream_response
+
+    def simple_query(self, query: str, history=None, **kwargs):
+        enriched_query = query
+        if kwargs.get("remember_recent_messages"):
+            enriched_query = enrich_query(self.llm_api, query, history)
+            logger.debug(enriched_query)
+        else:
+            history = ""
+
+        # Generates prompt
+        prompt = generate_query_prompt(
+            enriched_query,
+            custom_prompt=kwargs.get("custom_prompt"),
+            history=history,
+        )
+        logger.debug(f"Prompt : {prompt}")
+        # Generates response
+        stream_response = self.llm_api.generate(
+            prompt,
+            # system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+            stream=True,
+        )
+        return stream_response

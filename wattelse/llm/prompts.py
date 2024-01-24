@@ -140,4 +140,12 @@ Contexte:
 """
 
 FR_USER_BASE_QUERY = ("Répondez à la question suivante. La réponse doit être spécifique et percutante.\n"
-					'Question : {query}')
+					  '---'
+					  'Question : {query}')
+
+FR_USER_BASE_MULTITURN_QUERY = ("À partir de l'historique de la conversation, répondez à la question finale. "
+						 "La réponse doit être spécifique et percutante.\n"
+						 '---'
+						 'Historique de conversation:\n'
+						 '"""\n{history}\n"""\n---\n'
+						 'Question finale : {query}')

@@ -12,23 +12,30 @@ from sklearn.metrics.pairwise import cosine_similarity
 import Stemmer
 from rank_bm25 import BM25Plus
 
-from wattelse.chatbot import CACHE_DIR, RETRIEVAL_DENSE, RETRIEVAL_BM25, RETRIEVAL_HYBRID
+from wattelse.chatbot import (
+    CACHE_DIR,
+    RETRIEVAL_DENSE,
+    RETRIEVAL_BM25,
+    RETRIEVAL_HYBRID,
+)
 from wattelse.common import TEXT_COLUMN
 from wattelse.common.cache_utils import save_embeddings, load_embeddings
-from wattelse.llm.prompts import FR_USER_BASE_RAG
+from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_BASE_QUERY
 
 STEMMER = Stemmer.Stemmer("french")
 
 
-
-def bm25_preprocessing(text : str):
+def bm25_preprocessing(text: str):
     """Text preprocessing function before sending it to BM25"""
-    text = text.lower() # lowercase
-    text = text.translate(str.maketrans('', '', string.punctuation)) # remove punctuation
-    tokenized_text = text.split(" ") # 1 token = 1 word
-    tokenized_text = list(filter(None, tokenized_text)) # remove empty strings
-    tokenized_text = STEMMER.stemWords(tokenized_text) # lemmatize tokens
+    text = text.lower()  # lowercase
+    text = text.translate(
+        str.maketrans("", "", string.punctuation)
+    )  # remove punctuation
+    tokenized_text = text.split(" ")  # 1 token = 1 word
+    tokenized_text = list(filter(None, tokenized_text))  # remove empty strings
+    tokenized_text = STEMMER.stemWords(tokenized_text)  # lemmatize tokens
     return tokenized_text
+
 
 def make_docs_BM25_indexing(data: pd.DataFrame):
     """Index a list of docs using BM25+ algorithm"""
@@ -36,21 +43,33 @@ def make_docs_BM25_indexing(data: pd.DataFrame):
     bm25 = BM25Plus(tokenized_docs)
     return bm25
 
+
 def compute_bm25_score(query: str, bm25_model: BM25Plus):
     """Computes BM25 score according to a query"""
     query = bm25_preprocessing(query)
     return bm25_model.get_scores(query)
 
+
 def make_docs_embedding(docs: pd.Series, embedding_model: SentenceTransformer):
     """Embedds a list of docs using a SentenceTransformer model"""
     return embedding_model.encode(docs, show_progress_bar=True)
 
-def compute_dense_embeddings_score(query: str, docs_embeddings: np.ndarray, embedding_model: SentenceTransformer):
+
+def compute_dense_embeddings_score(
+    query: str, docs_embeddings: np.ndarray, embedding_model: SentenceTransformer
+):
     """Computes similarity score between a query and docs dense embeddings"""
     query_embedding = embedding_model.encode(query)
     return cosine_similarity([query_embedding], docs_embeddings)[0]
 
-def rerank_extracts(query: str, extracts: List[Dict], top_n: int, reranker_model: CrossEncoder, similarity_threshold: float = 0):
+
+def rerank_extracts(
+    query: str,
+    extracts: List[Dict],
+    top_n: int,
+    reranker_model: CrossEncoder,
+    similarity_threshold: float = 0,
+):
     """Rerank extract using a CrossEncoder model. Used after an hybrid search over documents (mode hybrid+reranker).
 
     Args:
@@ -68,22 +87,26 @@ def rerank_extracts(query: str, extracts: List[Dict], top_n: int, reranker_model
     pairs = [(query, doc) for doc in docs]
     similarity_score = reranker_model.predict(pairs)
     above_threshold_indices = np.where(similarity_score > similarity_threshold)[0]
-    top_n_indices = above_threshold_indices[np.argsort(similarity_score[above_threshold_indices])][::-1][:top_n]
+    top_n_indices = above_threshold_indices[
+        np.argsort(similarity_score[above_threshold_indices])
+    ][::-1][:top_n]
     relevant_extracts = [extracts[i] for i in top_n_indices]
     relevant_extracts_scores = similarity_score[top_n_indices].tolist()
     return relevant_extracts, relevant_extracts_scores
 
-def extract_n_most_relevant_extracts(top_n: int,
-                                     query: str,
-                                     data: pd.DataFrame,
-                                     docs_embeddings: np.ndarray,
-                                     embedding_model: SentenceTransformer,
-                                     bm25_model: BM25Plus,
-                                     retrieval_mode: str = RETRIEVAL_DENSE,
-                                     reranker_model: CrossEncoder = None,
-                                     reranker_ratio: int = 5,
-                                     similarity_threshold: float = 0,
-                                     ):
+
+def extract_n_most_relevant_extracts(
+    top_n: int,
+    query: str,
+    data: pd.DataFrame,
+    docs_embeddings: np.ndarray,
+    embedding_model: SentenceTransformer,
+    bm25_model: BM25Plus,
+    retrieval_mode: str = RETRIEVAL_DENSE,
+    reranker_model: CrossEncoder = None,
+    reranker_ratio: int = 5,
+    similarity_threshold: float = 0,
+):
     """Select top _n most relevant extarcts according to a user query. 4 retrieval modes are available.
 
     Args:
@@ -99,7 +122,7 @@ def extract_n_most_relevant_extracts(top_n: int,
                                         - 'hybrid' -> uses both bm25 and embedding_model
                                         - 'hybrid+reranker' -> uses uses both bm25 and embedding_model and rerank using crossencoder
         reranker_model (CrossEncoder, optional): reranker model
-        reranker_ratio (int, optional): reranker_ratio*top_n extracts are send to the reranker model 
+        reranker_ratio (int, optional): reranker_ratio*top_n extracts are send to the reranker model
         similarity_threshold (float, optional): extracts with similarity score lower
                                                 than similarity_threshold will be discarded
 
@@ -112,53 +135,74 @@ def extract_n_most_relevant_extracts(top_n: int,
     if retrieval_mode == RETRIEVAL_BM25:
         similarity_score = compute_bm25_score(query, bm25_model)
         above_threshold_indices = np.where(similarity_score > similarity_threshold)[0]
-        top_n_indices = above_threshold_indices[np.argsort(similarity_score[above_threshold_indices])][::-1][:top_n]
+        top_n_indices = above_threshold_indices[
+            np.argsort(similarity_score[above_threshold_indices])
+        ][::-1][:top_n]
         relevant_extracts = [extracts[i] for i in top_n_indices]
         relevant_extracts_similarity = similarity_score[top_n_indices].tolist()
-    
+
     # Dense model
     elif retrieval_mode == RETRIEVAL_DENSE:
-        similarity_score = compute_dense_embeddings_score(query, docs_embeddings, embedding_model)
+        similarity_score = compute_dense_embeddings_score(
+            query, docs_embeddings, embedding_model
+        )
         above_threshold_indices = np.where(similarity_score > similarity_threshold)[0]
-        top_n_indices = above_threshold_indices[np.argsort(similarity_score[above_threshold_indices])][::-1][:top_n]
+        top_n_indices = above_threshold_indices[
+            np.argsort(similarity_score[above_threshold_indices])
+        ][::-1][:top_n]
         relevant_extracts = [extracts[i] for i in top_n_indices]
         relevant_extracts_similarity = similarity_score[top_n_indices].tolist()
-    
+
     # Hybrid
     elif retrieval_mode == RETRIEVAL_HYBRID:
-        dense_similarity_score = compute_dense_embeddings_score(query, docs_embeddings, embedding_model)
+        dense_similarity_score = compute_dense_embeddings_score(
+            query, docs_embeddings, embedding_model
+        )
         bm25_similarity_score = compute_bm25_score(query, bm25_model)
         sorted_dense_indices = dense_similarity_score.argsort()[::-1]
         sorted_bm25_indices = bm25_similarity_score.argsort()[::-1]
-        logger.debug(f"Nombre d'extraits communs : {len(np.intersect1d(sorted_dense_indices[:top_n], sorted_bm25_indices[:top_n]))}")
+        logger.debug(
+            f"Nombre d'extraits communs : {len(np.intersect1d(sorted_dense_indices[:top_n], sorted_bm25_indices[:top_n]))}"
+        )
         # Interleave dense and bm25 top indices to get half from each algorithm
-        assert(len(sorted_bm25_indices) == len(sorted_dense_indices)) # sanity check
-        interleaved_indices = np.vstack((sorted_dense_indices, sorted_bm25_indices)).reshape((-1,),order='F')
+        assert len(sorted_bm25_indices) == len(sorted_dense_indices)  # sanity check
+        interleaved_indices = np.vstack(
+            (sorted_dense_indices, sorted_bm25_indices)
+        ).reshape((-1,), order="F")
         # Remove duplicates
         interleaved_indices = pd.unique(interleaved_indices)
         top_n_indices = interleaved_indices[:top_n]
         relevant_extracts = [extracts[i] for i in top_n_indices]
-        relevant_extracts_similarity = np.zeros(len(relevant_extracts)).tolist() # FIXME: get scores for each extract
+        relevant_extracts_similarity = np.zeros(
+            len(relevant_extracts)
+        ).tolist()  # FIXME: get scores for each extract
 
     # Hybrid + Reranker
     else:
-        dense_similarity_score = compute_dense_embeddings_score(query, docs_embeddings, embedding_model)
+        dense_similarity_score = compute_dense_embeddings_score(
+            query, docs_embeddings, embedding_model
+        )
         bm25_similarity_score = compute_bm25_score(query, bm25_model)
-        top_n_dense_indices = dense_similarity_score.argsort()[::-1][:top_n*reranker_ratio]
-        top_n_bm25_indices = bm25_similarity_score.argsort()[::-1][:top_n*reranker_ratio]
+        top_n_dense_indices = dense_similarity_score.argsort()[::-1][
+            : top_n * reranker_ratio
+        ]
+        top_n_bm25_indices = bm25_similarity_score.argsort()[::-1][
+            : top_n * reranker_ratio
+        ]
         relevant_extracts = [extracts[i] for i in top_n_dense_indices]
         relevant_extracts_bm25 = [extracts[i] for i in top_n_bm25_indices]
         # merge dense and bm25
         for e in relevant_extracts_bm25:
             if e not in relevant_extracts:
                 relevant_extracts.append(e)
-        relevant_extracts, relevant_extracts_similarity = rerank_extracts(query,
-                                                                          relevant_extracts,
-                                                                          top_n,
-                                                                          reranker_model,
-                                                                          similarity_threshold=similarity_threshold,
-                                                                          )
-    
+        relevant_extracts, relevant_extracts_similarity = rerank_extracts(
+            query,
+            relevant_extracts,
+            top_n,
+            reranker_model,
+            similarity_threshold=similarity_threshold,
+        )
+
     return relevant_extracts, relevant_extracts_similarity
 
 
@@ -176,12 +220,35 @@ def generate_RAG_prompt(
     expected_answer_size = "courte" if expected_answer_size == "short" else "détaillée"
     if custom_prompt:
         return custom_prompt.format(
-            context=context, query=query, expected_answer_size=expected_answer_size, history=history,
+            context=context,
+            query=query,
+            expected_answer_size=expected_answer_size,
+            history=history,
         )
     else:
         return FR_USER_BASE_RAG.format(
             context=context, query=query, expected_answer_size=expected_answer_size
         )
+
+
+def generate_query_prompt(
+    query: str,
+    custom_prompt=None,
+    history=None,
+) -> str:
+    """
+    Generates RAG prompt using query and context.
+    """
+    if custom_prompt:
+        return custom_prompt.format(
+            query=query,
+            history=history,
+        )
+    else:
+        return FR_USER_BASE_QUERY.format(
+            query=query
+        )
+
 
 @lru_cache(maxsize=5)
 def load_data(
@@ -216,4 +283,3 @@ def load_data(
         logger.info(f"Embeddings loaded from cache file: {cache_path}")
 
     return data, docs_embeddings
-

@@ -23,7 +23,7 @@ from wattelse.chatbot import (
     generator_config,
     MAX_TOKENS,
 )
-from wattelse.llm.prompts import FR_USER_BASE_QUERY
+from wattelse.llm.prompts import FR_USER_BASE_QUERY, FR_USER_BASE_MULTITURN_QUERY
 from wattelse.llm.vars import TEMPERATURE
 
 watch(retriever_config, generator_config, callback=on_options_change)
@@ -45,12 +45,10 @@ def generate_assistant_response(query):
         message_placeholder.markdown("...")
 
         # Query the backend
-        stream_response = st.session_state["backend"].llm_api.generate(
-            st.session_state["custom_prompt"].format(query=query),
-            # system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
-            temperature=TEMPERATURE,
-            max_tokens=MAX_TOKENS,
-            stream=True,
+        stream_response = st.session_state["backend"].simple_query(
+            query,
+            st.session_state["chat_history"].get_history(),
+            **generator_config,
         )
 
         # HAL final response
@@ -75,6 +73,15 @@ def generate_assistant_response(query):
         st.session_state["messages"].append({"role": "assistant", "content": response})
 
         return response
+
+
+def switch_prompt():
+    """Switch prompt between hisotry and non history versions"""
+    if st.session_state["remember_recent_messages"]:
+        st.session_state["custom_prompt"] = FR_USER_BASE_MULTITURN_QUERY
+    else:
+        st.session_state["custom_prompt"] = FR_USER_BASE_QUERY
+    update_config_from_gui()
 
 
 def display_side_bar():
@@ -102,6 +109,13 @@ def display_side_bar():
                 info = st.info("Parameters saved!")
                 time.sleep(0.5)
                 info.empty()  # Clear the alert
+
+    st.toggle(
+        "Use recent interaction history",
+        value=False,
+        key="remember_recent_messages",
+        on_change=switch_prompt,
+    )
 
 
 def main():
