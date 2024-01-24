@@ -212,7 +212,6 @@ class ChatbotBackEnd:
             prompt,
             # system_prompt=FR_SYSTEM_DODER_RAG, -> NOT WORKING WITH CERTAIN MODELS (MISTRAL)
             temperature=TEMPERATURE,
-            max_tokens=MAX_TOKENS,
             stream=True,
         )
         return stream_response
