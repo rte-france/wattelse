@@ -82,7 +82,7 @@ def update_config_from_gui():
         "similarity_threshold",
         "use_cache",
     ]:
-        retriever_config[k] = st.session_state[k]
+        retriever_config[k] = st.session_state.get(k)
     for k in [
         "llm_api_name",
         "expected_answer_size",
@@ -90,7 +90,7 @@ def update_config_from_gui():
         "custom_prompt",
         "remember_recent_messages",
     ]:
-        generator_config[k] = st.session_state[k]
+        generator_config[k] = st.session_state.get(k)
 
 
 def add_user_message_to_session(prompt):

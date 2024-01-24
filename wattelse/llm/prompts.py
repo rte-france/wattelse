@@ -138,3 +138,6 @@ Contexte:
 {context}
 \"\"\"
 """
+
+FR_USER_BASE_QUERY = ("Répondez à la question suivante. La réponse doit être spécifique et percutante.\n"
+					'Question : {query}')
