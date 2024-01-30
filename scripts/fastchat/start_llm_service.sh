@@ -18,7 +18,7 @@ python3 -m fastchat.serve.controller --host $HOST --port $PORT_CONTROLLER &
 # launch worker
 if [ -z "$1" ]; then
   # no args provided
-  CUDA_VISIBLE_DEVICES=2,1 python3 -m fastchat.serve.model_worker --host $HOST --port $PORT_WORKER --worker-address http://$HOST:$PORT_WORKER --controller-address http://$HOST:$PORT_CONTROLLER --model-path $MODEL --model-names $MODEL --num-gpus 2&
+  CUDA_VISIBLE_DEVICES=2,1 python3 -m fastchat.serve.model_worker --host $HOST --port $PORT_WORKER --worker-address http://$HOST:$PORT_WORKER --controller-address http://$HOST:$PORT_CONTROLLER --model-path $MODEL --model-names $MODEL --num-gpus 2 --max-gpu-memory 8GiB&
 else
   # we assume any args means '--load-8-bit' (NB. it seems that if we do not change the num-gpus values, the parameter is not taken into account
   echo "Starting service in 8-bit mode"
