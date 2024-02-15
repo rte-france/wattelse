@@ -4,10 +4,10 @@ from pathlib import Path
 import fitz  # the package is called pymupdf (confusing!!)
 import pandas as pd
 import typer
+from llama_index.core.node_parser import SentenceSplitter
 from loguru import logger
 
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_DIR
-from llama_index.node_parser import SentenceSplitter
 
 def _clean_text(x):
     """
