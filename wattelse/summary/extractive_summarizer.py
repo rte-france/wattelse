@@ -10,7 +10,7 @@ from torch import Tensor
 
 from wattelse.llm.openai_api import OpenAI_API
 from wattelse.llm.prompts import FR_SYSTEM_SUMMARY_SENTENCES, EN_SYSTEM_SUMMARY_SENTENCES
-from wattelse.llm.vars import MODEL, TEMPERATURE
+from wattelse.llm.vars import TEMPERATURE
 from wattelse.summary.lexrank import degree_centrality_scores
 from wattelse.summary.summarizer import (
     Summarizer,
@@ -359,7 +359,6 @@ class EnhancedExtractiveSummarizer(ExtractiveSummarizer):
         improved_summary = self.api.generate(
             system_prompt=(FR_SYSTEM_SUMMARY_SENTENCES if prompt_language=="fr" else EN_SYSTEM_SUMMARY_SENTENCES).format(num_sentences=max_sentences),
             user_prompt=base_summary,
-            model_name=MODEL,
             temperature=TEMPERATURE,
         )
         return improved_summary

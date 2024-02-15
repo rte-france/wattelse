@@ -10,6 +10,7 @@ MAX_ATTEMPTS = 3
 TIMEOUT = 60.0
 
 class OpenAI_API:
+
     def __init__(self):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent.parent / "config" / "openai.cfg")
@@ -19,13 +20,14 @@ class OpenAI_API:
             timeout=Timeout(TIMEOUT, connect=10.0),
             max_retries=MAX_ATTEMPTS,
         )
+        self.default_model = config.get("OPENAI_CONFIG", "default_model")
         self.model_name = "openai_gpt"
 
     def generate(
         self,
         user_prompt,
         system_prompt=None,
-        model_name="gpt-3.5-turbo",
+        model_name=None,
         temperature=0.1,
         max_tokens=512,
         seed=NOT_GIVEN,
@@ -51,7 +53,7 @@ class OpenAI_API:
             messages.insert(0, {"role": "system", "content": system_prompt})
         try:
             answer = self.llm_client.chat.completions.create(
-                model=model_name,
+                model=model_name if model_name else self.default_model,
                 messages=messages,
                 max_tokens=max_tokens,
                 temperature=temperature,
