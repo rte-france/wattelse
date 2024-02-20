@@ -8,9 +8,9 @@ from sentence_transformers import SentenceTransformer, util
 from sentence_transformers.models import Transformer, Pooling
 from torch import Tensor
 
-from wattelse.llm.openai_api import OpenAI_API
-from wattelse.llm.prompts import FR_SYSTEM_SUMMARY_SENTENCES, EN_SYSTEM_SUMMARY_SENTENCES
-from wattelse.llm.vars import TEMPERATURE
+from wattelse.api.openai.class_openai_api import OpenAI_API
+from wattelse.api.prompts import FR_SYSTEM_SUMMARY_SENTENCES, EN_SYSTEM_SUMMARY_SENTENCES
+from wattelse.summary import TEMPERATURE
 from wattelse.summary.lexrank import degree_centrality_scores
 from wattelse.summary.summarizer import (
     Summarizer,

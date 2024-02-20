@@ -23,7 +23,7 @@ from wattelse.chatbot import (
 from wattelse.chatbot.indexer import index_files
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.chatbot.utils import highlight_answer
-from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_MULTITURN_RAG
+from wattelse.api.prompts import FR_USER_BASE_RAG, FR_USER_MULTITURN_RAG
 
 
 @st.cache_resource
@@ -52,13 +52,10 @@ watch(retriever_config, generator_config, callback=on_options_change)
 # Initialize st.session_state
 if "prev_selected_file" not in st.session_state:
     st.session_state["prev_selected_file"] = None
-if "prev_embedding_model" not in st.session_state:
-    st.session_state["prev_embedding_model"] = None
 if "data_files_from_parsing" not in st.session_state:
     st.session_state["data_files_from_parsing"] = []
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = ChatHistory()
-
 if "backend" not in st.session_state:
     st.session_state["backend"] = initialize_backend(
         **retriever_config, **generator_config
@@ -75,7 +72,6 @@ def initialize_options_from_config():
 
 def update_config_from_gui():
     for k in [
-        "embedding_model_name",
         "reranker_model_name",
         "top_n_extracts",
         "retrieval_mode",
@@ -94,10 +90,9 @@ def update_config_from_gui():
 
 
 def add_user_message_to_session(prompt):
-    if prompt:
-        st.session_state["messages"].append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    st.session_state["messages"].append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
 
 def display_existing_messages():
@@ -109,6 +104,7 @@ def display_existing_messages():
 
 
 def check_data():
+    """Check if a file is uploaded"""
     if not st.session_state.get("selected_files") and not st.session_state.get(
         "uploaded_files"
     ):
@@ -189,20 +185,12 @@ def on_file_change():
             ]
             reset_messages_history()
 
-    elif (
-        st.session_state["selected_files"] != st.session_state["prev_selected_file"]
-    ) or (
-        st.session_state["prv_embedding_model_name"]
-        != st.session_state["embedding_model_name"]
-    ):
+    elif st.session_state["selected_files"] != st.session_state["prev_selected_file"]:
         logger.debug("Data file changed! Resetting chat history")
         st.session_state["backend"].initialize_data(
             [DATA_DIR / sf for sf in st.session_state["selected_files"]]
         )
         st.session_state["prev_selected_file"] = st.session_state["selected_files"]
-        st.session_state["prv_embedding_model_name"] = st.session_state[
-            "embedding_model_name"
-        ]
         reset_messages_history()
 
 
@@ -237,14 +225,7 @@ def display_side_bar():
                 te1, te2 = st.tabs(["Embedding model", "Reranker model"])
                 with te1:
                     # Embedding model
-                    st.selectbox(
-                        "Embedding model",
-                        [
-                            "antoinelouis/biencoder-camembert-base-mmarcoFR",
-                            "dangvantuan/sentence-camembert-large",
-                        ],
-                        key="embedding_model_name",
-                    )
+                    st.write(f'EmbeddingAPI: {st.session_state["backend"].embedding_api.get_api_model_name()}')
                 with te2:
                     # Reranker model
                     st.selectbox(
@@ -293,15 +274,12 @@ def display_side_bar():
                 )
 
             with st.expander("LLM generator configuration"):
-                # Response size
+                # answer size
                 st.selectbox(
-                    "Response size",
+                    "Answer size",
                     ["short", "detailed"],
                     key="expected_answer_size",
                 )
-
-                # Relevant references as explanations
-                st.toggle("Provide explanations", key="provide_explanations")
 
                 # Custom prompt
                 st.text_area("Prompt", key="custom_prompt")
@@ -338,7 +316,7 @@ def display_side_bar():
 
 
 def switch_prompt():
-    """Switch prompt between hisotry and non history versions"""
+    """Switch prompt between history and non history versions"""
     if st.session_state["remember_recent_messages"]:
         st.session_state["custom_prompt"] = FR_USER_MULTITURN_RAG
     else:

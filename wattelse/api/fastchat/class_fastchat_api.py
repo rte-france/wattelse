@@ -11,13 +11,12 @@ from transformers import AutoTokenizer
 class FastchatAPI:
     def __init__(self):
         config = configparser.ConfigParser()
-        config.read(Path(__file__).parent.parent / "config" / "fastchat_api.cfg")
+        config.read(Path(__file__).parent / "fastchat_api.cfg")
         self.base_url = config.get("FASTCHAT_API_CONFIG", "openai_url")
         self.llm_client = OpenAI(
             api_key=config.get("FASTCHAT_API_CONFIG", "openai_key"),
             base_url=self.base_url,
         )
-
         self.model_name = self.get_api_model_name()
         self.tokenizer = (
             AutoTokenizer.from_pretrained(
@@ -75,7 +74,7 @@ class FastchatAPI:
                     - full text once generated if stream=False
                     - Completion object if stream=True
         """
-        logger.debug(f"Calling remote Fastchat service...")
+        logger.debug(f"Calling FastchatAPI using model: {self.model_name}")
         try:
             if transform_prompt:
                 prompt = self.generate_llm_specific_prompt(

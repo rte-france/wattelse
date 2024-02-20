@@ -39,5 +39,6 @@ config.read(Path(__file__).parent / "config.cfg")
 retriever_config =  parse_literal(dict(config["retriever"]))
 
 generator_config = parse_literal(dict(config["generator"]))
+TEMPERATURE = generator_config['temperature']
 # resolve variable value
 generator_config["custom_prompt"] = locate(generator_config["custom_prompt"])

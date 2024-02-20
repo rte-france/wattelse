@@ -9,7 +9,7 @@ from loguru import logger
 class OllamaAPI:
     def __init__(self):
         config = configparser.ConfigParser()
-        config.read(Path(__file__).parent.parent / "config" / "ollama_api.cfg")
+        config.read(Path(__file__).parent / "ollama_api.cfg")
         self.port = config.get("OLLAMA_API_CONFIG", "port")
         self.url = f"http://localhost:{self.port}/api/generate"
         self.model_name = config.get("OLLAMA_API_CONFIG", "model_name")

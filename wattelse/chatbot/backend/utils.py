@@ -7,7 +7,7 @@ import string
 import numpy as np
 import pandas as pd
 from loguru import logger
-from sentence_transformers import SentenceTransformer, CrossEncoder
+from sentence_transformers import CrossEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 import Stemmer
 from rank_bm25 import BM25Plus
@@ -20,7 +20,8 @@ from wattelse.chatbot import (
 )
 from wattelse.common import TEXT_COLUMN
 from wattelse.common.cache_utils import save_embeddings, load_embeddings
-from wattelse.llm.prompts import FR_USER_BASE_RAG, FR_USER_BASE_QUERY
+from wattelse.api.prompts import FR_USER_BASE_RAG, FR_USER_BASE_QUERY
+from wattelse.api.embedding.class_embedding_api import EmbeddingAPI
 
 STEMMER = Stemmer.Stemmer("french")
 
@@ -50,17 +51,17 @@ def compute_bm25_score(query: str, bm25_model: BM25Plus):
     return bm25_model.get_scores(query)
 
 
-def make_docs_embedding(docs: pd.Series, embedding_model: SentenceTransformer):
-    """Embedds a list of docs using a SentenceTransformer model"""
-    return embedding_model.encode(docs, show_progress_bar=True)
+def make_docs_embedding(docs: str | List[str], embedding_api: EmbeddingAPI):
+    """Embeds a list of docs using a SentenceTransformer model"""
+    return embedding_api.encode(docs)
 
 
 def compute_dense_embeddings_score(
-    query: str, docs_embeddings: np.ndarray, embedding_model: SentenceTransformer
+    query: str, docs_embeddings: np.ndarray, embedding_api: EmbeddingAPI
 ):
     """Computes similarity score between a query and docs dense embeddings"""
-    query_embedding = embedding_model.encode(query)
-    return cosine_similarity([query_embedding], docs_embeddings)[0]
+    query_embedding = embedding_api.encode(query)
+    return cosine_similarity(query_embedding, docs_embeddings)[0]
 
 
 def rerank_extracts(
@@ -100,7 +101,7 @@ def extract_n_most_relevant_extracts(
     query: str,
     data: pd.DataFrame,
     docs_embeddings: np.ndarray,
-    embedding_model: SentenceTransformer,
+    embedding_api: EmbeddingAPI,
     bm25_model: BM25Plus,
     retrieval_mode: str = RETRIEVAL_DENSE,
     reranker_model: CrossEncoder = None,
@@ -114,13 +115,13 @@ def extract_n_most_relevant_extracts(
         query (str): query
         docs (pd.DataFrame): corpus of documents
         docs_embeddings (np.ndarray): array of document embeddings
-        embedding_model (SentenceTransformer): embedding model
+        embedding_api (EmbeddingAPI): embedding api
         bm25_model (BM25Plus): BM25 model
         retrieval_mode (str, optional): algorithm to retrieve top_n extracts :
                                         - 'bm25' -> uses BM25 model
-                                        - 'dense' -> uses embedding_model
-                                        - 'hybrid' -> uses both bm25 and embedding_model
-                                        - 'hybrid+reranker' -> uses uses both bm25 and embedding_model and rerank using crossencoder
+                                        - 'dense' -> uses embedding_api
+                                        - 'hybrid' -> uses both bm25 and embedding_api
+                                        - 'hybrid+reranker' -> uses uses both bm25 and embedding_api and rerank using crossencoder
         reranker_model (CrossEncoder, optional): reranker model
         reranker_ratio (int, optional): reranker_ratio*top_n extracts are send to the reranker model
         similarity_threshold (float, optional): extracts with similarity score lower
@@ -144,7 +145,7 @@ def extract_n_most_relevant_extracts(
     # Dense model
     elif retrieval_mode == RETRIEVAL_DENSE:
         similarity_score = compute_dense_embeddings_score(
-            query, docs_embeddings, embedding_model
+            query, docs_embeddings, embedding_api
         )
         above_threshold_indices = np.where(similarity_score > similarity_threshold)[0]
         top_n_indices = above_threshold_indices[
@@ -156,7 +157,7 @@ def extract_n_most_relevant_extracts(
     # Hybrid
     elif retrieval_mode == RETRIEVAL_HYBRID:
         dense_similarity_score = compute_dense_embeddings_score(
-            query, docs_embeddings, embedding_model
+            query, docs_embeddings, embedding_api
         )
         bm25_similarity_score = compute_bm25_score(query, bm25_model)
         sorted_dense_indices = dense_similarity_score.argsort()[::-1]
@@ -180,7 +181,7 @@ def extract_n_most_relevant_extracts(
     # Hybrid + Reranker
     else:
         dense_similarity_score = compute_dense_embeddings_score(
-            query, docs_embeddings, embedding_model
+            query, docs_embeddings, embedding_api
         )
         bm25_similarity_score = compute_bm25_score(query, bm25_model)
         top_n_dense_indices = dense_similarity_score.argsort()[::-1][
@@ -253,10 +254,10 @@ def generate_query_prompt(
 @lru_cache(maxsize=5)
 def load_data(
     data_file: Path,
-    embedding_model: SentenceTransformer,
+    embedding_api: EmbeddingAPI,
     embedding_model_name: str = None,
     use_cache: bool = True,
-) -> Tuple[pd.DataFrame, List]:
+) -> Tuple[pd.DataFrame, np.ndarray]:
     """Loads data and transform them into embeddings; data file shall contain a column 'processed_text' (preferred)
     or 'text'"""
     logger.info(f"Using data from: {data_file}")
@@ -274,7 +275,7 @@ def load_data(
     logger.debug(f"Using cache: {use_cache}")
     if not use_cache or not cache_path.exists():
         logger.info("Computing sentence embeddings...")
-        docs_embeddings = make_docs_embedding(docs, embedding_model)
+        docs_embeddings = make_docs_embedding(docs.to_list(), embedding_api)
         if use_cache:
             save_embeddings(docs_embeddings, cache_path)
             logger.info(f"Embeddings stored to cache file: {cache_path}")

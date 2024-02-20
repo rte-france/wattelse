@@ -23,8 +23,7 @@ from wattelse.chatbot import (
     generator_config,
     MAX_TOKENS,
 )
-from wattelse.llm.prompts import FR_USER_BASE_QUERY, FR_USER_BASE_MULTITURN_QUERY
-from wattelse.llm.vars import TEMPERATURE
+from wattelse.api.prompts import FR_USER_BASE_QUERY, FR_USER_BASE_MULTITURN_QUERY
 
 watch(retriever_config, generator_config, callback=on_options_change)
 

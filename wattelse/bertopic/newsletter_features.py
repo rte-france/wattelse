@@ -9,8 +9,8 @@ import tldextract
 from loguru import logger
 
 from wattelse.summary.abstractive_summarizer import AbstractiveSummarizer
-from wattelse.llm.openai_api import OpenAI_API
-from wattelse.llm.prompts import (
+from wattelse.api.openai.class_openai_api import OpenAI_API
+from wattelse.api.prompts import (
     FR_USER_GENERATE_TOPIC_LABEL_TITLE,
     FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
 )

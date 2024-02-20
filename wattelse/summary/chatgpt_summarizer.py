@@ -3,9 +3,9 @@ from typing import List
 import tiktoken
 from loguru import logger
 
-from wattelse.llm.openai_api import OpenAI_API
-from wattelse.llm.prompts import FR_SYSTEM_SUMMARY_WORDS, EN_SYSTEM_SUMMARY_WORDS
-from wattelse.llm.vars import TEMPERATURE
+from wattelse.api.openai.class_openai_api import OpenAI_API
+from wattelse.api.prompts import FR_SYSTEM_SUMMARY_WORDS, EN_SYSTEM_SUMMARY_WORDS
+from wattelse.summary import TEMPERATURE
 from wattelse.summary.summarizer import (
     DEFAULT_MAX_SENTENCES,
     DEFAULT_MAX_WORDS,

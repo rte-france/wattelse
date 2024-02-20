@@ -1,1 +1,0 @@
-TEMPERATURE = 0.1

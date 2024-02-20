@@ -15,6 +15,7 @@ from wattelse.chatbot import (
     FASTCHAT_LLM,
     OLLAMA_LLM,
     CHATGPT_LLM,
+    TEMPERATURE,
 )
 from wattelse.chatbot.backend.utils import (
     extract_n_most_relevant_extracts,
@@ -24,27 +25,23 @@ from wattelse.chatbot.backend.utils import (
     generate_query_prompt,
 )
 from wattelse.common import TEXT_COLUMN
-from wattelse.llm.openai_api import OpenAI_API
-from wattelse.llm.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
-from wattelse.llm.vars import TEMPERATURE
-from wattelse.llm.fastchat_api import FastchatAPI
-from wattelse.llm.ollama_api import OllamaAPI
-
+from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
+from wattelse.api.fastchat.class_fastchat_api import FastchatAPI
+from wattelse.api.ollama.class_ollama_api import OllamaAPI
+from wattelse.api.openai.class_openai_api import OpenAI_API
+from wattelse.api.embedding.class_embedding_api import EmbeddingAPI
 
 @lru_cache(maxsize=3)
-def initialize_embedding_model(embedding_model_name: str):
-    """Load embedding_model"""
-    logger.info(f"Initializing embedding model: {embedding_model_name}")
-    embedding_model = SentenceTransformer(embedding_model_name)
-    # Fix model max input length issue
-    if embedding_model.max_seq_length == 514:
-        embedding_model.max_seq_length = 512
-    return embedding_model
+def initialize_embedding_api():
+    """Load EmbeddingAPI"""
+    logger.info(f"Initializing EmbeddingAPI")
+    embedding_api = EmbeddingAPI()
+    return embedding_api
 
 
 @lru_cache(maxsize=2)
 def initialize_reranker_model(reranker_model_name: str):
-    """Load embedding_model and reranker_model"""
+    """Load reranker_model"""
     logger.info(f"Initializing reranker model: {reranker_model_name}")
     reranker_model = CrossEncoder(reranker_model_name)
     return reranker_model
@@ -80,10 +77,10 @@ class ChatBotError(Exception):
 class ChatbotBackEnd:
     def __init__(self, **kwargs):
         logger.debug("(Re)Initialization of chatbot backend")
-        self._embedding_model_name = kwargs.get("embedding_model_name")
         self._use_cache = kwargs.get("use_cache")
         self._llm_api = initialize_llm_api(kwargs.get("llm_api_name"))
-        self._embedding_model = initialize_embedding_model(self._embedding_model_name)
+        self._embedding_api = initialize_embedding_api()
+        self._embedding_model_name = self._embedding_api.get_api_model_name()
         self._retrieval_mode = kwargs.get("retrieval_mode")
         self._reranker_model = (
             initialize_reranker_model(kwargs.get("reranker_model_name"))
@@ -98,8 +95,8 @@ class ChatbotBackEnd:
         return self._llm_api
 
     @property
-    def embedding_model(self):
-        return self._embedding_model
+    def embedding_api(self):
+        return self._embedding_api
 
     @property
     def reranker_model(self):
@@ -116,9 +113,10 @@ class ChatbotBackEnd:
         data_list = None
         embeddings_array = None
         for data_path in data_paths:
+            print(data_path)
             data, embs = load_data(
                 data_path,
-                self.embedding_model,
+                self.embedding_api,
                 embedding_model_name=self._embedding_model_name,
                 use_cache=self._use_cache,
             )
@@ -166,7 +164,7 @@ class ChatbotBackEnd:
             top_n=kwargs.get("top_n_extracts"),
             data=self.data,
             docs_embeddings=self.embeddings,
-            embedding_model=self.embedding_model,
+            embedding_api=self.embedding_api,
             bm25_model=self.bm25_model,
             retrieval_mode=kwargs.get("retrieval_mode"),
             reranker_model=self.reranker_model,

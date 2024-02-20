@@ -2,14 +2,14 @@ from typing import List
 
 from transformers import AutoTokenizer
 
-from wattelse.llm.fastchat_api import FastchatAPI
+from wattelse.api.fastchat.class_fastchat_api import FastchatAPI
 from wattelse.summary.summarizer import (
     Summarizer,
     DEFAULT_MAX_SENTENCES,
     DEFAULT_MAX_WORDS,
     DEFAULT_SUMMARIZATION_RATIO,
 )
-from wattelse.llm.prompts import FR_USER_SUMMARY_WORDS, EN_USER_SUMMARY_WORDS
+from wattelse.api.prompts import FR_USER_SUMMARY_WORDS, EN_USER_SUMMARY_WORDS
 
 TOKENIZER = AutoTokenizer.from_pretrained(
     "bofenghuang/vigogne-2-7b-chat",
