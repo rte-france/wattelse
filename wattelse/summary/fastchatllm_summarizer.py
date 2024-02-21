@@ -2,7 +2,7 @@ from typing import List
 
 from transformers import AutoTokenizer
 
-from wattelse.api.fastchat.class_fastchat_api import FastchatAPI
+from wattelse.api.fastchat.client_fastchat_api import FastchatAPI
 from wattelse.summary.summarizer import (
     Summarizer,
     DEFAULT_MAX_SENTENCES,

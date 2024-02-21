@@ -26,10 +26,10 @@ from wattelse.chatbot.backend.utils import (
 )
 from wattelse.common import TEXT_COLUMN
 from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
-from wattelse.api.fastchat.class_fastchat_api import FastchatAPI
-from wattelse.api.ollama.class_ollama_api import OllamaAPI
-from wattelse.api.openai.class_openai_api import OpenAI_API
-from wattelse.api.embedding.class_embedding_api import EmbeddingAPI
+from wattelse.api.fastchat.client_fastchat_api import FastchatAPI
+from wattelse.api.ollama.client_ollama_api import OllamaAPI
+from wattelse.api.openai.client_openai_api import OpenAI_API
+from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
 
 @lru_cache(maxsize=3)
 def initialize_embedding_api():

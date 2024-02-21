@@ -3,7 +3,7 @@ from typing import List
 import tiktoken
 from loguru import logger
 
-from wattelse.api.openai.class_openai_api import OpenAI_API
+from wattelse.api.openai.client_openai_api import OpenAI_API
 from wattelse.api.prompts import FR_SYSTEM_SUMMARY_WORDS, EN_SYSTEM_SUMMARY_WORDS
 from wattelse.summary import TEMPERATURE
 from wattelse.summary.summarizer import (

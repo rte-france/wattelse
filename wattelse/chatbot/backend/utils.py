@@ -21,7 +21,7 @@ from wattelse.chatbot import (
 from wattelse.common import TEXT_COLUMN
 from wattelse.common.cache_utils import save_embeddings, load_embeddings
 from wattelse.api.prompts import FR_USER_BASE_RAG, FR_USER_BASE_QUERY
-from wattelse.api.embedding.class_embedding_api import EmbeddingAPI
+from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
 
 STEMMER = Stemmer.Stemmer("french")
 
