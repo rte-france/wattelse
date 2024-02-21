@@ -25,6 +25,7 @@ class OpenAI_API:
         self,
         user_prompt,
         system_prompt=None,
+        model_name=None,
         temperature=0.1,
         max_tokens=512,
         seed=NOT_GIVEN,
@@ -50,7 +51,7 @@ class OpenAI_API:
             messages.insert(0, {"role": "system", "content": system_prompt})
         try:
             answer = self.llm_client.chat.completions.create(
-                model=self.model_name,
+                model=model_name if model_name else self.model_name,
                 messages=messages,
                 max_tokens=max_tokens,
                 temperature=temperature,
