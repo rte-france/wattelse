@@ -19,14 +19,15 @@ class OpenAI_API:
             timeout=Timeout(TIMEOUT, connect=10.0),
             max_retries=MAX_ATTEMPTS,
         )
-        self.model_name = config.get('OPENAI_CONFIG', 'model_name')
+        self.model_name = config.get("OPENAI_CONFIG", "model_name")
+        self.temperature = config.getfloat( "OPENAI_CONFIG", "temperature")
 
     def generate(
         self,
         user_prompt,
         system_prompt=None,
         model_name=None,
-        temperature=0.1,
+        temperature=None,
         max_tokens=512,
         seed=NOT_GIVEN,
         stream=NOT_GIVEN,
@@ -54,7 +55,7 @@ class OpenAI_API:
                 model=model_name if model_name else self.model_name,
                 messages=messages,
                 max_tokens=max_tokens,
-                temperature=temperature,
+                temperature=temperature if temperature else self.temperature,
                 stream=stream
             )
             logger.debug(f"API returned: {answer}")
@@ -88,10 +89,12 @@ class OpenAI_API:
             logger.error(f"OpenAI API non-fatal error: {e}")
             logger.warning(f"Retrying the same request...")
             return self.generate(
-                user_prompt,
-                system_prompt,
-                temperature,
-                max_tokens,
-                seed,
-                current_attempt + 1,
+                user_prompt=user_prompt,
+                system_prompt=system_prompt,
+                model_name=model_name,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                seed=seed,
+                stream=stream,
+                current_attempt=current_attempt + 1,
             )

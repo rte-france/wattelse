@@ -13,7 +13,9 @@ class OllamaAPI:
         self.port = config.get("OLLAMA_API_CONFIG", "port")
         self.url = f"http://localhost:{self.port}/api/generate"
         self.model_name = config.get("OLLAMA_API_CONFIG", "model_name")
-        self.num_gpu = int(config.get("OLLAMA_API_CONFIG", "num_gpu"))
+        self.num_gpu = config.getint("OLLAMA_API_CONFIG", "num_gpu")
+        self.temperature = config.getfloat("OLLAMA_API_CONFIG", "temperature")
+
 
     def get_api_model_name(self) -> str:
         """
@@ -25,7 +27,7 @@ class OllamaAPI:
         self,
         user_prompt: str,
         system_prompt: str = None,
-        temperature: float = 0.1,
+        temperature: float = None,
         max_tokens: int = 512,
         stream: bool = False,
     ):
@@ -50,7 +52,7 @@ class OllamaAPI:
             "stream": stream,
             "options": {
                 "num_predict": max_tokens,
-                "temperature": temperature,
+                "temperature": temperature if temperature else self.temperature,
                 "num_gpu": self.num_gpu,
             }
         }

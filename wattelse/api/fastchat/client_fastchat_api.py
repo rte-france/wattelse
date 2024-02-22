@@ -25,6 +25,8 @@ class FastchatAPI:
             if self.model_name
             else None
         )
+        self.temperature = config.getfloat("FASTCHAT_API_CONFIG", "temperature")
+
 
     def get_api_model_name(self):
         """
@@ -53,7 +55,7 @@ class FastchatAPI:
         self,
         user_prompt: str,
         system_prompt: str = None,
-        temperature: float = 0.1,
+        temperature: float = None,
         max_tokens: int = 512,
         transform_prompt: bool = True,
         stream: bool = False,
@@ -88,7 +90,7 @@ class FastchatAPI:
                 model=self.model_name,
                 prompt=prompt,
                 max_tokens=max_tokens,
-                temperature=temperature,
+                temperature=temperature if temperature else self.temperature,
                 stream=stream,
                 seed=seed,
             )

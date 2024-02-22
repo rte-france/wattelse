@@ -5,7 +5,6 @@ from loguru import logger
 
 from wattelse.api.openai.client_openai_api import OpenAI_API
 from wattelse.api.prompts import FR_SYSTEM_SUMMARY_WORDS, EN_SYSTEM_SUMMARY_WORDS
-from wattelse.summary import TEMPERATURE
 from wattelse.summary.summarizer import (
     DEFAULT_MAX_SENTENCES,
     DEFAULT_MAX_WORDS,
@@ -51,7 +50,6 @@ class GPTSummarizer(Summarizer):
         answer = self.api.generate(
             system_prompt=prompt.format(num_words=max_words),
             user_prompt=article_text,
-            temperature=TEMPERATURE,
         )
         return answer
 
