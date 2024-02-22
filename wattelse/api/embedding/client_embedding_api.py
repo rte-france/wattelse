@@ -23,13 +23,15 @@ class EmbeddingAPI:
         """
         return self.model_name
     
-    def encode(self, text: str | List[str]) -> ndarray:
+    def encode(self, text: str | List[str], show_progress_bar: bool = False) -> ndarray:
         if type(text)==str:
             text = [text]
         logger.debug(f"Calling EmbeddingAPI using model: {self.model_name}")
-        response = requests.post(self.url+'/encode', data=json.dumps({'text': text}))
+        logger.debug(f"Computing embeddings...")
+        response = requests.post(self.url+'/encode', data=json.dumps({'text': text, 'show_progress_bar': show_progress_bar}))
         if response.status_code == 200:
             embeddings = np.array(response.json()["embeddings"])
+            logger.debug(f"Computing embeddings done")
             return embeddings
         else:
             logger.error(f"Error: {response.status_code}")

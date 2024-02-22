@@ -23,10 +23,11 @@ if EMBEDDING_MODEL.max_seq_length == 514:
 # Pydantic class for FastAPI typing control
 class InputText(BaseModel):
     text: str | List[str]
+    show_progress_bar: bool
 
 app = FastAPI()
 
 @app.post('/encode')
 def embed(input: InputText):
-    emb = EMBEDDING_MODEL.encode(input.text)
+    emb = EMBEDDING_MODEL.encode(input.text, show_progress_bar=input.show_progress_bar)
     return {"embeddings": emb.tolist()}

@@ -53,7 +53,7 @@ def compute_bm25_score(query: str, bm25_model: BM25Plus):
 
 def make_docs_embedding(docs: str | List[str], embedding_api: EmbeddingAPI):
     """Embeds a list of docs using a SentenceTransformer model"""
-    return embedding_api.encode(docs)
+    return embedding_api.encode(docs, show_progress_bar=True)
 
 
 def compute_dense_embeddings_score(
