@@ -8,7 +8,7 @@ from watchpoints import watch
 from wattelse.chatbot.app import (
     initialize_backend,
     initialize_options_from_config,
-    display_reset,
+    display_buttons,
     update_config_from_gui,
     display_existing_messages,
     add_user_message_to_session,
@@ -138,7 +138,7 @@ def main():
         response = generate_assistant_response(query)
         st.session_state["chat_history"].add_to_database(query, response)
 
-    display_reset()
+    display_buttons()
 
 
 if __name__ == "__main__":

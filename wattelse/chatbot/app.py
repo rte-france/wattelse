@@ -1,6 +1,9 @@
 import os
 import time
 import json
+from datetime import datetime
+import pandas as pd
+from typing import List
 
 import streamlit as st
 from loguru import logger
@@ -19,6 +22,8 @@ from wattelse.chatbot import (
     retriever_config,
     generator_config,
     DATA_DIR,
+    USER_MODE,
+    USER_NAME,
 )
 from wattelse.chatbot.indexer import index_files
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
@@ -112,65 +117,60 @@ def check_data():
         st.stop()
 
 
-def generate_assistant_response(query):
+def generate_answer(query: str):
+    """Generate an answer based on a query using the backend oracle"""
+    # Check if a file is uploaded
     check_data()
 
-    with st.chat_message("assistant"):
-        # HAL answer GUI initialization
-        message_placeholder = st.empty()
-        message_placeholder.markdown("...")
+    # Query the backend
+    (
+        st.session_state["relevant_extracts"],
+        st.session_state["relevant_extracts_similarity"],
+        streaming_answer,
+    ) = st.session_state["backend"].query_oracle(
+        query,
+        st.session_state["chat_history"].get_history(),
+        **retriever_config,
+        **generator_config,
+    )
+    return streaming_answer
 
-        # Query the backend
-        (
-            relevant_extracts,
-            relevant_extracts_similarity,
-            stream_response,
-        ) = st.session_state["backend"].query_oracle(
-            query,
-            st.session_state["chat_history"].get_history(),
-            **retriever_config,
-            **generator_config,
-        )
+def display_streaming_answer(streaming_answer, message_placeholder):
+    """Use the streaming_answer object to print the streaming answer in the message_placeholder"""
+    answer = ""
+    for chunk in streaming_answer: # each API has a distinct behaviour
+        if st.session_state["llm_api_name"] == FASTCHAT_LLM:
+            answer += chunk.choices[0].text
+        elif st.session_state["llm_api_name"] == OLLAMA_LLM:
+            # Last streamed chunk is always incomplete. Catch it and remove it.
+            # TODO : why is last chunk not complete only in Streamlit ?
+            # The streaming answer works well outside Streamlit...
+            try:
+                answer += json.loads(chunk.decode("utf-8"))["response"]
+            except Exception as e:
+                logger.error(e)
+        elif st.session_state["llm_api_name"] == CHATGPT_LLM:
+            answer = chunk.choices[0].delta.content
+            if answer:
+                answer += answer
+        message_placeholder.markdown(answer)
+    st.session_state["messages"].append({"role": "assistant", "content": answer})
 
-        # HAL final response
-        response = ""
-        for chunk in stream_response:
-            if st.session_state["llm_api_name"] == FASTCHAT_LLM:
-                response += chunk.choices[0].text
-            elif st.session_state["llm_api_name"] == OLLAMA_LLM:
-                # Last streamed chunk is always incomplete. Catch it and remove it.
-                # TODO : why is last chunk not complete only in Streamlit ?
-                # The streaming response works well outside Streamlit...
-                try:
-                    response += json.loads(chunk.decode("utf-8"))["response"]
-                except Exception as e:
-                    logger.error(e)
-            elif st.session_state["llm_api_name"] == CHATGPT_LLM:
-                answer = chunk.choices[0].delta.content
-                if answer:
-                    response += answer
-            message_placeholder.markdown(response)
-        st.session_state["messages"].append({"role": "assistant", "content": response})
-
-    highlighted_relevant_extracts = highlight_answer(response, relevant_extracts)
-    if st.session_state["provide_explanations"]:
-        with st.expander("Explanation"):
-            for extract, sim in zip(
-                highlighted_relevant_extracts, relevant_extracts_similarity
-            ):
-                with st.chat_message("explanation", avatar="🔑"):
-                    # Add score to text explanation
-                    score = round(sim * 5) * "⭐"
-                    expl = extract[TEXT_COLUMN]
-                    expl = expl.replace("\n", "\n\n")
-                    st.markdown(f"{score}\n{expl}", unsafe_allow_html=True)
-                    # Add filename if available
-                    filename = extract.get(FILENAME_COLUMN)
-                    if filename:
-                        st.markdown(f"*Source: [{filename}]()*")
-
-    return response
-
+def display_relevant_extracts(answer: str, relevant_extracts: List[str], relevant_extracts_similarity: List[float]):
+    highlighted_relevant_extracts = highlight_answer(answer, relevant_extracts)
+    for extract, sim in zip(
+        highlighted_relevant_extracts, relevant_extracts_similarity
+    ):
+        with st.chat_message("explanation", avatar="🔑"):
+            # Add score to text explanation
+            score = round(sim * 5) * "⭐"
+            expl = extract[TEXT_COLUMN]
+            expl = expl.replace("\n", "\n\n")
+            st.markdown(f"{score}\n{expl}", unsafe_allow_html=True)
+            # Add filename if available
+            filename = extract.get(FILENAME_COLUMN)
+            if filename:
+                st.markdown(f"*Source: [{filename}]()*")
 
 def on_file_change():
     if st.session_state.get("uploaded_files"):
@@ -194,7 +194,8 @@ def on_file_change():
         reset_messages_history()
 
 
-def display_side_bar():
+def display_dev_side_bar():
+    """Side bar used if USER_MODE=False"""
     with st.sidebar:
         with st.form("parameters_sidebar"):
             #            if not st.session_state.get("llm_api"):
@@ -314,6 +315,22 @@ def display_side_bar():
             on_change=switch_prompt,
         )
 
+        display_buttons()
+
+def display_user_side_bar():
+    """Side bar used if USER_MODE=True"""
+    with st.sidebar:
+        # Show user
+        st.write(f'**User:** {USER_NAME}')
+        # Show selected files
+        st.header("Loaded files :")
+        for file in st.session_state["selected_files"]:
+            st.write("- " + file.split(".")[0])
+        st.markdown("---")
+        # Add button here as in Streamlit you can't add button below input_chat widget...
+        st.button("Clear history", on_click=reset_messages_history)
+        
+
 
 def switch_prompt():
     """Switch prompt between history and non history versions"""
@@ -324,8 +341,8 @@ def switch_prompt():
     update_config_from_gui()
 
 
-def display_reset():
-    col1, col2, col3 = st.columns(3, gap="small")
+def display_buttons():
+    col1, col2 = st.columns(2, gap="small")
     with col1:
 
         def reset_prompt():
@@ -333,13 +350,7 @@ def display_reset():
 
         st.button("Reset prompt", on_click=reset_prompt)
     with col2:
-        st.button("Clear discussion", on_click=reset_messages_history)
-    with col3:
-        st.download_button(
-            "Export discussion",
-            data=st.session_state["chat_history"].export_history(),
-            file_name="history.json",
-        )
+        st.button("Clear history", on_click=reset_messages_history)
 
 
 def reset_messages_history():
@@ -349,28 +360,75 @@ def reset_messages_history():
     st.session_state["chat_history"].db_table.truncate()
     logger.debug("History now empty")
 
+def feedback_button():
+    """Feedback button for user mode"""
+    # Align left
+    _, _, col3, col4 = st.columns([3,3,1,1])
+    with col3:
+        st.button(":+1:", use_container_width=True, on_click=save_feedback, args=(1,))
+    with col4:
+        st.button(":-1:", use_container_width=True, on_click=save_feedback, args=(-1,))
+
+def save_feedback(score: int):
+    """Save feedback in the user directory"""
+    collected_data = {
+        "timestamp": datetime.today(),
+        "query": st.session_state["messages"][-2]["content"],
+        "answer": st.session_state["messages"][-1]["content"],
+        "extracts": [extract["text"] for extract in st.session_state["relevant_extracts"]], 
+        "score": score,
+        "embedding_model": st.session_state["backend"].embedding_api.get_api_model_name(),
+        "generation_model": st.session_state["backend"].llm_api.get_api_model_name(),
+        "retrieval_mode": st.session_state["retrieval_mode"],
+        "files": st.session_state["selected_files"],
+    }
+    feedback_file_path = DATA_DIR.parent / "feedback.csv"
+    pd.DataFrame([collected_data]).to_csv(feedback_file_path, mode="a", header=not feedback_file_path.is_file(), index=False)
+    # Notify the user
+    st.toast("Feedback saved !")
+
 
 def main():
+    # Title and initialization
     st.title("WattElse® Chat")
-    # st.markdown("**W**ord **A**nalysis and **T**ext **T**racking with an **E**nhanced **L**anguage model **S**earch **E**ngine")
-    st.markdown(
-        "**W**holistic **A**nalysis of  **T**ex**T** with an **E**nhanced **L**anguage model **S**earch **E**ngine"
-    )
-
     initialize_options_from_config()
 
-    display_side_bar()
+    # User or dev sidebar
+    if USER_MODE:
+        st.session_state["selected_files"] = os.listdir(DATA_DIR)
+        display_user_side_bar()
+        on_file_change()
+    else:
+        display_dev_side_bar()
+        
 
-    display_existing_messages()
+    # Split chat and explanations
+    t1, t2 = st.tabs(["Chat", "Explanations"])
+    with t1 :
+        display_existing_messages()
+    
+    # Query input bar
+    query = st.chat_input("Enter any question in relation with the provided documents")
 
-    query = st.chat_input("Enter any question in relation with the provided document")
     if query:
-        add_user_message_to_session(query)
+        with t1:
+            add_user_message_to_session(query)
+            with st.chat_message("assistant"):
+                # HAL answer GUI initialization
 
-        response = generate_assistant_response(query)
-        st.session_state["chat_history"].add_to_database(query, response)
-
-    display_reset()
+                message_placeholder = st.empty()
+                message_placeholder.markdown("...")
+                streaming_answer = generate_answer(query)
+                display_streaming_answer(streaming_answer, message_placeholder)
+                if USER_MODE:
+                    feedback_button()
+        with t2:
+            display_relevant_extracts(
+                st.session_state["messages"][-1]["content"],
+                st.session_state["relevant_extracts"],
+                st.session_state["relevant_extracts_similarity"]
+                )
+        st.session_state["chat_history"].add_to_database(query, st.session_state["messages"][-1]["content"])
 
 
 if __name__ == "__main__":

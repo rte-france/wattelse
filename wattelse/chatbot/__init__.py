@@ -42,3 +42,10 @@ generator_config = parse_literal(dict(config["generator"]))
 TEMPERATURE = generator_config['temperature']
 # resolve variable value
 generator_config["custom_prompt"] = locate(generator_config["custom_prompt"])
+
+# User mode
+user_config = parse_literal(dict(config["user"]))
+USER_MODE = user_config["user_mode"]
+USER_NAME = user_config["user_name"]
+if USER_MODE:
+	DATA_DIR = DATA_DIR / "user" / USER_NAME / "docs"
