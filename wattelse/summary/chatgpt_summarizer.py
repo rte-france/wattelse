@@ -19,7 +19,7 @@ class GPTSummarizer(Summarizer):
     def __init__(self):
         # retrieve chat GPT config
         self.api = OpenAI_API()
-        self.encoding = tiktoken.encoding_for_model(self.api.default_model)
+        self.encoding = tiktoken.encoding_for_model(self.api.model_name)
         logger.debug("GPTSummarizer initialized")
 
     def num_tokens_from_string(self, string: str) -> int:
