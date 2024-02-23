@@ -15,8 +15,8 @@ from wattelse.api.openai.client_openai_api import OpenAI_API
 from wattelse.api.prompts import (
     FR_USER_GENERATE_TOPIC_LABEL_TITLE,
     FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
-    FR_USER_SUMMARY_WORDS_MULTIPLE_DOCS,
-    EN_USER_SUMMARY_WORDS_MULTIPLE_DOCS,
+    FR_USER_SUMMARY_MULTIPLE_DOCS,
+    EN_USER_SUMMARY_MULTIPLE_DOCS,
 )
 from bertopic._bertopic import BERTopic
 
@@ -110,7 +110,7 @@ def generate_newsletter(
                 article_list += f"Titre : {doc.title}\nContenu : {doc.text}\n\n"
             
             topic_summary = openai_api.generate(
-                (FR_USER_SUMMARY_WORDS_MULTIPLE_DOCS if prompt_language=='fr' else EN_USER_SUMMARY_WORDS_MULTIPLE_DOCS).format(
+                (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language=='fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
                     keywords=', '.join(topics_info['Representation'].iloc[i]),
                     article_list=article_list,
                 )

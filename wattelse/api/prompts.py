@@ -46,7 +46,7 @@ FR_SYSTEM_SUMMARY_SENTENCES = FR_SYSTEM_SUMMARY_WORDS.replace("{num_words} mots"
 EN_SYSTEM_SUMMARY_SENTENCES = EN_SYSTEM_SUMMARY_WORDS.replace("{num_words} words", "{num_sentences} sentences")
 # num_sentences: number of sentences the summary should contain
 
-FR_USER_SUMMARY_WORDS_MULTIPLE_DOCS = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
+FR_USER_SUMMARY_MULTIPLE_DOCS = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
 									   "Voici ci-dessous plusieurs articles de presse (Titre et Contenu). "
 									   "Tous les articles appartiennent au même thème représenté par les mots-clés suivants : {keywords}. "
 									   "Générez une synthèse de ces articles qui doit être en lien avec le thème évoqué par les mots-clés. "
@@ -57,7 +57,7 @@ FR_USER_SUMMARY_WORDS_MULTIPLE_DOCS = ("Vous êtes une IA hautement qualifiée, 
 									   "Synthèse :"
 									   )
 
-EN_USER_SUMMARY_WORDS_MULTIPLE_DOCS = ("You are a highly qualified AI, trained in language understanding and synthesis. "
+EN_USER_SUMMARY_MULTIPLE_DOCS = ("You are a highly qualified AI, trained in language understanding and synthesis. "
 									   "Below are several press articles (Title and Content). "
 									   "All the articles belong to the same topic represented by the following keywords: {keywords}. "
 									   "Generate a summary of these articles, which must be related to the theme evoked by the keywords. "
@@ -67,7 +67,6 @@ EN_USER_SUMMARY_WORDS_MULTIPLE_DOCS = ("You are a highly qualified AI, trained i
 									   "Summary :"
 									   )
 # keywords: list of keywords describing the topic
-# num_words: number of words the summary should contain
 # list of articles and their title
 
 FR_USER_GENERATE_TOPIC_LABEL_TITLE = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
