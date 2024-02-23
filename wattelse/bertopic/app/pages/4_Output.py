@@ -36,6 +36,7 @@ def generate_newsletter_wrapper():
         summarizer_class=SUMMARIZER_OPTIONS_MAPPER[
             st.session_state["summarizer_classname"]
         ],
+        summary_mode=st.session_state['summary_mode'],
     )
 
 
@@ -53,6 +54,8 @@ if "newsletter_nb_docs" not in st.session_state:
     st.session_state["newsletter_nb_docs"] = 3
 if "summarizer_classname" not in st.session_state:
     st.session_state["summarizer_classname"] = list(SUMMARIZER_OPTIONS_MAPPER.keys())[0]
+if "summary_mode" not in st.session_state:
+    st.session_state["summary_mode"] = 'topic'
 
 # Newsletter params
 with st.sidebar.form("newsletter_parameters"):
@@ -60,6 +63,7 @@ with st.sidebar.form("newsletter_parameters"):
     register_widget("newsletter_nb_docs")
     register_widget("newsletter_improve_description")
     register_widget("summarizer_classname")
+    register_widget("summary_mode")
     st.slider(
         "Number of topics",
         min_value=1,
@@ -78,6 +82,12 @@ with st.sidebar.form("newsletter_parameters"):
         "Improve topic description",
         value=False,
         key="newsletter_improve_description",
+    )
+
+    st.selectbox(
+        "Summary mode ('topic' uses OpenAI API)",
+        ['topic', 'document'],
+        key="summary_mode",
     )
 
     st.selectbox(

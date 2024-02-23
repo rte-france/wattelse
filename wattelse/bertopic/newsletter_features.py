@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import locale
+from typing import List
 
 # from md2pdf.core import md2pdf
 import markdown
@@ -8,34 +9,58 @@ import pandas as pd
 import tldextract
 from loguru import logger
 
+from wattelse.summary.summarizer import Summarizer
 from wattelse.summary.abstractive_summarizer import AbstractiveSummarizer
 from wattelse.api.openai.client_openai_api import OpenAI_API
 from wattelse.api.prompts import (
     FR_USER_GENERATE_TOPIC_LABEL_TITLE,
     FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
+    FR_USER_SUMMARY_WORDS_MULTIPLE_DOCS,
+    EN_USER_SUMMARY_WORDS_MULTIPLE_DOCS,
 )
+from bertopic._bertopic import BERTopic
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
 
 
 def generate_newsletter(
-    topic_model,
-    df,
-    topics,
-    df_split=None,
-    top_n_topics=5,
-    top_n_docs=3,
-    top_n_docs_mode="cluster_probability",
-    newsletter_title="Newsletter",
-    summarizer_class=AbstractiveSummarizer,
-    prompt_language="fr",
-    improve_topic_description=False,
+    topic_model: BERTopic,
+    df: pd.DataFrame,
+    topics: List[int],
+    df_split: pd.DataFrame = None,
+    top_n_topics: int = 5,
+    top_n_docs: int = 3,
+    top_n_docs_mode: str = "cluster_probability",
+    newsletter_title: str = "Newsletter",
+    summarizer_class: Summarizer = AbstractiveSummarizer,
+    summary_mode: str = "article",
+    prompt_language: str = "fr",
+    improve_topic_description: bool = False,
 ) -> str:
-    """
-    Write a newsletter using trained BERTopic model.
+    """Generates a newsletter based on a trained BERTopic model.
+
+    Args:
+        topic_model (BERTopic): trained BERTopic model
+        df (pd.DataFrame): DataFrame containing documents
+        topics (List[int]): list of length len(df) containing the topic number for every document
+        df_split (pd.DataFrame, optional): DataFrame containing split documents
+        top_n_topics (int, optional): Number of topics to use for newsletter
+        top_n_docs (int, optional): Number of document to use to summarize each topic
+        top_n_docs_mode (str, optional): algorithm used to recover top n documents (see `get_most_representative_docs` function)
+        newsletter_title (str, optional): newsletter title
+        summarizer_class (Summarizer, optional): type of summarizer to use (see `wattelse/summary`)
+        summary_mode (str, optional): - `document` : for each topic, summarize top n documents independently
+                                      - `topic`   : for each topic, use top n documents to generate a single topic summary
+                                                    using OpenAI API
+        prompt_language (str, optional): prompt language
+        improve_topic_description (bool, optional): whether to use ChatGPT to transform topic keywords to a more readable description
+
+    Returns:
+        str: Newsletter in Markdown format
     """
     logger.debug("Generating newsletter...")
+    openai_api = OpenAI_API()
     # Adapt language for date
     current_local = locale.getlocale()
     if prompt_language == "en":
@@ -74,18 +99,34 @@ def generate_newsletter(
             top_n_docs=top_n_docs,
         )
 
-        # Generates summaries for articles
-        texts = [doc.text for _, doc in sub_df.iterrows()]
-        summaries = summarizer.summarize_batch(texts, prompt_language=prompt_language)
+        # Compute summary according to summary_mode
+        if summary_mode == 'document':
+            # Generates summaries for articles
+            texts = [doc.text for _, doc in sub_df.iterrows()]
+            summaries = summarizer.summarize_batch(texts, prompt_language=prompt_language)
+        elif summary_mode == 'topic':
+            article_list = ""
+            for _, doc in sub_df.iterrows():
+                article_list += f"Titre : {doc.title}\nContenu : {doc.text}\n\n"
+            
+            topic_summary = openai_api.generate(
+                (FR_USER_SUMMARY_WORDS_MULTIPLE_DOCS if prompt_language=='fr' else EN_USER_SUMMARY_WORDS_MULTIPLE_DOCS).format(
+                    keywords=', '.join(topics_info['Representation'].iloc[i]),
+                    article_list=article_list,
+                )
+            )
+        else:
+            logger.error(f'{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter')
+            exit()
 
+        # Improve topic description
         if improve_topic_description:
             titles = [doc.title for _, doc in sub_df.iterrows()]
 
             improved_topic_description_v2 = (
-                OpenAI_API()
-                .generate(
+                openai_api.generate(
                     FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES.format(
-                        title_list=" ; ".join(summaries),
+                        title_list=(" ; ".join(summaries) if summary_mode=='document' else topic_summary),
                     )
                 )
                 .replace('"', "")
@@ -104,9 +145,13 @@ def generate_newsletter(
                 f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
             )
 
+        # Write summaries + documents
+        if summary_mode=='topic':
+                md_lines.append(topic_summary)
         i = 0
         for _, doc in sub_df.iterrows():
             # Write newsletter
+
             md_lines.append(f"### [*{doc.title}*]({doc.url})")
             try:
                 domain = tldextract.extract(doc.url).domain
@@ -116,7 +161,8 @@ def generate_newsletter(
             md_lines.append(
                 f"<div class='timestamp'>{doc.timestamp.strftime('%A %d %b %Y')} | {domain}</div>"
             )
-            md_lines.append(summaries[i])
+            if summary_mode=='document':
+                md_lines.append(summaries[i])
             i += 1
 
     # Write full file

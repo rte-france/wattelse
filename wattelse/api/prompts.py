@@ -18,7 +18,7 @@ FR_SYSTEM_SUMMARY_WORDS = ("Vous êtes une IA hautement qualifiée, formée à l
 					 "les points principaux du texte sans avoir besoin de lire le texte en entier. "
 					 "Veuillez éviter les détails inutiles ou les points tangentiels."
 					 )
-# num_sentences: number of words the summary should contain
+# num_words: number of words the summary should contain
 
 EN_SYSTEM_SUMMARY_WORDS = ("You are a highly qualified AI, trained in language understanding and synthesis. "
 						"I would like you to read the following text and summarize it in a maximum of {num_words} "
@@ -27,25 +27,48 @@ EN_SYSTEM_SUMMARY_WORDS = ("You are a highly qualified AI, trained in language u
 						"the main points of the text without needing to read the entire text. "
 						"Please avoid unnecessary details or tangential points."
 						)
-# num_sentences: number of words the summary should contain
+# num_words: number of words the summary should contain
 
 
 FR_USER_SUMMARY_WORDS = FR_SYSTEM_SUMMARY_WORDS + (
 						 " Texte :\n {text}"
 						 )
-# num_sentences: number of words the summary should contain
+# num_words: number of words the summary should contain
 # text: text to be summarized
 
 EN_USER_SUMMARY_WORDS = EN_SYSTEM_SUMMARY_WORDS + (
 	" Text :\n {text}"
 )
-# num_sentences: number of words the summary should contain
+# num_words: number of words the summary should contain
 # text: text to be summarized
 
 FR_SYSTEM_SUMMARY_SENTENCES = FR_SYSTEM_SUMMARY_WORDS.replace("{num_words} mots", "{num_sentences} phrases")
 EN_SYSTEM_SUMMARY_SENTENCES = EN_SYSTEM_SUMMARY_WORDS.replace("{num_words} words", "{num_sentences} sentences")
 # num_sentences: number of sentences the summary should contain
 
+FR_USER_SUMMARY_WORDS_MULTIPLE_DOCS = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
+									   "Voici ci-dessous plusieurs articles de presse (Titre et Contenu). "
+									   "Tous les articles appartiennent au même thème représenté par les mots-clés suivants : {keywords}. "
+									   "Générez une synthèse de ces articles qui doit être en lien avec le thème évoqué par les mots-clés. "
+									   "La synthèse doit être détaillée et reprendre les informations essentielles des articles. "
+									   "Ne pas commencer par 'Les articles présentent...' mais commencer directement la synthèse.\n"
+									   "Liste des articles :\n"
+									   "```{article_list}```\n"
+									   "Synthèse :"
+									   )
+
+EN_USER_SUMMARY_WORDS_MULTIPLE_DOCS = ("You are a highly qualified AI, trained in language understanding and synthesis. "
+									   "Below are several press articles (Title and Content). "
+									   "All the articles belong to the same topic represented by the following keywords: {keywords}. "
+									   "Generate a summary of these articles, which must be related to the theme evoked by the keywords. "
+									   "The summary must be detailed and include the essential information from the articles.\n"
+									   "List of articles :\n"
+									   "```{article_list}```\n"
+									   "Summary :"
+									   )
+# keywords: list of keywords describing the topic
+# num_words: number of words the summary should contain
+# list of articles and their title
 
 FR_USER_GENERATE_TOPIC_LABEL_TITLE = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
 									  "Après utilisation d'un algorithme de topic modelling, un topic est représenté par les mots-clé suivants : \"\"\"{keywords}.\"\"\" "
