@@ -149,6 +149,7 @@ if __name__ == "__main__":
             top_n_docs=newsletter_params.getliteral("top_n_docs"),
             newsletter_title=title,
             summarizer_class=summarizer_class,
+            summary_mode=newsletter_params.get("summary_mode"),
             prompt_language=newsletter_params.get("prompt_language", "fr"),
             improve_topic_description=newsletter_params.getboolean("improve_topic_description", False)
         )
