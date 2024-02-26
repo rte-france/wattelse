@@ -34,7 +34,7 @@ def generate_newsletter(
     top_n_docs_mode: str = "cluster_probability",
     newsletter_title: str = "Newsletter",
     summarizer_class: Summarizer = AbstractiveSummarizer,
-    summary_mode: str = "article",
+    summary_mode: str = "document",
     prompt_language: str = "fr",
     improve_topic_description: bool = False,
 ) -> str:
