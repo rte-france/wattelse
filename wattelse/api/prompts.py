@@ -50,7 +50,7 @@ FR_USER_SUMMARY_MULTIPLE_DOCS = ("Vous êtes une IA hautement qualifiée, formé
 									   "Voici ci-dessous plusieurs articles de presse (Titre et Contenu). "
 									   "Tous les articles appartiennent au même thème représenté par les mots-clés suivants : {keywords}. "
 									   "Générez une synthèse de ces articles qui doit être en lien avec le thème évoqué par les mots-clés. "
-									   "La synthèse doit être détaillée et reprendre les informations essentielles des articles. "
+									   "La synthèse doit permettre de donner une vision d'ensemble du thème sans lire les articles. "
 									   "Ne pas commencer par 'Les articles présentent...' mais commencer directement la synthèse.\n"
 									   "Liste des articles :\n"
 									   "```{article_list}```\n"
