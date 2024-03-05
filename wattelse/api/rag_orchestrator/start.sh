@@ -4,10 +4,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Specify the relative path to the config file
-CONFIG_FILE="$SCRIPT_DIR/embedding_api.cfg"
+CONFIG_FILE="$SCRIPT_DIR/rag_orchestrator.cfg"
 
 # Use grep to extract config from the config file
 PORT=$(grep -Po '(?<!#)port=\K.*' "$CONFIG_FILE")
-CUDA_VISIBLE_DEVICES=$(grep -Po '(?<!#)cuda_visible_devices=\K.*' "$CONFIG_FILE")
 
-CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES uvicorn wattelse.api.embedding.fastapi_embedding:app --port=$PORT --reload
+uvicorn wattelse.api.rag_orchestrator.rag_orchestrator_api:app --port=$PORT --reload

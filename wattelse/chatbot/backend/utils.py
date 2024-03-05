@@ -53,14 +53,14 @@ def compute_bm25_score(query: str, bm25_model: BM25Plus):
 
 def make_docs_embedding(docs: str | List[str], embedding_api: EmbeddingAPI):
     """Embeds a list of docs using a SentenceTransformer model"""
-    return embedding_api.encode(docs, show_progress_bar=True)
+    return embedding_api.embed_query(docs, show_progress_bar=True)
 
 
 def compute_dense_embeddings_score(
     query: str, docs_embeddings: np.ndarray, embedding_api: EmbeddingAPI
 ):
     """Computes similarity score between a query and docs dense embeddings"""
-    query_embedding = embedding_api.encode(query)
+    query_embedding = embedding_api.embed_query(query)
     return cosine_similarity(query_embedding, docs_embeddings)[0]
 
 

@@ -33,7 +33,7 @@ logger.info("Tokenizer loaded")
 # Generation function
 
 def generate(input_text, max_new_tokens=1):
-    input_ids = tokenizer.encode(input_text, return_tensors="pt").to(device)
+    input_ids = tokenizer.embed_query(input_text, return_tensors="pt").to(device)
     generated_text = model.generate(
         input_ids,
         do_sample=True,

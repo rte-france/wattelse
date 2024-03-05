@@ -36,4 +36,4 @@ for file in files_list:
 	elif extension == "md":
 		parse_md(input_dir / Path(file), output_dir)
 	else:
-		logger.error("File type note currently supported")
+		logger.error("File type not currently supported")
