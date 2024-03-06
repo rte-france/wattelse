@@ -5,9 +5,10 @@
 
 import streamlit as st
 from loguru import logger
-
+import pandas as pd
 from wattelse.bertopic.app.data_utils import data_overview, choose_data
 from wattelse.bertopic.topic_metrics import get_coherence_value
+from wattelse.bertopic.app.train_utils import train_BERTopic_wrapper
 from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN,
     clean_dataset,
@@ -35,7 +36,6 @@ from wattelse.bertopic.app.app_utils import (
     initialize_default_parameters_keys,
     load_data_wrapper,
 )
-from wattelse.bertopic.app.train_utils import train_BERTopic_wrapper
 
 
 def select_data():
@@ -43,15 +43,25 @@ def select_data():
 
     choose_data(DATA_DIR, ["*.csv", "*.jsonl*"])
 
-    st.session_state["raw_df"] = (
-        load_data_wrapper(
-            f"{st.session_state['data_folder']}/{st.session_state['data_name']}"
-        )
-        .sort_values(by=TIMESTAMP_COLUMN, ascending=False)
-        .reset_index(drop=True)
-        .reset_index()
-    )
+    ########## Adjusting to handle multiple files selection ##########
+    if st.session_state["selected_files"]:
+        loaded_dfs = []
+        for file_path in st.session_state["selected_files"]:
+            
+            df = load_data_wrapper(file_path)
+            df.sort_values(by=TIMESTAMP_COLUMN, ascending=False, inplace=True)
+            loaded_dfs.append(df)
 
+        # Concatenate all loaded DataFrames if there's more than one, else just use the single loaded DataFrame
+        st.session_state["raw_df"] = pd.concat(loaded_dfs).reset_index(drop=True).reset_index() if len(loaded_dfs) > 1 else loaded_dfs[0].reset_index(drop=True).reset_index()
+        st.session_state
+
+    else:
+        st.error("Please select at least one file to proceed.")
+        st.stop()
+
+    ########## Remaining parts of the function do not need adjustments for multi-file logic ##########
+    
     # Filter text length parameter
     register_widget("min_text_length")
     st.number_input(
@@ -121,40 +131,52 @@ def select_data():
         )
         .reset_index(drop=True)
     )
+    
+    ########## Remove duplicates from timefiltered_df, just in case of overlapping documents throughout different files ##########
+    st.session_state["timefiltered_df"] = (st.session_state["timefiltered_df"].drop_duplicates(keep='first').reset_index(drop=True))
+    st.session_state["timefiltered_df"]["index"] = st.session_state["timefiltered_df"].index
     st.write(f"Found {len(st.session_state['timefiltered_df'])} documents.")
+    # print("DEBUG: ", st.session_state["timefiltered_df"].columns)
+
+
+
 
 
 def train_model():
     ### TRAIN MODEL ###
     if parameters_sidebar_clicked:
-        # Train
-        full_dataset = st.session_state["raw_df"]
-        indices = st.session_state["timefiltered_df"]["index"]
-        (
-            st.session_state["topic_model"],
-            st.session_state["topics"],
-            _,
-        ) = train_BERTopic_wrapper(
-            dataset=full_dataset,
-            indices=indices,
-            form_parameters=st.session_state["parameters"],
-            cache_base_name=st.session_state["data_name"]
-            if not st.session_state["split_by_paragraphs"]
-            else f'{st.session_state["data_name"]}_split_by_paragraphs',
-        )
-        st.session_state["topics_info"] = (
-            st.session_state["topic_model"].get_topic_info().iloc[1:]
-        )  # exclude -1 topic from topic list
+        if "timefiltered_df" in st.session_state and not st.session_state["timefiltered_df"].empty:
+            full_dataset = st.session_state["raw_df"]
+            indices = st.session_state["timefiltered_df"]["index"]
+                        
+            (
+                st.session_state["topic_model"],
+                st.session_state["topics"],
+                _,
+            ) = train_BERTopic_wrapper(
+                dataset=full_dataset,
+                indices=indices,
+                form_parameters=st.session_state["parameters"],
+                cache_base_name=st.session_state["data_name"]
+                if not st.session_state["split_by_paragraphs"]
+                else f'{st.session_state["data_name"]}_split_by_paragraphs',
+            )
+            
+            st.session_state["topics_info"] = (
+                st.session_state["topic_model"].get_topic_info().iloc[1:]
+            )  # exclude -1 topic from topic list
 
-        # Computes coherence value
-        coherence_score_type = "c_npmi"
-        coherence = get_coherence_value(
-            st.session_state["topic_model"],
-            st.session_state["topics"],
-            st.session_state["timefiltered_df"][TEXT_COLUMN],
-            coherence_score_type
-        )
-        logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
+            # Computes coherence value
+            coherence_score_type = "c_npmi"
+            coherence = get_coherence_value(
+                st.session_state["topic_model"],
+                st.session_state["topics"],
+                st.session_state["timefiltered_df"][TEXT_COLUMN],
+                coherence_score_type
+            )
+            logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
+        else:
+            st.error("No data available for training. Please ensure data is correctly loaded.")
 
 
 def overall_results():
