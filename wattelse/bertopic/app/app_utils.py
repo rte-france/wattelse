@@ -79,7 +79,7 @@ def hdbscan_options():
         "hdbscan_min_cluster_size": st.number_input("min_cluster_size", min_value=1, key="hdbscan_min_cluster_size"),
         "hdbscan_min_samples": st.number_input("min_samples", min_value=1, key="hdbscan_min_samples"),
         "hdbscan_metric": st.selectbox("metric", ["euclidean"], key="hdbscan_metric"),
-        "hdbscan_cluster_selection_method": st.selectbox("cluster_selectinumber_inputon_method", ["eom"], key="hdbscan_clnumber_inputuster_selection_method"),
+        "hdbscan_cluster_selection_method": st.selectbox("cluster_selectinumber_inputon_method", ["eom"], key="hdbscan_cluster_selection_method"),
         "hdbscan_cluster_selection_epsilon": st.number_input("cluster_selection_epsilon", min_value=0.0, key="hdbscan_cluster_selection_epsilon", format="%.2f", step=0.01), ######## NEW ########
         "hdbscan_max_cluster_size": st.number_input("max_cluster_size", min_value=0, key="hdbscan_max_cluster_size"), ######## NEW ########
         "hdbscan_allow_single_cluster": st.toggle("allow_single_cluster", key="hdbscan_allow_single_cluster") ######## NEW ########
