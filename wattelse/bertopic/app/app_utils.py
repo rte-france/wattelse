@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import streamlit as st
+from pathlib import Path
+
 
 from wattelse.bertopic.app.state_utils import register_widget
 from wattelse.bertopic.utils import (TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN,
@@ -21,9 +23,13 @@ DEFAULT_PARAMETERS = {
     "hdbscan_min_samples": 10,
     "hdbscan_metric": "euclidean",
     "hdbscan_cluster_selection_method": "eom",
+    "hdbscan_cluster_selection_epsilon": 0.0, ######## NEW ########
+    "hdbscan_max_cluster_size": 0, ######## NEW ########
+    "hdbscan_allow_single_cluster": False, ######## NEW ########
     "countvectorizer_stop_words": "french",
     "countvectorizer_ngram_range": (1, 1),
     "ctfidf_reduce_frequent_words": True,
+    "ctfidf_bm25_weighting":False
 }
 
 def initialize_default_parameters_keys():
@@ -34,7 +40,7 @@ def initialize_default_parameters_keys():
 
 
 @st.cache_data
-def load_data_wrapper(data_name: str):
+def load_data_wrapper(data_name: Path):
     return load_data(data_name)
 
 
@@ -67,7 +73,10 @@ def hdbscan_options():
         "hdbscan_min_cluster_size": st.number_input("min_cluster_size", min_value=1, key="hdbscan_min_cluster_size"),
         "hdbscan_min_samples": st.number_input("min_samples", min_value=1, key="hdbscan_min_samples"),
         "hdbscan_metric": st.selectbox("metric", ["euclidean"], key="hdbscan_metric"),
-        "hdbscan_cluster_selection_method": st.selectbox("cluster_selection_method", ["eom"], key="hdbscan_cluster_selection_method"),
+        "hdbscan_cluster_selection_method": st.selectbox("cluster_selectinumber_inputon_method", ["eom"], key="hdbscan_clnumber_inputuster_selection_method"),
+        "hdbscan_cluster_selection_epsilon": st.number_input("cluster_selection_epsilon", min_value=0.0, key="hdbscan_cluster_selection_epsilon", format="%.2f", step=0.01), ######## NEW ########
+        "hdbscan_max_cluster_size": st.number_input("max_cluster_size", min_value=0, key="hdbscan_max_cluster_size"), ######## NEW ########
+        "hdbscan_allow_single_cluster": st.toggle("allow_single_cluster", key="hdbscan_allow_single_cluster") ######## NEW ########
     }
 
 
@@ -83,7 +92,8 @@ def countvectorizer_options():
 
 def ctfidf_options():
     return {
-        "ctfidf_reduce_frequent_words": st.toggle("reduce_frequent_words", key="ctfidf_reduce_frequent_words")
+        "ctfidf_reduce_frequent_words": st.toggle("reduce_frequent_words", key="ctfidf_reduce_frequent_words"),
+        "ctfidf_bm25_weighting" : st.toggle("bm25_weighting", key="ctfidf_bm25_weighting"), ######## NEW ########
     }
 
 

@@ -41,15 +41,40 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
+
 def load_data(full_data_name: Path):
     logger.info(f"Loading data from: {full_data_name}")
-    df = file_to_pd(full_data_name)
+    # Convert the Path object to a string before passing to file_to_pd
+    df = file_to_pd(str(full_data_name), full_data_name.parent)
+    # Convert timestamp column
+    df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
+    return df.drop_duplicates(subset=["title"], keep="first")
+
+
+def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
+    """Read data in various format and convert it to a DataFrame."""
+    data_path = base_dir / file_name if base_dir else Path(file_name)
+    data_path_str = str(data_path)  # Ensure the path is converted to string for pandas
+    if ".csv" in file_name:
+        return pd.read_csv(data_path_str)
+    elif ".jsonl" in file_name or ".jsonlines" in file_name:
+        return pd.read_json(data_path_str, lines=True)
+    elif ".jsonl.gz" in file_name or ".jsonlines.gz" in file_name:
+        with gzip.open(data_path_str, 'rt') as f_in:  # Open as text for JSON parsing
+            return pd.read_json(f_in, lines=True)
+
+
+'''
+def load_data(full_data_name: Path):
+    # Convert the Path object to a string if necessary
+    logger.info(f"Loading data from: {str(full_data_name)}")
+    df = file_to_pd(full_data_name)  # Ensure file_to_pd can handle a Path object, or convert it to a string
+    
     # convert timestamp column
     df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
     return df.drop_duplicates(
                 subset=["title"], keep="first", inplace=False
             )
-
 
 def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
     """Read data in various format and convert in to a DataFrame"""
@@ -61,7 +86,7 @@ def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
     elif ".jsonl.gz" in file_name or ".jsonlines.gz" in file_name:
         with gzip.open(file_name) as f_in:
             return pd.read_json(f_in, lines=True)
-
+'''
 
 def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
     """Clean dataset. So far, only removes short text."""

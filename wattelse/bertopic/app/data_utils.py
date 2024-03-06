@@ -28,6 +28,8 @@ def data_overview(df: pd.DataFrame):
         plot_docs_reparition_over_time(df, freq)
 
 
+
+'''
 def choose_data(base_dir: Path, filters: List[str]):
     data_folders = sorted(
         set(
@@ -73,6 +75,68 @@ def choose_data(base_dir: Path, filters: List[str]):
     # Stop the app as long as no data is selected
     if st.session_state["data_name"] == "None":
         st.stop()
+'''
+
+def choose_data(base_dir: Path, filters: List[str]):
+    data_folders = sorted(
+        set(
+            f.parent
+            for f in itertools.chain.from_iterable(
+                [list(base_dir.glob(f"**/{filter}")) for filter in filters]
+            )
+        )
+    )
+    
+    if "data_folder" not in st.session_state:
+        st.session_state["data_folder"] = data_folders[0] if data_folders else base_dir
+        
+    
+    data_options = ["None"] + sorted(
+        [
+            p.name
+            for p in itertools.chain.from_iterable(
+                [
+                    list(st.session_state["data_folder"].glob(f"{filter}"))
+                    for filter in filters
+                ]
+            )
+        ]
+    )
+
+    if "data_name" not in st.session_state:
+        st.session_state["data_name"] = data_options[0]
+
+    if "selected_files" not in st.session_state:
+        st.session_state["selected_files"] = []
+
+    col1, col2 = st.columns([0.4, 0.6])
+    with col1:
+        folder_options = [folder.name for folder in data_folders]
+        selected_folder_index = st.selectbox("Base folder", index=0, options=folder_options)
+        selected_folder = data_folders[folder_options.index(selected_folder_index)]
+        st.session_state["data_folder"] = selected_folder
+
+    with col2:
+        st.write("Select data to continue")
+        data_files = sorted(
+            itertools.chain.from_iterable(
+                [list(selected_folder.glob(f"{filter}")) for filter in filters]
+            ),
+            key=lambda x: x.name
+        )
+        for file in data_files:
+            checkbox_key = f"file-{file.name}"
+            if st.checkbox(file.name, key=checkbox_key):
+                if file not in st.session_state["selected_files"]:
+                    st.session_state["selected_files"].append(file)
+            else:
+                if file in st.session_state["selected_files"]:
+                    st.session_state["selected_files"].remove(file)
+
+    if not st.session_state["selected_files"]:
+        st.stop()
+
+
 
 
 def reset_all():
