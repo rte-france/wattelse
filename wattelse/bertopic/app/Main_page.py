@@ -2,7 +2,7 @@ import streamlit as st
 from loguru import logger
 import pandas as pd
 from wattelse.bertopic.app.data_utils import data_overview, choose_data
-from wattelse.bertopic.topic_metrics import get_coherence_value
+from wattelse.bertopic.topic_metrics import get_coherence_value, get_diversity_value
 from wattelse.bertopic.app.train_utils import train_BERTopic_wrapper
 from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN,
@@ -169,7 +169,14 @@ def train_model():
                 st.session_state["timefiltered_df"][TEXT_COLUMN],
                 coherence_score_type
             )
+            diversity_score_type = "puw"
+            diversity = get_diversity_value(st.session_state["topic_model"],
+                                            st.session_state["topics"],
+                                            st.session_state["timefiltered_df"][TEXT_COLUMN],
+                                            diversity_score_type="puw")
+            
             logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
+            logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
         else:
             st.error("No data available for training. Please ensure data is correctly loaded.")
 
@@ -234,14 +241,20 @@ def dynamic_topic_modelling():
 ## MAIN PAGE
 ################################################
 
+
+
 # Wide layout
 st.set_page_config(page_title="Wattelse® topic", layout="wide")
+
+
 
 # Restore widget state
 restore_widget_state()
 
+
 ### TITLE ###
 st.title("Topic modelling")
+
 
 # Initialize default parameters
 initialize_default_parameters_keys()
@@ -287,17 +300,23 @@ with st.sidebar.form("parameters_sidebar"):
     )
 
 
+
 # Load selected DataFrame
 select_data()
 
 # Data overview
 data_overview(st.session_state["timefiltered_df"])
 
+
 # Train model
 train_model()
+
 
 # Overall results
 overall_results()
 
+
 # Dynamic topic modelling
 dynamic_topic_modelling()
+
+
