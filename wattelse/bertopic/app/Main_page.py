@@ -10,6 +10,9 @@ from wattelse.bertopic.app.data_utils import data_overview, choose_data
 from wattelse.bertopic.topic_metrics import get_coherence_value, get_diversity_value
 from wattelse.bertopic.app.train_utils import train_BERTopic_wrapper
 import datetime
+from bertopic import BERTopic
+from typing import List
+import plotly.graph_objects as go
 
 from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN,
@@ -240,6 +243,54 @@ def dynamic_topic_modelling():
                         st.session_state["topic_model"],
                     )
                 )
+                
+
+
+
+def create_treemap(topic_info_df):
+    """
+    Creates a treemap visualization of topics and their corresponding documents.
+
+    Parameters:
+    - topic_info_df: DataFrame with columns ['topic', 'number_of_documents', 'list_of_documents'].
+    """
+
+    labels = []  # Stores labels for topics and documents
+    parents = []  # Stores the parent of each node (empty string for root nodes)
+    values = []  # Stores values to control the size of each node
+
+    for _, row in topic_info_df.iterrows():
+        topic_label = f"{row['topic']} ({row['number_of_documents']})"
+        labels.append(topic_label)
+        parents.append("")
+        values.append(row['number_of_documents'])
+
+        for doc in row['list_of_documents']:
+            labels.append(doc[:100])  # Truncate long documents for readability
+            parents.append(topic_label)
+            values.append(1)  # Assigning equal value to all documents for uniform size
+
+    fig = go.Figure(go.Treemap(
+        labels=labels,
+        parents=parents,
+        values=values,
+        textinfo="label+value",
+        marker=dict(colors=[],
+        line=dict(width=0),
+        pad=dict(t=0)),
+        # Here you can adjust the font size and family
+        textfont=dict(
+            size=20,  # Adjust the font size as needed
+            family="Arial"  # Choose your desired font family
+        )
+    ))
+
+    fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
+    return fig
+
+
+
+
 
 
 def generate_model_name(base_name="topic_model"):
@@ -272,6 +323,37 @@ def save_model_interface():
         else:
             st.error("No model available to save. Please train a model first.")
 
+
+
+def create_topic_info_dataframe(topic_model: BERTopic, docs: List[str], topic_assignments: List[int]) -> pd.DataFrame:
+    """
+    Create a DataFrame containing topics, the number of documents per topic, and the list of documents for each topic.
+
+    Parameters:
+    - topic_model: The BERTopic model from which topics are derived.
+    - docs (List[str]): List of all documents.
+    - topic_assignments (List[int]): List of topic assignments for each document.
+
+    Returns:
+    - DataFrame with columns ['topic', 'number_of_documents', 'list_of_documents'].
+    """
+    # Initialize the DataFrame
+    topic_info = pd.DataFrame({"Document": docs, "Topic": topic_assignments})
+    
+    # Group by topic and aggregate information
+    topic_info_agg = topic_info.groupby("Topic").agg({
+        "Document": ["count", lambda x: list(x)]
+    }).reset_index()
+
+    # Rename columns for clarity
+    topic_info_agg.columns = ["topic", "number_of_documents", "list_of_documents"]
+
+    # Replace topic numbers with actual topic words, handling outliers if necessary
+    topic_info_agg["topic"] = topic_info_agg["topic"].apply(
+        lambda x: ", ".join([word for word, _ in topic_model.get_topic(x)]) if x != -1 else "Outlier"
+    )
+
+    return topic_info_agg
 
 
 
@@ -361,4 +443,21 @@ dynamic_topic_modelling()
 
 
 
+#### FOR TREEMAP VISUALIZATION
+
+# Extracting documents and their corresponding topic assignments
+docs = st.session_state['timefiltered_df'][TEXT_COLUMN].tolist()
+topic_assignments = st.session_state['topics']
+
+# Create the topic info DataFrame
+topic_info_df = create_topic_info_dataframe(st.session_state["topic_model"], docs, topic_assignments)
+
+# Update session state with the DataFrame for later use
+st.session_state["topic_info_df"] = topic_info_df
+    
+
+# Wrap the treemap in an expander
+with st.expander("View Treemap Visualization", expanded=False):
+    treemap_fig = create_treemap(st.session_state['topic_info_df'])
+    st.plotly_chart(treemap_fig, use_container_width=True)
 

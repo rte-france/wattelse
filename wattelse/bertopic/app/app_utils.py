@@ -104,6 +104,10 @@ def ctfidf_options():
 
 
 @st.cache_data
+def plot_topic_treemap(form_parameters, _topic_model, width=700):
+    pass
+
+@st.cache_data
 def plot_2d_topics(form_parameters, _topic_model, width=700):
     return _topic_model.visualize_topics(width=width)
 

@@ -4,6 +4,8 @@ from bertopic import BERTopic
 from typing import List, Optional, Union
 
 
+from wattelse.bertopic.app.state_utils import restore_widget_state
+
 def list_saved_models(saved_models_dir: Union[str, Path]) -> List[Path]:
     """
     Lists all saved models in the given directory.
@@ -135,6 +137,8 @@ def on_min_similarity_change():
 # Page Configuration
 st.set_page_config(page_title="Merge BERTopic Models", layout="wide")
 
+# Restore widget state
+restore_widget_state()
 
 # Initialize session state variables on first run
 if 'app_started' not in st.session_state:
