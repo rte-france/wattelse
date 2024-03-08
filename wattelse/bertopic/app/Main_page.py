@@ -9,6 +9,8 @@ import pandas as pd
 from wattelse.bertopic.app.data_utils import data_overview, choose_data
 from wattelse.bertopic.topic_metrics import get_coherence_value, get_diversity_value
 from wattelse.bertopic.app.train_utils import train_BERTopic_wrapper
+import datetime
+
 from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN,
     clean_dataset,
@@ -54,8 +56,6 @@ def select_data():
 
         # Concatenate all loaded DataFrames if there's more than one, else just use the single loaded DataFrame
         st.session_state["raw_df"] = pd.concat(loaded_dfs).reset_index(drop=True).reset_index() if len(loaded_dfs) > 1 else loaded_dfs[0].reset_index(drop=True).reset_index()
-        st.session_state
-
     else:
         st.error("Please select at least one file to proceed.")
         st.stop()
@@ -242,6 +242,41 @@ def dynamic_topic_modelling():
                 )
 
 
+def generate_model_name(base_name="topic_model"):
+    """
+    Generates a dynamic model name with the current date and time.
+    If a base name is provided, it uses that instead of the default.
+    """
+    current_datetime = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_name = f"{base_name}_{current_datetime}"
+    return model_name
+
+def save_model_interface():
+    st.write("## Save Model")
+
+    # Optional text box for custom model name
+    base_model_name = st.text_input("Enter a name for the model (optional):")
+
+    # Button to save the model
+    if st.button("Save Model"):
+        if "topic_model" in st.session_state:
+            dynamic_model_name = generate_model_name(base_model_name if base_model_name else "topic_model")
+            model_save_path = f"./saved_models/{dynamic_model_name}"
+            
+            # Assuming the saving function and success/error messages are handled here
+            try:
+                st.session_state['topic_model'].save(model_save_path, serialization="safetensors", save_ctfidf=True, save_embedding_model=True)
+                st.success(f"Model saved successfully as {model_save_path}")
+            except Exception as e:
+                st.error(f"Failed to save the model: {e}")
+        else:
+            st.error("No model available to save. Please train a model first.")
+
+
+
+
+
+
 ################################################
 ## MAIN PAGE
 ################################################
@@ -312,16 +347,18 @@ select_data()
 # Data overview
 data_overview(st.session_state["timefiltered_df"])
 
-
 # Train model
 train_model()
 
+# Save the model button
+save_model_interface()
 
 # Overall results
 overall_results()
 
-
 # Dynamic topic modelling
 dynamic_topic_modelling()
+
+
 
 
