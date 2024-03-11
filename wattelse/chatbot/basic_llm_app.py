@@ -16,13 +16,11 @@ from wattelse.chatbot.app import (
 )
 from wattelse.chatbot.chat_history import ChatHistory
 from wattelse.chatbot import (
-    FASTCHAT_LLM,
-    OLLAMA_LLM,
-    CHATGPT_LLM,
     retriever_config,
     generator_config,
     MAX_TOKENS,
 )
+from wattelse.chatbot.backend import FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM
 from wattelse.api.prompts import FR_USER_BASE_QUERY, FR_USER_BASE_MULTITURN_QUERY
 
 watch(retriever_config, generator_config, callback=on_options_change)

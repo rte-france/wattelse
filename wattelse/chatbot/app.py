@@ -16,15 +16,13 @@ from wattelse.chatbot import (
     RETRIEVAL_BM25,
     RETRIEVAL_HYBRID,
     RETRIEVAL_HYBRID_RERANKER,
-    FASTCHAT_LLM,
-    OLLAMA_LLM,
-    CHATGPT_LLM,
     retriever_config,
     generator_config,
     DATA_DIR,
     USER_MODE,
     USER_NAME,
 )
+from wattelse.chatbot.backend import FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM
 from wattelse.chatbot.indexer import index_files
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.chatbot.utils import highlight_answer

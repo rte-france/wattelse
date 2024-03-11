@@ -86,16 +86,24 @@ class RAGOrchestratorClient:
 
     def query_rag(self, query: str) -> str:
         """Query the RAG and returns an answer"""
-        # TODO: handle memory parameter
+        # TODO: handle additional parameters to temporarily change the default config: number of retrieved docs & memory
         logger.debug(f"Question: {query}")
-        response = requests.get(url=self.url + ENDPOINT_QUERY_RAG,
-                                data=json.dumps({"query": query, "session_id": self.session_id}))
-        if response.status_code == 200:
-            logger.debug(f"Response: {response.json()}")
-            return response.json()
+        stream = True
+        if not stream:
+            response = requests.get(url=self.url + ENDPOINT_QUERY_RAG,
+                                    data=json.dumps({"query": query, "session_id": self.session_id}))
+            if response.status_code == 200:
+                logger.debug(f"Response: {response.json()}")
+                return response.json()
+            else:
+                logger.error(f"Error: {response.status_code, response.text}")
+                raise RAGAPIError(f"Error: {response.status_code, response.text}")
         else:
-            logger.error(f"Error: {response.status_code, response.text}")
-            raise RAGAPIError(f"Error: {response.status_code, response.text}")
+            logger.debug("Response:")
+            with requests.get(url=self.url + ENDPOINT_QUERY_RAG,
+                              data=json.dumps({"query": query, "session_id": self.session_id})) as r:
+                for chunk in r.iter_lines():
+                    print(chunk)
 
     def get_current_sessions(self) -> str:
         response = requests.get(url=self.url + ENDPOINT_CURRENT_SESSIONS)

@@ -17,18 +17,20 @@ def get_group_for_user(login: str) -> str:
     return "rh"
 
 
-def get_document_collections_for_group(group_id: str) -> List[str]:
+def get_document_collection_for_group(group_id: str) -> str:
+    """We assume that a group has access to one and only one document collection"""
     if group_id == "admin":
-        return ["rh", "maintenance"]
+        return "admin"
     elif group_id == "rh":
-        return ["drh"]
+        return "drh"
     elif group_id == "maintenance":
-        return ["maintenance"]
-    return ["drh"]
+        return "maintenance"
+    return "drh"
 
 
-def get_document_collections_for_user(login: str) -> List[str]:
-    return get_document_collections_for_group(get_group_for_user(login))
+def get_document_collection_for_user(login: str) -> str:
+    """We assume that a user has access to one and only one document"""
+    return get_document_collection_for_group(get_group_for_user(login))
 
 
 def get_all_document_collections() -> List[str]:

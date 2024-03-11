@@ -8,10 +8,15 @@ from langchain_core.documents import Document
 from loguru import logger
 
 from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
-from wattelse.chatbot.backend.user_management.user_manager import get_all_document_collections
+from wattelse.chatbot.backend.user_management.user_manager import get_all_document_collections, \
+    get_document_collection_for_user
 from wattelse.common import BASE_DATA_DIR
 
-DATABASE_PERSISTENCE_PATH = BASE_DATA_DIR / "rag_database.db"
+DATABASE_PERSISTENCE_PATH = BASE_DATA_DIR / "rag_database"
+
+
+class DataManagementError(Exception):
+    pass
 
 
 def initialize_database():
@@ -33,8 +38,10 @@ def get_collections():
     logger.debug(f"Collections: {[(col.name, col.id) for col in collections]}")
     return collections
 
+
 def format_docs(docs: Document) -> str:
     return "\n\n".join(doc.page_content for doc in docs)
+
 
 class DocumentCollection:
     def __init__(self, collection_name: str, embedding_function: Optional[Embeddings] = EmbeddingAPI()):
@@ -43,14 +50,7 @@ class DocumentCollection:
         self.client = chromadb.PersistentClient(
             str(DATABASE_PERSISTENCE_PATH)
         )
-        # self.collection and self.db_client are two ways to access the DB,
-        # self.collection using native Chroma DB functions,
-        # self.db_client using the langchain wrapper
-        # Depending on the usage, one may be more convenient than the other
-        #self.collection = self.client.get_or_create_collection(name=collection_name,
-        #                                                       embedding_function=embedding_function)
         self.collection = self.get_db_client()
-
 
     def get_db_client(self) -> Chroma:
         """
@@ -62,13 +62,6 @@ class DocumentCollection:
             embedding_function=self.embedding_function
         )
         return langchain_chroma
-
-    def delete_documents(self, documents_titles: List[str]):
-        """
-        Delete all documents specified in `documents_titles` from the collection specified by `collection_name`
-        """
-        # TODO: à implémenter
-        return
 
     def add_texts(self, texts: List[str], metadatas: Optional[List[Dict]] = None):
         """
@@ -83,7 +76,6 @@ class DocumentCollection:
         """
         self.collection.add_documents(documents)
 
-
     def get_ids(self, file_name: str) -> List[str]:
         """Return all the chunks of the collection matching the file name passed as parameter"""
         data = self.collection.get(where={"file_name": file_name}, include=["metadatas"])
@@ -93,3 +85,11 @@ class DocumentCollection:
         """Return all file names in the database"""
         return len(self.get_ids(file_name)) > 0
 
+
+def load_document_collection(login) -> DocumentCollection:
+    """Retrieves the document collection the user can access to"""
+    user_collections_name = get_document_collection_for_user(login)
+    logger.debug(f"DocumentCollections for user {login}: {user_collections_name}")
+    if not user_collections_name:
+        raise DataManagementError(f"No document collection for user {login}")
+    return DocumentCollection(user_collections_name)

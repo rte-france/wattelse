@@ -1,21 +1,18 @@
 import configparser
 from pathlib import Path
 import requests
-import json
 from loguru import logger
-
 
 
 class OllamaAPI:
     def __init__(self):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent / "ollama_api.cfg")
-        self.port = config.get("OLLAMA_API_CONFIG", "port")
+        self.port = config.get("API_CONFIG", "port")
         self.url = f"http://localhost:{self.port}/api/generate"
-        self.model_name = config.get("OLLAMA_API_CONFIG", "model_name")
-        self.num_gpu = config.getint("OLLAMA_API_CONFIG", "num_gpu")
-        self.temperature = config.getfloat("OLLAMA_API_CONFIG", "temperature")
-
+        self.model_name = config.get("API_CONFIG", "model_name")
+        self.num_gpu = config.getint("API_CONFIG", "num_gpu")
+        self.temperature = config.getfloat("API_CONFIG", "temperature")
 
     def get_api_model_name(self) -> str:
         """
@@ -24,12 +21,12 @@ class OllamaAPI:
         return self.model_name
 
     def generate(
-        self,
-        user_prompt: str,
-        system_prompt: str = None,
-        temperature: float = None,
-        max_tokens: int = 512,
-        stream: bool = False,
+            self,
+            user_prompt: str,
+            system_prompt: str = None,
+            temperature: float = None,
+            max_tokens: int = 512,
+            stream: bool = False,
     ):
         """Uses the remote model (API) to generate the answer.
 
@@ -67,5 +64,3 @@ class OllamaAPI:
             msg = f"Exception occurred with API call to {self.url}. Error: {e}"
             logger.error(msg)
             return msg
-
-

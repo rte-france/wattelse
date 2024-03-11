@@ -27,11 +27,6 @@ RETRIEVAL_BM25 = "bm25"
 RETRIEVAL_HYBRID = "hybrid"
 RETRIEVAL_HYBRID_RERANKER = "hybrid+reranker"
 
-# LLM API
-FASTCHAT_LLM = "Fastchat LLM"
-OLLAMA_LLM = "Ollama LLM"
-CHATGPT_LLM = "ChatGPT"
-
 # Config for retriever and generator
 config = configparser.ConfigParser(converters={"literal": parse_literal})
 config.read(Path(__file__).parent / "config.cfg")

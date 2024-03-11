@@ -12,11 +12,9 @@ from wattelse.chatbot import (
     RETRIEVAL_HYBRID_RERANKER,
     RETRIEVAL_BM25,
     RETRIEVAL_HYBRID,
-    FASTCHAT_LLM,
-    OLLAMA_LLM,
-    CHATGPT_LLM,
     TEMPERATURE,
 )
+from wattelse.chatbot.backend import FASTCHAT_LLM, OLLAMA_LLM, CHATGPT_LLM
 from wattelse.chatbot.backend.utils import (
     extract_n_most_relevant_extracts,
     generate_RAG_prompt,
