@@ -59,7 +59,7 @@ class RAGOrchestratorClient:
 
     def select_documents_by_name(self, doc_filenames: List[str] | None = None):
         """Select a subset of documents in the collection the user has access to, based on the provided titles.
-        If the list of titles is empty or None, the full collection of documents is selected"""
+        If the list of titles is empty or None, the full collection of documents is selected for the RAG"""
         response = requests.post(url=f"{self.url}{ENDPOINT_SELECT_DOCS}/{self.session_id}",
                                  data=json.dumps(doc_filenames))
         if response.status_code == 200:
@@ -68,7 +68,9 @@ class RAGOrchestratorClient:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
-    def select_documents_by_keywords(self, doc_titles: List[str] | None = None):
+    def select_documents_by_keywords(self, keywords: List[str] | None = None):
+        """Select a subset of documents in the collection the user has access to, based on the provided keywords.
+        If the list of keywords is empty or None, the full collection of documents is selected for the RAG"""
         # TODO: not implemented yet
         return "Not implemented yet"
 
@@ -122,14 +124,19 @@ def main():
     rag_client.select_documents_by_name([docs[1]])
 
     # query rag based on selected document collection
-    rag_client.query_rag("Quoi de neuf, doc?")
+    rag_client.query_rag("Hello, ça va?")
     rag_client.query_rag("Y'a une prime pour le télétravail?")
 
     # delete doc
     rag_client.remove_documents([docs[0]])
 
+    # create one client per user
+    rag_client2 = RAGOrchestratorClient("bob")
+    rag_client2.upload_files([files[0]])
+    rag_client2.query_rag("Y'a une prime pour le télétravail?")
+
     # current sessions
-    rag_client.get_current_sessions()
+    rag_client2.get_current_sessions()
 
 if __name__ == "__main__":
     main()

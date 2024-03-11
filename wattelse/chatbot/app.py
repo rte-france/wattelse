@@ -127,9 +127,9 @@ def generate_answer(query: str):
         st.session_state["relevant_extracts"],
         st.session_state["relevant_extracts_similarity"],
         streaming_answer,
-    ) = st.session_state["backend"].query_rag(
+    ) = st.session_state["backend"].query_oracle(
         query,
-        st.session_state["chat_history"].get_history(),
+        st.session_state["chat_history"].get_recent_history(),
         **retriever_config,
         **generator_config,
     )

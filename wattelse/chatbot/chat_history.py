@@ -1,30 +1,38 @@
 import datetime
 import json
 
+from pathlib import Path
 from tinydb import TinyDB, Query
-from tinydb.storages import MemoryStorage
+from tinydb.storages import MemoryStorage, JSONStorage
+from tinydb_serialization import SerializationMiddleware
+from tinydb_serialization.serializers import DateTimeSerializer
 
 DEFAULT_MEMORY_DELAY = 2  # in minutes
 
 class ChatHistory:
 
-    def __init__(self):
-        self.db_table = ChatHistory.initialize_db()
+    def __init__(self, json_filepath: Path=None):
+        self.db_table = ChatHistory.initialize_db(json_filepath)
 
     @classmethod
-    def initialize_db(cls):
+    def initialize_db(cls, json_filepath: Path=None):
         # in memory small DB for handling messages
-        db = TinyDB(storage=MemoryStorage)
+        if not json_filepath:
+            db = TinyDB(storage=MemoryStorage)
+        else:
+            serialization = SerializationMiddleware(JSONStorage)
+            serialization.register_serializer(DateTimeSerializer(), 'TinyDate')
+            db = TinyDB(json_filepath, storage=serialization, indent=4, create_dirs=True)
         table = db.table("messages")
         return table
 
 
-    def get_history(self):
+    def get_recent_history(self):
         """Return the history of the conversation"""
         context = self.get_recent_context()
         history = ""
         for entry in context:
-            history += "Utilisateur : {query}\nRéponse : {response}\n".format(query=entry["query"], response=entry["response"])
+            history += f"Utilisateur : {entry['query']}\nRéponse : {entry['response']}\n"
         return history
 
 

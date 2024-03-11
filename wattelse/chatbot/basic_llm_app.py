@@ -46,7 +46,7 @@ def generate_assistant_response(query):
         # Query the backend
         stream_response = st.session_state["backend"].simple_query(
             query,
-            st.session_state["chat_history"].get_history(),
+            st.session_state["chat_history"].get_recent_history(),
             **generator_config,
         )
 

@@ -12,8 +12,8 @@ from pydantic import BaseModel
 from timeloop import Timeloop
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, ENDPOINT_SELECT_DOCS, \
-    ENDPOINT_QUERY_RAG, ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS
-from wattelse.api.rag_orchestrator.rag_backend import RAGBackEnd
+    ENDPOINT_QUERY_RAG, ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, ENDPOINT_CHAT_HISTORY
+from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 from wattelse.chatbot import (
     retriever_config,
     generator_config, )
@@ -40,10 +40,6 @@ class User(BaseModel):
     login: str
 
 
-class Session(BaseModel):
-    session_id: str
-
-
 class RAGQuery(BaseModel):
     query: str
     session_id: str
@@ -51,6 +47,7 @@ class RAGQuery(BaseModel):
 
 @app.get(ENDPOINT_CHECK_SERVICE)
 def home():
+    """Returns the status of the service."""
     return {"Status": "OK"}
 
 
@@ -74,6 +71,7 @@ def current_sessions() -> str:
 
 @app.post(ENDPOINT_UPLOAD_DOCS + "/{session_id}")
 def upload(session_id: str, files: List[UploadFile] = File(...)):
+    """Upload a list of documents into a document collection"""
     # get current document collection
     collection = RAG_sessions[session_id].document_collection
     collection_name = collection.collection_name
@@ -105,7 +103,7 @@ def select_docs(session_id: str, doc_file_names: List[str] | None):
 
 
 @app.post(ENDPOINT_REMOVE_DOCS + "/{session_id}")
-def remove_docs(session_id: str, doc_file_names: List[str]):
+def remove_docs(session_id: str, doc_file_names: List[str]) -> Dict[str, str]:
     """Remove the documents from raw storage and vector database"""
     RAG_sessions[session_id].remove_docs(doc_file_names)
     update_session_usage(session_id)
@@ -113,10 +111,20 @@ def remove_docs(session_id: str, doc_file_names: List[str]):
 
 
 @app.get(ENDPOINT_QUERY_RAG)
-def query_rag(rag_query: RAGQuery):
+def query_rag(rag_query: RAGQuery) -> str:
+    """Query the RAG and returns the answer and associated sources"""
     logger.debug(f"Received query: {rag_query.query}")
     update_session_usage(rag_query.session_id)
+    # TODO: stream response, cf https://www.vidavolta.io/streaming-with-fastapi/
     return RAG_sessions[rag_query.session_id].query_rag(rag_query.query)
+
+
+@app.get(ENDPOINT_CHAT_HISTORY + "/{login}")
+def get_chat_history(login: str) -> str:
+    """Returns the chat history associated to a user"""
+    #TODO: à implémenter
+    logger.debug(f"Received")
+    return "Not implemented yet"
 
 
 def update_session_usage(session_id: str):
