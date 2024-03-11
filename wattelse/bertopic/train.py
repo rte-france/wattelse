@@ -165,7 +165,7 @@ def train_BERTopic(
         full_dataset[column][indices], embeddings[indices]
     )
 
-    return topic_model, topics, probs
+    return topic_model, topics, probs, embeddings[indices]
 
 
 if __name__ == "__main__":

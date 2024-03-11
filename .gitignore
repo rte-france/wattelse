@@ -140,3 +140,6 @@ postman
 .dvc/
 
 **/Main_page_old.py
+**/Main_page_copy.py
+**/wattelse.egg-info/
+**/saved_models/
