@@ -167,3 +167,4 @@ def check_if_session_exists(session_id: str):
 
 # to run the API (reload each time the python is changed)
 # uvicorn rag_orchestrator_api:app --reload
+tl.start(block=False)
