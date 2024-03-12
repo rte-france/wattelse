@@ -94,13 +94,14 @@ class RAGOrchestratorClient:
         """Query the RAG and returns an answer"""
         # TODO: handle additional parameters to temporarily change the default config: number of retrieved docs & memory
         logger.debug(f"Question: {query}")
-        stream = True
+        stream = False
         if not stream:
             response = requests.get(url=self.url + ENDPOINT_QUERY_RAG,
                                     data=json.dumps({"query": query, "session_id": self.session_id}))
             if response.status_code == 200:
                 logger.debug(f"Response: {response.json()}")
-                return response.json()
+                # TODO: check output format
+                return response.text
             else:
                 logger.error(f"Error: {response.status_code, response.text}")
                 raise RAGAPIError(f"Error: {response.status_code, response.text}")
@@ -112,7 +113,7 @@ class RAGOrchestratorClient:
                 for chunk in r.iter_lines():
                     chunks += chunk + "\n"
                     print(chunk)
-        return chunks
+            return chunks
 
     def get_current_sessions(self) -> str:
         response = requests.get(url=self.url + ENDPOINT_CURRENT_SESSIONS)

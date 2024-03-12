@@ -233,7 +233,8 @@ class RAGBackEnd:
         self.chat_history.add_to_database(question, answer)
 
         # Return answer and sources
-        return answer + "\n" + str(sources)
+        #TODO: fix output format
+        return answer #+ "\n" + str(sources)
 
     def contextualize_question(self, question: str) -> str:
         """Use recent interaction context to enrich the user query"""
