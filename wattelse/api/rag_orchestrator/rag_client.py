@@ -110,7 +110,7 @@ class RAGOrchestratorClient:
             with requests.get(url=self.url + ENDPOINT_QUERY_RAG,
                               data=json.dumps({"query": query, "session_id": self.session_id})) as r:
                 for chunk in r.iter_lines():
-                    chunks += chunk + "\"
+                    chunks += chunk + "\n"
                     print(chunk)
         return chunks
 
