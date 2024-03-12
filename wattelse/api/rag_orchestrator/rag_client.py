@@ -8,7 +8,8 @@ from pathlib import Path
 from loguru import logger
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, ENDPOINT_QUERY_RAG, \
-    ENDPOINT_UPLOAD_DOCS, ENDPOINT_SELECT_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS
+    ENDPOINT_UPLOAD_DOCS, ENDPOINT_SELECT_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, \
+    ENDPOINT_SELECT_BY_KEYWORDS
 
 
 class RAGAPIError(Exception):
@@ -71,8 +72,13 @@ class RAGOrchestratorClient:
     def select_documents_by_keywords(self, keywords: List[str] | None = None):
         """Select a subset of documents in the collection the user has access to, based on the provided keywords.
         If the list of keywords is empty or None, the full collection of documents is selected for the RAG"""
-        # TODO: not implemented yet
-        return "Not implemented yet"
+        response = requests.post(url=f"{self.url}{ENDPOINT_SELECT_BY_KEYWORDS}/{self.session_id}",
+                                 data=json.dumps(keywords))
+        if response.status_code == 200:
+            logger.info(response.json()["message"])
+        else:
+            logger.error(f"Error: {response.status_code, response.text}")
+            raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
     def remove_documents(self, doc_filenames: List[str]):
         """Removes documents from the collection the user has access to, as well as associated embeddings"""

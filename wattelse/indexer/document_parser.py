@@ -37,6 +37,7 @@ def parse_file(file: Path) -> List[Document]:
 
     for doc in docs:
         doc.page_content = _clean_text(doc.page_content)
+        # Add additional metadata
         doc.metadata["file_name"] = file.name
 
     return docs

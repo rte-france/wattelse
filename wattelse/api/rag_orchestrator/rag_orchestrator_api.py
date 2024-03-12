@@ -12,7 +12,8 @@ from pydantic import BaseModel
 from timeloop import Timeloop
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, ENDPOINT_SELECT_DOCS, \
-    ENDPOINT_QUERY_RAG, ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, ENDPOINT_CHAT_HISTORY
+    ENDPOINT_QUERY_RAG, ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, ENDPOINT_CHAT_HISTORY, \
+    ENDPOINT_SELECT_BY_KEYWORDS
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
 
@@ -104,6 +105,15 @@ def select_docs(session_id: str, doc_file_names: List[str] | None):
     update_session_usage(session_id)
     return {"message": f"[session_id: {session_id}] Successfully selected files {doc_file_names}"}
 
+@app.post(ENDPOINT_SELECT_BY_KEYWORDS + "/{session_id}")
+def select_by_keywords(session_id: str, keywords: List[str] | None):
+    """Select the documents to be used for the RAG among those the user have access to; if nothing is provided,
+    uses all acessible documents"""
+    logger.debug(f"List of selected keywords: {keywords}")
+    check_if_session_exists(session_id)
+    RAG_sessions[session_id].select_by_keywords(keywords)
+    update_session_usage(session_id)
+    return {"message": f"[session_id: {session_id}] Successfully filtered document collection based on keywords {keywords}"}
 
 @app.post(ENDPOINT_REMOVE_DOCS + "/{session_id}")
 def remove_docs(session_id: str, doc_file_names: List[str]) -> Dict[str, str]:

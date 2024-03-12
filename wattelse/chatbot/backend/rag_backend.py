@@ -7,11 +7,12 @@ from typing import List
 from fastapi import UploadFile
 from fastapi.responses import StreamingResponse
 from langchain_community.chat_models import ChatOllama
+from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter, HTMLHeaderTextSplitter
 from langchain_openai import ChatOpenAI
 from loguru import logger
 
@@ -107,16 +108,32 @@ class RAGBackEnd:
         docs = parse_file(path)
 
         # Split the file into smaller chunks as a list of Document
-        # TODO: config splitter
         logger.debug(f"Chunking: {path}")
-        # TODO: check split parameters
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        splits = text_splitter.split_documents(docs)
-        # TODO: check metadata filename
+        splits = self.split_file(path.suffix, docs)
         logger.info(f"Number of chunks for file {file.filename}: {len(splits)}")
 
         # Store and embed documents in the vector database
         self.document_collection.add_documents(splits)
+
+    def split_file(self, file_extension: str, docs: List[Document]):
+        """Split a file into smaller chunks - the chunking method depends on file type"""
+        if file_extension == ".md":
+            text_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=[
+                ("#", "Header 1"),
+                ("##", "Header 2"),
+                ("###", "Header 3"),
+            ])
+        elif file_extension in [".htm", ".html"]:
+            text_splitter = HTMLHeaderTextSplitter(headers_to_split_on=[
+                ("h1", "Header 1"),
+                ("h2", "Header 2"),
+                ("h3", "Header 3"),
+            ])
+        else:
+            # TODO: check split parameters
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+        splits = text_splitter.split_documents(docs)
+        return splits
 
     def remove_docs(self, doc_file_names: List[str]):
         """Remove a list of documents from the document collection"""
@@ -140,6 +157,11 @@ class RAGBackEnd:
     def select_docs(self, file_names: List[str]):
         """Create a filter on the document collection based on a list of file names"""
         self.document_filter = {"file_name": " $or ".join(file_names)} if file_names else None
+
+    def select_by_keywords(self, keywords: List[str]):
+        """Create a filter on the document collection based on a list of keywords"""
+        # TODO: to be implemented
+        self.document_filter = None
 
     def query_rag(self, question: str, **kwargs) -> str | StreamingResponse:
         """Query the RAG"""
@@ -237,7 +259,7 @@ class RAGBackEnd:
 
     def get_detail_level(self, question: str):
         """Returns the level of detail we wish in the answer. Values are in this range: {"courte", "détaillée"}"""
-        return "courte" if self.expected_answer_size=="short" else "détaillée"
+        return "courte" if self.expected_answer_size == "short" else "détaillée"
 
 
 def streamer(stream):
