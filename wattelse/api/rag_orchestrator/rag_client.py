@@ -106,10 +106,13 @@ class RAGOrchestratorClient:
                 raise RAGAPIError(f"Error: {response.status_code, response.text}")
         else:
             logger.debug("Response:")
+            chunks = []
             with requests.get(url=self.url + ENDPOINT_QUERY_RAG,
                               data=json.dumps({"query": query, "session_id": self.session_id})) as r:
                 for chunk in r.iter_lines():
+                    chunks += chunk + "\"
                     print(chunk)
+        return chunks
 
     def get_current_sessions(self) -> str:
         response = requests.get(url=self.url + ENDPOINT_CURRENT_SESSIONS)
