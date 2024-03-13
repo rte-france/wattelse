@@ -9,7 +9,7 @@ from loguru import logger
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, ENDPOINT_QUERY_RAG, \
     ENDPOINT_UPLOAD_DOCS, ENDPOINT_SELECT_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, \
-    ENDPOINT_SELECT_BY_KEYWORDS
+    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS
 
 
 class RAGAPIError(Exception):
@@ -90,6 +90,15 @@ class RAGOrchestratorClient:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
+    def list_available_docs(self):
+        """Removes documents from the collection the user has access to, as well as associated embeddings"""
+        response = requests.get(url=f"{self.url}{ENDPOINT_LIST_AVAILABLE_DOCS}/{self.session_id}")
+        if response.status_code == 200:
+            logger.info(f"Available docs: {response.json()}")
+        else:
+            logger.error(f"Error: {response.status_code, response.text}")
+            raise RAGAPIError(f"Error: {response.status_code, response.text}")
+
     def query_rag(self, query: str) -> str:
         """Query the RAG and returns an answer"""
         # TODO: handle additional parameters to temporarily change the default config: number of retrieved docs & memory
@@ -137,12 +146,12 @@ def main():
 
     # upload data files
     rag_client.upload_files(files)
+    rag_client.list_available_docs()
 
     # select document selection
     rag_client.select_documents_by_name([docs[1]])
 
     # query rag based on selected document collection
-    rag_client.query_rag("Hello, ça va?")
     rag_client.query_rag("Y'a une prime pour le télétravail?")
 
     # delete doc
@@ -155,6 +164,7 @@ def main():
 
     # current sessions
     rag_client2.get_current_sessions()
+
 
 if __name__ == "__main__":
     main()

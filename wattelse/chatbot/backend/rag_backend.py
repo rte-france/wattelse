@@ -154,6 +154,11 @@ class RAGBackEnd:
             os.remove(paths[0])
             logger.info(f"File {filename} removed from disk and vector database")
 
+    def get_available_docs(self) -> List[str]:
+        """Returns the list of documents in the collection"""
+        data = self.document_collection.collection.get(include=["metadatas"])
+        return list({d["file_name"] for d in data["metadatas"]})
+
     def select_docs(self, file_names: List[str]):
         """Create a filter on the document collection based on a list of file names"""
         self.document_filter = {"file_name": " $or ".join(file_names)} if file_names else None
@@ -233,8 +238,8 @@ class RAGBackEnd:
         self.chat_history.add_to_database(question, answer)
 
         # Return answer and sources
-        #TODO: fix output format
-        return answer #+ "\n" + str(sources)
+        # TODO: fix output format
+        return answer  # + "\n" + str(sources)
 
     def contextualize_question(self, question: str) -> str:
         """Use recent interaction context to enrich the user query"""

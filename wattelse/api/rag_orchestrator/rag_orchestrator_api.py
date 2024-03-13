@@ -13,11 +13,10 @@ from timeloop import Timeloop
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, ENDPOINT_SELECT_DOCS, \
     ENDPOINT_QUERY_RAG, ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, ENDPOINT_CHAT_HISTORY, \
-    ENDPOINT_SELECT_BY_KEYWORDS
+    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
-
-SESSION_TIMEOUT = 15  # in minutes
+SESSION_TIMEOUT = 30  # in minutes
 
 API_CONFIG_FILE_PATH = Path(__file__).parent / "rag_orchestrator_api.cfg"
 config = configparser.ConfigParser()
@@ -42,6 +41,7 @@ class User(BaseModel):
 class RAGOrchestratorAPIError(Exception):
     """Generic exception for RAG orchestrator API"""
     pass
+
 
 class RAGQuery(BaseModel):
     query: str
@@ -105,6 +105,7 @@ def select_docs(session_id: str, doc_file_names: List[str] | None):
     update_session_usage(session_id)
     return {"message": f"[session_id: {session_id}] Successfully selected files {doc_file_names}"}
 
+
 @app.post(ENDPOINT_SELECT_BY_KEYWORDS + "/{session_id}")
 def select_by_keywords(session_id: str, keywords: List[str] | None):
     """Select the documents to be used for the RAG among those the user have access to; if nothing is provided,
@@ -113,7 +114,9 @@ def select_by_keywords(session_id: str, keywords: List[str] | None):
     check_if_session_exists(session_id)
     RAG_sessions[session_id].select_by_keywords(keywords)
     update_session_usage(session_id)
-    return {"message": f"[session_id: {session_id}] Successfully filtered document collection based on keywords {keywords}"}
+    return {
+        "message": f"[session_id: {session_id}] Successfully filtered document collection based on keywords {keywords}"}
+
 
 @app.post(ENDPOINT_REMOVE_DOCS + "/{session_id}")
 def remove_docs(session_id: str, doc_file_names: List[str]) -> Dict[str, str]:
@@ -122,6 +125,15 @@ def remove_docs(session_id: str, doc_file_names: List[str]) -> Dict[str, str]:
     RAG_sessions[session_id].remove_docs(doc_file_names)
     update_session_usage(session_id)
     return {"message": f"[session_id: {session_id}] Successfully removed files {doc_file_names}"}
+
+
+@app.get(ENDPOINT_LIST_AVAILABLE_DOCS + "/{session_id}")
+def list_available_docs(session_id: str) -> str:
+    """Remove the documents from raw storage and vector database"""
+    check_if_session_exists(session_id)
+    file_names = RAG_sessions[session_id].get_available_docs()
+    update_session_usage(session_id)
+    return json.dumps(file_names)
 
 
 @app.get(ENDPOINT_QUERY_RAG)
@@ -147,12 +159,12 @@ def update_session_usage(session_id: str):
     RAG_sessions_usage[session_id]["last_used"] = datetime.now()
 
 
-@tl.job(interval=timedelta(minutes=10))
+@tl.job(interval=timedelta(minutes=20))
 def clean_sessions():
     """Clean user sessions periodically in order to consume too much memory"""
     logger.info("Cleaning sessions...")
     for session_id, usage in RAG_sessions_usage.items():
-        if usage["last_used"]-usage["created"] >= timedelta(minutes=SESSION_TIMEOUT):
+        if datetime.now() - usage["last_used"] >= timedelta(minutes=SESSION_TIMEOUT):
             # remove old sessions
             RAG_sessions.pop(session_id, None)
             RAG_sessions_usage.pop(session_id, None)
