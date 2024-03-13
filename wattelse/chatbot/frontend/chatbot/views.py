@@ -52,7 +52,7 @@ def register(request):
 
         if password1 == password2:
             try:
-                user = User.objects.create_user(username, password1)
+                user = User.objects.create_user(username, password=password1)
                 user.save()
                 auth.login(request, user)
                 print(username)
