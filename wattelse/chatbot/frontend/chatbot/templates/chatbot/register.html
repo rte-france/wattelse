@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div>
+  <div>
+    <div>Nouvel utilisateur</div>
+    <div>
+      {% if error_message %}
+        <div role="alert">{{ error_message }}</div>
+      {% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <div>
+          <label for="username">Nom d'utilisateur</label>
+          <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+          <label for="password1">Mot de passe</label>
+          <input type="password" id="password1" name="password1" required>
+        </div>
+        <div>
+          <label for="password2">Confirmez le mot de passe</label>
+          <input type="password" id="password2" name="password2" required>
+        </div>
+        <button type="submit">Créer</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

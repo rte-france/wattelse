@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div>
+  <div>
+    <div>Connexion</div>
+    <div>
+      {% if error_message %}
+        <div role="alert">{{ error_message }}</div>
+      {% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <div>
+          <label for="username">Nom d'utilisateur</label>
+          <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+          <label for="password">Mot de passe</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Se connecter</button>
+      </form>
+      <a href="/register">
+        <button type="click">Créer un utilisateur</button>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

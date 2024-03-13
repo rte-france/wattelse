@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div>
+  <div>
+    <div>
+      Wattelse Chatbot
+    </div>
+    {% if user.is_authenticated %}
+    <div >
+      <b>Bienvenue, {{user.username}}</b>
+      <a href="logout">
+        <button type="click">Déconnexion</button>
+      </a>
+    </div>
+    {% else %}
+    <div>
+      <a href="login">Login</a>
+      <a href="register">Register</a>
+    </div>
+    {% endif %}
+
+    <div>
+      <ul id="messagesList">
+        {% for chat in chats %}
+          {% if chat.user == request.user %}
+            <li>
+              <div>
+                <div>
+                  <b>Vous</b>
+                </div>
+                <div>
+                  {{chat.message}}
+                </div>
+              </div>
+            </li>
+            
+            <li>
+              <div>
+                <div>
+                  <b>Chatbot</b>
+                </div>
+                <div>
+                  {{chat.response}}
+                </div>
+              </div>
+            </li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <form id="messageForm">
+    {%csrf_token%}
+    <div>
+      <input id="messageInput" type="text" placeholder="Entrez votre message...">
+      <div>
+        <button type="button">Envoyer</button>
+      </div>
+    </div>
+  </form>
+  <button id="resetButton" type="click">Nouveau</button>
+</div>
+
+{% load static %}
+<script src="{% static 'chatbot/chatbot.js' %}"></script>
+{% endblock %}
