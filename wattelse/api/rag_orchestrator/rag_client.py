@@ -91,7 +91,7 @@ class RAGOrchestratorClient:
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
     def list_available_docs(self):
-        """Removes documents from the collection the user has access to, as well as associated embeddings"""
+        """List available documents for a specific user"""
         response = requests.get(url=f"{self.url}{ENDPOINT_LIST_AVAILABLE_DOCS}/{self.session_id}")
         if response.status_code == 200:
             logger.info(f"Available docs: {response.json()}")

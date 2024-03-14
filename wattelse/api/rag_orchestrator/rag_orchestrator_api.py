@@ -129,7 +129,7 @@ def remove_docs(session_id: str, doc_file_names: List[str]) -> Dict[str, str]:
 
 @app.get(ENDPOINT_LIST_AVAILABLE_DOCS + "/{session_id}")
 def list_available_docs(session_id: str) -> str:
-    """Remove the documents from raw storage and vector database"""
+    """List available documents for a specific user"""
     check_if_session_exists(session_id)
     file_names = RAG_sessions[session_id].get_available_docs()
     update_session_usage(session_id)
