@@ -20,7 +20,7 @@ def get_group_for_user(login: str) -> str:
 def get_document_collection_for_group(group_id: str) -> str:
     """We assume that a group has access to one and only one document collection"""
     if group_id == "admin":
-        return "admin"
+        return "drh"
     elif group_id == "rh":
         return "drh"
     elif group_id == "maintenance":

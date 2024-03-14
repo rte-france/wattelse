@@ -1,16 +1,24 @@
+from typing import Dict
+
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
-import openai
 
 from django.contrib import auth
 from django.contrib.auth.models import User
+from loguru import logger
+
 from .models import Chat
 
 from django.utils import timezone
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
 
-RAG_DICT = {}
+# Mapping table between user login and RAG clients
+rag_dict : Dict[str, RAGOrchestratorClient] = {}
+
+class WattElseError(Exception):
+    pass
+
 
 def chatbot(request):
     """Main function for chatbot interface.
@@ -23,13 +31,23 @@ def chatbot(request):
     
     # Get user chat history
     chats = Chat.objects.filter(user=request.user)
+    rag_client = rag_dict.get(request.user.get_username())
+    if not rag_client:
+        # session expired for some reason
+        return redirect('/login')
+
+    session_id = rag_dict[request.user.username].session_id
 
     # If request method is POST, call RAG API and return response to query
     # Else render template
     if request.method == 'POST':
-        message = request.POST.get('message')
+        message = request.POST.get('message', None)
+        if not message:
+            raise WattElseError("No user message received")
 
-        response = RAG_DICT[request.user.get_username()].query_rag(message)
+        logger.info(f"User: {request.user.username} - Query: {message}")
+
+        response = rag_dict[request.user.get_username()].query_rag(message)
 
         # Save query and response in DB
         chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
@@ -37,7 +55,7 @@ def chatbot(request):
 
         return JsonResponse({'message': message, 'response': response})
     else:
-        return render(request, 'chatbot/chatbot.html', {'chats': chats})
+        return render(request, 'chatbot/chatbot.html', {'chats': chats, 'session_id': session_id})
 
 
 def login(request):
@@ -52,7 +70,7 @@ def login(request):
         # If user exists, login and redirect to chatbot
         if user is not None:
             auth.login(request, user)
-            RAG_DICT[user.get_username()] = RAGOrchestratorClient(user.get_username())
+            rag_dict[user.get_username()] = RAGOrchestratorClient(user.get_username())
             return redirect('/')
         # Else return error
         else:
@@ -71,13 +89,13 @@ def register(request):
         password1 = request.POST['password1']
         password2 = request.POST['password2']
 
-        # Check voth password are the same
+        # Check both password are the same
         if password1 == password2:
             try:
                 user = User.objects.create_user(username, password=password1)
                 user.save()
                 auth.login(request, user)
-                RAG_DICT[username] = RAGOrchestratorClient(username)
+                rag_dict[username] = RAGOrchestratorClient(username)
                 return redirect('/')
             except:
                 error_message = 'Error creating account'

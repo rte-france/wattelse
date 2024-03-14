@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wattelse Chatbot</title>
+
+    <link href="chatbot_mainpage.css" rel="stylesheet"/>
+</head>
+
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+          <h1>WattElse Chatbot</h1>
+        </header>
+        <div class="chat-history">
+            </div>
+        <div class="chat-input">
+            <input type="text" class="input-field" placeholder="Entrez votre question en lien avec les documents fournis..." />
+            <button class="send-button">OK</button>
+        </div>
+    </div>
+    <div class="document-panel">
+        <div class="tab active" data-content="extracts">Extraits pertinents</div>
+        <div class="tab" data-content="documents">Documents disponibles</div>
+        <div class="content documents">
+            <h2>Sélection des documents disponibles</h2>
+            <div class="document-selection">
+                <input type="checkbox" id="select-all">Tout
+            </div>
+            <ul class="document-list"></ul>
+        </div>
+        <div class="content extracts">
+            <h2>Extraits pertinents</h2>
+            <ul id="extract-list"></ul>
+        </div>
+    </div>
+    <script src="chatbot_functions.js"></script>
+</body>
+</html>

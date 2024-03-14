@@ -1,67 +1,59 @@
 {% extends 'base.html' %}
 
+{% block title %}
+Wattelse Chatbot
+{% endblock %}
+
+{% block styles %}
+    {% load static %}
+    <link href="{% static 'chatbot/chatbot_mainpage.css'%}" rel="stylesheet"/>
+{% endblock %}
+
 {% block content %}
-<div>
-  <div>
-    <div>
-      Wattelse Chatbot
-    </div>
-    {% if user.is_authenticated %}
-    <div >
-      <b>Bienvenue, {{user.username}}</b>
-      <a href="logout">
-        <button type="click">Déconnexion</button>
-      </a>
-    </div>
-    {% else %}
-    <div>
-      <a href="login">Login</a>
-      <a href="register">Register</a>
-    </div>
+    {% if not user.is_authenticated %}
+    <script>window.location.replace("/")</script>
     {% endif %}
 
-    <div>
-      <ul id="messagesList">
-        {% for chat in chats %}
-          {% if chat.user == request.user %}
-            <li>
-              <div>
-                <div>
-                  <b>Vous</b>
-                </div>
-                <div>
-                  {{chat.message}}
-                </div>
-              </div>
-            </li>
-            
-            <li>
-              <div>
-                <div>
-                  <b>Chatbot</b>
-                </div>
-                <div>
-                  {{chat.response}}
-                </div>
-              </div>
-            </li>
-          {% endif %}
-        {% endfor %}
-      </ul>
-    </div>
-  </div>
-  <form id="messageForm">
-    {%csrf_token%}
-    <div>
-      <input id="messageInput" type="text" placeholder="Entrez votre message...">
-      <div>
-        <button type="button">Envoyer</button>
-      </div>
-    </div>
-  </form>
-  <button id="resetButton" type="click">Nouveau</button>
-</div>
+    {{ user.username|json_script:'user_name' }}
+    {{ session_id|json_script:'session_id' }}
 
-{% load static %}
-<script src="{% static 'chatbot/chatbot.js' %}"></script>
+    <div class="chat-container">
+        <header class="chat-header">
+          <h1>WattElse Chatbot</h1>
+        </header>
+        <div class="chat-history">
+            {% for chat in chats %}
+                {% if chat.user == request.user %}
+                <script>
+                    //createUserMessage("{{chat.message}}");
+                    //createBotMessage("{{chat.response}}");
+                </script>
+                {% endif %}
+            {% endfor %}
+        </div>
+            {% csrf_token %}
+            <div class="chat-input">
+                <input type="text" class="input-field" placeholder="Entrez votre question en lien avec les documents fournis..." />
+                <button class="send-button">OK</button>
+            </div>
+    </div>
+    <div class="document-panel">
+        <div class="tab active" data-content="extracts">Extraits pertinents</div>
+        <div class="tab" data-content="documents">Documents disponibles</div>
+        <div class="content documents">
+            <h2>Sélection des documents disponibles</h2>
+            <div class="document-selection">
+                <input type="checkbox" id="select-all">Tout
+            </div>
+            <ul class="document-list"></ul>
+        </div>
+        <div class="content extracts">
+            <h2>Extraits pertinents</h2>
+            <ul id="extract-list"></ul>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'chatbot/chatbot_functions.js' %}"></script>
 {% endblock %}
