@@ -321,3 +321,45 @@ body {
   margin-bottom: 2rem; /* Add extra space at the bottom of the last section */
 }
 
+
+/* Drag and Drop Styles */
+.file-upload {
+  margin-bottom: 20px;
+  border: 2px dashed #ccc;
+  border-radius: 5px;
+  text-align: center;
+  padding: 20px;
+  cursor: pointer;
+}
+
+.file-upload.drag-over {
+  border-color: #66a3ff; /* Change color on drag over */
+}
+
+.file-upload label {
+  display: none;
+}
+
+.descriptions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.description {
+  width: 45%;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+.description label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.description input[type="text"] {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}

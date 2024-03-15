@@ -42,8 +42,11 @@ Wattelse Chatbot
             </div>
     </div>
     <div class="document-panel">
-        <div class="tab active" data-content="extracts">Extraits pertinents</div>
-        <div class="tab" data-content="documents">Documents disponibles</div>
+        <div class="tab" data-content="extracts">Extraits pertinents</div>
+        <div class="tab active" data-content="documents">Documents sélectionnés</div>
+        <div class="tab" data-content="upload">Télécharger documents</div>
+        <div class="tab" data-content="remove">Supprimer documents</div>
+
         <div class="content documents">
             <h2>Sélection des documents disponibles</h2>
             <div class="document-selection">
@@ -55,6 +58,23 @@ Wattelse Chatbot
             <h2>Extraits pertinents</h2>
             <ul id="extract-list"></ul>
         </div>
+        <div class="content upload">
+            <h2>Télécharger des documents</h2>
+          <form id="upload-form">
+            <div class="file-upload">
+              <label for="file-input">Sélectionner des fichiers (formats: PDF, DOCX, PPTX, XLSX, MD, HTML)</label>
+              <input type="file" id="file-input" name="files[]" multiple>
+              <span id="file-list"></span>
+            </div>
+            <div class="descriptions">
+              </div>
+            <button type="submit" disabled><i class="fa-solid fa-upload"></i></button>
+          </form>
+        </div>
+        <div class="content remove">
+            <h2>Supprimer des documents</h2>
+        </div>
+
     </div>
 
 {% endblock %}

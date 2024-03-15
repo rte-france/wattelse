@@ -18,6 +18,7 @@ const availableDocs = JSON.parse(document.getElementById('available_docs').textC
 
 // initialize layout
 initializeLayout()
+initializeFileUpload()
 
 function initializeLayout(){
 
@@ -58,6 +59,16 @@ function initializeLayout(){
         });
     });
 
+    // Hide tabs that are not authorized for the current user
+    const uploadTab = Array.from(tabs).find(tab => tab.dataset.content === 'upload');
+    const removeTab = Array.from(tabs).find(tab => tab.dataset.content === 'remove');
+    // TODO: improve rights management with groups
+    if (userName!=="admin") {
+        uploadTab.remove()
+        removeTab.remove()
+    }
+
+
     // Display of available documents
     availableDocs.forEach((document) =>{
         const listItem = createDocumentListItem(document, "description");
@@ -70,7 +81,6 @@ function initializeLayout(){
     // Welcome message
     createBotMessage("Bonjour "+userName+ "! Posez-moi des questions en lien avec les documents sélectionnés...", false);
 }
-
 
 function handleUserMessage(userMessage) {
     if (getSelectedDocuments().length === 0) {
@@ -165,9 +175,6 @@ function createErrorMessage(message) {
 }
 
 function activateExtractsTab() {
-  // Select all tabs using the documentPanel and the class 'tab'
-  const tabs = documentPanel.querySelectorAll('.tab');
-
   // Find the tab with the data-content attribute set to "extracts"
   const extractsTab = Array.from(tabs).find(tab => tab.dataset.content === 'extracts');
 
@@ -271,3 +278,56 @@ function provideFeedback() {
     });
     */
 }
+
+function initializeFileUpload(){
+    const uploadForm = document.getElementById('upload-form');
+
+    // Handle form submission logic here (not included in this example)
+    // You'll need to handle sending the files and descriptions to your server
+    uploadForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        // Your upload logic here
+    });
+
+    const fileUpload = document.querySelector('.file-upload');
+
+    fileUpload.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+    });
+
+    fileUpload.addEventListener('dragleave', function () {
+        this.classList.remove('drag-over');
+    });
+
+    /*
+    fileInput.addEventListener('change', function(e) {
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+        const descriptionsContainer = document.querySelector('.descriptions');
+        const submitButton = uploadForm.querySelector('button');
+
+        fileInput.addEventListener('change', function (e) {
+            const files = e.target.files;
+            fileList.innerHTML = '';
+            descriptionsContainer.innerHTML = '';
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileName = file.name;
+                fileList.innerHTML += `<span>${fileName}</span>`;
+
+                const description = document.createElement('div');
+                description.classList.add('description');
+                description.innerHTML = `<label for="desc-${i}">${fileName} Description:</label><input type="text" id="desc-${i}" name="descriptions[]">`;
+                descriptionsContainer.appendChild(description);
+            }
+
+            submitButton.disabled = false;
+        });
+
+
+     */
+
+}
+
