@@ -273,9 +273,20 @@ body {
   color: #777; /* Lighter text color for descriptions */
 }
 
-.content.documents .document-list li input[type="checkbox"] {
-  margin-right: 1rem; /* Space between checkbox and description */
+.content.documents .document-list li input[type="checkbox"]  {
+  appearance: none; /* Remove default checkbox appearance */
+  width: 1rem; /* Set width */
+  height: 1rem; /* Set height */
+  background-color: #ddd; /* Background color */
+  border: 1px solid #ccc; /* Border */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer;
 }
+
+.content.documents .document-list li input[type="checkbox"]:checked {
+  background-color: royalblue; /* Checked background color */
+}
+
 
 .feedback-section {
   display: flex; /* Arrange buttons and/or textarea horizontally */

@@ -14,9 +14,11 @@ from django.utils import timezone
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
 
 # Mapping table between user login and RAG clients
-rag_dict : Dict[str, RAGOrchestratorClient] = {}
+rag_dict: Dict[str, RAGOrchestratorClient] = {}
+
 
 class WattElseError(Exception):
+    """Generic Error for the Django interface of the chatbot application"""
     pass
 
 
@@ -28,7 +30,7 @@ def chatbot(request):
     # If user is not authenticated, redirect to login
     if not request.user.is_authenticated:
         return redirect("/login")
-    
+
     # Get user chat history
     chats = Chat.objects.filter(user=request.user)
     rag_client = rag_dict.get(request.user.get_username())
@@ -43,7 +45,7 @@ def chatbot(request):
     available_docs = rag_dict[request.user.username].list_available_docs()
 
     # If request method is POST, call RAG API and return response to query
-    # Else render template
+    # else render template
     if request.method == "POST":
         message = request.POST.get("message", None)
         if not message:
@@ -54,7 +56,7 @@ def chatbot(request):
         selected_docs = request.POST.get("selected_docs", None)
         if not selected_docs:
             logger.warning("No selected docs received, using all available docs")
-            selected_docs = available_docs
+            selected_docs = []
         rag_dict[request.user.get_username()].select_documents_by_name(selected_docs)
 
         # Query RAG
@@ -65,8 +67,9 @@ def chatbot(request):
 
         # Update url in relevant_extracts to make it openable accessible from the web page
         # TODO à adapter avec la bonne URL!! (cf Guillaume)
-        for extract in relevant_extracts:
-            extract["metadata"]["url"] = f'http://{extract["metadata"]["file_name"]}#{extract["metadata"]["page"]}'
+        if relevant_extracts:
+            for extract in relevant_extracts:
+                extract["metadata"]["url"] = f'http://{extract["metadata"]["file_name"]}#{extract["metadata"]["page"]}'
 
         # Save query and response in DB
         chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
@@ -99,6 +102,7 @@ def login(request):
     else:
         return render(request, "chatbot/login.html")
 
+
 def register(request):
     """Main function for register page.
     If request method is GET : render register.html
@@ -125,10 +129,12 @@ def register(request):
             return render(request, "chatbot/register.html", {"error_message": error_message})
     return render(request, "chatbot/register.html")
 
+
 def logout(request):
     """Log a user out and redirect to login page"""
     auth.logout(request)
     return redirect("/login")
+
 
 def reset(request):
     """Reset chat history from DB"""

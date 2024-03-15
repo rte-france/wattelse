@@ -12,50 +12,62 @@ const documentList = document.querySelector('.document-list');
 const selectAllCheckbox = document.getElementById('select-all'); // Assuming an element with ID 'select-all' exists
 
 // variables related to Django templates
-const user_name =  JSON.parse(document.getElementById('user_name').textContent);
-const session_id =  JSON.parse(document.getElementById('session_id').textContent);
+const userName =  JSON.parse(document.getElementById('user_name').textContent);
+const sessionId =  JSON.parse(document.getElementById('session_id').textContent);
+const availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
 
-selectAllCheckbox.addEventListener('change', handleSelectAll);
-sendButton.addEventListener('click', () => {
-    const userMessage = userInput.value.trim();
-    if (userMessage) {
-        handleUserMessage(userMessage)
-    }
-});
+// initialize layout
+initializeLayout()
 
-userInput.addEventListener('keydown', (event) => {
-    if (event.keyCode === 13) { // Check if Enter key is pressed
-        const userMessage = userInput.value.trim();
-        if (userMessage) {
-            handleUserMessage(userMessage)
-        }
-    }
-});
+function initializeLayout(){
 
-tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-        // Remove active class from all tabs
-        tabs.forEach((tab) => tab.classList.remove('active'));
-
-        // Add active class to the clicked tab
-        tab.classList.add('active');
-
-        // Hide all content sections
-        contentSections.forEach((content) => content.style.display = 'none');
-
-        // Show the content section corresponding to the clicked tab
-        const targetContent = documentPanel.querySelector(`.content.${tab.dataset.content}`);
-        targetContent.style.display = 'block';
+    // Initialization of listeners
+    selectAllCheckbox.addEventListener('change', handleSelectAll);
+        sendButton.addEventListener('click', () => {
+            const userMessage = userInput.value.trim();
+            if (userMessage) {
+                handleUserMessage(userMessage)
+            }
     });
-});
 
-// Initialisation
-createBotMessage("Bonjour "+user_name+ "!", false);
-createBotMessage("Session ID "+ session_id, false);
+    userInput.addEventListener('keydown', (event) => {
+        if (event.keyCode === 13) { // Check if Enter key is pressed
+            const userMessage = userInput.value.trim();
+            if (userMessage) {
+                handleUserMessage(userMessage)
+            }
+        }
+    });
+
+    // Initialization of tabs
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs
+            tabs.forEach((tab) => tab.classList.remove('active'));
+
+            // Add active class to the clicked tab
+            tab.classList.add('active');
+
+            // Hide all content sections
+            contentSections.forEach((content) => content.style.display = 'none');
+
+            // Show the content section corresponding to the clicked tab
+            const targetContent = documentPanel.querySelector(`.content.${tab.dataset.content}`);
+            targetContent.style.display = 'block';
+        });
+    });
+
+    // Display of available documents
+    availableDocs.forEach((document) =>{
+        const listItem = createDocumentListItem(document, "description");
+        documentList.appendChild(listItem);
+    });
+
+    // Welcome message
+    createBotMessage("Bonjour "+userName+ "! Posez-moi des questions en lien avec les documents sélectionnés...", false);
+}
 
 
-//TODO: A ADAPTER
-// Simulate chat messages (replace with actual logic to communicate with your chatbot)
 function handleUserMessage(userMessage) {
     createUserMessage(userMessage);
 
@@ -70,10 +82,9 @@ function handleUserMessage(userMessage) {
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
     // Post Message to RAG
-    postUserMessageToRAG(userMessage)
+    postUserMessageToRAG(userMessage);
 
     userInput.value = '';
-
 }
 
 function postUserMessageToRAG(userMessage) {
@@ -110,18 +121,6 @@ function updateRelevantExtracts(relevant_extracts){
     });
 }
 
-const fakeDocuments = [
-  { title: 'NMT.pdf' },
-  { title: 'Nouveau modes 2.docx', description: 'Un document important...' },
-  // Add more documents as needed
-];
-
-fakeDocuments.forEach((document) => {
-  const listItem = createDocumentListItem(document.title, document.description);
-  documentList.appendChild(listItem);
-});
-
-// Javascript functions to fill dynamically divs
 function createUserMessage(message) {
     const userDiv = document.createElement('p');
     userDiv.classList.add('user-message');
@@ -249,48 +248,3 @@ function provideFeedback() {
     });
     */
 }
-
-/*
-function provideFeedback() {
-  const feedbackSection = document.createElement('div');
-  feedbackSection.classList.add('feedback-section');
-
-  const textFeedbackButton = document.createElement('button');
-  textFeedbackButton.id = "open-text-feedback";
-  textFeedbackButton.textContent = "Text Feedback";
-
-  // Add click event listener for text feedback button
-  textFeedbackButton.addEventListener('click', openTextPopup);
-
-  feedbackSection.appendChild(textFeedbackButton);
-
-  const emojiRatingContainer = document.createElement('span');
-  emojiRatingContainer.classList.add('emoji-rating-container');  // New container for emojis
-
-  emojiRatingContainer.innerHTML = `
-        <span class="emoji-rating" style="margin-right: 1.5rem"></span>
-        <span class="emoji-rating" style="margin-right: 1.5rem"></span>
-      `;
-
-  feedbackSection.appendChild(emojiRatingContainer);
-
-  chatHistory.appendChild(feedbackSection);
-
-  // Function to open text popup (not defined in original code)
-  function openTextPopup() {
-    // Implement logic to create and display a text input popup here
-    // This could involve creating a new element (e.g., div) with:
-    // - A text area for user input
-    // - A submit button to capture feedback
-    // - Logic to close the popup after submit or cancellation
-    alert('Text Feedback popup opens here!');  // Placeholder alert for now
-  }
-
-  emojiRatings.forEach((emoji) => {
-    emoji.addEventListener('click', (event) => {
-      const feedback = event.target.textContent;
-      // TODO: Implement logic to handle emoji feedback
-    });
-  });
-}
-*/
