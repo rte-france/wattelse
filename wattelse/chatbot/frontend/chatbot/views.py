@@ -1,3 +1,4 @@
+import json
 from typing import Dict
 
 from django.shortcuts import render, redirect
@@ -54,10 +55,11 @@ def chatbot(request):
 
         # Select documents for RAG
         selected_docs = request.POST.get("selected_docs", None)
+        logger.debug(f"Selected docs: {selected_docs}")
         if not selected_docs:
             logger.warning("No selected docs received, using all available docs")
             selected_docs = []
-        rag_dict[request.user.get_username()].select_documents_by_name(selected_docs)
+        rag_dict[request.user.get_username()].select_documents_by_name(json.loads(selected_docs))
 
         # Query RAG
         response = rag_dict[request.user.get_username()].query_rag(message)

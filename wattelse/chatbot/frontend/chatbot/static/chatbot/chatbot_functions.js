@@ -9,7 +9,7 @@ const contentSections = documentPanel.querySelectorAll('.content');
 
 const extractList = document.getElementById('extract-list');
 const documentList = document.querySelector('.document-list');
-const selectAllCheckbox = document.getElementById('select-all'); // Assuming an element with ID 'select-all' exists
+const selectAllCheckbox = document.getElementById('select-all');
 
 // variables related to Django templates
 const userName =  JSON.parse(document.getElementById('user_name').textContent);
@@ -23,7 +23,8 @@ function initializeLayout(){
 
     // Initialization of listeners
     selectAllCheckbox.addEventListener('change', handleSelectAll);
-        sendButton.addEventListener('click', () => {
+
+    sendButton.addEventListener('click', () => {
             const userMessage = userInput.value.trim();
             if (userMessage) {
                 handleUserMessage(userMessage)
@@ -63,12 +64,19 @@ function initializeLayout(){
         documentList.appendChild(listItem);
     });
 
+    // Select all documents by default
+    selectAllCheckbox.click()
+
     // Welcome message
     createBotMessage("Bonjour "+userName+ "! Posez-moi des questions en lien avec les documents sélectionnés...", false);
 }
 
 
 function handleUserMessage(userMessage) {
+    if (getSelectedDocuments().length === 0) {
+        createErrorMessage("Merci de sélectionner au moins un document!")
+        return
+    }
     createUserMessage(userMessage);
 
     // Simulate bot response with a delay
@@ -99,6 +107,7 @@ function postUserMessageToRAG(userMessage) {
         body: new URLSearchParams({
             'csrfmiddlewaretoken': document.querySelector('[name=csrfmiddlewaretoken]').value,
             'message': userMessage,
+            'selected_docs': JSON.stringify(getSelectedDocuments()),
         })
     })
     .then(response => response.json())
@@ -224,6 +233,20 @@ function handleSelectAll(event) {
   });
 }
 
+function getSelectedDocuments() {
+  const checkboxes = documentList.querySelectorAll('input[type="checkbox"]')
+  const selectedDocNames = [];
+  for (const checkbox of checkboxes) {
+    if (checkbox.checked) {
+      // Find the associated label element
+      text = checkbox.closest('li').querySelector('span').textContent;
+      if (text) {
+          selectedDocNames.push(text);
+      }
+    }
+  }
+  return selectedDocNames;
+}
 
 //TODO!
 function provideFeedback() {
