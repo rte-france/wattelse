@@ -161,7 +161,12 @@ class RAGBackEnd:
 
     def select_docs(self, file_names: List[str]):
         """Create a filter on the document collection based on a list of file names"""
-        self.document_filter = {"file_name": " $or ".join(file_names)} if file_names else None
+        if not file_names:
+            return None
+        elif len(file_names) == 1:
+            return {"file_name": file_names[0]}
+        else:
+            return {"$or": [{"file_name": f} for f in file_names]}
 
     def select_by_keywords(self, keywords: List[str]):
         """Create a filter on the document collection based on a list of keywords"""
