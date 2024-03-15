@@ -72,8 +72,6 @@ function handleUserMessage(userMessage) {
     // Post Message to RAG
     postUserMessageToRAG(userMessage)
 
-    //FIXME: remove waitDiv
-
     userInput.value = '';
 
 }
@@ -94,6 +92,7 @@ function postUserMessageToRAG(userMessage) {
     })
     .then(response => response.json())
     .then(data => {
+        document.getElementById('wait-div').remove();
         createBotMessage(data.answer);
         updateRelevantExtracts(data.relevant_extracts);
     })
