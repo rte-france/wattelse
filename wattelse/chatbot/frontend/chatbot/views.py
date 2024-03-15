@@ -36,17 +36,28 @@ def chatbot(request):
         # session expired for some reason
         return redirect('/login')
 
+    # Get RAG session ID
     session_id = rag_dict[request.user.username].session_id
+
+    # Get list of available documents
+    available_docs = rag_dict[request.user.username].list_available_docs()
 
     # If request method is POST, call RAG API and return response to query
     # Else render template
-    if request.method == 'POST':
-        message = request.POST.get('message', None)
+    if request.method == "POST":
+        message = request.POST.get("message", None)
         if not message:
             raise WattElseError("No user message received")
-
         logger.info(f"User: {request.user.username} - Query: {message}")
 
+        # Select documents for RAG
+        selected_docs = request.POST.get("selected_docs", None)
+        if not selected_docs:
+            logger.warning("No selected docs received, using all available docs")
+            selected_docs = available_docs
+        rag_dict[request.user.get_username()].select_documents_by_name(selected_docs)
+
+        # Query RAG
         response = rag_dict[request.user.get_username()].query_rag(message)
 
         # Save query and response in DB
@@ -55,7 +66,8 @@ def chatbot(request):
 
         return JsonResponse({'message': message, 'response': response})
     else:
-        return render(request, 'chatbot/chatbot.html', {'chats': chats, 'session_id': session_id})
+        return render(request, 'chatbot/chatbot.html',
+                      {'chats': chats, 'session_id': session_id, 'available_docs': available_docs})
 
 
 def login(request):

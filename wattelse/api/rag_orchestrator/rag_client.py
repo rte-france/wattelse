@@ -90,11 +90,13 @@ class RAGOrchestratorClient:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
-    def list_available_docs(self):
+    def list_available_docs(self) -> List[str]:
         """List available documents for a specific user"""
         response = requests.get(url=f"{self.url}{ENDPOINT_LIST_AVAILABLE_DOCS}/{self.session_id}")
         if response.status_code == 200:
-            logger.info(f"Available docs: {response.json()}")
+            docs = json.loads(response.json())
+            logger.info(f"Available docs: {docs}")
+            return docs
         else:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
