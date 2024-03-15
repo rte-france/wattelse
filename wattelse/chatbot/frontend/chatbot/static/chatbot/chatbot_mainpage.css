@@ -1,5 +1,10 @@
+@import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,700,700i');
+@import url('https://fonts.googleapis.com/css?family=Bree+Serif');
+
 body {
     display: flex; /* Make the main container a flexbox */
+    font-family: 'Source Sans Pro', sans-serif;
+
 }
 
 .chat-header {
@@ -106,7 +111,7 @@ body {
     padding: 0.5rem 1rem;
     border: none;
     border-radius: 5px;
-    background-color: #007bff;
+    background-color: royalblue;
     color: white;
     cursor: pointer;
 }
@@ -119,6 +124,7 @@ body {
 }
 
 .document-panel .tab {
+    font-family: 'Bree Serif', serif;
     display: inline-block;
     margin-right: 1rem;
     padding: 0.75rem 1.5rem; /* Increase padding for better readability */
@@ -134,10 +140,10 @@ body {
 }
 
 .document-panel .tab.active {
-    background-color: #fff; /* White background for active tab */
+    background-color: royalblue; /* Blue background for active tab */
+    color: #fff; /* White text color for active tab */
     border-bottom: 1px solid #ddd; /* Add bottom border for active tab */
     box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
-    color: #007bff; /* Blue text color for active tab */
 }
 
 
@@ -214,13 +220,21 @@ body {
 }
 
 .content.extracts ul#extract-list li:hover {
-  background-color: #f5f5f5; /* Lighter background on hover */
+  background-color: lightgrey; /* Lighter background on hover */
 }
 
 .content.extracts .source-link {
-  color: #007bff; /* Blue color for the source link */
-  text-decoration: underline; /* Underline the link */
+  color: royalblue; /* Blue color for the source link */
+  text-decoration: none; /* Underline the link */
   font-weight: bold; /* Make the link slightly bolder */
+}
+
+.content.extracts .source-link::before { /* Add content before the message */
+    content: "\f0c1"; /* Font Awesome icon code for user */
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color: royalblue; /* Set icon color */
 }
 
 .content.documents .document-list {
@@ -238,7 +252,7 @@ body {
 }
 
 .content.documents .document-list li:hover {
-  background-color: #f5f5f5; /* Light background on hover */
+  background-color: darkgrey; /* Light background on hover */
 }
 
 .content.documents .document-list li a {
