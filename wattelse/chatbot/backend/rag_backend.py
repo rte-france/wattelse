@@ -157,7 +157,9 @@ class RAGBackEnd:
     def get_available_docs(self) -> List[str]:
         """Returns the list of documents in the collection"""
         data = self.document_collection.collection.get(include=["metadatas"])
-        return list({d["file_name"] for d in data["metadatas"]})
+        available_docs = list({d["file_name"] for d in data["metadatas"]})
+        available_docs.sort()
+        return available_docs
 
     def select_docs(self, file_names: List[str]):
         """Create a filter on the document collection based on a list of file names"""

@@ -9,12 +9,14 @@ const contentSections = documentPanel.querySelectorAll('.content');
 
 const extractList = document.getElementById('extract-list');
 const documentList = document.querySelector('.document-list');
+const removalList = document.querySelector('.removal-list');
+
 const selectAllCheckbox = document.getElementById('select-all');
 
 // variables related to Django templates
 const userName =  JSON.parse(document.getElementById('user_name').textContent);
 const sessionId =  JSON.parse(document.getElementById('session_id').textContent);
-const availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
+let availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
 
 // initialize layout
 initializeLayout()
@@ -68,23 +70,35 @@ function initializeLayout(){
         removeTab.remove()
     }
 
+    // Display available documents
+    updateAvailableDocuments();
 
-    // Display of available documents
+    // Select all documents by default
+    selectAllCheckbox.click();
+
+    // Welcome message
+    createBotMessage("Bonjour "+userName+ " ! Posez-moi des questions en lien avec les documents sélectionnés...", false);
+}
+
+function updateAvailableDocuments(){
+    // Display of available document
+    documentList.innerHTML=""
+    removalList.innerHTML=""
     availableDocs.forEach((document) =>{
         const listItem = createDocumentListItem(document, "description");
         documentList.appendChild(listItem);
     });
 
-    // Select all documents by default
-    selectAllCheckbox.click()
-
-    // Welcome message
-    createBotMessage("Bonjour "+userName+ "! Posez-moi des questions en lien avec les documents sélectionnés...", false);
+    // Display documents that can be removed
+    availableDocs.forEach((document) =>{
+        const listItem = createDocumentListItem(document, "description");
+        removalList.appendChild(listItem);
+    });
 }
 
 function handleUserMessage(userMessage) {
-    if (getSelectedDocuments().length === 0) {
-        createErrorMessage("Merci de sélectionner au moins un document!")
+    if (getSelectedDocuments(documentList).length === 0) {
+        createErrorMessage("Merci de sélectionner au moins un document !")
         return
     }
     createUserMessage(userMessage);
@@ -117,7 +131,7 @@ function postUserMessageToRAG(userMessage) {
         body: new URLSearchParams({
             'csrfmiddlewaretoken': document.querySelector('[name=csrfmiddlewaretoken]').value,
             'message': userMessage,
-            'selected_docs': JSON.stringify(getSelectedDocuments()),
+            'selected_docs': JSON.stringify(getSelectedDocuments(documentList)),
         })
     })
     .then(response => response.json())
@@ -130,6 +144,34 @@ function postUserMessageToRAG(userMessage) {
         createErrorMessage(error.message);
         console.error('There was a problem with the Fetch operation:', error);
     });
+}
+
+function deleteDocumentsInCollection(){
+    if (getSelectedDocuments(removalList).length === 0  ) {
+        createErrorMessage("Aucun document à supprimer !")
+    } else {
+        fetch('delete/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                'csrfmiddlewaretoken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'selected_docs': JSON.stringify(getSelectedDocuments(removalList)),
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // update available docs
+            availableDocs = data.available_docs
+            updateAvailableDocuments(data.available_docs);  })
+        .catch(error => {
+            createErrorMessage(error.message);
+            console.error('There was a problem with the Fetch operation:', error);
+        });
+    }
+}
+
+function uploadDocumentsInCollection(){
+
 }
 
 function updateRelevantExtracts(relevant_extracts){
@@ -240,8 +282,8 @@ function handleSelectAll(event) {
   });
 }
 
-function getSelectedDocuments() {
-  const checkboxes = documentList.querySelectorAll('input[type="checkbox"]')
+function getSelectedDocuments(list) {
+  const checkboxes = list.querySelectorAll('input[type="checkbox"]')
   const selectedDocNames = [];
   for (const checkbox of checkboxes) {
     if (checkbox.checked) {

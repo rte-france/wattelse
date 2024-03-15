@@ -80,12 +80,13 @@ class RAGOrchestratorClient:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
-    def remove_documents(self, doc_filenames: List[str]):
+    def remove_documents(self, doc_filenames: List[str]) -> str:
         """Removes documents from the collection the user has access to, as well as associated embeddings"""
         response = requests.post(url=f"{self.url}{ENDPOINT_REMOVE_DOCS}/{self.session_id}",
                                  data=json.dumps(doc_filenames))
         if response.status_code == 200:
             logger.info(response.json())
+            return response.json()
         else:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
@@ -156,13 +157,13 @@ def main():
     # query rag based on selected document collection
     rag_client.query_rag("Y'a une prime pour le télétravail?")
 
-    # delete doc
-    rag_client.remove_documents([docs[0]])
-
     # create one client per user
     rag_client2 = RAGOrchestratorClient("bob")
     rag_client2.upload_files([files[0]])
     rag_client2.query_rag("Y'a une prime pour le télétravail?")
+
+    # delete doc
+    rag_client2.remove_documents([docs[0]])
 
     # current sessions
     rag_client2.get_current_sessions()

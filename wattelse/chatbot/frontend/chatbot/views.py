@@ -40,10 +40,10 @@ def chatbot(request):
         return redirect("/login")
 
     # Get RAG session ID
-    session_id = rag_dict[request.user.username].session_id
+    session_id = rag_client.session_id
 
     # Get list of available documents
-    available_docs = rag_dict[request.user.username].list_available_docs()
+    available_docs = rag_client.list_available_docs()
 
     # If request method is POST, call RAG API and return response to query
     # else render template
@@ -59,10 +59,10 @@ def chatbot(request):
         if not selected_docs:
             logger.warning("No selected docs received, using all available docs")
             selected_docs = []
-        rag_dict[request.user.get_username()].select_documents_by_name(json.loads(selected_docs))
+        rag_client.select_documents_by_name(json.loads(selected_docs))
 
         # Query RAG
-        response = rag_dict[request.user.get_username()].query_rag(message)
+        response = rag_client.query_rag(message)
         # separate text answer and relevant extracts
         answer = response["answer"]
         relevant_extracts = response["relevant_extracts"]
@@ -83,14 +83,41 @@ def chatbot(request):
                       {"chats": chats, "session_id": session_id, "available_docs": available_docs})
 
 
+def delete(request):
+    """Main function for delete interface.
+    If request method is POST : make a call to RAGOrchestratorClient to delete the specified documents
+    """
+    logger.info(request)
+    if request.method == "POST":
+        # Select documents for removal
+        selected_docs = request.POST.get("selected_docs", None)
+        logger.debug(f"Docs selected for removal: {selected_docs}")
+        if not selected_docs:
+            logger.warning("No docs selected for removal received, action ignored")
+            return JsonResponse({"status": "No document removed"})
+        else:
+            rag_client = rag_dict[request.user.get_username()]
+            rag_response = rag_client.remove_documents(json.loads(selected_docs))
+            return JsonResponse({"available_docs": rag_client.list_available_docs()})
+
+
+def upload(request):
+    """Main function for delete interface.
+    If request method is POST : make a call to RAGOrchestratorClient to upload the specified documents
+    """
+    if request.method == "POST":
+        # Select documents for removal
+        logger.debug(f"Uploading documents: ")
+
+
 def login(request):
     """Main function for login page.
     If request method is GET : render login.html
     If request method is POST : log the user in and redirect to chatbot.html
     """
     if request.method == "POST":
-        username = request.POST["username"]
-        password = request.POST["password"]
+        username = request.POST.get("username")
+        password = request.POST.get("password")
         user = auth.authenticate(request, username=username, password=password)
         # If user exists, login and redirect to chatbot
         if user is not None:
@@ -111,9 +138,9 @@ def register(request):
     If request method is POST : create a new user, login and redirect to chatbot
     """
     if request.method == "POST":
-        username = request.POST["username"]
-        password1 = request.POST["password1"]
-        password2 = request.POST["password2"]
+        username = request.POST.get("username")
+        password1 = request.POST.get("password1")
+        password2 = request.POST.get("password2")
 
         # Check both password are the same
         if password1 == password2:

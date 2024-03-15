@@ -287,7 +287,6 @@ body {
   background-color: royalblue; /* Checked background color */
 }
 
-
 .feedback-section {
   display: flex; /* Arrange buttons and/or textarea horizontally */
   align-items: center; /* Align content vertically in the center */
