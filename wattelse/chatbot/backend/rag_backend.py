@@ -2,7 +2,7 @@ import configparser
 import json
 import os
 from datetime import datetime
-from typing import List
+from typing import List, Dict
 
 from fastapi import UploadFile
 from fastapi.responses import StreamingResponse
@@ -168,7 +168,7 @@ class RAGBackEnd:
         # TODO: to be implemented
         self.document_filter = None
 
-    def query_rag(self, question: str, **kwargs) -> str | StreamingResponse:
+    def query_rag(self, question: str, stream=False) -> Dict | StreamingResponse:
         """Query the RAG"""
         # Sanity check
         if self.document_collection is None:
@@ -182,9 +182,6 @@ class RAGBackEnd:
                 "filter": {} if not self.document_filter else self.document_filter,
                 "score_threshold": self.similarity_threshold
             })
-        # docs = retriever.get_relevant_documents(question)
-        # logger.debug(f'Number of retrieved docs = {len(docs)}')
-        # logger.debug(f"Relevant documents: {docs}")
 
         # Definition of RAG chain
         # - prompt
@@ -214,9 +211,8 @@ class RAGBackEnd:
         contextualized_question = self.contextualize_question(question) if self.remember_recent_messages else question
 
         # Handle answer
-        stream = True
         chunks = []
-        sources = []
+        relevant_extracts = []
         if stream:
             # stream response on server side...
             # TODO: manage streaming to the client
@@ -224,22 +220,24 @@ class RAGBackEnd:
                 s = chunk.get("context")
                 if s:
                     sources = s
+                    # Transform sources
+                    relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
                 chunks.append(chunk.get("answer", ""))
                 print(chunk, end="", flush=True)
             answer = "".join(chunks)
-
             # return StreamingResponse(streamer(rag_chain.stream(contextualized_question)))
         else:
             resp = rag_chain.invoke(contextualized_question)
             answer = resp.get("answer")
             sources = resp.get("context")
+            # Transform sources
+            relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
 
         # Update chat history
         self.chat_history.add_to_database(question, answer)
 
         # Return answer and sources
-        # TODO: fix output format
-        return answer  # + "\n" + str(sources)
+        return {"answer": answer, "relevant_extracts": relevant_extracts}
 
     def contextualize_question(self, question: str) -> str:
         """Use recent interaction context to enrich the user query"""

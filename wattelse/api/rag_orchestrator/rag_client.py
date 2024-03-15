@@ -1,6 +1,6 @@
 import configparser
 import json
-from typing import List
+from typing import List, Dict
 
 import requests
 from pathlib import Path
@@ -101,7 +101,7 @@ class RAGOrchestratorClient:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
-    def query_rag(self, query: str) -> str:
+    def query_rag(self, query: str) -> Dict:
         """Query the RAG and returns an answer"""
         # TODO: handle additional parameters to temporarily change the default config: number of retrieved docs & memory
         logger.debug(f"Question: {query}")
@@ -110,9 +110,9 @@ class RAGOrchestratorClient:
             response = requests.get(url=self.url + ENDPOINT_QUERY_RAG,
                                     data=json.dumps({"query": query, "session_id": self.session_id}))
             if response.status_code == 200:
-                logger.debug(f"Response: {response.json()}")
-                # TODO: check output format
-                return response.text
+                rag_answer = json.loads(response.json())
+                logger.debug(f"Response: {rag_answer}")
+                return rag_answer
             else:
                 logger.error(f"Error: {response.status_code, response.text}")
                 raise RAGAPIError(f"Error: {response.status_code, response.text}")

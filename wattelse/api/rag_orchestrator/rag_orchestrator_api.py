@@ -143,7 +143,7 @@ def query_rag(rag_query: RAGQuery) -> str:
     check_if_session_exists(rag_query.session_id)
     update_session_usage(rag_query.session_id)
     # TODO: stream response, cf https://www.vidavolta.io/streaming-with-fastapi/
-    return RAG_sessions[rag_query.session_id].query_rag(rag_query.query)
+    return json.dumps(RAG_sessions[rag_query.session_id].query_rag(rag_query.query))
 
 
 @app.get(ENDPOINT_CHAT_HISTORY + "/{login}")
