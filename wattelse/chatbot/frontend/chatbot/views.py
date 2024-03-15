@@ -72,7 +72,7 @@ def chatbot(request):
         chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
         chat.save()
 
-        return JsonResponse({"message": message, "response": answer, "relevant_extracts": relevant_extracts})
+        return JsonResponse({"message": message, "answer": answer, "relevant_extracts": relevant_extracts})
     else:
         return render(request, "chatbot/chatbot.html",
                       {"chats": chats, "session_id": session_id, "available_docs": available_docs})

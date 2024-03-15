@@ -94,29 +94,22 @@ function postUserMessageToRAG(userMessage) {
     })
     .then(response => response.json())
     .then(data => {
-        createBotMessage(data.response); })
+        createBotMessage(data.answer);
+        updateRelevantExtracts(data.relevant_extracts);
+    })
     .catch(error => {
         createErrorMessage(error.message);
         console.error('There was a problem with the Fetch operation:', error);
     });
 }
 
-const fakeExtracts = [
-    {
-        text: 'This is an example extract with some informative content...',
-        sourceUrl: 'https://www.example.com/source-1'
-    },
-    {
-        text: 'Here\'s another example extract with a link to a different source...',
-        sourceUrl: 'https://www.example.com/source-2'
-    },
-    // Add more extracts as needed
-];
-
-fakeExtracts.forEach((extract) => {
-    const listItem = createExtract(extract.text, extract.sourceUrl);
-    extractList.appendChild(listItem);
-});
+function updateRelevantExtracts(relevant_extracts){
+    extractList.innerHTML = ""
+    relevant_extracts.forEach((extract) => {
+        const listItem = createExtract(extract.content, extract.url);
+        extractList.appendChild(listItem);
+    });
+}
 
 const fakeDocuments = [
   { title: 'NMT.pdf' },
