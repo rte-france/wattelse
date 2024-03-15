@@ -116,6 +116,12 @@ body {
     cursor: pointer;
 }
 
+.disclaimer{
+    color: darkgrey;
+    text-align: center;
+    font-size: 0.7rem;
+}
+
 .document-panel { /* Styles for the right-side panel */
     flex: 1 0 calc(33.33%); /* Set flex ratio and minimum width */
     border-left: 1px solid #ccc;
