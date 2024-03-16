@@ -171,7 +171,7 @@ def clean_sessions():
     # remove old sessions
     [RAG_sessions.pop(key) for key in tobe_removed]
     [RAG_sessions_usage.pop(key) for key in tobe_removed]
-    logger.info(f"Cleaning: removed session {session_id}")
+    logger.info(f"Cleaning: removed sessions {tobe_removed}")
 
 
 def check_if_session_exists(session_id: str):

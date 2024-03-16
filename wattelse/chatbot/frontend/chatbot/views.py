@@ -1,12 +1,16 @@
 import json
-from typing import Dict
+import tempfile
+from typing import Dict, Tuple
 
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.forms import forms
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 
 from django.contrib import auth
 from django.contrib.auth.models import User
 from loguru import logger
+from pathlib import Path
 
 from .models import Chat
 
@@ -71,7 +75,8 @@ def chatbot(request):
         # TODO à adapter avec la bonne URL!! (cf Guillaume)
         if relevant_extracts:
             for extract in relevant_extracts:
-                extract["metadata"]["url"] = f'http://{extract["metadata"]["file_name"]}#{extract["metadata"]["page"]}'
+                if extract["metadata"].get("page"):
+                    extract["metadata"]["url"] = f'http://{extract["metadata"]["file_name"]}#{extract["metadata"]["page"]}'
 
         # Save query and response in DB
         chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
@@ -87,7 +92,6 @@ def delete(request):
     """Main function for delete interface.
     If request method is POST : make a call to RAGOrchestratorClient to delete the specified documents
     """
-    logger.info(request)
     if request.method == "POST":
         # Select documents for removal
         selected_docs = request.POST.get("selected_docs", None)
@@ -98,6 +102,7 @@ def delete(request):
         else:
             rag_client = rag_dict[request.user.get_username()]
             rag_response = rag_client.remove_documents(json.loads(selected_docs))
+            # Returns the list of updated available documents
             return JsonResponse({"available_docs": rag_client.list_available_docs()})
 
 
@@ -105,9 +110,33 @@ def upload(request):
     """Main function for delete interface.
     If request method is POST : make a call to RAGOrchestratorClient to upload the specified documents
     """
-    if request.method == "POST":
-        # Select documents for removal
-        logger.debug(f"Uploading documents: ")
+    if request.method == 'POST':
+        # Get the uploaded file
+        uploaded_file = request.FILES.get('file')
+
+        if not uploaded_file:
+            logger.warning("No file to be uploaded, action ignored")
+            return JsonResponse({"status": "No file received!"})
+        else:
+            logger.debug(f"Received file: {uploaded_file.name}")
+            rag_client = rag_dict[request.user.get_username()]
+
+            # Create a temporary directory
+            # TODO: investigate in memory temp file, probably a better option
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Construct the full path for the uploaded file within the temporary directory
+                temp_file_path = Path(temp_dir) / Path(uploaded_file.name)
+
+                # Open the temporary file for writing
+                with open(temp_file_path, 'wb') as f:
+                    for chunk in uploaded_file.chunks():
+                        f.write(chunk)
+
+                # Use the temporary file path for upload
+                rag_client.upload_files([temp_file_path])
+
+            # Returns the list of updated available documents
+            return JsonResponse({"available_docs": rag_client.list_available_docs()})
 
 
 def login(request):
@@ -171,3 +200,23 @@ def reset(request):
         Chat.objects.filter(user=request.user).delete()
     # Need to return an empty HttpResponse
     return HttpResponse()
+
+
+def get_filename_parts(filename: str) -> Tuple[str, str]:
+    """
+  This function splits a filename into its prefix and suffix.
+
+  Args:
+      filename: The filename as a string.
+
+  Returns:
+      A tuple containing the prefix (without the dot) and the suffix (including the dot).
+  """
+    dot_index = filename.rfind(".")
+    if dot_index == -1:
+        prefix = filename
+        suffix = ""
+    else:
+        prefix = filename[:dot_index]
+        suffix = filename[dot_index:]
+    return prefix, suffix

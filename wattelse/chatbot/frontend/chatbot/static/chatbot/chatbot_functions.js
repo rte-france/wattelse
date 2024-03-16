@@ -13,15 +13,24 @@ const removalList = document.querySelector('.removal-list');
 
 const selectAllCheckbox = document.getElementById('select-all');
 
+// variables related to the upload area
+const dropArea = document.querySelector('.drop-section')
+const uploadedSection = document.querySelector('.uploaded-section')
+const uploadedListContainer = document.querySelector('.uploaded-list')
+const fileSelector = document.querySelector('.file-selector')
+const fileSelectorInput = document.querySelector('.file-selector-input')
+
 // variables related to Django templates
 const userName =  JSON.parse(document.getElementById('user_name').textContent);
 const sessionId =  JSON.parse(document.getElementById('session_id').textContent);
 let availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
+const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value
 
 // initialize layout
 initializeLayout()
-initializeFileUpload()
+initializeUploadArea()
 
+// ####################### Definition of functions ########################################
 function initializeLayout(){
 
     // Initialization of listeners
@@ -129,7 +138,7 @@ function postUserMessageToRAG(userMessage) {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-            'csrfmiddlewaretoken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'csrfmiddlewaretoken': csrfmiddlewaretoken,
             'message': userMessage,
             'selected_docs': JSON.stringify(getSelectedDocuments(documentList)),
         })
@@ -154,7 +163,7 @@ function deleteDocumentsInCollection(){
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
-                'csrfmiddlewaretoken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'csrfmiddlewaretoken': csrfmiddlewaretoken,
                 'selected_docs': JSON.stringify(getSelectedDocuments(removalList)),
             })
         })
@@ -162,16 +171,12 @@ function deleteDocumentsInCollection(){
         .then(data => {
             // update available docs
             availableDocs = data.available_docs
-            updateAvailableDocuments(data.available_docs);  })
+            updateAvailableDocuments();  })
         .catch(error => {
             createErrorMessage(error.message);
             console.error('There was a problem with the Fetch operation:', error);
         });
     }
-}
-
-function uploadDocumentsInCollection(){
-
 }
 
 function updateRelevantExtracts(relevant_extracts){
@@ -190,7 +195,6 @@ function createUserMessage(message) {
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
-
 function createBotMessage(message, showFeedbackSection = true) {
     const botDiv = document.createElement('p');
     botDiv.classList.add('bot-message');
@@ -206,7 +210,6 @@ function createBotMessage(message, showFeedbackSection = true) {
         provideFeedback();
     }
 }
-
 
 function createErrorMessage(message) {
     const errorDiv = document.createElement('p');
@@ -304,8 +307,8 @@ function provideFeedback() {
 
     feedbackSection.innerHTML = `
           <button id="open-text-feedback">Text Feedback</button> 
-          <span class="emoji-rating" style="margin-right: 1.5rem">👍</span>
-          <span class="emoji-rating" style="margin-right: 1.5rem">👎</span>
+          <span class="emoji-rating" style="margin-right: 1.5rem"><i class="fa-solid fa-thumbs-up"></i></span>
+          <span class="emoji-rating" style="margin-right: 1.5rem"><i class="fa-solid fa-thumbs-down"></i></span>
         `;
 
     chatHistory.appendChild(feedbackSection);
@@ -321,55 +324,137 @@ function provideFeedback() {
     */
 }
 
-function initializeFileUpload(){
-    const uploadForm = document.getElementById('upload-form');
-
-    // Handle form submission logic here (not included in this example)
-    // You'll need to handle sending the files and descriptions to your server
-    uploadForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        // Your upload logic here
-    });
-
-    const fileUpload = document.querySelector('.file-upload');
-
-    fileUpload.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        this.classList.add('drag-over');
-    });
-
-    fileUpload.addEventListener('dragleave', function () {
-        this.classList.remove('drag-over');
-    });
-
-    /*
-    fileInput.addEventListener('change', function(e) {
-        const fileInput = document.getElementById('file-input');
-        const fileList = document.getElementById('file-list');
-        const descriptionsContainer = document.querySelector('.descriptions');
-        const submitButton = uploadForm.querySelector('button');
-
-        fileInput.addEventListener('change', function (e) {
-            const files = e.target.files;
-            fileList.innerHTML = '';
-            descriptionsContainer.innerHTML = '';
-
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const fileName = file.name;
-                fileList.innerHTML += `<span>${fileName}</span>`;
-
-                const description = document.createElement('div');
-                description.classList.add('description');
-                description.innerHTML = `<label for="desc-${i}">${fileName} Description:</label><input type="text" id="desc-${i}" name="descriptions[]">`;
-                descriptionsContainer.appendChild(description);
+function initializeUploadArea(){
+    // upload files with browse button
+    fileSelector.onclick = () => fileSelectorInput.click()
+    fileSelectorInput.onchange = () => {
+        [...fileSelectorInput.files].forEach((file) => {
+            if (typeValidation(file.name)) {
+                uploadFile(file)
             }
+        })
+    }
 
-            submitButton.disabled = false;
-        });
-
-
-     */
-
+    // when file is over the drag area
+    dropArea.ondragover = (e) => {
+        e.preventDefault();
+        [...e.dataTransfer.items].forEach((item) => {
+            if (typeValidation(item.name)) {
+                dropArea.classList.add('drag-over-effect')
+            }
+        })
+    }
+    // when file leave the drag area
+    dropArea.ondragleave = () => {
+        dropArea.classList.remove('drag-over-effect')
+    }
+    // when file drop on the drag area
+    dropArea.ondrop = (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-over-effect')
+        if (e.dataTransfer.items) {
+            [...e.dataTransfer.items].forEach((item) => {
+                if (item.kind === 'file') {
+                    const file = item.getAsFile();
+                    if (typeValidation(file.name)) {
+                        uploadFile(file)
+                    }
+                }
+            })
+        } else {
+            [...e.dataTransfer.files].forEach((file) => {
+                if (typeValidation(file.name)) {
+                    uploadFile(file)
+                }
+            })
+        }
+    }
 }
 
+// check the file type
+function typeValidation(filename) {
+    const fileExt = filename.split('.').pop().toLowerCase();;
+    if (fileExt === "pdf" || fileExt === "docx" || fileExt === "pptx" || fileExt === "xslx" || fileExt === "html"
+        || fileExt === "htm" || fileExt === "md" || fileExt === "csv" || fileExt === "txt")
+        return true
+}
+
+// upload file function
+function uploadFile(file) {
+    uploadedSection.style.display = 'block'
+    const li = document.createElement('li');
+    li.classList.add('in-prog')
+    li.innerHTML = `
+        <div class="col">
+            ${iconSelector(file.name)}
+        </div>
+        <div class="col">
+            <div class="file-name">
+                <div class="name">${file.name}</div>
+                <span>0%</span>
+            </div>
+            <div class="file-progress">
+                <span></span>
+            </div>
+            <div class="file-size">${(file.size / (1024 * 1024)).toFixed(2)} MB</div>
+        </div>
+        <div class="col">
+            <svg xmlns="http://www.w3.org/2000/svg" class="cross" height="20" width="20"><path d="m5.979 14.917-.854-.896 4-4.021-4-4.062.854-.896 4.042 4.062 4-4.062.854.896-4 4.062 4 4.021-.854.896-4-4.063Z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="tick" height="20" width="20"><path d="m8.229 14.438-3.896-3.917 1.438-1.438 2.458 2.459 6-6L15.667 7Z"/></svg>
+        </div>
+    `
+    uploadedListContainer.prepend(li)
+    const http = new XMLHttpRequest();
+    const data = new FormData();
+    data.append('file', file)
+    data.append('csrfmiddlewaretoken', csrfmiddlewaretoken)
+    http.onload = () => {
+        li.classList.add('complete')
+        li.classList.remove('in-prog')
+    }
+    http.upload.onprogress = (e) => {
+        const percent_complete = (e.loaded / e.total) * 100;
+        li.querySelectorAll('span')[0].innerHTML = Math.round(percent_complete) + '%'
+        li.querySelectorAll('span')[1].style.width = percent_complete + '%'
+    }
+    http.onreadystatechange = function() {
+        if (http.readyState === XMLHttpRequest.DONE) {
+            availableDocs = JSON.parse(http.responseText)["available_docs"]
+            updateAvailableDocuments();
+        }
+    }
+    http.open('POST', '/upload/', true)
+    http.send(data)
+    li.querySelector('.cross').onclick = () => http.abort()
+    http.onabort = () => li.remove()
+}
+
+// find icon for file
+function iconSelector(filename) {
+    const pdfIcon = '<i class="fa-solid fa-file-pdf fa-xl" style="color: #ff0000;"></i>'
+    const docxIcon = '<i class="fa-solid fa-file-word fa-xl" style="color: #2d2dff;"></i>'
+    const xlsxIcon = '<i class="fa-solid fa-file-excel fa-xl" style="color: #008040;"></i>'
+    const pptxIcon = '<i class="fa-solid fa-file-powerpoint fa-xl" style="color: #df0000;"></i>'
+    const csvIcon = '<i class="fa-solid fa-file-csv fa-xl" style="color: #63E6BE;"></i>'
+    const htmlIcon = '<i class="fa-solid fa-file-code fa-xl" style="color: #400080;"></i>'
+    const defaultIcon = '<i class="fa-solid fa-file fa-xl" style="color: #000000;"></i>'
+    const fileExt = filename.split('.').pop().toLowerCase();
+    switch (fileExt) {
+        case 'pdf':
+            return pdfIcon
+        case 'docx':
+            return docxIcon
+        case 'xslx':
+            return xlsxIcon
+        case 'pptx':
+            return pptxIcon
+        case 'csv':
+            return csvIcon
+        case 'html':
+            return htmlIcon
+        case 'md':
+            return htmlIcon
+        default:
+            return defaultIcon
+    }
+}

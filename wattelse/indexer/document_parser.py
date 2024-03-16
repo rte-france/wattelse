@@ -4,7 +4,7 @@ from typing import List
 
 import bs4
 from langchain_community.document_loaders import PyMuPDFLoader, BSHTMLLoader, UnstructuredPowerPointLoader, \
-    UnstructuredWordDocumentLoader, UnstructuredExcelLoader, WebBaseLoader
+    UnstructuredWordDocumentLoader, UnstructuredExcelLoader, WebBaseLoader, TextLoader
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from pathlib import Path
@@ -18,7 +18,9 @@ class ParsingException(Exception):
 
 def parse_file(file: Path) -> List[Document]:
     extension = file.suffix.lower()
-    if extension == ".pdf":
+    if extension == ".txt":
+        docs = _parse_txt(file)
+    elif extension == ".pdf":
         docs = _parse_pdf(file)
     elif extension == ".docx":
         docs = _parse_docx(file)
@@ -58,6 +60,13 @@ def parse_url(url: str) -> List[Document]:
     )
     docs = loader.load()
     return docs
+
+
+def _parse_txt(file: Path) -> List[Document]:
+    loader = TextLoader(file.absolute().as_posix())
+    data = loader.load()
+    # NB. return one document per page
+    return data
 
 
 def _parse_pdf(file: Path) -> List[Document]:

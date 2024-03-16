@@ -60,16 +60,28 @@ Wattelse Chatbot
         </div>
         <div class="content upload">
             <h2>Télécharger des documents</h2>
-          <form id="upload-form">
-            <div class="file-upload">
-              <label for="file-input">Sélectionner des fichiers (formats: PDF, DOCX, PPTX, XLSX, MD, HTML)</label>
-              <input type="file" id="file-input" name="files[]" multiple>
-              <span id="file-list"></span>
+            <div class="header-section">
+                <p>Téléchargez les fichiers à partager dans votre groupe</p>
+                <p>Formats supportés: PDF, DOCX, PPTX, XLSX, CSV, HTML, MD, TXT</p>
             </div>
-            <div class="descriptions">
-              </div>
-            <button type="submit" disabled><i class="fa-solid fa-upload"></i></button>
-          </form>
+            <div class="drop-section">
+                <div class="col">
+                    <div class="cloud-icon">
+                        <i class="fa-solid fa-cloud-arrow-up fa-2xl" style="color: royalblue;"></i>
+                    </div>
+                    <span>Glisser-déposer vos fichiers</span>
+                    <span>OU</span>
+                    <button class="file-selector">Sélectionner les fichiers</button>
+                    <input type="file" class="file-selector-input" multiple>
+                </div>
+                <div class="col">
+                    <div class="drop-here">Drop Here</div>
+                </div>
+            </div>
+            <div class="uploaded-section">
+                <div class="uploaded-title">Fichiers téléchargés</div>
+                <div class="uploaded-list"></div>
+            </div>
         </div>
         <div class="content remove">
             <h2>Supprimer des documents</h2>
@@ -77,7 +89,7 @@ Wattelse Chatbot
                 Attention, action irréversible!
             </div>
             <ul class="removal-list"></ul>
-            <button type="submit" id="trash-button" onclick="deleteDocumentsInCollection()"><i class="fa-solid fa-trash" style="color: orangered;"></i></i></button>
+            <button type="submit" id="trash-button" onclick="deleteDocumentsInCollection()"><i class="fa-solid fa-trash fa2-xl" style="color: orangered;"></i></i></button>
         </div>
 
     </div>
