@@ -7,12 +7,10 @@ from typing import List, Dict
 from fastapi import UploadFile
 from fastapi.responses import StreamingResponse
 from langchain_community.chat_models import ChatOllama
-from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
-from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter, HTMLHeaderTextSplitter
 from langchain_openai import ChatOpenAI
 from loguru import logger
 
@@ -23,6 +21,7 @@ from wattelse.chatbot.backend.data_management.vector_database import format_docs
 from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
     LLM_CONFIGS
+from wattelse.indexer.document_splitter import split_file
 from wattelse.chatbot.chat_history import ChatHistory
 from wattelse.common.config_utils import parse_literal
 from wattelse.indexer.document_parser import parse_file
@@ -109,31 +108,11 @@ class RAGBackEnd:
 
         # Split the file into smaller chunks as a list of Document
         logger.debug(f"Chunking: {path}")
-        splits = self.split_file(path.suffix, docs)
+        splits = split_file(path.suffix, docs)
         logger.info(f"Number of chunks for file {file.filename}: {len(splits)}")
 
         # Store and embed documents in the vector database
         self.document_collection.add_documents(splits)
-
-    def split_file(self, file_extension: str, docs: List[Document]):
-        """Split a file into smaller chunks - the chunking method depends on file type"""
-        if file_extension == ".md":
-            text_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=[
-                ("#", "Header 1"),
-                ("##", "Header 2"),
-                ("###", "Header 3"),
-            ])
-        elif file_extension in [".htm", ".html"]:
-            text_splitter = HTMLHeaderTextSplitter(headers_to_split_on=[
-                ("h1", "Header 1"),
-                ("h2", "Header 2"),
-                ("h3", "Header 3"),
-            ])
-        else:
-            # TODO: check split parameters
-            text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
-        splits = text_splitter.split_documents(docs)
-        return splits
 
     def remove_docs(self, doc_file_names: List[str]):
         """Remove a list of documents from the document collection"""
