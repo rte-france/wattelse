@@ -123,7 +123,7 @@ function handleUserMessage(userMessage) {
     waitDiv.id = 'wait-div';
     const botDiv = document.createElement('p');
     botDiv.classList.add('bot-message');
-    botDiv.innerHTML='<i class="fa-solid fa-comment-dots fa-beat-fade">'
+    botDiv.innerHTML='<i class="fa-solid fa-ellipsis fa-fade"></i>'
     waitDiv.appendChild(botDiv);
     chatHistory.appendChild(waitDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight;
