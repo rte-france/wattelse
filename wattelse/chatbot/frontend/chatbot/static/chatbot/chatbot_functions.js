@@ -450,7 +450,7 @@ function iconSelector(filename) {
             return pdfIcon
         case 'docx':
             return docxIcon
-        case 'xslx':
+        case 'xlsx':
             return xlsxIcon
         case 'pptx':
             return pptxIcon
