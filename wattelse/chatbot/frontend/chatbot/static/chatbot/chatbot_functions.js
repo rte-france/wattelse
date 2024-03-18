@@ -94,13 +94,13 @@ function updateAvailableDocuments(){
     documentList.innerHTML=""
     removalList.innerHTML=""
     availableDocs.forEach((document) =>{
-        const listItem = createDocumentListItem(document, "description");
+        const listItem = createDocumentListItem(document);
         documentList.appendChild(listItem);
     });
 
     // Display documents that can be removed
     availableDocs.forEach((document) =>{
-        const listItem = createDocumentListItem(document, "description");
+        const listItem = createDocumentListItem(document);
         removalList.appendChild(listItem);
     });
 }
@@ -209,7 +209,7 @@ function createBotMessage(message, showFeedbackSection = true) {
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 
     // Call the function to activate the "Extracts" tab
-    activateExtractsTab();
+    activateTab("extracts");
 
     // Feedback section (modify based on your chosen approach)
     if (showFeedbackSection) {
@@ -225,18 +225,18 @@ function createErrorMessage(message) {
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
-function activateExtractsTab() {
+function activateTab(tabName) {
   // Find the tab with the data-content attribute set to "extracts"
-  const extractsTab = Array.from(tabs).find(tab => tab.dataset.content === 'extracts');
+  const tabToBeActivated = Array.from(tabs).find(tab => tab.dataset.content === tabName);
 
   // If the extractsTab is found, remove the 'active' class from all tabs
   // and add the 'active' class to the extractsTab
-  if (extractsTab) {
+  if (tabToBeActivated) {
     tabs.forEach(tab => tab.classList.remove('active'));
-    extractsTab.classList.add('active');
+    tabToBeActivated.classList.add('active');
 
     // Show the content section corresponding to the extractsTab
-    const targetContent = documentPanel.querySelector(`.content.${extractsTab.dataset.content}`);
+    const targetContent = documentPanel.querySelector(`.content.${tabToBeActivated.dataset.content}`);
     targetContent.style.display = 'block';
 
     // Hide any other content sections that might be visible
@@ -262,7 +262,7 @@ function createExtract(text, sourceUrl) {
     return listItem;
 }
 
-function createDocumentListItem(title, description) {
+function createDocumentListItem(title) {
   const listItem = document.createElement('li');
   const checkbox = document.createElement('input');
   const titleSpan = document.createElement('span');
@@ -273,12 +273,6 @@ function createDocumentListItem(title, description) {
   listItem.appendChild(titleSpan);
   // Add space using margin or padding
   titleSpan.style.marginRight = '1rem'; // Using margin for spacing
-
-  if (description) {
-    const descriptionElement = document.createElement('p');
-    descriptionElement.textContent = description;
-    listItem.appendChild(descriptionElement);
-  }
 
   return listItem;
 }
