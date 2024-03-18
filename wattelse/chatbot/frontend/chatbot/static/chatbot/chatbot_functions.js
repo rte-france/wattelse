@@ -90,7 +90,10 @@ function initializeLayout(){
 }
 
 function updateAvailableDocuments(){
-    // Display of available document
+    // Update the visible list of documents, after and before removal
+    // gather the list of active documents before the change
+    let previously_selected = getCheckedDocuments(documentList);
+
     documentList.innerHTML=""
     removalList.innerHTML=""
     availableDocs.forEach((document) =>{
@@ -103,10 +106,15 @@ function updateAvailableDocuments(){
         const listItem = createDocumentListItem(document);
         removalList.appendChild(listItem);
     });
+
+    // intersection of previous selection with  new available docs
+    newly_selected =  previously_selected.filter(x => availableDocs.includes(x));
+    // reset previously checked docs
+    setCheckedDocuments(documentList, newly_selected);
 }
 
 function handleUserMessage(userMessage) {
-    if (getSelectedDocuments(documentList).length === 0) {
+    if (getCheckedDocuments(documentList).length === 0) {
         createErrorMessage("Merci de sélectionner au moins un document !")
         return
     }
@@ -146,7 +154,7 @@ function postUserMessageToRAG(userMessage) {
         body: new URLSearchParams({
             'csrfmiddlewaretoken': csrfmiddlewaretoken,
             'message': userMessage,
-            'selected_docs': JSON.stringify(getSelectedDocuments(documentList)),
+            'selected_docs': JSON.stringify(getCheckedDocuments(documentList)),
         })
     })
     .then(response => response.json())
@@ -162,7 +170,7 @@ function postUserMessageToRAG(userMessage) {
 }
 
 function deleteDocumentsInCollection(){
-    if (getSelectedDocuments(removalList).length === 0  ) {
+    if (getCheckedDocuments(removalList).length === 0  ) {
         createErrorMessage("Aucun document à supprimer !")
     } else {
         fetch('delete/', {
@@ -170,7 +178,7 @@ function deleteDocumentsInCollection(){
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
                 'csrfmiddlewaretoken': csrfmiddlewaretoken,
-                'selected_docs': JSON.stringify(getSelectedDocuments(removalList)),
+                'selected_docs': JSON.stringify(getCheckedDocuments(removalList)),
             })
         })
         .then(response => response.json())
@@ -285,7 +293,7 @@ function handleSelectAll(event) {
   });
 }
 
-function getSelectedDocuments(list) {
+function getCheckedDocuments(list) {
   const checkboxes = list.querySelectorAll('input[type="checkbox"]')
   const selectedDocNames = [];
   for (const checkbox of checkboxes) {
@@ -299,6 +307,17 @@ function getSelectedDocuments(list) {
   }
   return selectedDocNames;
 }
+
+function setCheckedDocuments(list, textsToSelect) {
+  const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+
+  for (const checkbox of checkboxes) {
+    const labelText = checkbox.closest('li').querySelector('span').textContent;
+    // Check if text is in the list
+    checkbox.checked = textsToSelect.includes(labelText);
+  }
+}
+
 
 //TODO!
 function provideFeedback() {
