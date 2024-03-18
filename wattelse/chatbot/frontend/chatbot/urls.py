@@ -10,4 +10,5 @@ urlpatterns = [
 	path('reset/', views.reset, name='reset'),
     path('delete/', views.delete, name='delete'),
     path('upload/', views.upload, name='upload'),
+    path('pdf_viewer/<str:pdf_name>', views.pdf_viewer, name='pdf_viewer'),
 ]

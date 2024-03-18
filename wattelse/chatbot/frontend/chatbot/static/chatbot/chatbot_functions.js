@@ -196,7 +196,7 @@ function deleteDocumentsInCollection(){
 function updateRelevantExtracts(relevant_extracts){
     extractList.innerHTML = ""
     relevant_extracts.forEach((extract) => {
-        const listItem = createExtract(extract.content, extract.url);
+        const listItem = createExtract(extract.content, extract.metadata.url, extract.metadata.file_name);
         extractList.appendChild(listItem);
     });
 }
@@ -253,18 +253,20 @@ function activateTab(tabName) {
   }
 }
 
-function createExtract(text, sourceUrl) {
+function createExtract(text, sourceUrl, fileName) {
     const listItem = document.createElement('li');
     const paragraph = document.createElement('p');
     const link = document.createElement('a');
+    const horizontalLine = document.createElement('hr');
 
     paragraph.textContent = text;
     link.href = sourceUrl;
     link.target = '_blank';
-    link.textContent = 'Source';
+    link.textContent = 'Source : ' + fileName;
     link.classList.add('source-link'); // Optional styling class
 
     listItem.appendChild(paragraph);
+    listItem.appendChild(horizontalLine);
     listItem.appendChild(link);
 
     return listItem;

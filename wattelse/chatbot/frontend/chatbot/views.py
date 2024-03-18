@@ -5,7 +5,7 @@ from typing import Dict, Tuple
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.forms import forms
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 
 from django.contrib import auth
 from django.contrib.auth.models import User
@@ -17,6 +17,7 @@ from .models import Chat
 from django.utils import timezone
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
+from wattelse.chatbot import DATA_DIR
 
 # Mapping table between user login and RAG clients
 rag_dict: Dict[str, RAGOrchestratorClient] = {}
@@ -72,11 +73,9 @@ def chatbot(request):
         relevant_extracts = response["relevant_extracts"]
 
         # Update url in relevant_extracts to make it openable accessible from the web page
-        # TODO à adapter avec la bonne URL!! (cf Guillaume)
         if relevant_extracts:
             for extract in relevant_extracts:
-                if extract["metadata"].get("page"):
-                    extract["metadata"]["url"] = f'http://{extract["metadata"]["file_name"]}#{extract["metadata"]["page"]}'
+                extract["metadata"]["url"] = f'pdf_viewer/{extract["metadata"]["file_name"]}#page={extract["metadata"].get("page", "0")+1}'
 
         # Save query and response in DB
         chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
@@ -86,6 +85,23 @@ def chatbot(request):
     else:
         return render(request, "chatbot/chatbot.html",
                       {"chats": chats, "session_id": session_id, "available_docs": available_docs})
+
+
+def pdf_viewer(request, pdf_name: str):
+    """
+    Main function to render a PDF file. The url to access this function should be :
+    pdf_viewer/pdf_file_name.pdf
+    It will render the pdf file if the user belongs to the right group.
+    """
+    #TODO: manage more file type
+    pdf_path = DATA_DIR / request.user.groups.all()[0].name / pdf_name
+    if pdf_path.exists():
+        with open(pdf_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/pdf')
+            response['Content-Disposition'] = 'inline; filename="{}.pdf"'.format(pdf_name)
+            return response
+    else:
+        raise Http404()
 
 
 def delete(request):
