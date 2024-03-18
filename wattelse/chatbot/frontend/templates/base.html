@@ -2,9 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>{% block title %}{% endblock %}</title>
+    <title>WattElse</title>
     <script src="https://kit.fontawesome.com/63730a0977.js" crossorigin="anonymous"></script>
     {% block styles %}{% endblock %}
+    {% load static %}
+    <link rel="icon" type="image/x-icon" href="{% static 'chatbot/favicon.ico' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">

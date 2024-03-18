@@ -1,10 +1,5 @@
 {% extends 'base.html' %}
 
-{% block title %}
-Wattelse Chatbot
-{% endblock %}
-
-
 {% block content %}
     {% if not user.is_authenticated %}
     <script>window.location.replace("/")</script>
