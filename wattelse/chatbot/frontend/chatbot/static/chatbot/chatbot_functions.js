@@ -110,6 +110,12 @@ function handleUserMessage(userMessage) {
         createErrorMessage("Merci de sélectionner au moins un document !")
         return
     }
+    // Remove last feedback div
+    const lastFeedbackDiv = document.querySelector('.feedback-section');
+    if (lastFeedbackDiv) {
+        lastFeedbackDiv.remove()
+    }
+
     createUserMessage(userMessage);
 
     // Simulate bot response with a delay
