@@ -3,30 +3,25 @@
 {% block title %}Register{% endblock %}
 
 {% block content %}
-<div>
-  <div>
-    <div>Nouvel utilisateur</div>
-    <div>
-      {% if error_message %}
-        <div role="alert">{{ error_message }}</div>
-      {% endif %}
-      <form method="post">
-        {% csrf_token %}
-        <div>
-          <label for="username">Nom d'utilisateur</label>
-          <input type="text" id="username" name="username" required>
-        </div>
-        <div>
-          <label for="password1">Mot de passe</label>
-          <input type="password" id="password1" name="password1" required>
-        </div>
-        <div>
-          <label for="password2">Confirmez le mot de passe</label>
-          <input type="password" id="password2" name="password2" required>
-        </div>
-        <button type="submit">Créer</button>
-      </form>
-    </div>
-  </div>
+
+<div class="login-container">
+  <h1 class="login-head">WattElse</h1>
+  {% if error_message %}
+      <div role="alert" class="error-text">{{ error_message }}</div>
+    {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <label class="login-label" for="username">Nom d'utilisateur :</label>
+    <input class="login-input" type="text" id="username" name="username" required>
+
+    <label class="login-label" for="password1">Mot de passe :</label>
+    <input class="login-input" type="password" name="password1" id="password1" required>
+
+    <label class="login-label" for="password2">Confirmez le mot de passe :</label>
+    <input class="login-input" type="password" name="password2" id="password2" required>
+
+    <button class="login-button" type="submit">Créer</button>
+  </form>
 </div>
+
 {% endblock %}

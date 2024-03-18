@@ -1,0 +1,483 @@
+@import url("global.css");
+
+/* ************ */
+/* CHATBOT PAGE */
+/* ************ */
+
+ /* Wrapper for the whole page */
+.wrapper {
+  display: flex;
+  height: 100%;
+}
+
+
+/* Main containers : chat and panel */
+.chat-container,
+.panel-container {
+    height: 90%;
+    padding: 1.5%;
+    margin: 1%;
+    border-radius: 10px;
+    background-color: #fff;
+    box-shadow: 0 5px 10px 0 rgba(0,0,0,.1);
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  width: 55%;
+  justify-content: space-between;
+}
+
+.panel-container {
+  width: 35%;
+}
+
+
+/* Chat container */
+.chat-header {
+  padding: 5px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.chat-history {
+  width: 100%;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.chat-container-bottom { /* Everything in this div will stick at the bottom of the chat container */
+  width: 100%;
+}
+
+.user-message,
+.bot-message,
+.error-message {
+    width: 98%;
+    margin-bottom: 30px;
+}
+
+.error-message {
+  color: red;
+}
+
+.user-message::before { /* Add content before the message */
+    content: "\f007"; /* Font Awesome icon code for user */
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color: black; /* Set icon color */
+}
+
+.bot-message::before { /* Add content before the message */
+    content: "\e0b7"; /* Font Awesome icon code for robot */
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color: var(--main-color); /* Set icon color */
+}
+
+.error-message::before { /* Add content before the message */
+    content: "\f188"; /* Font Awesome icon code for bug */
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color: red; /* Set icon color */
+}
+
+.chat-input {
+    width: 100%;
+    align-items: center;
+}
+
+.input-field {
+    width: 92%;
+    padding: 1%;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    background-color: #e7e7e7;
+}
+
+.send-button {
+    width: 5% ;
+    padding: 0.5rem 0.5rem;
+    border: none;
+    border-radius: 5px;
+    background-color: var(--main-color);
+    color: white;
+    font-weight: 600;
+}
+
+.disclaimer{
+    color: darkgrey;
+    text-align: center;
+    font-size: 0.7rem;
+}
+
+
+/* Panel container */
+.panel-container .tab {
+    display: inline-block;
+    padding: 0.4rem 0.6rem; /* Increase padding for better readability */
+    font-size: 0.9rem; /* Slightly smaller font for tabs */
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center; /* Center text within tabs */
+    border-radius: 5px;
+    color: #333; /* Darker text color for better contrast */
+    transition: background-color 0.2s ease-in-out; /* Smooth transition on hover */
+}
+
+.panel-container .tab:hover {
+    color: var(--main-color);
+}
+
+.panel-container .tab.active {
+    background-color: var(--main-color); /* Blue background for active tab */
+    color: #fff; /* White text color for active tab */
+    box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
+}
+
+
+.panel-container .content {
+    width: 95%;
+    height: 90%;
+    overflow-y: scroll;
+}
+
+.document-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.document-list-item {
+    margin-bottom: 0.5rem;
+}
+
+.document-list-item label {
+    cursor: pointer;
+}
+
+.extract-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.extract-list-item {
+    margin-bottom: 0.5rem;
+}
+
+.document-preview {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    margin-top: 1rem;
+    display: none; /* Initially hide the preview */
+}
+
+.content.documents h2,
+.content.extracts h2 {
+  font-size: 1.2rem; /* Adjust font size as desired */
+}
+
+.content.extracts {
+  padding: 1rem; /* Maintain padding for content */
+}
+
+.content.extracts h2 {
+  margin-bottom: 1rem; /* Add some space after the heading */
+}
+
+.content.extracts ul {
+  list-style: none; /* Remove default bullet points */
+  padding: 0; /* Reset padding for better spacing */
+}
+
+.content.extracts li {
+  margin-bottom: 1rem; /* Add space between list items */
+}
+
+.content.extracts p {
+  margin-bottom: 0.5rem; /* Space between paragraph and link */
+  font-size: 0.9rem; /* Slightly smaller font for extracts */
+}
+
+.content.extracts ul#extract-list {
+  list-style: none; /* Remove default bullet points */
+  padding: 0; /* Reset padding for better spacing */
+  margin: 0; /* Remove default margin */
+  border-radius: 5px; /* Add rounded corners for the list */
+}
+
+.content.extracts ul#extract-list li:hover {
+  background-color: lightgrey; /* Lighter background on hover */
+}
+
+.content.extracts .source-link {
+  color: var(--main-color); /* Blue color for the source link */
+  text-decoration: none; /* Underline the link */
+  font-weight: bold; /* Make the link slightly bolder */
+}
+
+.content.extracts .source-link::before { /* Add content before the message */
+    content: "\f0c1"; /* Font Awesome icon code for user */
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color: var(--main-color); /* Set icon color */
+}
+
+.content.documents .document-list {
+  list-style: none; /* Remove default bullet points */
+  padding: 0; /* Reset padding for better spacing */
+  margin: 0; /* Remove default margin */
+}
+
+.content.documents .document-list li {
+  display: flex; /* Allow horizontal layout for list items */
+  align-items: center; /* Vertically align content within items */
+  padding: 0.75rem 1rem; /* Add some padding for readability */
+  border-bottom: 1px solid #ddd; /* Add subtle separation lines */
+  cursor: pointer; /* Indicate clickable list items */
+}
+
+.content.documents .document-list li:hover {
+  background-color: darkgrey; /* Light background on hover */
+}
+
+.content.documents .document-list li a {
+  flex: 1; /* Expand link to fill most of the space */
+  color: #333; /* Darker text color for links */
+  text-decoration: none; /* Remove underline from links */
+}
+
+.content.documents .document-list li p {
+  margin-right: 1rem; /* Add space between description and checkbox */
+  font-size: 0.9rem; /* Slightly smaller font for descriptions */
+  color: #777; /* Lighter text color for descriptions */
+}
+
+.content.documents .document-list li input[type="checkbox"]  {
+  appearance: none; /* Remove default checkbox appearance */
+  width: 1rem; /* Set width */
+  height: 1rem; /* Set height */
+  background-color: #ddd; /* Background color */
+  border: 1px solid #ccc; /* Border */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer;
+}
+
+.content.documents .document-list li input[type="checkbox"]:checked {
+  background-color: var(--main-color); /* Checked background color */
+}
+
+
+.feedback-section {
+  display: flex; /* Arrange buttons and/or textarea horizontally */
+  align-items: center; /* Align content vertically in the center */
+  margin-top: 1rem; /* Add some space above the feedback section */
+  padding: 1rem; /* Add padding for spacing within the section */
+  border-radius: 5px; /* Add rounded corners for a softer look */
+}
+
+.feedback-section button {
+  margin-right: 1rem; /* Add space between buttons */
+  padding: 0.5rem 1rem; /* Set appropriate padding for buttons */
+  background-color: #fff; /* White background for buttons */
+  border: 1px solid #ccc; /* Add a solid border */
+  border-radius: 4px; /* Add rounded corners for buttons */
+  cursor: pointer; /* Indicate clickable behavior */
+}
+
+.feedback-section button:hover {
+  background-color: lightsalmon; /* Slightly lighter background on hover */
+}
+
+.feedback-section textarea {
+  flex: 1; /* Allow textarea to expand and fill remaining space */
+  padding: 0.5rem 1rem; /* Set padding for the textarea */
+  border: 1px solid #ccc; /* Add a light gray border */
+  border-radius: 4px; /* Add rounded corners for the textarea */
+  resize: none; /* Disable resizing of textarea */ /* Optional: Allow resizing if needed */
+}
+
+.feedback-section:last-child { /* Target the last feedback section */
+  margin-bottom: 2rem; /* Add extra space at the bottom of the last section */
+}
+
+/* File upload style */
+.content.upload {
+  text-align: center;
+  width: 100%;
+  max-width: 500px;
+  min-height: 435px;
+  margin: auto;
+}
+.drop-section{
+  min-height: 170px;
+  border: 1px dashed darkgrey;
+  margin: 5px 35px 35px 35px;
+  border-radius: 12px;
+  position: relative;
+}
+.drop-section div.col:first-child{
+  opacity: 1;
+  visibility: visible;
+  transition-duration: 0.2s;
+  transform: scale(1);
+  width: 200px;
+  margin: auto;
+}
+.drop-section div.col:last-child{
+  font-size: 40px;
+  font-weight: 700;
+  color: #c0cae1;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  margin: auto;
+  width: 200px;
+  height: 55px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.6);
+  transition-duration: 0.2s;
+}
+/* we will use "drag-over-effect" class in js */
+.drag-over-effect div.col:first-child{
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(1.1);
+}
+.drag-over-effect div.col:last-child{
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+}
+.drop-section .cloud-icon{
+  margin-top: 25px;
+  margin-bottom: 20px;
+}
+.drop-section span,
+.drop-section button{
+  display: block;
+  margin: auto;
+  color: #707EA0;
+  margin-bottom: 10px;
+}
+.drop-section button{
+  color: white;
+  background-color: var(--main-color);
+  border: none;
+  outline: none;
+  padding: 7px 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  cursor: pointer;
+}
+
+.drop-section input{
+  display: none;
+}
+
+.uploaded-section{
+    display: none;
+    text-align: left;
+    margin: 0px 35px;
+    padding-bottom: 20px;
+}
+
+.uploaded-section .uploaded-title{
+  font-size: 0.95rem;
+  color: #707EA0;
+}
+
+.uploaded-section li{
+  display: flex;
+  margin: 15px 0px;
+  padding-top: 4px;
+  padding-bottom: 2px;
+  border-radius: 8px;
+  transition-duration: 0.2s;
+}
+
+.uploaded-section li:hover{
+  box-shadow: #E3EAF9 0px 0px 4px 0px, #E3EAF9 0px 12px 16px 0px;
+}
+
+
+.uploaded-section li .col{
+  flex: .1;
+}
+.uploaded-section li .col:nth-child(1){
+  flex: .15;
+  text-align: center;
+}
+.uploaded-section li .col:nth-child(2){
+  flex: .75;
+  text-align: left;
+  font-size: 0.9rem;
+  color: #3e4046;
+  padding: 8px 10px;
+}
+.uploaded-section li .col:nth-child(2) div.name{
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  display: inline-block;
+}
+.uploaded-section li .col .file-name span{
+  color: #707EA0;
+  float: right;
+}
+.uploaded-section li .file-progress{
+  width: 100%;
+  height: 5px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background-color: #dee6fd;
+}
+.uploaded-section li .file-progress span{
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: 8px;
+  background-image: linear-gradient(120deg, #6b99fd, #9385ff);
+  transition-duration: 0.4s;
+}
+.uploaded-section li .col .file-size{
+  font-size: 0.75rem;
+  margin-top: 3px;
+  color: #707EA0;
+}
+.uploaded-section li .col svg.cross,
+.uploaded-section li .col svg.tick{
+  fill: #8694d2;
+  background-color: #dee6fd;
+  position: relative;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+.uploaded-section li .col svg.tick{
+  fill: #50a156;
+  background-color: transparent;
+}
+.uploaded-section li.complete span,
+.uploaded-section li.complete .file-progress,
+.uploaded-section li.complete svg.cross{
+  display: none;
+}
+.uploaded-section li.in-prog .file-size,
+.uploaded-section li.in-prog svg.tick{
+  display: none;
+}

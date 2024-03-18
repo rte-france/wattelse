@@ -3,7 +3,7 @@ const chatHistory = document.querySelector('.chat-history');
 const userInput = document.querySelector('.input-field');
 const sendButton = document.querySelector('.send-button');
 
-const documentPanel = document.querySelector('.document-panel');
+const documentPanel = document.querySelector('.panel-container');
 const tabs = documentPanel.querySelectorAll('.tab');
 const contentSections = documentPanel.querySelectorAll('.content');
 
@@ -374,7 +374,7 @@ function initializeUploadArea(){
 // check the file type
 function typeValidation(filename) {
     const fileExt = filename.split('.').pop().toLowerCase();;
-    if (fileExt === "pdf" || fileExt === "docx" || fileExt === "pptx" || fileExt === "xslx" || fileExt === "html"
+    if (fileExt === "pdf" || fileExt === "docx" || fileExt === "pptx" || fileExt === "xlsx" || fileExt === "html"
         || fileExt === "htm" || fileExt === "md" || fileExt === "csv" || fileExt === "txt")
         return true
 }

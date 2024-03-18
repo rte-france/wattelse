@@ -4,10 +4,6 @@
 Wattelse Chatbot
 {% endblock %}
 
-{% block styles %}
-    {% load static %}
-    <link href="{% static 'chatbot/chatbot_mainpage.css'%}" rel="stylesheet"/>
-{% endblock %}
 
 {% block content %}
     {% if not user.is_authenticated %}
@@ -18,34 +14,36 @@ Wattelse Chatbot
     {{ session_id|json_script:'session_id' }}
     {{ available_docs|json_script:'available_docs'}}
 
-    <div class="chat-container">
-        <header class="chat-header">
-          <h1>WattElse Chatbot</h1>
-        </header>
-        <div class="chat-history">
-            {% for chat in chats %}
-                {% if chat.user == request.user %}
-                <script>
-                    //createUserMessage("{{chat.message}}");
-                    //createBotMessage("{{chat.response}}");
-                </script>
-                {% endif %}
-            {% endfor %}
-        </div>
+    <div class="wrapper">
+        <div class="chat-container">
+            <h1 class="chat-header">WattElse</h1>
+            <div class="chat-history">
+                {% for chat in chats %}
+                    {% if chat.user == request.user %}
+                    <script>
+                        // createUserMessage("{{chat.message}}");
+                        // createBotMessage("{{chat.response}}");
+                    </script>
+                    {% endif %}
+                {% endfor %}
+            </div>
             {% csrf_token %}
-            <div class="chat-input">
-                <input type="text" class="input-field" placeholder="Entrez votre question en lien avec les documents fournis..." />
-                <button class="send-button">OK</button>
+            <div class="chat-container-bottom">
+                <div class="chat-input">
+                    <input type="text" class="input-field" placeholder="Entrez votre question en lien avec les documents fournis..." />
+                    <button class="send-button">OK</button>
+                </div>
+                <div class="disclaimer">
+                    WattElse peut afficher des informations inexactes. Vérifiez ses réponses.
+                </div>
             </div>
-            <div class="disclaimer">
-                WattElse peut afficher des informations inexactes. Vérifiez donc ses réponses.
-            </div>
-    </div>
-    <div class="document-panel">
-        <div class="tab" data-content="extracts">Extraits pertinents</div>
-        <div class="tab active" data-content="documents">Documents sélectionnés</div>
-        <div class="tab" data-content="upload">Télécharger documents</div>
-        <div class="tab" data-content="remove">Supprimer documents</div>
+        </div>
+        <div class="panel-container">
+            <div class="tab" data-content="extracts">Extraits</div>
+            <div class="tab active" data-content="documents">Documents</div>
+            <div class="tab" data-content="upload">Ajouter</div>
+            <div class="tab" data-content="remove">Supprimer</div>
+            <hr>
 
         <div class="content documents">
             <h2>Sélection des documents disponibles</h2>
@@ -67,7 +65,7 @@ Wattelse Chatbot
             <div class="drop-section">
                 <div class="col">
                     <div class="cloud-icon">
-                        <i class="fa-solid fa-cloud-arrow-up fa-2xl" style="color: royalblue;"></i>
+                        <i class="fa-solid fa-cloud-arrow-up fa-2xl " style="color: var(--main-color);"></i>
                     </div>
                     <span>Glisser-déposer vos fichiers</span>
                     <span>OU</span>
@@ -92,10 +90,11 @@ Wattelse Chatbot
             <button type="submit" id="trash-button" onclick="deleteDocumentsInCollection()"><i class="fa-solid fa-trash fa2-xl" style="color: orangered;"></i></i></button>
         </div>
 
+        </div>
     </div>
-
 {% endblock %}
 
 {% block scripts %}
-    <script src="{% static 'chatbot/chatbot_functions.js' %}"></script>
+  {% load static %}
+  <script src="{% static 'chatbot/chatbot_functions.js' %}"></script>
 {% endblock %}

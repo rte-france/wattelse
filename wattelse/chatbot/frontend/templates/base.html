@@ -5,8 +5,15 @@
     <title>{% block title %}{% endblock %}</title>
     <script src="https://kit.fontawesome.com/63730a0977.js" crossorigin="anonymous"></script>
     {% block styles %}{% endblock %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
   </head>
   <body>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'chatbot/global.css' %}">
+    <link rel="stylesheet" href="{% static 'chatbot/chatbot.css' %}">
+    <link rel="stylesheet" href="{% static 'chatbot/login_register.css' %}">
     {% block content %}{% endblock %}
     {% block scripts %}{% endblock %}
   </body>
