@@ -22,7 +22,6 @@ const fileSelectorInput = document.querySelector('.file-selector-input')
 
 // variables related to Django templates
 const userName =  JSON.parse(document.getElementById('user_name').textContent);
-const sessionId =  JSON.parse(document.getElementById('session_id').textContent);
 let availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
 const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value
 

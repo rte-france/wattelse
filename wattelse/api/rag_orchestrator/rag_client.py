@@ -128,15 +128,15 @@ class RAGOrchestratorClient:
                     print(chunk)
             return chunks
 
-    def get_current_sessions(self) -> str:
+    def get_current_sessions(self) -> List[str]:
+        """Returns the identifiers of current sessions"""
         response = requests.get(url=self.url + ENDPOINT_CURRENT_SESSIONS)
         if response.status_code == 200:
-            print(response.json())
-            return response.json()
+            logger.debug(f"Current sessions: {response.json()}")
+            return json.loads(response.json()).keys()
         else:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
-
 
 def main():
     docs = [
@@ -146,7 +146,7 @@ def main():
     files = [Path(__file__).parent.parent.parent.parent / "data" / "chatbot" / "drh" / doc for doc in docs]
 
     # create one client per user
-    rag_client = RAGOrchestratorClient("alice")
+    rag_client = RAGOrchestratorClient("alice", "drh")
 
     # upload data files
     rag_client.upload_files(files)
@@ -159,7 +159,7 @@ def main():
     rag_client.query_rag("Y'a une prime pour le télétravail?")
 
     # create one client per user
-    rag_client2 = RAGOrchestratorClient("bob")
+    rag_client2 = RAGOrchestratorClient("bob", "maintenance")
     rag_client2.upload_files([files[0]])
     rag_client2.query_rag("Y'a une prime pour le télétravail?")
 

@@ -2,8 +2,6 @@ import json
 import tempfile
 from typing import Dict, Tuple
 
-from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.forms import forms
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404
 
@@ -40,12 +38,9 @@ def chatbot(request):
     # Get user chat history
     chats = Chat.objects.filter(user=request.user)
     rag_client = rag_dict.get(request.user.get_username())
-    if not rag_client:
+    if not is_active_session(rag_client):
         # session expired for some reason
         return redirect("/login")
-
-    # Get RAG session ID
-    session_id = rag_client.session_id
 
     # Get list of available documents
     available_docs = rag_client.list_available_docs()
@@ -75,7 +70,8 @@ def chatbot(request):
         # Update url in relevant_extracts to make it openable accessible from the web page
         if relevant_extracts:
             for extract in relevant_extracts:
-                extract["metadata"]["url"] = f'pdf_viewer/{extract["metadata"]["file_name"]}#page={extract["metadata"].get("page", "0")+1}'
+                extract["metadata"][
+                    "url"] = f'pdf_viewer/{extract["metadata"]["file_name"]}#page={extract["metadata"].get("page", "0") + 1}'
 
         # Save query and response in DB
         chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
@@ -84,7 +80,7 @@ def chatbot(request):
         return JsonResponse({"message": message, "answer": answer, "relevant_extracts": relevant_extracts})
     else:
         return render(request, "chatbot/chatbot.html",
-                      {"chats": chats, "session_id": session_id, "available_docs": available_docs})
+                      {"chats": chats, "available_docs": available_docs})
 
 
 def pdf_viewer(request, pdf_name: str):
@@ -93,7 +89,7 @@ def pdf_viewer(request, pdf_name: str):
     pdf_viewer/pdf_file_name.pdf
     It will render the pdf file if the user belongs to the right group.
     """
-    #TODO: manage more file type
+    # TODO: manage more file type
     pdf_path = DATA_DIR / request.user.groups.all()[0].name / pdf_name
     if pdf_path.exists():
         with open(pdf_path, 'rb') as f:
@@ -117,6 +113,9 @@ def delete(request):
             return JsonResponse({"status": "No document removed"})
         else:
             rag_client = rag_dict[request.user.get_username()]
+            if not is_active_session(rag_client):
+                # session expired for some reason
+                return redirect("/login")
             rag_response = rag_client.remove_documents(json.loads(selected_docs))
             # Returns the list of updated available documents
             return JsonResponse({"available_docs": rag_client.list_available_docs()})
@@ -136,6 +135,9 @@ def upload(request):
         else:
             logger.debug(f"Received file: {uploaded_file.name}")
             rag_client = rag_dict[request.user.get_username()]
+            if not is_active_session(rag_client):
+                # session expired for some reason
+                return redirect("/login")
 
             # Create a temporary directory
             # TODO: investigate in memory temp file, probably a better option
@@ -196,7 +198,7 @@ def register(request):
         if User.objects.filter(username=username).exists():
             error_message = "Nom d'utilisateur déjà utilisé"
             return render(request, "chatbot/register.html", {"error_message": error_message})
-        
+
         # Check both password are the same
         if password1 == password2:
             try:
@@ -212,6 +214,21 @@ def register(request):
             error_message = "Mots de passe non identiques"
             return render(request, "chatbot/register.html", {"error_message": error_message})
     return render(request, "chatbot/register.html")
+
+
+def is_active_session(rag_client: RAGOrchestratorClient) -> bool:
+    """Return true is the rag_client backend session ID is in the list of current sessions as reported by the backend
+    (the backend performs some automatic cleaning, that's why we need to check...)"""
+    if not rag_client:
+        return False
+    elif rag_client.session_id in rag_client.get_current_sessions():
+        return True
+    else: # clean Django sessions as well
+        for k, v in rag_dict.items():
+            if v == rag_client:
+                rag_dict.pop(k)
+                break
+        return False
 
 
 def logout(request):

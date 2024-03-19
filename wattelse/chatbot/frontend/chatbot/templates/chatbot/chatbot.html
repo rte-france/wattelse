@@ -6,7 +6,6 @@
     {% endif %}
 
     {{ user.username|json_script:'user_name' }}
-    {{ session_id|json_script:'session_id' }}
     {{ available_docs|json_script:'available_docs'}}
 
     <div class="wrapper">
