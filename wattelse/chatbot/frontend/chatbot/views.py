@@ -187,6 +187,11 @@ def register(request):
         password1 = request.POST.get("password1")
         password2 = request.POST.get("password2")
 
+        # Check username is not already taken
+        if User.objects.filter(username=username).exists():
+            error_message = "Nom d'utilisateur déjà utilisé"
+            return render(request, "chatbot/register.html", {"error_message": error_message})
+        
         # Check both password are the same
         if password1 == password2:
             try:
@@ -196,10 +201,10 @@ def register(request):
                 rag_dict[username] = RAGOrchestratorClient(username)
                 return redirect("/")
             except:
-                error_message = "Error creating account"
+                error_message = "Erreur lors de la  création du compte"
                 return render(request, "chatbot/register.html", {"error_message": error_message})
         else:
-            error_message = "Password dont match"
+            error_message = "Mots de passe non identiques"
             return render(request, "chatbot/register.html", {"error_message": error_message})
     return render(request, "chatbot/register.html")
 
