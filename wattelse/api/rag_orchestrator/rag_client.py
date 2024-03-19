@@ -19,13 +19,14 @@ class RAGAPIError(Exception):
 class RAGOrchestratorClient:
     """Class in charge of routing requests to right backend depending on user group"""
 
-    def __init__(self, login):
+    def __init__(self, login: str, group: str):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent / "rag_orchestrator.cfg")
         self.port = config.get("RAG_ORCHESTRATOR_API_CONFIG", "port")
         self.url = f'http://localhost:{self.port}'
         # one client is associated to one RAG session
         self.login = login
+        self.group = group
         if self.check_service():
             logger.debug("RAG Orchestrator is running")
             self.session_id = self.create_session()
@@ -39,7 +40,7 @@ class RAGOrchestratorClient:
 
     def create_session(self) -> str:
         """Create session associated to the current user"""
-        response = requests.post(self.url + ENDPOINT_CREATE_SESSION, data=json.dumps({"login": self.login}))
+        response = requests.post(self.url + ENDPOINT_CREATE_SESSION, data=json.dumps({"login": self.login, "group": self.group}))
         if response.status_code == 200:
             session_id = response.json()
             logger.info(f"Session id for user {self.login}: {session_id}")

@@ -36,6 +36,7 @@ RAG_sessions_usage: Dict[str, Dict[str, datetime]] = {}  # used to clean session
 # Pydantic class for FastAPI typing control
 class User(BaseModel):
     login: str
+    group: str
 
 
 class RAGOrchestratorAPIError(Exception):
@@ -59,7 +60,7 @@ def create_session(user: User) -> str:
     """When this is called, instantiates a RAG backend, and associate a session id to this backend"""
     now = datetime.now()
     session_id = str(uuid.uuid1())
-    RAG_sessions[session_id] = RAGBackEnd(user.login)
+    RAG_sessions[session_id] = RAGBackEnd(user.login, user.group)
     RAG_sessions_usage[session_id] = {"created": now, "last_used": now}
     logger.info(f"Session id: {session_id} for user {user.login}")
     return session_id

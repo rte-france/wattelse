@@ -63,8 +63,8 @@ def get_chat_model(llm_api_name) -> BaseChatModel:
 
 
 class RAGBackEnd:
-    def __init__(self, login):
-        logger.debug(f"Initialization of chatbot backend for user {login}")
+    def __init__(self, login: str, group: str):
+        logger.debug(f"Initialization of chatbot backend for user {login} (group {group})")
         # Initialize history
         log_chat_history_on_disk = True
         if log_chat_history_on_disk:
@@ -74,7 +74,7 @@ class RAGBackEnd:
             self.chat_history = ChatHistory()
 
         # Load document collection
-        self.document_collection = load_document_collection(login)
+        self.document_collection = load_document_collection(group)
         self.document_filter = None
 
         # Retriever parameters

@@ -164,14 +164,19 @@ def login(request):
         username = request.POST.get("username")
         password = request.POST.get("password")
         user = auth.authenticate(request, username=username, password=password)
-        # If user exists, login and redirect to chatbot
+        group = get_user_group(user)
+        # If user doesn't belong to a group, return error
+        if group is None:
+            error_message = "Vous n'appartenez à aucun groupe. Contactez votre administrateur."
+            return render(request, "chatbot/login.html", {"error_message": error_message})
+        # If user exists: login, check group and redirect to chatbot
         if user is not None:
             auth.login(request, user)
-            rag_dict[user.get_username()] = RAGOrchestratorClient(user.get_username())
+            rag_dict[user.get_username()] = RAGOrchestratorClient(user.get_username(), group)
             return redirect("/")
         # Else return error
         else:
-            error_message = "Invalid username or password"
+            error_message = "Nom d'utilisateur ou mot de passe invalides"
             return render(request, "chatbot/login.html", {"error_message": error_message})
     else:
         return render(request, "chatbot/login.html")
@@ -241,3 +246,18 @@ def get_filename_parts(filename: str) -> Tuple[str, str]:
         prefix = filename[:dot_index]
         suffix = filename[dot_index:]
     return prefix, suffix
+
+def get_user_group(user: User) -> str:
+    """
+    Given a user, return the name of the group it belongs to.
+    If user doesn't belong to a group, return None.
+
+    A user should belong to only 1 group.
+    If it belongs to more than 1 group, return the first group.
+    """
+    group_list = user.groups.all()
+    logger.info(f"Group list for user {user.get_username()} : {group_list}")
+    if len(group_list)==0:
+        return None
+    else:
+        return group_list[0].name

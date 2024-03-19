@@ -86,10 +86,6 @@ class DocumentCollection:
         return len(self.get_ids(file_name)) > 0
 
 
-def load_document_collection(login) -> DocumentCollection:
-    """Retrieves the document collection the user can access to"""
-    user_collections_name = get_document_collection_for_user(login)
-    logger.debug(f"DocumentCollections for user {login}: {user_collections_name}")
-    if not user_collections_name:
-        raise DataManagementError(f"No document collection for user {login}")
-    return DocumentCollection(user_collections_name)
+def load_document_collection(group: str) -> DocumentCollection:
+    """Retrieves the document collection for the given group name"""
+    return DocumentCollection(group)
