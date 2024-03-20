@@ -56,3 +56,14 @@
     text-align: left;
     margin-bottom: 10px;
   }
+
+  .new-user-message,
+  .already-a-user-message {
+    color: grey;
+    font-size: 0.8rem;
+  }
+
+  .login-link,
+  .register-link {
+    color: var(--main-color);
+  }
