@@ -116,7 +116,6 @@
     font-size: 0.7rem;
 }
 
-
 /* Panel container */
 .panel-container .tab {
     display: inline-block;
@@ -384,19 +383,31 @@
   display: none;
 }
 
-.uploaded-section{
+.uploaded-section, .available-section, .removal-section{
     display: none;
     text-align: left;
     margin: 0px 35px;
     padding-bottom: 20px;
 }
+.available-section, .removal-section{
+    display: block;
+}
 
-.uploaded-section .uploaded-title{
+.uploaded-section .uploaded-title,
+.available-section .available-title,
+.removal-section .removal-title{
   font-size: 0.95rem;
   color: #707EA0;
 }
 
-.uploaded-section li{
+.available-section .available-title:hover{
+    font-weight: bold;
+    color: var(--main-color);
+}
+
+.uploaded-section li,
+.available-section li,
+.removal-section li{
   display: flex;
   margin: 15px 0px;
   padding-top: 4px;
@@ -405,33 +416,44 @@
   transition-duration: 0.2s;
 }
 
-.uploaded-section li:hover{
+.uploaded-section li:hover,
+.available-section li:hover,
+.removal-section li:hover{
   box-shadow: #E3EAF9 0px 0px 4px 0px, #E3EAF9 0px 12px 16px 0px;
 }
 
-
-.uploaded-section li .col{
+.uploaded-section li .col,
+.available-section li .col,
+.removal-section li .col{
   flex: .1;
 }
-.uploaded-section li .col:nth-child(1){
+.uploaded-section li .col:nth-child(1),
+.available-section li .col:nth-child(1),
+.removal-section li .col:nth-child(1){
   flex: .15;
   text-align: center;
 }
-.uploaded-section li .col:nth-child(2){
+.uploaded-section li .col:nth-child(2),
+.available-section li .col:nth-child(2),
+.removal-section li .col:nth-child(2){
   flex: .75;
   text-align: left;
   font-size: 0.9rem;
   color: #3e4046;
   padding: 8px 10px;
 }
-.uploaded-section li .col:nth-child(2) div.name{
+.uploaded-section li .col:nth-child(2) div.name,
+.available-section li .col:nth-child(2) div.name,
+.removal-section li .col:nth-child(2) div.name{
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   max-width: 250px;
   display: inline-block;
 }
-.uploaded-section li .col .file-name span{
+.uploaded-section li .col .file-name span,
+.available-section li .col .file-name span,
+.removal-section li .col .file-name span{
   color: #707EA0;
   float: right;
 }
@@ -456,7 +478,9 @@
   color: #707EA0;
 }
 .uploaded-section li .col svg.cross,
-.uploaded-section li .col svg.tick{
+.uploaded-section li .col svg.tick,
+.available-section li .col svg.tick,
+.removal-section li .col svg.tick{
   fill: #8694d2;
   background-color: #dee6fd;
   position: relative;
@@ -465,7 +489,15 @@
   transform: translate(-50%, -50%);
   border-radius: 50%;
 }
-.uploaded-section li .col svg.tick{
+
+.available-section li .col svg.tick,
+.removal-section li .col svg.tick{
+    display: none;
+}
+
+.uploaded-section li .col svg.tick,
+.available-section li.selected .col svg.tick,
+.removal-section li.selected .col svg.tick{
   fill: #50a156;
   background-color: transparent;
 }
@@ -477,4 +509,9 @@
 .uploaded-section li.in-prog .file-size,
 .uploaded-section li.in-prog svg.tick{
   display: none;
+}
+
+.available-section li.selected .col svg.tick,
+.removal-section li.selected .col svg.tick{
+  display: block;
 }

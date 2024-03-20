@@ -8,10 +8,10 @@ const tabs = documentPanel.querySelectorAll('.tab');
 const contentSections = documentPanel.querySelectorAll('.content');
 
 const extractList = document.getElementById('extract-list');
-const documentList = document.querySelector('.document-list');
-const removalList = document.querySelector('.removal-list');
+const availableDocumentList = document.querySelector('.available-list');
+const removalDocumentList = document.querySelector('.removal-list');
 
-const selectAllCheckbox = document.getElementById('select-all');
+const selectAll = document.getElementById('select-all');
 
 // variables related to the upload area
 const dropArea = document.querySelector('.drop-section')
@@ -33,7 +33,7 @@ initializeUploadArea()
 function initializeLayout(){
 
     // Initialization of listeners
-    selectAllCheckbox.addEventListener('change', handleSelectAll);
+    selectAll.addEventListener('click', handleSelectAll);
 
     sendButton.addEventListener('click', () => {
             const userMessage = userInput.value.trim();
@@ -82,7 +82,7 @@ function initializeLayout(){
     updateAvailableDocuments();
 
     // Select all documents by default
-    selectAllCheckbox.click();
+    selectAll.click();
 
     // Welcome message
     createBotMessage("Bonjour "+userName+ " ! Posez-moi des questions en lien avec les documents sélectionnés...", false);
@@ -91,29 +91,30 @@ function initializeLayout(){
 function updateAvailableDocuments(){
     // Update the visible list of documents, after and before removal
     // gather the list of active documents before the change
-    let previously_selected = getCheckedDocuments(documentList);
+    let previously_selected = getSelectedFileNames("available-list");
 
-    documentList.innerHTML=""
-    removalList.innerHTML=""
+    availableDocumentList.innerHTML=""
+    removalDocumentList.innerHTML=""
+    // Display documents to be selected
     availableDocs.forEach((document) =>{
         const listItem = createDocumentListItem(document);
-        documentList.appendChild(listItem);
+        availableDocumentList.appendChild(listItem);
     });
 
     // Display documents that can be removed
     availableDocs.forEach((document) =>{
         const listItem = createDocumentListItem(document);
-        removalList.appendChild(listItem);
+        removalDocumentList.appendChild(listItem);
     });
 
     // intersection of previous selection with  new available docs
     newly_selected =  previously_selected.filter(x => availableDocs.includes(x));
     // reset previously checked docs
-    setCheckedDocuments(documentList, newly_selected);
+    setSelectedFileNames("available-list", newly_selected);
 }
 
 function handleUserMessage(userMessage) {
-    if (getCheckedDocuments(documentList).length === 0) {
+    if (getSelectedFileNames("available-list").length ===0){
         createErrorMessage("Merci de sélectionner au moins un document !")
         return
     }
@@ -153,7 +154,7 @@ function postUserMessageToRAG(userMessage) {
         body: new URLSearchParams({
             'csrfmiddlewaretoken': csrfmiddlewaretoken,
             'message': userMessage,
-            'selected_docs': JSON.stringify(getCheckedDocuments(documentList)),
+            'selected_docs': JSON.stringify(getSelectedFileNames("available-list")),
         })
     })
     .then(response => response.json())
@@ -169,28 +170,35 @@ function postUserMessageToRAG(userMessage) {
 }
 
 function deleteDocumentsInCollection(){
-    if (getCheckedDocuments(removalList).length === 0  ) {
+    const selectedFileNames = getSelectedFileNames("removal-list")
+    if (selectedFileNames.length === 0  ) {
         createErrorMessage("Aucun document à supprimer !")
     } else {
-        fetch('delete/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                'csrfmiddlewaretoken': csrfmiddlewaretoken,
-                'selected_docs': JSON.stringify(getCheckedDocuments(removalList)),
+        // TODO: improve confirm popup look & feel
+        if (confirm("Confirmer la suppression des fichiers sélectionnés?")){
+            fetch('delete/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    'csrfmiddlewaretoken': csrfmiddlewaretoken,
+                    'selected_docs': JSON.stringify(selectedFileNames),
+                })
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            // update available docs
-            availableDocs = data.available_docs
-            updateAvailableDocuments();  })
-        .catch(error => {
-            createErrorMessage(error.message);
-            console.error('There was a problem with the Fetch operation:', error);
-        });
+                .then(response => response.json())
+                .then(data => {
+                    // update available docs
+                    availableDocs = data.available_docs
+                    updateAvailableDocuments();
+                })
+                .catch(error => {
+                    createErrorMessage(error.message);
+                    console.error('There was a problem with the Fetch operation:', error);
+                });
+        }
     }
 }
+
+
 
 function updateRelevantExtracts(relevant_extracts){
     extractList.innerHTML = ""
@@ -273,52 +281,62 @@ function createExtract(text, sourceUrl, fileName) {
 
 function createDocumentListItem(title) {
   const listItem = document.createElement('li');
-  const checkbox = document.createElement('input');
-  const titleSpan = document.createElement('span');
-
-  checkbox.type = 'checkbox';
-  titleSpan.textContent = title;
-  listItem.appendChild(checkbox);
-  listItem.appendChild(titleSpan);
-  // Add space using margin or padding
-  titleSpan.style.marginRight = '1rem'; // Using margin for spacing
-
+  listItem.innerHTML = `
+        <div class="col">
+            ${iconSelector(title)}
+        </div>
+        <div class="col">
+            <div class="file-name">
+                <div class="name">${title}</div>
+            </div>
+        </div>
+        <div class="col">
+            <svg xmlns="http://www.w3.org/2000/svg" class="tick" height="20" width="20"><path d="m8.229 14.438-3.896-3.917 1.438-1.438 2.458 2.459 6-6L15.667 7Z"/></svg>
+        </div>
+  `
+  // Add click event listener
+  listItem.addEventListener('click', () => {
+    listItem.classList.toggle('selected');
+  });
   return listItem;
 }
 
 // Function to handle selecting/deselecting all documents
 function handleSelectAll(event) {
-  const isChecked = event.target.checked;
-  documentList.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
-    checkbox.checked = isChecked;
+  const available = availableDocumentList.querySelectorAll('li');
+  let unselect = false;
+  if (available.length === availableDocumentList.querySelectorAll('li.selected').length){
+      unselect = true;
+  }
+  available.forEach((item) => {
+      if (unselect)
+          item.classList.remove('selected');
+      else
+          item.classList.add('selected') ;
   });
 }
 
-function getCheckedDocuments(list) {
-  const checkboxes = list.querySelectorAll('input[type="checkbox"]')
-  const selectedDocNames = [];
-  for (const checkbox of checkboxes) {
-    if (checkbox.checked) {
-      // Find the associated label element
-      text = checkbox.closest('li').querySelector('span').textContent;
-      if (text) {
-          selectedDocNames.push(text);
-      }
-    }
+function getSelectedFileNames(listName) {
+  const selectedItems = document.querySelectorAll("." + listName + " li.selected .col .file-name .name");
+  const names = [];
+  for (const item of selectedItems) {
+    names.push(item.textContent.trim());
   }
-  return selectedDocNames;
+  return names;
 }
 
-function setCheckedDocuments(list, textsToSelect) {
-  const checkboxes = list.querySelectorAll('input[type="checkbox"]');
-
-  for (const checkbox of checkboxes) {
-    const labelText = checkbox.closest('li').querySelector('span').textContent;
-    // Check if text is in the list
-    checkbox.checked = textsToSelect.includes(labelText);
+function setSelectedFileNames(listName, textsToSelect) {
+  const selectedItems = document.querySelectorAll("." + listName + " li .col .file-name .name");
+  for (const item of selectedItems) {
+      const textItem = item.textContent.trim();
+      const selected = textsToSelect.includes(textItem);
+      const liElement = item.parentElement.parentElement.parentElement
+      if (selected)
+          liElement.classList.add('selected');
+      else
+          liElement.classList.remove('selected') ;
   }
 }
-
 
 //TODO!
 function provideFeedback() {
@@ -393,10 +411,9 @@ function initializeUploadArea(){
 
 // check the file type
 function typeValidation(filename) {
-    const fileExt = filename.split('.').pop().toLowerCase();;
-    if (fileExt === "pdf" || fileExt === "docx" || fileExt === "pptx" || fileExt === "xlsx" || fileExt === "html"
-        || fileExt === "htm" || fileExt === "md" || fileExt === "csv" || fileExt === "txt")
-        return true
+    const fileExt = filename.split('.').pop().toLowerCase();
+    return fileExt === "pdf" || fileExt === "docx" || fileExt === "pptx" || fileExt === "xlsx" || fileExt === "html"
+        || fileExt === "htm" || fileExt === "md" || fileExt === "csv" || fileExt === "txt";
 }
 
 // upload file function

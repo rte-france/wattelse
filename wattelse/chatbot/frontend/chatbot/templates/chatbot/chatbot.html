@@ -39,17 +39,19 @@
             <div class="tab" data-content="remove">Supprimer</div>
             <hr>
 
-        <div class="content documents">
-            <h2>Sélection des documents disponibles</h2>
-            <div class="document-selection">
-                <input type="checkbox" id="select-all">Tout
-            </div>
-            <ul class="document-list"></ul>
-        </div>
         <div class="content extracts">
             <h2>Extraits pertinents</h2>
             <ul id="extract-list"></ul>
         </div>
+
+        <div class="content documents">
+            <h2>Sélection des documents disponibles</h2>
+            <div class="available-section">
+                <div class="available-title"><div id="select-all">Tout / Rien</div></div>
+                <div class="available-list"></div>
+            </div>
+        </div>
+
         <div class="content upload">
             <h2>Télécharger des documents</h2>
             <div class="header-section">
@@ -75,13 +77,14 @@
                 <div class="uploaded-list"></div>
             </div>
         </div>
+
         <div class="content remove">
             <h2>Supprimer des documents</h2>
-            <div class="disclaimer">
-                Attention, action irréversible!
+            <div class="removal-section">
+                <div class="removal-title">Fichiers à supprimer</div>
+                <div class="removal-list"></div>
+                <div class="trash-button" onclick="deleteDocumentsInCollection()"><i class="fa-solid fa-trash fa-2xl" style="color: #d90000;"></i></div>
             </div>
-            <ul class="removal-list"></ul>
-            <button type="submit" id="trash-button" onclick="deleteDocumentsInCollection()"><i class="fa-solid fa-trash fa2-xl" style="color: orangered;"></i></i></button>
         </div>
 
         </div>
