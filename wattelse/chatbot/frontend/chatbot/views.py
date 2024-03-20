@@ -175,7 +175,7 @@ def login(request):
         group = get_user_group(user)
         # If user doesn't belong to a group, return error
         if group is None:
-            error_message = "Vous n'appartenez à aucun groupe. Contactez votre administrateur."
+            error_message = "Vous n'appartenez à aucun groupe."
             return render(request, "chatbot/login.html", {"error_message": error_message})
         # If user exists: login, check group and redirect to chatbot
         if user is not None:
