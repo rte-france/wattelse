@@ -403,6 +403,7 @@
 .available-section .available-title:hover{
     font-weight: bold;
     color: var(--main-color);
+    cursor: pointer;
 }
 
 .uploaded-section li,
