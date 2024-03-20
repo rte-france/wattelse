@@ -515,3 +515,11 @@
 .removal-section li.selected .col svg.tick{
   display: block;
 }
+
+.removal-section .trash-button{
+    color: var(--main-color);
+    text-align: center;
+}
+.removal-section .trash-button:hover{
+    color: red;
+}
