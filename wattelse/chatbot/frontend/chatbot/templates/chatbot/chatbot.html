@@ -10,7 +10,6 @@
 
     <div class="wrapper">
         <div class="chat-container">
-            <h1 class="chat-header"><i class="fa-solid fa-bolt-lightning" style="color: var(--main-color);"></i> WattElse</h1>
             <div class="chat-history">
                 {% for chat in chats %}
                     {% if chat.user == request.user %}

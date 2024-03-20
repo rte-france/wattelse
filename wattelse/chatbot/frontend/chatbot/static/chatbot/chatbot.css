@@ -7,7 +7,7 @@
  /* Wrapper for the whole page */
 .wrapper {
   display: flex;
-  height: 100%;
+  height: 92%;
 }
 
 
@@ -35,12 +35,6 @@
 
 
 /* Chat container */
-.chat-header {
-  padding: 5px;
-  text-align: center;
-  font-weight: 800;
-}
-
 .chat-history {
   width: 100%;
   overflow-y: auto;
@@ -502,6 +496,7 @@
 .removal-section li.selected .col svg.tick{
   fill: #50a156;
   background-color: transparent;
+
 }
 .uploaded-section li.complete span,
 .uploaded-section li.complete .file-progress,
