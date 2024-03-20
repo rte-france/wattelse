@@ -419,7 +419,8 @@
 .uploaded-section li:hover,
 .available-section li:hover,
 .removal-section li:hover{
-  box-shadow: #E3EAF9 0px 0px 4px 0px, #E3EAF9 0px 12px 16px 0px;
+    box-shadow: #E3EAF9 0px 0px 4px 0px, #E3EAF9 0px 12px 16px 0px;
+    cursor: pointer;
 }
 
 .uploaded-section li .col,
@@ -522,4 +523,5 @@
 }
 .removal-section .trash-button:hover{
     color: red;
+    cursor: pointer;
 }
