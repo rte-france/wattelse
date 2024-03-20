@@ -70,8 +70,9 @@ def chatbot(request):
         # Update url in relevant_extracts to make it openable accessible from the web page
         if relevant_extracts:
             for extract in relevant_extracts:
+                page_number = int(extract["metadata"].get("page", "0")) + 1
                 extract["metadata"][
-                    "url"] = f'pdf_viewer/{extract["metadata"]["file_name"]}#page={extract["metadata"].get("page", "0") + 1}'
+                    "url"] = f'pdf_viewer/{extract["metadata"]["file_name"]}#page={page_number}'
 
         # Save query and response in DB
         chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
