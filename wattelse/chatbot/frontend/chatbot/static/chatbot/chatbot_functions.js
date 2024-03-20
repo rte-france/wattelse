@@ -85,7 +85,9 @@ function initializeLayout(){
     selectAll.click();
 
     // Welcome message
-    createBotMessage("Bonjour "+userName+ " ! Posez-moi des questions en lien avec les documents sélectionnés...", false);
+    createBotMessage("Bonjour <b><span style='font-weight:bold;color:" +
+        getComputedStyle(document.documentElement).getPropertyValue('--main-color')+";'>"+userName +
+        "</span></b> ! Posez-moi des questions en lien avec les documents sélectionnés...", false);
 }
 
 function updateAvailableDocuments(){
@@ -209,17 +211,17 @@ function updateRelevantExtracts(relevant_extracts){
 }
 
 function createUserMessage(message) {
-    const userDiv = document.createElement('p');
+    const userDiv = document.createElement('div');
     userDiv.classList.add('user-message');
-    userDiv.textContent = message;
+    userDiv.innerHTML = message;
     chatHistory.appendChild(userDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
 function createBotMessage(message, showFeedbackSection = true) {
-    const botDiv = document.createElement('p');
+    const botDiv = document.createElement('div');
     botDiv.classList.add('bot-message');
-    botDiv.textContent = message;
+    botDiv.innerHTML = message
     chatHistory.appendChild(botDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 
@@ -233,9 +235,9 @@ function createBotMessage(message, showFeedbackSection = true) {
 }
 
 function createErrorMessage(message) {
-    const errorDiv = document.createElement('p');
+    const errorDiv = document.createElement('div');
     errorDiv.classList.add('error-message');
-    errorDiv.textContent = message;
+    errorDiv.innerHTML = message;
     chatHistory.appendChild(errorDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }

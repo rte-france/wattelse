@@ -283,7 +283,7 @@
 }
 
 .feedback-section button:hover {
-  background-color: lightsalmon; /* Slightly lighter background on hover */
+  background-color: var(--main-color);
 }
 
 .feedback-section textarea {
