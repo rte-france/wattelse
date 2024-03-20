@@ -93,13 +93,18 @@ def pdf_viewer(request, pdf_name: str):
     # TODO: manage more file type
     pdf_path = DATA_DIR / request.user.groups.all()[0].name / pdf_name
     if pdf_path.exists():
+        suffix = pdf_path.suffix.lower()
+        content_type='application/pdf'
+        if suffix == ".docx":
+            content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        elif suffix == ".xlsx":
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         with open(pdf_path, 'rb') as f:
-            response = HttpResponse(f.read(), content_type='application/pdf')
-            response['Content-Disposition'] = 'inline; filename="{}.pdf"'.format(pdf_name)
+            response = HttpResponse(f.read(), content_type=content_type)
+            response['Content-Disposition'] = f'inline; filename="{pdf_path.name}"'
             return response
     else:
         raise Http404()
-
 
 def delete(request):
     """Main function for delete interface.
