@@ -49,6 +49,7 @@ button { /* Change pointer when hover a button */
   height: 7.5%;
   align-items: center;
   display: flex;
+  justify-content: space-between;
   flex: 1;
   box-shadow: 0 2px 4px 0 #0000001a;
 }
@@ -61,12 +62,16 @@ button { /* Change pointer when hover a button */
   text-shadow: 0px 1px 2px #0000001a;
 }
 
-.main-navbar .tabs{
+.top-right-tabs-list{
+  margin: 10px;
+}
+
+.top-right-tabs-list .tabs{
   font-weight: 600;
   margin: 0px 15px;
 }
 
-.main-navbar .tabs:hover{
+.top-right-tabs-list .tabs:hover{
   color: var(--main-color);
 }
 

@@ -18,12 +18,14 @@
     <link rel="stylesheet" href="{% static 'chatbot/login_register.css' %}">
     <div class="main-navbar">
       <a href="/" class="wattelse-title"><i class="fa-solid fa-bolt-lightning" style="color: var(--main-color);"></i> WattElse</a>
-      <a href="https://devin-source.rte-france.com/dsvd/pole-datascience/weak-signals" target="_blank" class="tabs"><i class="fa-brands fa-github"></i> Code</a>
-      <a href="mailto:jerome.picault@rte-france.com; guillaume.grosjean@rte-france.com; nicolas.bonnerot@rte-france.com; jerome.dejaegher@rte-france.com"
-         class="tabs"><i class="fa-solid fa-envelope"></i> Contact</a>
-      {% if user.is_authenticated %}
-      <a href="/logout" class="tabs"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
-      {% endif %}
+      <div class="top-right-tabs-list">
+        <a href="https://devin-source.rte-france.com/dsvd/pole-datascience/weak-signals" target="_blank" class="tabs"><i class="fa-brands fa-github"></i> Code</a>
+        <a href="mailto:jerome.picault@rte-france.com; guillaume.grosjean@rte-france.com; nicolas.bonnerot@rte-france.com; jerome.dejaegher@rte-france.com"
+          class="tabs"><i class="fa-solid fa-envelope"></i> Contact</a>
+        {% if user.is_authenticated %}
+        <a href="/logout" class="tabs"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
+        {% endif %}
+      </div>
     </div>
     {% block content %}{% endblock %}
     {% block scripts %}{% endblock %}
