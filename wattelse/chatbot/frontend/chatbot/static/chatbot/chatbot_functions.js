@@ -87,7 +87,8 @@ function initializeLayout(){
     // Welcome message
     createBotMessage("Bonjour <b><span style='font-weight:bold;color:" +
         getComputedStyle(document.documentElement).getPropertyValue('--main-color')+";'>"+userName +
-        "</span></b> ! Posez-moi des questions en lien avec les documents sélectionnés...", false);
+        "</span></b> ! Posez-moi des questions en lien avec les documents sélectionnés...",
+        false, "documents");
 }
 
 function updateAvailableDocuments(){
@@ -218,7 +219,7 @@ function createUserMessage(message) {
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
-function createBotMessage(message, showFeedbackSection = true) {
+function createBotMessage(message, showFeedbackSection = true, nextTab="extracts") {
     const botDiv = document.createElement('div');
     botDiv.classList.add('bot-message');
     botDiv.innerHTML = message
@@ -226,7 +227,7 @@ function createBotMessage(message, showFeedbackSection = true) {
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 
     // Call the function to activate the "Extracts" tab
-    activateTab("extracts");
+    activateTab(nextTab);
 
     // Feedback section (modify based on your chosen approach)
     if (showFeedbackSection) {
