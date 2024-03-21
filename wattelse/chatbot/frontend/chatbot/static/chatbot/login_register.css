@@ -53,7 +53,6 @@
   
   .error-text {
     color: #cc0033;
-    text-align: left;
     margin-bottom: 10px;
   }
 
@@ -65,5 +64,10 @@
 
   .login-link,
   .register-link {
+    color: var(--main-color);
+  }
+
+  .created-username{
+    font-weight: 700;
     color: var(--main-color);
   }

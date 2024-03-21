@@ -193,7 +193,7 @@ def login(request):
 def register(request):
     """Main function for register page.
     If request method is GET : render register.html
-    If request method is POST : create a new user, login and redirect to chatbot
+    If request method is POST : create a new user and print an new_user_created webpage
     """
     if request.method == "POST":
         username = request.POST.get("username")
@@ -210,9 +210,7 @@ def register(request):
             try:
                 user = User.objects.create_user(username, password=password1)
                 user.save()
-                auth.login(request, user)
-                rag_dict[username] = RAGOrchestratorClient(username)
-                return redirect("/")
+                return new_user_created(request, username=user.username)
             except:
                 error_message = "Erreur lors de la  création du compte"
                 return render(request, "chatbot/register.html", {"error_message": error_message})
@@ -220,6 +218,16 @@ def register(request):
             error_message = "Mots de passe non identiques"
             return render(request, "chatbot/register.html", {"error_message": error_message})
     return render(request, "chatbot/register.html")
+
+def new_user_created(request, username=None):
+    """
+    Webpage rendered when a new user is created.
+    It warns the user that no group is associated yet and need to contact an administrator.
+    """
+    if username is None:
+        return redirect("/login")
+    else:
+        return render(request, "chatbot/new_user_created.html", {"username": username})
 
 
 def is_active_session(rag_client: RAGOrchestratorClient) -> bool:
