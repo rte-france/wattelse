@@ -202,7 +202,7 @@ def register(request):
 
         # Check username is not already taken
         if User.objects.filter(username=username).exists():
-            error_message = "Nom d'utilisateur déjà utilisé"
+            error_message = "Nom d'utilisateur indisponible"
             return render(request, "chatbot/register.html", {"error_message": error_message})
 
         # Check both password are the same
