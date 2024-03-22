@@ -2,6 +2,7 @@ import json
 import tempfile
 from typing import Dict, Tuple
 
+import mammoth
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404
 
@@ -106,15 +107,18 @@ def pdf_viewer(request, pdf_name: str):
     pdf_path = DATA_DIR / request.user.groups.all()[0].name / pdf_name
     if pdf_path.exists():
         suffix = pdf_path.suffix.lower()
-        content_type='application/pdf'
-        if suffix == ".docx":
-            content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        elif suffix == ".xlsx":
-            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        with open(pdf_path, 'rb') as f:
-            response = HttpResponse(f.read(), content_type=content_type)
-            response['Content-Disposition'] = f'inline; filename="{pdf_path.name}"'
-            return response
+        if suffix == ".docx" or suffix==".xlsx":
+            with open(pdf_path, "rb") as docx_file:
+                result = mammoth.convert_to_html(docx_file)
+                html = result.value  # The generated HTML
+                messages = result.messages  # Any messages, such as warnings during conversion
+                return HttpResponse(html)
+        else:
+            content_type = 'application/pdf'
+            with open(pdf_path, 'rb') as f:
+                response = HttpResponse(f.read(), content_type=content_type)
+                response['Content-Disposition'] = f'inline; filename="{pdf_path.name}"'
+                return response
     else:
         raise Http404()
 
