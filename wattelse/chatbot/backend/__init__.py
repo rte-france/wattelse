@@ -1,9 +1,12 @@
 import configparser
+import os
 
 from pathlib import Path
 from pydoc import locate
 
 from wattelse.common.config_utils import parse_literal
+
+os.umask(0o002)
 
 # LLM API
 FASTCHAT_LLM = "Fastchat LLM"
