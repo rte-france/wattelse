@@ -518,7 +518,6 @@ class TempTopic:
         Whereas Blue indicates an overall smooth/stable topic evolution.
 
         Parameters:
-        - temptopic: An instance or data structure containing the topic modeling results.
         - topics_to_show: Optional list of topic IDs to display. If None or empty, show all.
         - darkmode: for the aesthetic of the plot only
 
