@@ -172,16 +172,17 @@ def login(request):
         username = request.POST.get("username")
         password = request.POST.get("password")
         user = auth.authenticate(request, username=username, password=password)
-        group = get_user_group(user)
-        # If user doesn't belong to a group, return error
-        if group is None:
-            error_message = "Vous n'appartenez à aucun groupe."
-            return render(request, "chatbot/login.html", {"error_message": error_message})
-        # If user exists: login, check group and redirect to chatbot
+        # If user exists: check group, login and redirect to chatbot
         if user is not None:
-            auth.login(request, user)
-            rag_dict[user.get_username()] = RAGOrchestratorClient(user.get_username(), group)
-            return redirect("/")
+            # If user doesn't belong to a group, return error
+            group = get_user_group(user)
+            if group is None:
+                error_message = "Vous n'appartenez à aucun groupe."
+                return render(request, "chatbot/login.html", {"error_message": error_message})
+            else:
+                auth.login(request, user)
+                rag_dict[user.get_username()] = RAGOrchestratorClient(user.get_username(), group)
+                return redirect("/")
         # Else return error
         else:
             error_message = "Nom d'utilisateur ou mot de passe invalides"
