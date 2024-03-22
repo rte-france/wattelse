@@ -192,8 +192,6 @@ function deleteDocumentsInCollection(){
     }
 }
 
-
-
 function updateRelevantExtracts(relevant_extracts){
     extractList.innerHTML = ""
     relevant_extracts.forEach((extract) => {
@@ -267,7 +265,7 @@ function createDocumentListItem(title) {
         </div>
         <div class="col">
             <div class="file-name">
-                <div class="name">${title}</div>
+                <div title="${title}" class="name">${title}</div>
             </div>
         </div>
         <div class="col">
