@@ -246,21 +246,7 @@ function createErrorMessage(message) {
 function activateTab(tabName) {
   // Find the tab with the data-content attribute set to "extracts"
   const tabToBeActivated = Array.from(tabs).find(tab => tab.dataset.content === tabName);
-
-  // If the extractsTab is found, remove the 'active' class from all tabs
-  // and add the 'active' class to the extractsTab
-  if (tabToBeActivated) {
-    tabs.forEach(tab => tab.classList.remove('active'));
-    tabToBeActivated.classList.add('active');
-
-    // Show the content section corresponding to the extractsTab
-    const targetContent = documentPanel.querySelector(`.content.${tabToBeActivated.dataset.content}`);
-    targetContent.style.display = 'block';
-
-    // Hide any other content sections that might be visible
-    const otherContents = documentPanel.querySelectorAll('.content:not(.extracts)');
-    otherContents.forEach(content => content.style.display = 'none');
-  }
+  tabToBeActivated.click();
 }
 
 function createExtract(text, sourceUrl, fileName) {
