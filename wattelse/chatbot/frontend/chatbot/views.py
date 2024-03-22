@@ -95,7 +95,7 @@ def chatbot(request):
                 "can_remove_documents": can_remove_documents,
                 "can_add_users": can_add_users,
             }
-            )
+        )
 
 
 def file_viewer(request, file_name: str):
@@ -105,14 +105,20 @@ def file_viewer(request, file_name: str):
     It will render the file if the user belongs to the right group and if the file format is supported
     """
     # TODO: manage more file type
+    # FIXME: to be rethought in case of distributed deployment (here we suppose RAG backend and Django on the same server...)
     file_path = DATA_DIR / request.user.groups.all()[0].name / file_name
     if file_path.exists():
         suffix = file_path.suffix.lower()
-        if suffix == ".docx":
+        if suffix == ".pdf":
+            content_type = 'application/pdf'
+            with open(file_path, 'rb') as f:
+                response = HttpResponse(f.read(), content_type=content_type)
+                response['Content-Disposition'] = f'inline; filename="{file_path.name}"'
+                return response
+        elif suffix == ".docx":
             with open(file_path, "rb") as docx_file:
                 result = mammoth.convert_to_html(docx_file)
                 html = result.value  # The generated HTML
-                messages = result.messages  # Any messages, such as warnings during conversion
                 return HttpResponse(html)
         elif suffix == ".xlsx":
             xlsx_file = open(file_path, 'rb')
@@ -120,14 +126,10 @@ def file_viewer(request, file_name: str):
             xlsx2html(xlsx_file, out_file, locale='en')
             out_file.seek(0)
             return HttpResponse(out_file.read())
-        elif suffix == ".pdf":
-            content_type = 'application/pdf'
-            with open(file_path, 'rb') as f:
-                response = HttpResponse(f.read(), content_type=content_type)
-                response['Content-Disposition'] = f'inline; filename="{file_path.name}"'
-                return response
+
     else:
         raise Http404()
+
 
 def delete(request):
     """Main function for delete interface.
@@ -243,6 +245,7 @@ def register(request):
             return render(request, "chatbot/register.html", {"error_message": error_message})
     return render(request, "chatbot/register.html")
 
+
 def new_user_created(request, username=None):
     """
     Webpage rendered when a new user is created.
@@ -261,7 +264,7 @@ def is_active_session(rag_client: RAGOrchestratorClient) -> bool:
         return False
     elif rag_client.session_id in rag_client.get_current_sessions():
         return True
-    else: # clean Django sessions as well
+    else:  # clean Django sessions as well
         for k, v in rag_dict.items():
             if v == rag_client:
                 rag_dict.pop(k)
@@ -302,6 +305,7 @@ def get_filename_parts(filename: str) -> Tuple[str, str]:
         suffix = filename[dot_index:]
     return prefix, suffix
 
+
 def get_user_group(user: User) -> str:
     """
     Given a user, return the name of the group it belongs to.
@@ -312,7 +316,7 @@ def get_user_group(user: User) -> str:
     """
     group_list = user.groups.all()
     logger.info(f"Group list for user {user.get_username()} : {group_list}")
-    if len(group_list)==0:
+    if len(group_list) == 0:
         return None
     else:
         return group_list[0].name

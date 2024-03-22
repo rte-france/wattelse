@@ -6,7 +6,9 @@ from typing import List, Dict
 
 from fastapi import UploadFile
 from fastapi.responses import StreamingResponse
+from langchain.retrievers import EnsembleRetriever
 from langchain_community.chat_models import ChatOllama
+from langchain_community.retrievers import BM25Retriever
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
@@ -20,7 +22,7 @@ from wattelse.chatbot.backend.data_management.vector_database import format_docs
 
 from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
-    LLM_CONFIGS
+    LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
 from wattelse.indexer.document_splitter import split_file
 from wattelse.chatbot.chat_history import ChatHistory
 from wattelse.common.config_utils import parse_literal
@@ -140,6 +142,11 @@ class RAGBackEnd:
         available_docs.sort()
         return available_docs
 
+    def get_text_list(self) -> List[str]:
+        """Returns the list of texts in the collection, using the current document filter"""
+        data = self.document_collection.collection.get(include=["documents"], where={} if not self.document_filter else self.document_filter)
+        return data["documents"]
+
     def select_docs(self, file_names: List[str]):
         """Create a filter on the document collection based on a list of file names"""
         if not file_names:
@@ -161,13 +168,30 @@ class RAGBackEnd:
             raise RAGError("No active document collection!")
 
         # Configure retriever
-        retriever = self.document_collection.collection.as_retriever(
-            search_type=self.retrieval_method,
-            search_kwargs={
-                "k": self.top_n_extracts,  # number of retrieved docs
-                "filter": {} if not self.document_filter else self.document_filter,
-                "score_threshold": self.similarity_threshold
-            })
+        if self.retrieval_method in [MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD]:
+            dense_retriever = self.document_collection.collection.as_retriever(
+                search_type=self.retrieval_method,
+                search_kwargs={
+                    "k": self.top_n_extracts,  # number of retrieved docs
+                    "filter": {} if not self.document_filter else self.document_filter,
+                    "score_threshold": self.similarity_threshold
+                })
+            retriever = dense_retriever
+
+        elif self.retrieval_method in [BM25, ENSEMBLE]:
+            bm25_retriever = BM25Retriever.from_texts(self.get_text_list())
+            bm25_retriever.k = self.top_n_extracts
+            if self.similarity_threshold == BM25:
+                retriever = bm25_retriever
+            else: #ENSEMBLE
+                dense_retriever = self.document_collection.collection.as_retriever(
+                    search_type=MMR,
+                    search_kwargs={
+                        "k": self.top_n_extracts,  # number of retrieved docs
+                        "filter": {} if not self.document_filter else self.document_filter,
+                        "score_threshold": self.similarity_threshold
+                    })
+                retriever = EnsembleRetriever(retrievers= [bm25_retriever, dense_retriever])
 
         # Definition of RAG chain
         # - prompt

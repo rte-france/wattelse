@@ -8,6 +8,13 @@ from wattelse.common.config_utils import parse_literal
 
 os.umask(0o002)
 
+# Retriever methods
+MMR = "mmr"
+SIMILARITY = "similarity"
+SIMILARITY_SCORE_THRESHOLD = "similarity_score_threshold"
+BM25 = "bm25"
+ENSEMBLE = "ensemble"
+
 # LLM API
 FASTCHAT_LLM = "Fastchat LLM"
 OLLAMA_LLM = "Ollama LLM"
