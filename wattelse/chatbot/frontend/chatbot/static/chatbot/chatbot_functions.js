@@ -69,15 +69,6 @@ function initializeLayout(){
         });
     });
 
-    // Hide tabs that are not authorized for the current user
-    const uploadTab = Array.from(tabs).find(tab => tab.dataset.content === 'upload');
-    const removeTab = Array.from(tabs).find(tab => tab.dataset.content === 'remove');
-    // TODO: improve rights management with groups
-    if (userName!=="admin") {
-        uploadTab.remove()
-        removeTab.remove()
-    }
-
     // Display available documents
     updateAvailableDocuments();
 

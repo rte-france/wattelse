@@ -80,8 +80,20 @@ def chatbot(request):
 
         return JsonResponse({"message": message, "answer": answer, "relevant_extracts": relevant_extracts})
     else:
-        return render(request, "chatbot/chatbot.html",
-                      {"chats": chats, "available_docs": available_docs})
+        # Get user permissions
+        can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
+        can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
+        can_add_users = request.user.has_perm("chatbot.can_add_users")
+        return render(
+            request, "chatbot/chatbot.html",
+            {
+                "chats": chats,
+                "available_docs": available_docs,
+                "can_upload_documents": can_upload_documents,
+                "can_remove_documents": can_remove_documents,
+                "can_add_users": can_add_users,
+            }
+            )
 
 
 def pdf_viewer(request, pdf_name: str):

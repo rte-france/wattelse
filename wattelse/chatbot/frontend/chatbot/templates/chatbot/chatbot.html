@@ -34,8 +34,16 @@
         <div class="panel-container">
             <div class="tab" data-content="extracts">Extraits</div>
             <div class="tab active" data-content="documents">Documents</div>
-            <div class="tab" data-content="upload">Ajouter</div>
-            <div class="tab" data-content="remove">Supprimer</div>
+            {% if can_upload_documents %}
+                <div class="tab superuser-tab" data-content="upload">Ajouter</div>
+            {% endif %}
+            {% if can_remove_documents %}
+                <div class="tab superuser-tab" data-content="remove">Supprimer</div>
+            {% endif %}
+            {% if can_add_users %}
+                <div class="tab superuser-tab" data-content="add-users">Utilisateurs</div>
+            {% endif %}
+            
             <hr>
 
         <div class="content extracts">

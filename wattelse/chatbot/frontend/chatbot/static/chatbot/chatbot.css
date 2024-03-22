@@ -123,14 +123,27 @@
     transition: background-color 0.2s ease-in-out; /* Smooth transition on hover */
 }
 
+.panel-container .superuser-tab {
+color: salmon;
+}
 .panel-container .tab:hover {
     color: var(--main-color);
+}
+
+.panel-container .superuser-tab:hover {
+  color: rgb(216, 35, 15);
 }
 
 .panel-container .tab.active {
     background-color: var(--main-color); /* Blue background for active tab */
     color: #fff; /* White text color for active tab */
     box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
+}
+
+.panel-container .superuser-tab.active {
+  background-color: salmon; /* Blue background for active tab */
+  color: #fff; /* White text color for active tab */
+  box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
 }
 
 
