@@ -1,3 +1,4 @@
+import io
 import json
 import tempfile
 from typing import Dict, Tuple
@@ -11,12 +12,12 @@ from django.contrib.auth.models import User
 from loguru import logger
 from pathlib import Path
 
-from .models import Chat
-
 from django.utils import timezone
+from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
 from wattelse.chatbot import DATA_DIR
+from .models import Chat
 
 # Mapping table between user login and RAG clients
 rag_dict: Dict[str, RAGOrchestratorClient] = {}
@@ -73,7 +74,7 @@ def chatbot(request):
             for extract in relevant_extracts:
                 page_number = int(extract["metadata"].get("page", "0")) + 1
                 extract["metadata"][
-                    "url"] = f'pdf_viewer/{extract["metadata"]["file_name"]}#page={page_number}'
+                    "url"] = f'file_viewer/{extract["metadata"]["file_name"]}#page={page_number}'
 
         # Save query and response in DB
         chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
@@ -97,27 +98,33 @@ def chatbot(request):
             )
 
 
-def pdf_viewer(request, pdf_name: str):
+def file_viewer(request, file_name: str):
     """
     Main function to render a PDF file. The url to access this function should be :
-    pdf_viewer/pdf_file_name.pdf
-    It will render the pdf file if the user belongs to the right group.
+    file_viewer/file_name.pdf
+    It will render the file if the user belongs to the right group and if the file format is supported
     """
     # TODO: manage more file type
-    pdf_path = DATA_DIR / request.user.groups.all()[0].name / pdf_name
-    if pdf_path.exists():
-        suffix = pdf_path.suffix.lower()
-        if suffix == ".docx" or suffix==".xlsx":
-            with open(pdf_path, "rb") as docx_file:
+    file_path = DATA_DIR / request.user.groups.all()[0].name / file_name
+    if file_path.exists():
+        suffix = file_path.suffix.lower()
+        if suffix == ".docx":
+            with open(file_path, "rb") as docx_file:
                 result = mammoth.convert_to_html(docx_file)
                 html = result.value  # The generated HTML
                 messages = result.messages  # Any messages, such as warnings during conversion
                 return HttpResponse(html)
-        else:
+        elif suffix == ".xlsx":
+            xlsx_file = open(file_path, 'rb')
+            out_file = io.StringIO()
+            xlsx2html(xlsx_file, out_file, locale='en')
+            out_file.seek(0)
+            return HttpResponse(out_file.read())
+        elif suffix == ".pdf":
             content_type = 'application/pdf'
-            with open(pdf_path, 'rb') as f:
+            with open(file_path, 'rb') as f:
                 response = HttpResponse(f.read(), content_type=content_type)
-                response['Content-Disposition'] = f'inline; filename="{pdf_path.name}"'
+                response['Content-Disposition'] = f'inline; filename="{file_path.name}"'
                 return response
     else:
         raise Http404()
