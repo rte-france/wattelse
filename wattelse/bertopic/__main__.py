@@ -31,7 +31,7 @@ from wattelse.common.config_utils import parse_literal
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
 from wattelse.common.mail_utils import get_credentials, send_email
 from wattelse.common.crontab_utils import add_job_to_crontab
-from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
+from wattelse.common import FEED_BASE_DIR, LOG_DIR
 
 # Config sections
 BERTOPIC_CONFIG_SECTION = "bertopic_config"

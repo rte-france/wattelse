@@ -9,7 +9,7 @@ from loguru import logger
 from pathlib import Path
 
 from wattelse.common.crontab_utils import add_job_to_crontab
-from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
+from wattelse.common import FEED_BASE_DIR, LOG_DIR
 from wattelse.data_provider.arxiv_provider import ArxivProvider
 from wattelse.data_provider.bing_news_provider import BingNewsProvider
 from wattelse.data_provider.google_news_provider import GoogleNewsProvider

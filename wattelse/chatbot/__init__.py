@@ -5,8 +5,7 @@ from pathlib import Path
 from pydoc import locate
 
 from wattelse.common.config_utils import parse_literal
-from wattelse.common.vars import BASE_CACHE_PATH
-from wattelse.common import BASE_DATA_DIR
+from wattelse.common import BASE_DATA_DIR, BASE_CACHE_PATH
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
