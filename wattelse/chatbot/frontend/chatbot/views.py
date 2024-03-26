@@ -15,17 +15,12 @@ from pathlib import Path
 from django.utils import timezone
 from xlsx2html import xlsx2html
 
-from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
+from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
 from wattelse.chatbot import DATA_DIR
 from .models import Chat
 
 # Mapping table between user login and RAG clients
 rag_dict: Dict[str, RAGOrchestratorClient] = {}
-
-
-class WattElseError(Exception):
-    """Generic Error for the Django interface of the chatbot application"""
-    pass
 
 
 def chatbot(request):
@@ -52,7 +47,9 @@ def chatbot(request):
     if request.method == "POST":
         message = request.POST.get("message", None)
         if not message:
-            raise WattElseError("No user message received")
+            logger.warning("No user message received")
+            error_message = "Veuillez saisir une question"
+            return JsonResponse({"error_message": error_message}, status=500)
         logger.info(f"User: {request.user.username} - Query: {message}")
 
         # Select documents for RAG
@@ -64,7 +61,12 @@ def chatbot(request):
         rag_client.select_documents_by_name(json.loads(selected_docs))
 
         # Query RAG
-        response = rag_client.query_rag(message)
+        try:
+            response = rag_client.query_rag(message)
+        except RAGAPIError as e:
+            logger.error(e)
+            return JsonResponse({"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500)
+
         # separate text answer and relevant extracts
         answer = response["answer"]
         relevant_extracts = response["relevant_extracts"]
@@ -80,13 +82,13 @@ def chatbot(request):
         chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
         chat.save()
 
-        return JsonResponse({"message": message, "answer": answer, "relevant_extracts": relevant_extracts})
+        return JsonResponse({"message": message, "answer": answer, "relevant_extracts": relevant_extracts}, status=200)
     else:
         # Get user permissions
         can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
         can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
         can_add_users = request.user.has_perm("chatbot.can_add_users")
-        
+
         # If can manage users, find usernames of its group
         if can_add_users:
             user_group = get_user_groupname(request.user)
@@ -152,15 +154,19 @@ def delete(request):
         logger.debug(f"Docs selected for removal: {selected_docs}")
         if not selected_docs:
             logger.warning("No docs selected for removal received, action ignored")
-            return JsonResponse({"status": "No document removed"})
+            return JsonResponse({"warning_message": "No document removed"}, status=202)
         else:
             rag_client = rag_dict[request.user.get_username()]
             if not is_active_session(rag_client):
                 # session expired for some reason
                 return redirect("/login")
-            rag_response = rag_client.remove_documents(json.loads(selected_docs))
+            try:
+                rag_response = rag_client.remove_documents(json.loads(selected_docs))
+            except RAGAPIError as e:
+                logger.error(f"Error in deleting documents {selected_docs}: {e}")
+                return JsonResponse({"error_message": f"Erreur pour supprimer les documents {selected_docs}"}, status=500)
             # Returns the list of updated available documents
-            return JsonResponse({"available_docs": rag_client.list_available_docs()})
+            return JsonResponse({"available_docs": rag_client.list_available_docs()}, status=200)
 
 
 def upload(request):
@@ -173,7 +179,7 @@ def upload(request):
 
         if not uploaded_file:
             logger.warning("No file to be uploaded, action ignored")
-            return JsonResponse({"status": "No file received!"})
+            return JsonResponse({"error_message": "No file received!"}, status=500)
         else:
             logger.debug(f"Received file: {uploaded_file.name}")
             rag_client = rag_dict[request.user.get_username()]
@@ -192,11 +198,16 @@ def upload(request):
                     for chunk in uploaded_file.chunks():
                         f.write(chunk)
 
-                # Use the temporary file path for upload
-                rag_client.upload_files([temp_file_path])
+                try:
+                    # Use the temporary file path for upload
+                    rag_client.upload_files([temp_file_path])
+                except RAGAPIError as e:
+                    logger.error(e)
+                    return JsonResponse({"error_message": f"Erreur de téléchargement de {uploaded_file.name}\n{e}"},
+                                        status=500)
 
             # Returns the list of updated available documents
-            return JsonResponse({"available_docs": rag_client.list_available_docs()})
+            return JsonResponse({"available_docs": rag_client.list_available_docs()}, status=200)
 
 
 def login(request):
@@ -331,7 +342,8 @@ def get_user_groupname(user: User) -> str:
         return None
     else:
         return group_list[0].name
-    
+
+
 def get_group_usernames_list(groupname: str) -> List[str]:
     """
     Return the list of users username belonging to the group.
@@ -340,6 +352,7 @@ def get_group_usernames_list(groupname: str) -> List[str]:
     users_list = User.objects.filter(groups=group)
     usernames_list = [user.username for user in users_list]
     return usernames_list
+
 
 def add_user_to_group(request):
     """
@@ -368,7 +381,7 @@ def add_user_to_group(request):
             logger.error(f"User with username {new_username} already belongs to a group")
             error_message = f"L'utilisateur {new_username} appartient déjà à un groupe"
             return JsonResponse({"error_message": error_message}, status=500)
-        
+
         # If new_user has no group then add it to superuser group
         else:
             logger.info(f"Adding {new_username} to group {superuser_groupname}")
@@ -376,7 +389,8 @@ def add_user_to_group(request):
             return HttpResponse(status=201)
     else:
         raise Http404()
-    
+
+
 def remove_user_from_group(request):
     """
     Function to remove a user from a group.
