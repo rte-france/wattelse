@@ -172,7 +172,8 @@ color: salmon;
 
 
 /* Documents list main element */
-.document-list {
+.document-list,
+.user-list {
   padding: 0;
   list-style-type: none;
   text-align: left;
@@ -180,7 +181,8 @@ color: salmon;
   padding-bottom: 20px;
 }
 
-.document-list li {
+.document-list li,
+.user-list li {
   display: flex;
   margin: 15px 0px;
   padding: 4px 0px;
@@ -191,22 +193,26 @@ color: salmon;
   transition: all .1s ease-in-out;
 }
 
-.document-list li:hover {
+.document-list li:hover,
+.user-list li:hover {
   box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
   cursor: pointer;
   transform: scale(1.02);
 }
 
-.document-list li .col {
+.document-list li .col,
+.user-list li .col {
   flex: .1;
 }
 
-.document-list li .col:nth-child(1) {
+.document-list li .col:nth-child(1),
+.user-list li .col:nth-child(1) {
   flex: .15;
   text-align: center;
 }
 
-.document-list li .col:nth-child(2) {
+.document-list li .col:nth-child(2),
+.user-list li .col:nth-child(2) {
   flex: .75;
   text-align: left;
   font-size: 0.9rem;
@@ -214,7 +220,8 @@ color: salmon;
   padding: 8px 10px;
 }
 
-.document-list li .col:nth-child(2) div.name {
+.document-list li .col:nth-child(2) div.name,
+.user-list li .col:nth-child(2) div.name {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -222,7 +229,8 @@ color: salmon;
   display: inline-block;
 }
 
-.document-list li .col .file-name span {
+.document-list li .col .file-name span,
+.user-list li .col .file-name span {
   color: #707EA0;
   float: right;
 }
@@ -434,11 +442,24 @@ color: salmon;
   border: None;
   color: red;
   font-size: 1.3rem;
-  transition: all .1s ease-in-out;
 }
 
-.remove-user-button:hover {
-  transform: scale(1.2); 
+.div-add-users-input-field {
+  text-align: center;
+}
+
+.add-users-input-field {
+  padding: 5px;
+  margin: 10px 0px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  background-color: #e7e7e7;
+}
+
+.add-users-button {
+  border: none;
+  background-color: inherit;
 }
 
 

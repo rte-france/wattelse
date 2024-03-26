@@ -94,12 +94,7 @@ function initializeLayout(){
                 })
                 .then(response => {
                     if (response.ok) {
-                        const listItem = document.createElement('li');
-                        listItem.id = `group_user_${newUsername}`
-                        listItem.innerHTML = `
-                        ${newUsername} <button class="remove-user-button" onclick="removeUserFromGroup('${newUsername}')"><i class="fa-solid fa-xmark"></i></button>
-                        `
-                        groupUsernamesList.appendChild(listItem);
+                        addUserToUserList(newUsername);
                     }
                     else {
                         response.json().then(data => {
@@ -517,7 +512,23 @@ function iconSelector(filename) {
 }
 
 
-
+// Add new user to user list in users management tab
+function addUserToUserList(username) {
+    const listItem = document.createElement('li');
+    listItem.id = `group_user_${username}`
+    listItem.innerHTML = `
+    <div class="col">
+        <i class="fa-solid fa-user-secret fa-xl"></i>
+    </div>
+    <div class="col">
+        ${username}
+    </div>
+    <div class="col">
+        <button class="remove-user-button" onclick="removeUserFromGroup('${username}')"><i class="fa-solid fa-xmark fa-xl"></i></button>
+    </div>
+    `;
+    groupUsernamesList.appendChild(listItem);
+}
 
 
 // Delete users

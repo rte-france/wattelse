@@ -123,18 +123,30 @@
         <!-- Users management tab content -->
         <div class="tab-content users-management">
             <h2 class="tab-title">Gestion des utilisateurs</h2>
-            <h3>Groupe : {{ user_group }}</h3>
+                <h3>Groupe : <span class="groupname">{{ user_group }}</span></h3>
             <div class="users-management-section">
-                <ul id="group-usernames-list">
+                    <ul class="user-list" id="group-usernames-list">
                     {% for group_username in group_usernames_list %}
-                    <li id="group_user_{{ group_username }}">{{ group_username }} <button class="remove-user-button"
-                            onclick="removeUserFromGroup('{{ group_username }}')"><i
-                                class="fa-solid fa-xmark"></i></button></li>
+                        <li id="group_user_{{ group_username }}">
+                            <div class="col">
+                                <i class="fa-solid fa-user-secret fa-xl"></i>
+                            </div>
+                            <div class="col">
+                                {{ group_username }}
+                            </div>
+                            <div class="col">
+                                <button class="remove-user-button" onclick="removeUserFromGroup('{{ group_username }}')"><i class="fa-solid fa-xmark fa-xl"></i></button>
+                            </div>
+                        </li>
                     {% endfor %}
                 </ul>
             </div>
-            <div class="add-user-title">Ajouter un nom d'utilisateur à votre groupe :</div>
-            <input type="text" id="add-users-input-field" placeholder="Nom d'utilisateur">
+                <div class="div-add-users-input-field">
+                    <div class="tab-small-title">Ajouter un utilisateur à votre groupe :</div>
+                    <input class="add-users-input-field" type="text" id="add-users-input-field" placeholder="Nom d'utilisateur">
+                    <button class="add-users-button"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                
         </div>
     </div>
 </div>

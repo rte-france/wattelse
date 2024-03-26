@@ -79,3 +79,8 @@ a {
   color: inherit;
   text-decoration: inherit;
 }
+
+.groupname {
+  color: var(--main-color);
+  font-weight: 800;
+}
