@@ -473,3 +473,65 @@ function iconSelector(filename) {
             return defaultIcon
     }
 }
+
+// Functions for adding/removing users from group
+const groupUsernamesList = document.getElementById("group-usernames-list");
+const addUsersInputField = document.getElementById("add-users-input-field");
+
+// Adding users
+addUsersInputField.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        const newUsername = addUsersInputField.value;
+        if (newUsername !== "") {
+            fetch('add_user_to_group/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    'csrfmiddlewaretoken': csrfmiddlewaretoken,
+                    'new_username': newUsername,
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    const listItem = document.createElement('li');
+                    listItem.id = `group_user_${newUsername}`
+                    listItem.innerHTML = `
+                    ${newUsername} <button class="remove-user-button" onclick="removeUserFromGroup('${newUsername}')"><i class="fa-solid fa-xmark"></i></button>
+                    `
+                    groupUsernamesList.appendChild(listItem);
+                }
+                else {
+                    response.json().then(data => {
+                        window.alert(data.error_message);
+                    });
+                }
+            });
+            addUsersInputField.value = "";
+        }
+    }
+});
+
+// Delete users
+function removeUserFromGroup(userNameToDelete) {
+    if (confirm(`Voulez-vous vraiment supprimer ${userNameToDelete} ?`)) {
+        fetch('remove_user_from_group/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                'csrfmiddlewaretoken': csrfmiddlewaretoken,
+                'username_to_delete': userNameToDelete,
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                const userToDeleteItem = document.getElementById(`group_user_${userNameToDelete}`);
+                userToDeleteItem.remove();
+            }
+            else {
+                response.json().then(data => {
+                    window.alert(data.error_message);
+                });
+            }
+        });
+    }
+}

@@ -1,14 +1,14 @@
 import io
 import json
 import tempfile
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import mammoth
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404
 
 from django.contrib import auth
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from loguru import logger
 from pathlib import Path
 
@@ -86,6 +86,15 @@ def chatbot(request):
         can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
         can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
         can_add_users = request.user.has_perm("chatbot.can_add_users")
+        
+        # If can manage users, find usernames of its group
+        if can_add_users:
+            user_group = get_user_groupname(request.user)
+            group_usernames_list = get_group_usernames_list(user_group)
+            # Remove admin so it cannot be deleted
+            group_usernames_list.remove("admin")
+        else:
+            group_usernames_list = None
         return render(
             request, "chatbot/chatbot.html",
             {
@@ -94,6 +103,8 @@ def chatbot(request):
                 "can_upload_documents": can_upload_documents,
                 "can_remove_documents": can_remove_documents,
                 "can_add_users": can_add_users,
+                "user_group": user_group,
+                "group_usernames_list": group_usernames_list,
             }
         )
 
@@ -200,7 +211,7 @@ def login(request):
         # If user exists: check group, login and redirect to chatbot
         if user is not None:
             # If user doesn't belong to a group, return error
-            group = get_user_group(user)
+            group = get_user_groupname(user)
             if group is None:
                 error_message = "Vous n'appartenez à aucun groupe."
                 return render(request, "chatbot/login.html", {"error_message": error_message})
@@ -306,7 +317,7 @@ def get_filename_parts(filename: str) -> Tuple[str, str]:
     return prefix, suffix
 
 
-def get_user_group(user: User) -> str:
+def get_user_groupname(user: User) -> str:
     """
     Given a user, return the name of the group it belongs to.
     If user doesn't belong to a group, return None.
@@ -320,3 +331,76 @@ def get_user_group(user: User) -> str:
         return None
     else:
         return group_list[0].name
+    
+def get_group_usernames_list(groupname: str) -> List[str]:
+    """
+    Return the list of users username belonging to the group.
+    """
+    group = Group.objects.get(name=groupname)
+    users_list = User.objects.filter(groups=group)
+    usernames_list = [user.username for user in users_list]
+    return usernames_list
+
+def add_user_to_group(request):
+    """
+    Function to add a new user to a group.
+    The superuser send a POST request with data `new_username`.
+    If `new_username` exists and doesn't belong to any group, add it to superuser group.
+    Else return error to frontend.
+    """
+    if request.method == "POST":
+        # Get superuser group object
+        superuser = request.user
+        superuser_groupname = get_user_groupname(superuser)
+        superuser_group = Group.objects.get(name=superuser_groupname)
+
+        # Get new_username user object if it exists
+        new_username = request.POST.get("new_username", None)
+        if User.objects.filter(username=new_username).exists():
+            new_user = User.objects.get(username=new_username)
+        else:
+            logger.error(f"Username {new_username} not found")
+            error_message = f"Le nom d'utilisateur {new_username} n'a pas été trouvé"
+            return JsonResponse({"error_message": error_message}, status=500)
+
+        # If new_user already in a group then return error status code
+        if get_user_groupname(new_user) is not None:
+            logger.error(f"User with username {new_username} already belongs to a group")
+            error_message = f"L'utilisateur {new_username} appartient déjà à un groupe"
+            return JsonResponse({"error_message": error_message}, status=500)
+        
+        # If new_user has no group then add it to superuser group
+        else:
+            logger.info(f"Adding {new_username} to group {superuser_groupname}")
+            new_user.groups.add(superuser_group)
+            return HttpResponse(status=201)
+    else:
+        raise Http404()
+    
+def remove_user_from_group(request):
+    """
+    Function to remove a user from a group.
+    The superuser send a POST request with data `username_to_delete`.
+    If `username_to_delete` exists, remove it from superuser group.
+    Else return error to frontend.
+    """
+    if request.method == "POST":
+        # Get superuser group object
+        superuser = request.user
+        superuser_groupname = get_user_groupname(superuser)
+        superuser_group = Group.objects.get(name=superuser_groupname)
+
+        # Get username_to_remove user object if it exists
+        username_to_remove = request.POST.get("username_to_delete", None)
+        if User.objects.filter(username=username_to_remove).exists():
+            user_to_remove = User.objects.get(username=username_to_remove)
+        else:
+            error_message = f"Le nom d'utilisateur {username_to_remove} n'a pas été trouvé"
+            return JsonResponse({"error_message": error_message}, status=500)
+
+        # Remove user_to_remove
+        logger.info(f"Removing {username_to_remove} from group {superuser_groupname}")
+        user_to_remove.groups.remove(superuser_group)
+        return HttpResponse(status=201)
+    else:
+        raise Http404()

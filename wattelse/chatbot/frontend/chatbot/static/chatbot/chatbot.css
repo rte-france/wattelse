@@ -402,7 +402,8 @@ color: salmon;
 
 .uploaded-section .uploaded-title,
 .available-section .available-title,
-.removal-section .removal-title{
+.removal-section .removal-title, 
+.users-management .add-user-title {
   font-size: 0.95rem;
   color: #707EA0;
 }
@@ -533,4 +534,16 @@ color: salmon;
 .removal-section .trash-button:hover{
     color: red;
     cursor: pointer;
+}
+
+.remove-user-button {
+  background-color: inherit;
+  border: None;
+  color: red;
+  font-size: 1.3rem;
+  transition: all .1s ease-in-out;
+}
+
+.remove-user-button:hover {
+  transform: scale(1.2); 
 }
