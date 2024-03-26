@@ -163,16 +163,16 @@ def update_session_usage(session_id: str):
 @tl.job(interval=timedelta(minutes=20))
 def clean_sessions():
     """Clean user sessions periodically in order to consume too much memory"""
-    logger.info("Cleaning sessions...")
     tobe_removed = []
     for session_id, usage in RAG_sessions_usage.items():
         if datetime.now() - usage["last_used"] >= timedelta(minutes=SESSION_TIMEOUT):
             # mark for removal
             tobe_removed.append(session_id)
     # remove old sessions
-    [RAG_sessions.pop(key) for key in tobe_removed]
-    [RAG_sessions_usage.pop(key) for key in tobe_removed]
-    logger.info(f"Cleaning: removed sessions {tobe_removed}")
+    if tobe_removed:
+        [RAG_sessions.pop(key) for key in tobe_removed]
+        [RAG_sessions_usage.pop(key) for key in tobe_removed]
+        logger.info(f"Cleaning: removed sessions {tobe_removed}")
 
 
 def check_if_session_exists(session_id: str):
