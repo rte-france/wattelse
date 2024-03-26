@@ -26,5 +26,5 @@ class SuperUserPermissions(models.Model):
         permissions = (
             ("can_upload_documents", "Can upload documents"),
             ("can_remove_documents", "Can remove documents"),
-            ("can_add_users", "Can add users"),
+            ("can_manage_users", "Can manage users"),
         )
