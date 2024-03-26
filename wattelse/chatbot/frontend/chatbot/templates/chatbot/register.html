@@ -3,10 +3,16 @@
 {% block content %}
 
 <div class="login-container">
+
+  <!-- Title -->
   <h1>Nouvel utilisateur</h1>
+
+  <!-- Print error message if form is not valid-->
   {% if error_message %}
-      <div role="alert" class="error-text">{{ error_message }}</div>
-    {% endif %}
+    <div role="alert" class="error-text">{{ error_message }}</div>
+  {% endif %}
+
+  <!-- Register form -->
   <form method="post">
     {% csrf_token %}
     <label class="login-label" for="username">Nom d'utilisateur :</label>
@@ -18,10 +24,11 @@
     <label class="login-label" for="password2">Confirmez le mot de passe :</label>
     <input class="login-input" type="password" name="password2" id="password2" required>
 
-    <p class="already-a-user-message"><a href="/login" class="login-link">J'ai déjà un compte.</a></p>
-
     <button class="login-button" type="submit">Créer</button>
   </form>
+
+  <!-- Go back to login page -->
+  <p class="already-a-user-message"><a href="/login" class="login-link">J'ai déjà un compte.</a></p>
 </div>
 
 {% endblock %}

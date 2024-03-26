@@ -1,64 +1,85 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    {% if not user.is_authenticated %}
-    <script>window.location.replace("/")</script>
-    {% endif %}
 
-    {{ user.username|json_script:'user_name' }}
-    {{ available_docs|json_script:'available_docs'}}
+<!-- If user is not authenticated, return to login page -->
+{% if not user.is_authenticated %}
+    <script>window.location.replace("/login")</script>
+{% endif %}
 
-    <div class="wrapper">
-        <div class="chat-container">
-            <div class="chat-history">
-                {% for chat in chats %}
-                    {% if chat.user == request.user %}
-                    <script>
-                        // createUserMessage("{{chat.message}}");
-                        // createBotMessage("{{chat.response}}");
-                    </script>
-                    {% endif %}
-                {% endfor %}
-            </div>
+{{ user.username|json_script:'user_name' }}
+{{ available_docs|json_script:'available_docs'}}
+
+<!-- Main container for the page -->
+<div class="wrapper">
+
+    <!-- Chat container -->
+    <div class="chat-container">
+
+        <!-- Chat history div -->
+        <div class="chat-history">
+            {% for chat in chats %}
+                {% if chat.user == request.user %}
+                    <!-- <script>
+                        createUserMessage("{{chat.message}}");
+                        createBotMessage("{{chat.response}}");
+                    </script> -->
+                {% endif %}
+            {% endfor %}
+        </div>
+        
+        <!-- Message input field (everything in this div will be fixed at the bottom) -->
+        <div class="chat-container-bottom">
             {% csrf_token %}
-            <div class="chat-container-bottom">
-                <div class="chat-input">
-                    <input type="text" class="input-field" placeholder="Entrez votre question en lien avec les documents fournis..." />
-                    <button class="send-button">OK</button>
-                </div>
-                <div class="disclaimer">
-                    WattElse peut afficher des informations inexactes. Vérifiez ses réponses.
-                </div>
+            <div class="chat-input">
+                <input type="text" class="input-field"
+                    placeholder="Entrez votre question en lien avec les documents fournis..." />
+                <button class="send-button">OK</button>
+            </div>
+            <div class="disclaimer">
+                WattElse peut afficher des informations inexactes. Vérifiez ses réponses.
             </div>
         </div>
-        <div class="panel-container">
-            <div class="tab" data-content="extracts">Extraits</div>
-            <div class="tab active" data-content="documents">Documents</div>
-            {% if can_upload_documents %}
-                <div class="tab superuser-tab" data-content="upload">Ajouter</div>
-            {% endif %}
-            {% if can_remove_documents %}
-                <div class="tab superuser-tab" data-content="remove">Supprimer</div>
-            {% endif %}
-            {% if can_add_users %}
-                <div class="tab superuser-tab" data-content="users-management">Utilisateurs</div>
-            {% endif %}
-            
-            <hr>
+    </div>
 
+    <!-- Panel container -->
+    <div class="panel-container">
+
+        <!-- All users have access to these tabs -->
+        <div class="tab" data-content="extracts">Extraits</div>
+        <div class="tab active" data-content="documents">Documents</div>
+
+        <!-- These tabs need specific rights to be displayed -->
+        {% if can_upload_documents %}
+            <div class="tab superuser-tab" data-content="upload">Ajouter</div>
+        {% endif %}
+        {% if can_remove_documents %}
+            <div class="tab superuser-tab" data-content="remove">Supprimer</div>
+        {% endif %}
+        {% if can_add_users %}
+            <div class="tab superuser-tab" data-content="users-management">Utilisateurs</div>
+        {% endif %}
+
+        <hr>
+
+        <!-- Extracts tab content -->
         <div class="content extracts">
             <h2>Extraits pertinents</h2>
             <ul id="extract-list"></ul>
         </div>
 
+        <!-- Available documents tab content -->
         <div class="content documents">
             <h2>Sélection des documents disponibles</h2>
             <div class="available-section">
-                <div class="available-title"><div id="select-all">Tout / Rien</div></div>
+                <div class="available-title">
+                    <div id="select-all">Tout / Rien</div>
+                </div>
                 <div class="available-list"></div>
             </div>
         </div>
 
+        <!-- Upload document tab content -->
         <div class="content upload">
             <h2>Télécharger des documents</h2>
             <div class="header-section">
@@ -85,6 +106,7 @@
             </div>
         </div>
 
+        <!-- Remove document tab content -->
         <div class="content remove">
             <h2>Supprimer des documents</h2>
             <div class="removal-section">
@@ -96,23 +118,29 @@
             </div>
         </div>
 
+        <!-- Users management tab content -->
         <div class="content users-management">
             <h2>Gestion des utilisateurs</h2>
             <h3>Groupe : {{ user_group }}</h3>
             <div class="users-management-section">
                 <ul id="group-usernames-list">
                     {% for group_username in group_usernames_list %}
-                    <li id="group_user_{{ group_username }}">{{ group_username }} <button class="remove-user-button" onclick="removeUserFromGroup('{{ group_username }}')"><i class="fa-solid fa-xmark"></i></button></li>
+                    <li id="group_user_{{ group_username }}">{{ group_username }} <button class="remove-user-button"
+                            onclick="removeUserFromGroup('{{ group_username }}')"><i
+                                class="fa-solid fa-xmark"></i></button></li>
                     {% endfor %}
                 </ul>
             </div>
-            <div class="add-user-title">Ajouter un nom utilisateur à votre groupe :</div>
+            <div class="add-user-title">Ajouter un nom d'utilisateur à votre groupe :</div>
             <input type="text" id="add-users-input-field" placeholder="Nom d'utilisateur">
         </div>
     </div>
+</div>
+
+<!-- Load script for chatbot page -->
+{% load static %}
+<script src="{% static 'chatbot/chatbot_functions.js' %}"></script>
+
 {% endblock %}
 
-{% block scripts %}
-  {% load static %}
-  <script src="{% static 'chatbot/chatbot_functions.js' %}"></script>
-{% endblock %}
+

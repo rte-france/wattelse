@@ -109,7 +109,7 @@ function updateAvailableDocuments(){
 
 function handleUserMessage(userMessage) {
     if (getSelectedFileNames("available-list").length ===0){
-        createErrorMessage("Merci de sélectionner au moins un document !")
+        createErrorMessage("Aucun document sélectionné.")
         return
     }
     // Remove last feedback div
