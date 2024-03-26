@@ -43,7 +43,7 @@ function initializeLayout(){
     });
 
     userInput.addEventListener('keydown', (event) => {
-        if (event.keyCode === 13) { // Check if Enter key is pressed
+        if (event.key === "Enter") { // Check if Enter key is pressed
             const userMessage = userInput.value.trim();
             if (userMessage) {
                 handleUserMessage(userMessage)
