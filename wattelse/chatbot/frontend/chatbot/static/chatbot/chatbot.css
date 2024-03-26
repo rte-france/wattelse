@@ -10,8 +10,9 @@
   height: 92%;
 }
 
-
+/* ******************************** */
 /* Main containers : chat and panel */
+/* ******************************** */
 .chat-container,
 .panel-container {
     height: 90%;
@@ -33,8 +34,9 @@
   width: 35%;
 }
 
-
+/* ************** */
 /* Chat container */
+/* ************** */
 .chat-history {
   width: 100%;
   overflow-y: auto;
@@ -110,7 +112,11 @@
     font-size: 0.7rem;
 }
 
+/* *************** */
 /* Panel container */
+/* *************** */
+
+/* Panel tabs */
 .panel-container .tab {
     display: inline-block;
     padding: 0.4rem 0.6rem; /* Increase padding for better readability */
@@ -126,6 +132,7 @@
 .panel-container .superuser-tab {
 color: salmon;
 }
+
 .panel-container .tab:hover {
     color: var(--main-color);
 }
@@ -146,63 +153,109 @@ color: salmon;
   box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
 }
 
-
-.panel-container .content {
-    width: 95%;
+/* Panel tabs content */
+.panel-container .tab-content {
+    width: 100%;
     height: 90%;
     overflow-y: scroll;
+
 }
 
+.tab-content .tab-title {
+  padding: 0px;
+}
+
+.tab-content .tab-small-title {
+  font-size: 0.95rem;
+  color: #707EA0;
+}
+
+
+/* Documents list main element */
 .document-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  padding: 0;
+  list-style-type: none;
+  text-align: left;
+  margin: 0px 35px;
+  padding-bottom: 20px;
 }
 
-.document-list-item {
-    margin-bottom: 0.5rem;
+.document-list li {
+  display: flex;
+  margin: 15px 0px;
+  padding: 4px 0px;
+  border-radius: 8px;
+  background-color: #f2f2f2;
+  transition-duration: 0.2s;
+  align-items: center;
+  transition: all .1s ease-in-out;
 }
 
-.document-list-item label {
-    cursor: pointer;
+.document-list li:hover {
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+  cursor: pointer;
+  transform: scale(1.02);
 }
 
+.document-list li .col {
+  flex: .1;
+}
+
+.document-list li .col:nth-child(1) {
+  flex: .15;
+  text-align: center;
+}
+
+.document-list li .col:nth-child(2) {
+  flex: .75;
+  text-align: left;
+  font-size: 0.9rem;
+  color: #3e4046;
+  padding: 8px 10px;
+}
+
+.document-list li .col:nth-child(2) div.name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  display: inline-block;
+}
+
+.document-list li .col .file-name span {
+  color: #707EA0;
+  float: right;
+}
+
+.document-list li .col svg.tick {
+  fill: green;
+  background-color: transparent;
+}
+
+.available-section .document-list li .col svg.tick,
+.removal-section .document-list li .col svg.tick {
+    display: none;
+}
+
+.document-list li.selected .col svg.tick {
+  display: block;
+}
+
+
+
+/* Extracts list content */
 .extract-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.extract-list-item {
-    margin-bottom: 0.5rem;
-}
-
-.document-preview {
-    border: 1px solid #ddd;
-    padding: 0.5rem;
-    margin-top: 1rem;
-    display: none; /* Initially hide the preview */
-}
-
-.content.documents h2,
-.content.extracts h2 {
-  font-size: 1.2rem; /* Adjust font size as desired */
-}
-
-.content.extracts {
-  padding: 1rem; /* Maintain padding for content */
-}
-
-.content.extracts h2 {
-  margin-bottom: 1rem; /* Add some space after the heading */
-}
-
-.content.extracts ul {
+.tab-content.extracts ul {
   list-style: none; /* Remove default bullet points */
   padding: 0; /* Reset padding for better spacing */
 }
 
-.content.extracts li {
+.tab-content.extracts li {
   background: #f2f2f2;
   margin-bottom: 1rem; /* Add space between list items */
   border-radius: 10px;
@@ -210,22 +263,18 @@ color: salmon;
   box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 6px;
 }
 
-.content.extracts p {
+.tab-content.extracts p {
   margin-bottom: 0.5rem; /* Space between paragraph and link */
   font-size: 0.9rem; /* Slightly smaller font for extracts */
 }
 
-/* .content.extracts ul#extract-list li:hover {
-
-} */
-
-.content.extracts .source-link {
+.tab-content.extracts .source-link {
   color: var(--main-color); /* Blue color for the source link */
   text-decoration: none; /* Underline the link */
   font-weight: bold; /* Make the link slightly bolder */
 }
 
-.content.extracts .source-link::before { /* Add content before the message */
+.tab-content.extracts .source-link::before { /* Add content before the message */
     content: "\f0c1"; /* Font Awesome icon code for user */
     font-family: FontAwesome; /* Font family for the icon library */
     font-size: 20px; /* Adjust font size as needed */
@@ -233,51 +282,167 @@ color: salmon;
     color: var(--main-color); /* Set icon color */
 }
 
-.content.documents .document-list {
-  list-style: none; /* Remove default bullet points */
-  padding: 0; /* Reset padding for better spacing */
-  margin: 0; /* Remove default margin */
+/* Documents list content*/
+.tab-content .available-section .select-all {
+  font-size: 1.3rem;
 }
 
-.content.documents .document-list li {
-  display: flex; /* Allow horizontal layout for list items */
-  align-items: center; /* Vertically align content within items */
-  padding: 0.75rem 1rem; /* Add some padding for readability */
-  border-bottom: 1px solid #ddd; /* Add subtle separation lines */
-  cursor: pointer; /* Indicate clickable list items */
+.tab-content .available-section .select-all:hover{
+  cursor: pointer;
+  color: var(--main-color);
 }
 
-.content.documents .document-list li:hover {
-  background-color: darkgrey; /* Light background on hover */
+
+/* File upload style */
+.drop-section{
+  min-height: 170px;
+  border: 1px dashed darkgrey;
+  margin: 5px 35px 35px 35px;
+  border-radius: 12px;
+  position: relative;
+  text-align: center;
 }
 
-.content.documents .document-list li a {
-  flex: 1; /* Expand link to fill most of the space */
-  color: #333; /* Darker text color for links */
-  text-decoration: none; /* Remove underline from links */
+.drop-section div.col:first-child{
+  opacity: 1;
+  visibility: visible;
+  transition-duration: 0.2s;
+  transform: scale(1);
+  width: 200px;
+  margin: auto;
 }
 
-.content.documents .document-list li p {
-  margin-right: 1rem; /* Add space between description and checkbox */
-  font-size: 0.9rem; /* Slightly smaller font for descriptions */
-  color: #777; /* Lighter text color for descriptions */
+.drop-section div.col:last-child{
+  font-size: 40px;
+  font-weight: 700;
+  color: #c0cae1;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  margin: auto;
+  width: 200px;
+  height: 55px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.6);
+  transition-duration: 0.2s;
 }
 
-.content.documents .document-list li input[type="checkbox"]  {
-  appearance: none; /* Remove default checkbox appearance */
-  width: 1rem; /* Set width */
-  height: 1rem; /* Set height */
-  background-color: #ddd; /* Background color */
-  border: 1px solid #ccc; /* Border */
-  border-radius: 5px; /* Rounded corners */
+/* we will use "drag-over-effect" class in js */
+.drag-over-effect div.col:first-child{
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(1.1);
+}
+
+.drag-over-effect div.col:last-child{
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+}
+
+.drop-section .cloud-icon{
+  margin-top: 25px;
+  margin-bottom: 20px;
+}
+
+.drop-section span,
+.drop-section button{
+  display: block;
+  margin: auto;
+  color: #707EA0;
+  margin-bottom: 10px;
+}
+
+.drop-section button{
+  color: white;
+  background-color: var(--main-color);
+  border: none;
+  outline: none;
+  padding: 7px 20px;
+  border-radius: 8px;
+  margin-top: 20px;
   cursor: pointer;
 }
 
-.content.documents .document-list li input[type="checkbox"]:checked {
-  background-color: var(--main-color); /* Checked background color */
+.drop-section input{
+  display: none;
+}
+
+.uploaded-section li .file-progress{
+  width: 100%;
+  height: 5px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background-color: #dee6fd;
+}
+
+.uploaded-section li .file-progress span{
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: 8px;
+  background-image: linear-gradient(120deg, #6b99fd, #9385ff);
+  transition-duration: 0.4s;
+}
+
+.uploaded-section li .col .file-size{
+  font-size: 0.75rem;
+  margin-top: 3px;
+  color: #707EA0;
+}
+
+.uploaded-section li.complete span,
+.uploaded-section li.complete .file-progress,
+.uploaded-section li.complete svg.cross{
+  display: none;
+}
+
+.uploaded-section li.in-prog .file-size,
+.uploaded-section li.in-prog svg.tick{
+  display: none;
 }
 
 
+/* Removal section */
+
+.removal-section .trash-button-div {
+  text-align: center;
+}
+
+.removal-section .trash-button{
+    color: red;
+    text-align: center;
+    background-color: inherit;
+    border: none;
+    transition: all 0.05s ease-in-out;
+}
+
+.removal-section .trash-button:hover{
+    cursor: pointer;
+    transform: scale(1.05);
+}
+
+
+/* Users management section */
+.remove-user-button {
+  background-color: inherit;
+  border: None;
+  color: red;
+  font-size: 1.3rem;
+  transition: all .1s ease-in-out;
+}
+
+.remove-user-button:hover {
+  transform: scale(1.2); 
+}
+
+
+/* Feedback section */
 .feedback-section {
   display: flex; /* Arrange buttons and/or textarea horizontally */
   align-items: center; /* Align content vertically in the center */
@@ -309,244 +474,4 @@ color: salmon;
 
 .feedback-section:last-child { /* Target the last feedback section */
   margin-bottom: 2rem; /* Add extra space at the bottom of the last section */
-}
-
-/* File upload style */
-.content.upload {
-  text-align: center;
-  width: 100%;
-  max-width: 500px;
-  min-height: 435px;
-  margin: auto;
-}
-.drop-section{
-  min-height: 170px;
-  border: 1px dashed darkgrey;
-  margin: 5px 35px 35px 35px;
-  border-radius: 12px;
-  position: relative;
-}
-.drop-section div.col:first-child{
-  opacity: 1;
-  visibility: visible;
-  transition-duration: 0.2s;
-  transform: scale(1);
-  width: 200px;
-  margin: auto;
-}
-.drop-section div.col:last-child{
-  font-size: 40px;
-  font-weight: 700;
-  color: #c0cae1;
-  position: absolute;
-  top: 0px;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  margin: auto;
-  width: 200px;
-  height: 55px;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transform: scale(0.6);
-  transition-duration: 0.2s;
-}
-/* we will use "drag-over-effect" class in js */
-.drag-over-effect div.col:first-child{
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: scale(1.1);
-}
-.drag-over-effect div.col:last-child{
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-}
-.drop-section .cloud-icon{
-  margin-top: 25px;
-  margin-bottom: 20px;
-}
-.drop-section span,
-.drop-section button{
-  display: block;
-  margin: auto;
-  color: #707EA0;
-  margin-bottom: 10px;
-}
-.drop-section button{
-  color: white;
-  background-color: var(--main-color);
-  border: none;
-  outline: none;
-  padding: 7px 20px;
-  border-radius: 8px;
-  margin-top: 20px;
-  cursor: pointer;
-}
-
-.drop-section input{
-  display: none;
-}
-
-.uploaded-section, .available-section, .removal-section{
-    display: none;
-    text-align: left;
-    margin: 0px 35px;
-    padding-bottom: 20px;
-}
-.available-section, .removal-section{
-    display: block;
-}
-
-.uploaded-section .uploaded-title,
-.available-section .available-title,
-.removal-section .removal-title, 
-.users-management .add-user-title {
-  font-size: 0.95rem;
-  color: #707EA0;
-}
-
-.available-section .available-title:hover{
-    font-weight: bold;
-    color: var(--main-color);
-    cursor: pointer;
-}
-
-.uploaded-section li,
-.available-section li,
-.removal-section li{
-  display: flex;
-  margin: 15px 0px;
-  padding: 4px 0px;
-  border-radius: 8px;
-  background-color: #f2f2f2;
-  transition-duration: 0.2s;
-  align-items: center;
-  transition: all .1s ease-in-out;
-}
-
-.uploaded-section li:hover,
-.available-section li:hover,
-.removal-section li:hover{
-    box-shadow: #E3EAF9 0px 0px 4px 0px, #E3EAF9 0px 12px 16px 0px;
-    cursor: pointer;
-    transform: scale(1.02);
-}
-
-.uploaded-section li .col,
-.available-section li .col,
-.removal-section li .col{
-  flex: .1;
-}
-.uploaded-section li .col:nth-child(1),
-.available-section li .col:nth-child(1),
-.removal-section li .col:nth-child(1){
-  flex: .15;
-  text-align: center;
-}
-.uploaded-section li .col:nth-child(2),
-.available-section li .col:nth-child(2),
-.removal-section li .col:nth-child(2){
-  flex: .75;
-  text-align: left;
-  font-size: 0.9rem;
-  color: #3e4046;
-  padding: 8px 10px;
-}
-.uploaded-section li .col:nth-child(2) div.name,
-.available-section li .col:nth-child(2) div.name,
-.removal-section li .col:nth-child(2) div.name{
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  max-width: 250px;
-  display: inline-block;
-}
-.uploaded-section li .col .file-name span,
-.available-section li .col .file-name span,
-.removal-section li .col .file-name span{
-  color: #707EA0;
-  float: right;
-}
-.uploaded-section li .file-progress{
-  width: 100%;
-  height: 5px;
-  margin-top: 8px;
-  border-radius: 8px;
-  background-color: #dee6fd;
-}
-.uploaded-section li .file-progress span{
-  display: block;
-  width: 0%;
-  height: 100%;
-  border-radius: 8px;
-  background-image: linear-gradient(120deg, #6b99fd, #9385ff);
-  transition-duration: 0.4s;
-}
-.uploaded-section li .col .file-size{
-  font-size: 0.75rem;
-  margin-top: 3px;
-  color: #707EA0;
-}
-.uploaded-section li .col svg.cross,
-.uploaded-section li .col svg.tick,
-.available-section li .col svg.tick,
-.removal-section li .col svg.tick{
-  fill: #8694d2;
-  background-color: #dee6fd;
-  position: relative;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-}
-
-.available-section li .col svg.tick,
-.removal-section li .col svg.tick{
-    display: none;
-}
-
-.uploaded-section li .col svg.tick,
-.available-section li.selected .col svg.tick,
-.removal-section li.selected .col svg.tick{
-  fill: #50a156;
-  background-color: transparent;
-
-}
-.uploaded-section li.complete span,
-.uploaded-section li.complete .file-progress,
-.uploaded-section li.complete svg.cross{
-  display: none;
-}
-.uploaded-section li.in-prog .file-size,
-.uploaded-section li.in-prog svg.tick{
-  display: none;
-}
-
-.available-section li.selected .col svg.tick,
-.removal-section li.selected .col svg.tick{
-  display: block;
-}
-
-.removal-section .trash-button{
-    color: var(--main-color);
-    text-align: center;
-}
-.removal-section .trash-button:hover{
-    color: red;
-    cursor: pointer;
-}
-
-.remove-user-button {
-  background-color: inherit;
-  border: None;
-  color: red;
-  font-size: 1.3rem;
-  transition: all .1s ease-in-out;
-}
-
-.remove-user-button:hover {
-  transform: scale(1.2); 
 }

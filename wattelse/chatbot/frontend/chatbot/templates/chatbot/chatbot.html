@@ -63,25 +63,26 @@
         <hr>
 
         <!-- Extracts tab content -->
-        <div class="content extracts">
-            <h2>Extraits pertinents</h2>
-            <ul id="extract-list"></ul>
+        <div class="tab-content extracts">
+            <h2 class="tab-title">Extraits pertinents</h2>
+            <div class="extracts-section">
+                <ul id="extract-list"></ul>
+            </div>
         </div>
 
         <!-- Available documents tab content -->
-        <div class="content documents">
-            <h2>Sélection des documents disponibles</h2>
+        <div class="tab-content documents">
+            <h2 class="tab-title">Sélection des documents disponibles</h2>
             <div class="available-section">
-                <div class="available-title">
-                    <div id="select-all">Tout / Rien</div>
-                </div>
-                <div class="available-list"></div>
+                <span class="tab-small-title">Tout sélectionner / désélectionner : </span>
+                <span class="select-all" id="select-all"><i class="fa-regular fa-square-check"></i></span>
+                <ul class="document-list available-list"></ul>
             </div>
         </div>
 
         <!-- Upload document tab content -->
-        <div class="content upload">
-            <h2>Télécharger des documents</h2>
+        <div class="tab-content upload">
+            <h2 class="tab-title">Télécharger des documents</h2>
             <div class="header-section">
                 <p>Téléchargez les fichiers à partager dans votre groupe</p>
                 <p>Formats supportés: PDF, DOCX, PPTX, XLSX, CSV, HTML, MD, TXT</p>
@@ -101,26 +102,27 @@
                 </div>
             </div>
             <div class="uploaded-section">
-                <div class="uploaded-title">Fichiers téléchargés</div>
-                <div class="uploaded-list"></div>
+                <ul class="document-list uploaded-list"></ul>
             </div>
         </div>
 
         <!-- Remove document tab content -->
-        <div class="content remove">
-            <h2>Supprimer des documents</h2>
+        <div class="tab-content remove">
+            <h2 class="tab-title">Supprimer des documents</h2>
             <div class="removal-section">
-                <div class="removal-title">Fichiers à supprimer</div>
-                <div class="removal-list"></div>
-                <div class="trash-button" onclick="deleteDocumentsInCollection()">
-                    <i class="fa-solid fa-trash-can fa-2xl"></i>
+                <span class="tab-small-title">Fichiers à supprimer</span>
+                <ul class="document-list removal-list"></ul>
+                <div class="trash-button-div">
+                    <button class="trash-button" onclick="deleteDocumentsInCollection()">
+                        <i class="fa-solid fa-trash-can fa-2xl"></i>
+                    </button>
                 </div>
             </div>
         </div>
 
         <!-- Users management tab content -->
-        <div class="content users-management">
-            <h2>Gestion des utilisateurs</h2>
+        <div class="tab-content users-management">
+            <h2 class="tab-title">Gestion des utilisateurs</h2>
             <h3>Groupe : {{ user_group }}</h3>
             <div class="users-management-section">
                 <ul id="group-usernames-list">

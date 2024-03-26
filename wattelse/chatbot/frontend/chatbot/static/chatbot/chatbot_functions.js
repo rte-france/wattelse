@@ -5,7 +5,7 @@ const sendButton = document.querySelector('.send-button');
 
 const documentPanel = document.querySelector('.panel-container');
 const tabs = documentPanel.querySelectorAll('.tab');
-const contentSections = documentPanel.querySelectorAll('.content');
+const contentSections = documentPanel.querySelectorAll('.tab-content');
 
 const extractList = document.getElementById('extract-list');
 const availableDocumentList = document.querySelector('.available-list');
@@ -68,7 +68,7 @@ function initializeLayout(){
             contentSections.forEach((content) => content.style.display = 'none');
 
             // Show the content section corresponding to the clicked tab
-            const targetContent = documentPanel.querySelector(`.content.${tab.dataset.content}`);
+            const targetContent = documentPanel.querySelector(`.tab-content.${tab.dataset.content}`);
             targetContent.style.display = 'block';
         });
     });
