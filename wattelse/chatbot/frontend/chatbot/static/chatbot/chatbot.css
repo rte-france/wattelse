@@ -292,7 +292,7 @@ color: salmon;
 
 /* Documents list content*/
 .tab-content .available-section .select-all {
-  font-size: 1.3rem;
+  color : #707EA0;
 }
 
 .tab-content .available-section .select-all:hover{
