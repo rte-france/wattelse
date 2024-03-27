@@ -16,15 +16,15 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_openai import ChatOpenAI
 from loguru import logger
 
-from wattelse.chatbot import DATA_DIR
-from wattelse.chatbot.backend.data_management.vector_database import format_docs, \
+from wattelse.chatbot.backend import DATA_DIR
+from wattelse.chatbot.backend.vector_database import format_docs, \
     load_document_collection
 
 from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
     LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
 from wattelse.indexer.document_splitter import split_file
-from wattelse.chatbot.chat_history import ChatHistory
+from wattelse.chatbot.backend.chat_history import ChatHistory
 from wattelse.common.config_utils import parse_literal
 from wattelse.indexer.document_parser import parse_file
 

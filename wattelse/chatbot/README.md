@@ -27,33 +27,6 @@ Instruction: Using the given context, answer the query.
 
 ## How to run to PoC (proof-of concept)?
 
-### CLI
-```
-(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.chatbot.chatbot --help
-                                                                                                                                                      
- Usage: chatbot.py [OPTIONS]                                                                                                                          
-                                                                                                                                                      
-╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --data-file        PATH  [default: ./data/BP-2019.csv]                                                                                             │
-│ --help                   Show this message and exit.                                                                                               │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-```
-
-The CLI interface requires to have alread-processed data file.
-Data files are `.csv` files that have at least a column `text`.
-Additionally, data files may have a column `processed_text`; if this column is present, this one will be considered, otherwise the column `text`.
-
-A number of scripts are provided to extract data from various file formats (PDF, DOCX, MD).
-They can also be run in CLI mode.
-
-See `wattelse/common/extract_text*.py` for details.
-
-### GUI
-To run the PoC in GUI mode (Streamlit app):
-
-```
-(weak_signals) jerome@groesplu0:~/dev/weak-signals/wattelse/chatbot$ CUDA_VISIBLE_DEVICES=0,2 streamlit run app.py 
-
-```
+***TO BE UPDATED !***
 
 **Important**: on the R&D server, this PoC requires at least 2 GPUs!
