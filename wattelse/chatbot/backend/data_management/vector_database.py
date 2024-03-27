@@ -8,8 +8,6 @@ from langchain_core.documents import Document
 from loguru import logger
 
 from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
-from wattelse.chatbot.backend.user_management.user_manager import get_all_document_collections, \
-    get_document_collection_for_user
 from wattelse.common import BASE_DATA_DIR
 
 DATABASE_PERSISTENCE_PATH = BASE_DATA_DIR / "rag_database"
@@ -17,16 +15,6 @@ DATABASE_PERSISTENCE_PATH = BASE_DATA_DIR / "rag_database"
 
 class DataManagementError(Exception):
     pass
-
-
-def initialize_database():
-    """
-    Initialize the database
-    """
-    persistent_client = chromadb.PersistentClient(str(DATABASE_PERSISTENCE_PATH))
-    for collection_id in get_all_document_collections():
-        persistent_client.create_collection(name=collection_id, metadata={"created_at": str(datetime.utcnow())})
-    logger.debug(f"Database initialized: {DATABASE_PERSISTENCE_PATH}")
 
 
 def get_collections():
