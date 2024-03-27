@@ -73,6 +73,7 @@
         <!-- Available documents tab content -->
         <div class="tab-content documents">
             <h2 class="tab-title">Sélection des documents disponibles</h2>
+            <h3>Groupe de travail : <span class="groupname">{{ user_group }}</span></h3>
             <div class="available-section">
                 <span class="tab-small-title select-all" id="select-all">
                     Tout sélectionner / désélectionner : <i class="fa-regular fa-square-check fa-xl"></i>
@@ -130,7 +131,7 @@
         {% if can_manage_users %}
             <div class="tab-content users-management">
                 <h2 class="tab-title">Gestion des utilisateurs</h2>
-                <h3>Groupe : <span class="groupname">{{ user_group }}</span></h3>
+                <h3>Groupe de travail : <span class="groupname">{{ user_group }}</span></h3>
                 <div class="users-management-section">
                     <ul class="user-list" id="group-usernames-list">
                         {% for group_username in group_usernames_list %}
