@@ -16,7 +16,7 @@ from django.utils import timezone
 from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
-from wattelse.chatbot import DATA_DIR
+from wattelse.chatbot.backend import DATA_DIR
 from .models import Chat
 
 # Mapping table between user login and RAG clients
