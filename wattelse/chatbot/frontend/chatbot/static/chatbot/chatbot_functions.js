@@ -80,6 +80,7 @@ function initializeLayout(){
     selectAll.click();
 
     // Adding users
+    if (addUsersInputField) {
     addUsersInputField.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
             const newUsername = addUsersInputField.value;
@@ -106,6 +107,7 @@ function initializeLayout(){
             }
         }
     });
+    }
 
     // Welcome message
     createBotMessage("Bonjour <b><span style='font-weight:bold;color:" +
