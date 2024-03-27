@@ -89,9 +89,11 @@ def chatbot(request):
         can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
         can_manage_users = request.user.has_perm("chatbot.can_add_users")
 
+        # Get user groupname
+        user_group = get_user_groupname(request.user)
+
         # If can manage users, find usernames of its group
         if can_manage_users:
-            user_group = get_user_groupname(request.user)
             group_usernames_list = get_group_usernames_list(user_group)
             # Remove admin so it cannot be deleted
             group_usernames_list.remove("admin")
