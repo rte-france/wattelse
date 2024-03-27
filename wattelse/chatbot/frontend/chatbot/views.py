@@ -87,7 +87,7 @@ def chatbot(request):
         # Get user permissions
         can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
         can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
-        can_manage_users = request.user.has_perm("chatbot.can_add_users")
+        can_manage_users = request.user.has_perm("chatbot.can_manage_users")
 
         # Get user groupname
         user_group = get_user_groupname(request.user)
