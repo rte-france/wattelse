@@ -27,11 +27,15 @@ const addUsersInputField = document.getElementById("add-users-input-field");
 // variables related to Django templates
 const userName =  JSON.parse(document.getElementById('user_name').textContent);
 let availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
-const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value
+const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
 // initialize layout
-initializeLayout()
-initializeUploadArea()
+initializeLayout();
+
+if (dropArea) {
+    initializeUploadArea();
+}
+
 
 // ####################### Definition of functions ########################################
 function initializeLayout(){
@@ -121,8 +125,11 @@ function updateAvailableDocuments(){
     // gather the list of active documents before the change
     let previously_selected = getSelectedFileNames("available-list");
 
-    availableDocumentList.innerHTML=""
-    removalDocumentList.innerHTML=""
+    availableDocumentList.innerHTML="";
+    if (removalDocumentList) {
+        removalDocumentList.innerHTML="";
+    }
+    
     // Display documents to be selected
     availableDocs.forEach((document) =>{
         const listItem = createDocumentListItem(document);
@@ -132,7 +139,9 @@ function updateAvailableDocuments(){
     // Display documents that can be removed
     availableDocs.forEach((document) =>{
         const listItem = createDocumentListItem(document);
-        removalDocumentList.appendChild(listItem);
+        if (removalDocumentList) {
+            removalDocumentList.appendChild(listItem);
+        }
     });
 
     // intersection of previous selection with  new available docs
