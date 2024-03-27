@@ -81,32 +81,32 @@ function initializeLayout(){
 
     // Adding users
     if (addUsersInputField) {
-    addUsersInputField.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-            const newUsername = addUsersInputField.value;
-            if (newUsername !== "") {
-                fetch('add_user_to_group/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        'csrfmiddlewaretoken': csrfmiddlewaretoken,
-                        'new_username': newUsername,
+        addUsersInputField.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                const newUsername = addUsersInputField.value;
+                if (newUsername !== "") {
+                    fetch('add_user_to_group/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+                            'new_username': newUsername,
+                        })
                     })
-                })
-                .then(response => {
-                    if (response.ok) {
-                        addUserToUserList(newUsername);
-                    }
-                    else {
-                        response.json().then(data => {
-                            window.alert(data.error_message);
-                        });
-                    }
-                });
-                addUsersInputField.value = "";
+                    .then(response => {
+                        if (response.ok) {
+                            addUserToUserList(newUsername);
+                        }
+                        else {
+                            response.json().then(data => {
+                                window.alert(data.error_message);
+                            });
+                        }
+                    });
+                    addUsersInputField.value = "";
+                }
             }
-        }
-    });
+        });
     }
 
     // Welcome message
@@ -200,7 +200,7 @@ function postUserMessageToRAG(userMessage) {
 function deleteDocumentsInCollection(){
     const selectedFileNames = getSelectedFileNames("removal-list")
     if (selectedFileNames.length === 0  ) {
-        createErrorMessage("Aucun document à supprimer !")
+        alert("Aucun document à supprimer.");
     } else {
         // TODO: improve confirm popup look & feel
         if (confirm("Confirmer la suppression des fichiers sélectionnés?")){
