@@ -413,6 +413,12 @@ def remove_user_from_group(request):
         else:
             error_message = f"Le nom d'utilisateur {username_to_remove} n'a pas été trouvé"
             return JsonResponse({"error_message": error_message}, status=500)
+        
+        # Send an error if a user tries to remove himself
+        if request.user.username == username_to_remove:
+            error_message = f"Vous ne pouvez pas vous supprimer du groupe"
+            return JsonResponse({"error_message": error_message}, status=500)
+
 
         # Remove user_to_remove
         logger.info(f"Removing {username_to_remove} from group {superuser_groupname}")
