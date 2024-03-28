@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- If user is not authenticated, return to login page -->
+{% if not user.is_authenticated %}
+    <script>window.location.replace("/login")</script>
+{% endif %}
+
+{{ user.username|json_script:'user_name' }}
+{{ available_docs|json_script:'available_docs'}}
+
+<!-- Main container for the page -->
+<div class="wrapper">
+
+    <!-- Chat container -->
+    <div class="chat-container">
+
+        <!-- Chat history div -->
+        <div class="chat-history">
+            {% for chat in chats %}
+                {% if chat.user == request.user %}
+                    <!-- <script>
+                        createUserMessage("{{chat.message}}");
+                        createBotMessage("{{chat.response}}");
+                    </script> -->
+                {% endif %}
+            {% endfor %}
+        </div>
+        
+        <!-- Message input field (everything in this div will be fixed at the bottom) -->
+        <div class="chat-container-bottom">
+            {% csrf_token %}
+            <div class="chat-input">
+                <input type="text" class="input-field"
+                    placeholder="Entrez votre question en lien avec les documents fournis..." />
+                <button class="send-button">OK</button>
+            </div>
+            <div class="disclaimer">
+                WattElse peut afficher des informations inexactes. Vérifiez ses réponses.
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Load script for chatbot page -->
+{% load static %}
+<script src="{% static 'chatbot/llm_functions.js' %}"></script>
+
+{% endblock %}
+
+
