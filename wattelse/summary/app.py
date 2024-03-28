@@ -41,7 +41,7 @@ def app():
     st.title("Summarizer (abstractive & extractive")
 
     st.write(
-        "    Le modèle chat_gpt n'est pas un modèle privé. \nMerci de l'utiliser EXCLUSIVEMENT sur des données publics."
+        "    Le modèle chat_gpt n'est pas un modèle privé. \nMerci de l'utiliser EXCLUSIVEMENT sur des données publiques."
         )
 
     summary_model = st.selectbox("summary model", MODEL_LIST, key="summary_model")
