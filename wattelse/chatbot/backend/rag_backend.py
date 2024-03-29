@@ -37,6 +37,7 @@ from wattelse.indexer.document_parser import parse_file
 logging.basicConfig()
 logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
+
 class RAGError(Exception):
     pass
 
@@ -205,9 +206,8 @@ class RAGBackEnd:
 
         if self.multi_query_mode:
             multi_query_retriever = MultiQueryRetriever.from_llm(
-                 retriever=retriever, llm=self.llm
+                retriever=retriever, llm=self.llm
             )
-
 
         # Definition of RAG chain
         # - prompt
@@ -227,7 +227,8 @@ class RAGBackEnd:
         )
         # returns both answer and sources
         rag_chain = RunnableParallel(
-            {"context": retriever if not self.multi_query_mode else multi_query_retriever, "expected_answer_size": self.get_detail_level, "query": RunnablePassthrough()}
+            {"context": retriever if not self.multi_query_mode else multi_query_retriever,
+             "expected_answer_size": self.get_detail_level, "query": RunnablePassthrough()}
         ).assign(answer=rag_chain_from_docs)
 
         # TODO: implement reranking (optional)
