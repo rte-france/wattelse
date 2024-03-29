@@ -1,9 +1,14 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from loguru import logger
 
-from wattelse.common.vars import MODEL_BASE_PATH
+from wattelse.common import MODEL_BASE_PATH
 
 # Parameters
 
@@ -33,7 +38,7 @@ logger.info("Tokenizer loaded")
 # Generation function
 
 def generate(input_text, max_new_tokens=1):
-    input_ids = tokenizer.encode(input_text, return_tensors="pt").to(device)
+    input_ids = tokenizer.embed_query(input_text, return_tensors="pt").to(device)
     generated_text = model.generate(
         input_ids,
         do_sample=True,

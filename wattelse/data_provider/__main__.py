@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import configparser
 import os
 import sys
@@ -9,7 +14,7 @@ from loguru import logger
 from pathlib import Path
 
 from wattelse.common.crontab_utils import add_job_to_crontab
-from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
+from wattelse.common import FEED_BASE_DIR, LOG_DIR
 from wattelse.data_provider.arxiv_provider import ArxivProvider
 from wattelse.data_provider.bing_news_provider import BingNewsProvider
 from wattelse.data_provider.google_news_provider import GoogleNewsProvider

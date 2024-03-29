@@ -1,3 +1,10 @@
+#
+# Copyright (c) 2024, RTE (https://www.rte-france.com)
+# See AUTHORS.txt
+# SPDX-License-Identifier: MPL-2.0
+# This file is part of Wattelse, a NLP application suite.
+#
+
 # Start embedding API
 
 # Get the directory of the script
@@ -10,4 +17,4 @@ CONFIG_FILE="$SCRIPT_DIR/embedding_api.cfg"
 PORT=$(grep -Po '(?<!#)port=\K.*' "$CONFIG_FILE")
 CUDA_VISIBLE_DEVICES=$(grep -Po '(?<!#)cuda_visible_devices=\K.*' "$CONFIG_FILE")
 
-CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES uvicorn wattelse.api.embedding.fastapi_embedding:app --port=$PORT
+CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES uvicorn wattelse.api.embedding.fastapi_embedding:app --port=$PORT --reload

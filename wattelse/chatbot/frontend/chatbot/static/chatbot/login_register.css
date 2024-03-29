@@ -1,0 +1,80 @@
+/*
+ * Copyright (c) 2024, RTE (https://www.rte-france.com)
+ * See AUTHORS.txt
+ * SPDX-License-Identifier: MPL-2.0
+ * This file is part of Wattelse, a NLP application suite.
+ */
+
+/* ******************** */
+/* LOGIN/REGISTER PAGES */
+/* ******************** */
+
+.login-container {
+    width: 300px;
+    margin: 100px auto;
+    border: 1px;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    background-color: #fff;
+    box-shadow: 0 5px 10px 0 rgba(0,0,0,.1);
+  }
+  
+  .login-head {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 40px;
+  }
+  
+  .login-label {
+    display: block;
+    margin-bottom: 5px;
+    text-align: left;
+    color: grey;
+  }
+  
+  .login-input[type="text"],
+  .login-input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .login-button {
+    font-size: 20px;
+    font-weight: 600;
+    background-color: var(--main-color);
+    color: white;
+    padding: 10px 20px;
+    margin: 20px;
+    border:  1px solid;
+    border-radius: 30px;
+  }
+  .login-button:hover {
+    background-image: linear-gradient(rgb(0 0 0/10%) 0 0);
+  }
+  
+  .error-text {
+    color: #cc0033;
+    margin-bottom: 10px;
+  }
+
+  .new-user-message,
+  .already-a-user-message {
+    color: grey;
+    font-size: 0.8rem;
+  }
+
+  .login-link,
+  .register-link {
+    color: var(--main-color);
+  }
+
+  .created-username{
+    font-weight: 700;
+    color: var(--main-color);
+  }

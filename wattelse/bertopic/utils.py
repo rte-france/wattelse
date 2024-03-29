@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import gzip
 import os
 import ssl
@@ -7,11 +12,7 @@ from pathlib import Path
 import nltk
 import pandas as pd
 
-from wattelse.common.vars import (
-    BASE_OUTPUT_DIR,
-    BASE_CACHE_PATH,
-)
-from wattelse.common import BASE_DATA_DIR
+from wattelse.common import BASE_DATA_DIR, BASE_OUTPUT_DIR, BASE_CACHE_PATH
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)

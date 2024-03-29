@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import configparser
 from pathlib import Path
 
@@ -14,13 +19,13 @@ class OpenAI_API:
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent / "openai.cfg")
         self.llm_client = OpenAI(
-            api_key=config.get("OPENAI_CONFIG", "openai_key"),
-            organization=config.get("OPENAI_CONFIG", "openai_organization"),
+            api_key=config.get("API_CONFIG", "openai_api_key"),
+            organization=config.get("API_CONFIG", "openai_organization"),
             timeout=Timeout(TIMEOUT, connect=10.0),
             max_retries=MAX_ATTEMPTS,
         )
-        self.model_name = config.get("OPENAI_CONFIG", "model_name")
-        self.temperature = config.getfloat( "OPENAI_CONFIG", "temperature")
+        self.model_name = config.get("API_CONFIG", "model_name")
+        self.temperature = config.getfloat( "API_CONFIG", "temperature")
 
     def generate(
         self,

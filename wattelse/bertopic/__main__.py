@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import configparser
 import glob
 import os
@@ -31,7 +36,7 @@ from wattelse.common.config_utils import parse_literal
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
 from wattelse.common.mail_utils import get_credentials, send_email
 from wattelse.common.crontab_utils import add_job_to_crontab
-from wattelse.common.vars import FEED_BASE_DIR, LOG_DIR
+from wattelse.common import FEED_BASE_DIR, LOG_DIR
 
 # Config sections
 BERTOPIC_CONFIG_SECTION = "bertopic_config"

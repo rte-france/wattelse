@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import configparser
 from pathlib import Path
 
@@ -12,9 +17,9 @@ class FastchatAPI:
     def __init__(self):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent / "fastchat_api.cfg")
-        self.base_url = config.get("FASTCHAT_API_CONFIG", "openai_url")
+        self.base_url = config.get("API_CONFIG", "openai_url")
         self.llm_client = OpenAI(
-            api_key=config.get("FASTCHAT_API_CONFIG", "openai_key"),
+            api_key=config.get("API_CONFIG", "openai_api_key"),
             base_url=self.base_url,
         )
         self.model_name = self.get_api_model_name()
@@ -25,7 +30,7 @@ class FastchatAPI:
             if self.model_name
             else None
         )
-        self.temperature = config.getfloat("FASTCHAT_API_CONFIG", "temperature")
+        self.temperature = config.getfloat("API_CONFIG", "temperature")
 
 
     def get_api_model_name(self):

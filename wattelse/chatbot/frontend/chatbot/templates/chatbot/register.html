@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!--
+  ~ Copyright (c) 2024, RTE (https://www.rte-france.com)
+  ~ See AUTHORS.txt
+  ~ SPDX-License-Identifier: MPL-2.0
+  ~ This file is part of Wattelse, a NLP application suite.
+  -->
+
+<div class="login-container">
+
+  <!-- Title -->
+  <h1>Nouvel utilisateur</h1>
+
+  <!-- Print error message if form is not valid-->
+  {% if error_message %}
+    <div role="alert" class="error-text">{{ error_message }}</div>
+  {% endif %}
+
+  <!-- Register form -->
+  <form method="post">
+    {% csrf_token %}
+    <label class="login-label" for="username">Nom d'utilisateur :</label>
+    <input class="login-input" type="text" id="username" name="username" required>
+
+    <label class="login-label" for="password1">Mot de passe :</label>
+    <input class="login-input" type="password" name="password1" id="password1" required>
+
+    <label class="login-label" for="password2">Confirmez le mot de passe :</label>
+    <input class="login-input" type="password" name="password2" id="password2" required>
+
+    <button class="login-button" type="submit">Créer</button>
+  </form>
+
+  <!-- Go back to login page -->
+  <p class="already-a-user-message"><a href="/login" class="login-link">J'ai déjà un compte.</a></p>
+</div>
+
+{% endblock %}

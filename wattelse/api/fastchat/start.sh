@@ -1,3 +1,10 @@
+#
+# Copyright (c) 2024, RTE (https://www.rte-france.com)
+# See AUTHORS.txt
+# SPDX-License-Identifier: MPL-2.0
+# This file is part of Wattelse, a NLP application suite.
+#
+
 # Launches the LLM (FastChat) service
 # This script has to be run on a GPU server!
 # use the option "--load-8bit" to launch it in 8-bit mode

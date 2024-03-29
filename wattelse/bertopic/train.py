@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import pdb
 from typing import List, Tuple
 
@@ -19,9 +24,9 @@ from umap import UMAP
 from wattelse.bertopic.utils import (
     TEXT_COLUMN,
     TIMESTAMP_COLUMN,
-    BASE_CACHE_PATH,
     file_to_pd,
 )
+from wattelse.common import BASE_CACHE_PATH
 from wattelse.common.cache_utils import load_embeddings, save_embeddings, get_hash
 
 # Parameters:
