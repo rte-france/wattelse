@@ -1,4 +1,4 @@
-# "Weak signals" project
+# Wattelse project
 
 ## Installation
 
