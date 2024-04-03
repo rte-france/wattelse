@@ -17,4 +17,4 @@ CONFIG_FILE="$SCRIPT_DIR/rag_orchestrator.cfg"
 PORT=$(grep -Po '(?<!#)port=\K.*' "$CONFIG_FILE")
 
 # Uses sudo to kill processes possibly launched by another user
-sudo kill -9 $(lsof -t -i :$PORT)
+sudo kill -9 $(sudo lsof -t -i :$PORT)
