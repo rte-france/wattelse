@@ -179,14 +179,18 @@ class RAGBackEnd:
             raise RAGError("No active document collection!")
 
         # Configure retriever
+        search_kwargs = {
+            "k": self.top_n_extracts,  # number of retrieved docs
+            "filter": {} if not self.document_filter else self.document_filter,
+        }
+        if self.retrieval_method == SIMILARITY_SCORE_THRESHOLD:
+            search_kwargs["score_threshold"] = self.similarity_threshold
+
         if self.retrieval_method in [MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD]:
             dense_retriever = self.document_collection.collection.as_retriever(
                 search_type=self.retrieval_method,
-                search_kwargs={
-                    "k": self.top_n_extracts,  # number of retrieved docs
-                    "filter": {} if not self.document_filter else self.document_filter,
-                    "score_threshold": self.similarity_threshold
-                })
+                search_kwargs=search_kwargs
+            )
             retriever = dense_retriever
 
         elif self.retrieval_method in [BM25, ENSEMBLE]:
@@ -197,11 +201,8 @@ class RAGBackEnd:
             else:  # ENSEMBLE
                 dense_retriever = self.document_collection.collection.as_retriever(
                     search_type=MMR,
-                    search_kwargs={
-                        "k": self.top_n_extracts,  # number of retrieved docs
-                        "filter": {} if not self.document_filter else self.document_filter,
-                        "score_threshold": self.similarity_threshold
-                    })
+                    search_kwargs=search_kwargs
+                )
                 retriever = EnsembleRetriever(retrievers=[bm25_retriever, dense_retriever])
 
         if self.multi_query_mode:
