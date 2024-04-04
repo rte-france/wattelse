@@ -42,7 +42,7 @@ def chatbot(request):
     rag_client = rag_dict.get(request.user.get_username())
     if not is_active_session(rag_client):
         # session expired for some reason
-        return redirect("/login")
+        return render(request, "chatbot/login.html", {"error_message": "La session a expiré. Veuillez vous reconnecter."})
 
     # Get list of available documents
     available_docs = rag_client.list_available_docs()
