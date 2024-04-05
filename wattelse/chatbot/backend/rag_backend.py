@@ -5,13 +5,14 @@
 
 import configparser
 import json
+import logging
 import os
 from datetime import datetime
 from typing import List, Dict
 
 from fastapi import UploadFile
 from fastapi.responses import StreamingResponse
-from langchain.retrievers import EnsembleRetriever
+from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
 from langchain_community.chat_models import ChatOllama
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.language_models import BaseChatModel
@@ -32,6 +33,9 @@ from wattelse.indexer.document_splitter import split_file
 from wattelse.chatbot.backend.chat_history import ChatHistory
 from wattelse.common.config_utils import parse_literal
 from wattelse.indexer.document_parser import parse_file
+
+logging.basicConfig()
+logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
 
 class RAGError(Exception):
@@ -88,6 +92,7 @@ class RAGBackEnd:
         self.top_n_extracts = retriever_config["top_n_extracts"]
         self.retrieval_method = retriever_config["retrieval_method"]
         self.similarity_threshold = retriever_config["similarity_threshold"]
+        self.multi_query_mode = retriever_config["multi_query_mode"]
 
         # Generator parameters
         self.llm_api_name = generator_config["llm_api_name"]
@@ -149,7 +154,8 @@ class RAGBackEnd:
 
     def get_text_list(self) -> List[str]:
         """Returns the list of texts in the collection, using the current document filter"""
-        data = self.document_collection.collection.get(include=["documents"], where={} if not self.document_filter else self.document_filter)
+        data = self.document_collection.collection.get(include=["documents"],
+                                                       where={} if not self.document_filter else self.document_filter)
         return data["documents"]
 
     def select_docs(self, file_names: List[str]):
@@ -173,14 +179,18 @@ class RAGBackEnd:
             raise RAGError("No active document collection!")
 
         # Configure retriever
+        search_kwargs = {
+            "k": self.top_n_extracts,  # number of retrieved docs
+            "filter": {} if not self.document_filter else self.document_filter,
+        }
+        if self.retrieval_method == SIMILARITY_SCORE_THRESHOLD:
+            search_kwargs["score_threshold"] = self.similarity_threshold
+
         if self.retrieval_method in [MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD]:
             dense_retriever = self.document_collection.collection.as_retriever(
                 search_type=self.retrieval_method,
-                search_kwargs={
-                    "k": self.top_n_extracts,  # number of retrieved docs
-                    "filter": {} if not self.document_filter else self.document_filter,
-                    "score_threshold": self.similarity_threshold
-                })
+                search_kwargs=search_kwargs
+            )
             retriever = dense_retriever
 
         elif self.retrieval_method in [BM25, ENSEMBLE]:
@@ -188,15 +198,17 @@ class RAGBackEnd:
             bm25_retriever.k = self.top_n_extracts
             if self.similarity_threshold == BM25:
                 retriever = bm25_retriever
-            else: #ENSEMBLE
+            else:  # ENSEMBLE
                 dense_retriever = self.document_collection.collection.as_retriever(
                     search_type=MMR,
-                    search_kwargs={
-                        "k": self.top_n_extracts,  # number of retrieved docs
-                        "filter": {} if not self.document_filter else self.document_filter,
-                        "score_threshold": self.similarity_threshold
-                    })
-                retriever = EnsembleRetriever(retrievers= [bm25_retriever, dense_retriever])
+                    search_kwargs=search_kwargs
+                )
+                retriever = EnsembleRetriever(retrievers=[bm25_retriever, dense_retriever])
+
+        if self.multi_query_mode:
+            multi_query_retriever = MultiQueryRetriever.from_llm(
+                retriever=retriever, llm=self.llm
+            )
 
         # Definition of RAG chain
         # - prompt
@@ -216,7 +228,8 @@ class RAGBackEnd:
         )
         # returns both answer and sources
         rag_chain = RunnableParallel(
-            {"context": retriever, "expected_answer_size": self.get_detail_level, "query": RunnablePassthrough()}
+            {"context": retriever if not self.multi_query_mode else multi_query_retriever,
+             "expected_answer_size": self.get_detail_level, "query": RunnablePassthrough()}
         ).assign(answer=rag_chain_from_docs)
 
         # TODO: implement reranking (optional)

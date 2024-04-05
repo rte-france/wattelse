@@ -51,15 +51,16 @@ class DocumentCollection:
         langchain_chroma = Chroma(
             client=self.client,
             collection_name=self.collection_name,
-            embedding_function=self.embedding_function
+            embedding_function=self.embedding_function,
+            collection_metadata={"hnsw:space": "cosine"} # l2 is the default
         )
         return langchain_chroma
 
-    def add_texts(self, texts: List[str], metadatas: Optional[List[Dict]] = None):
+    def add_texts(self, texts: List[str], metadata: Optional[List[Dict]] = None):
         """
         Add a list of texts to the collection in the database
         """
-        ids = self.collection.add_texts(texts, metadatas)
+        ids = self.collection.add_texts(texts, metadata)
         logger.debug(f"Added {len(ids)} documents to the collection")
 
     def add_documents(self, documents: List[Document]):
