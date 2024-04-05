@@ -74,15 +74,15 @@ def get_chat_model(llm_api_name) -> BaseChatModel:
 
 
 class RAGBackEnd:
-    def __init__(self, login: str, group: str):
-        logger.debug(f"Initialization of chatbot backend for user {login} (group {group})")
+    def __init__(self, group: str):
+        logger.debug(f"Initialization of chatbot backend for group {group}")
         # Initialize history
-        log_chat_history_on_disk = True
-        if log_chat_history_on_disk:
-            self.chat_history = ChatHistory(DATA_DIR / "chat_history" / login /
-                                            datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        else:
-            self.chat_history = ChatHistory()
+        # log_chat_history_on_disk = True
+        # if log_chat_history_on_disk:
+        #     self.chat_history = ChatHistory(DATA_DIR / "chat_history" / login /
+        #                                     datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+        # else:
+        #     self.chat_history = ChatHistory()
 
         # Load document collection
         self.document_collection = load_document_collection(group)
@@ -158,30 +158,33 @@ class RAGBackEnd:
                                                        where={} if not self.document_filter else self.document_filter)
         return data["documents"]
 
-    def select_docs(self, file_names: List[str]):
+    def get_document_filter(self, file_names: List[str]):
         """Create a filter on the document collection based on a list of file names"""
         if not file_names:
-            self.document_filter = None
+            return None
         elif len(file_names) == 1:
-            self.document_filter = {"file_name": file_names[0]}
+            return {"file_name": file_names[0]}
         else:
-            self.document_filter = {"$or": [{"file_name": f} for f in file_names]}
+            return {"$or": [{"file_name": f} for f in file_names]}
 
     def select_by_keywords(self, keywords: List[str]):
         """Create a filter on the document collection based on a list of keywords"""
         # TODO: to be implemented
         self.document_filter = None
 
-    def query_rag(self, question: str, stream=False) -> Dict | StreamingResponse:
+    def query_rag(self, message: str, history: List[dict[str, str]] = None, selected_files: List[str] = None, stream: bool = False) -> Dict | StreamingResponse:
         """Query the RAG"""
         # Sanity check
         if self.document_collection is None:
             raise RAGError("No active document collection!")
+        
+        # Get document filter
+        document_filter = self.get_document_filter(selected_files)
 
         # Configure retriever
         search_kwargs = {
             "k": self.top_n_extracts,  # number of retrieved docs
-            "filter": {} if not self.document_filter else self.document_filter,
+            "filter": {} if not document_filter else document_filter,
         }
         if self.retrieval_method == SIMILARITY_SCORE_THRESHOLD:
             search_kwargs["score_threshold"] = self.similarity_threshold
@@ -233,10 +236,10 @@ class RAGBackEnd:
         ).assign(answer=rag_chain_from_docs)
 
         # TODO: implement reranking (optional)
-        logger.debug(f"Calling RAG chain for question {question}...")
 
         # Handle conversation history
-        contextualized_question = self.contextualize_question(question) if self.remember_recent_messages else question
+        contextualized_question = self.contextualize_question(message, history)
+        logger.debug(f"Calling RAG chain for question : \"{contextualized_question}\"...")
 
         # Handle answer
         chunks = []
@@ -262,32 +265,38 @@ class RAGBackEnd:
             relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
 
         # Update chat history
-        self.chat_history.add_to_database(question, answer)
+        # self.chat_history.add_to_database(question, answer)
 
         # Return answer and sources
         return {"answer": answer, "relevant_extracts": relevant_extracts}
 
-    def contextualize_question(self, question: str) -> str:
-        """Use recent interaction context to enrich the user query"""
-        logger.debug("Contextualizing prompt with history...")
-        recent_history = self.chat_history.get_recent_history()
-        if not recent_history:
-            logger.warning("No recent history available!")
-            return question
-        prompt = ChatPromptTemplate(input_variables=["history", "query"],
-                                    messages=[HumanMessagePromptTemplate(
-                                        prompt=PromptTemplate(
-                                            input_variables=["history", "query"],
-                                            template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
-                                    )])
+    def contextualize_question(self, message: str, history: List[dict[str, str]] = None) -> str:
+        """
+        If self.remember_recent_messages is False or no message in history:
+            Return last user query
+        Else :
+            Use recent interaction context to enrich the user query
+        """
+        if not self.remember_recent_messages or history is None:
+            return message
+        else:
+            # logger.debug("Contextualizing prompt with history...")
+            # prompt = ChatPromptTemplate(input_variables=["history", "query"],
+            #                             messages=[HumanMessagePromptTemplate(
+            #                                 prompt=PromptTemplate(
+            #                                     input_variables=["history", "query"],
+            #                                     template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
+            #                             )])
 
-        chain = ({"query": RunnablePassthrough(), "history": RunnablePassthrough()}
-                 | prompt
-                 | self.llm
-                 | StrOutputParser())
-        contextualized_question = chain.invoke([question, recent_history])
-        logger.debug(f"Contextualized question: {contextualized_question}")
-        return contextualized_question
+            # chain = ({"query": RunnablePassthrough(), "history": RunnablePassthrough()}
+            #         | prompt
+            #         | self.llm
+            #         | StrOutputParser())
+            # contextualized_question = chain.invoke([messages, messages[:-1]])
+            # logger.debug(f"Contextualized question: {contextualized_question}")
+            # return contextualized_question
+            logger.error("TODO: Implement contextualize_question in RAGBackend")
+            return "ERROR"
 
     def get_detail_level(self, question: str):
         """Returns the level of detail we wish in the answer. Values are in this range: {"courte", "détaillée"}"""
