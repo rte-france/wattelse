@@ -120,8 +120,11 @@ function initializeLayout(){
         });
     }
 
-    // Set default tab
-    activateTab("documents");
+    // Welcome message
+    createBotMessage("Bonjour <b><span style='font-weight:bold;color:" +
+        getComputedStyle(document.documentElement).getPropertyValue('--main-color')+";'>"+userName +
+        "</span></b> ! Posez-moi des questions en lien avec les documents sélectionnés...",
+        false, "documents");
 }
 
 function updateAvailableDocuments(){
@@ -363,29 +366,6 @@ function setSelectedFileNames(listName, textsToSelect) {
   }
 }
 
-//TODO!
-function provideFeedback() {
-    const feedbackSection = document.createElement('div');
-    feedbackSection.classList.add('feedback-section');
-
-    feedbackSection.innerHTML = `
-          <button id="open-text-feedback">Text Feedback</button> 
-          <span class="emoji-rating" style="margin-right: 1.5rem"><i class="fa-solid fa-thumbs-up"></i></span>
-          <span class="emoji-rating" style="margin-right: 1.5rem"><i class="fa-solid fa-thumbs-down"></i></span>
-        `;
-
-    chatHistory.appendChild(feedbackSection);
-
-    /*
-    emojiRatings.forEach((emoji) => {
-        emoji.addEventListener('click', (event) => {
-            const feedback = event.target.textContent; // Get the emoji text
-            // TODO
-            // Process emoji feedback (implement logic as needed)
-        });
-    });
-    */
-}
 
 function initializeUploadArea(){
     // upload files with browse button
@@ -583,4 +563,136 @@ function resetChatHistory() {
     .then(response => {
         chatHistory.innerHTML = `<div class="bot-message">Bonjour <span class="username">${userName}</span> ! Posez-moi une question sur les documents.</div>`
     })
+}
+
+// Functions to collect user feedback
+function provideFeedback() {
+    const feedbackSection = document.createElement('div');
+    feedbackSection.classList.add('feedback-section');
+
+    feedbackSection.innerHTML = `
+          <span class="emoji-rating"><span class="rating-great" title="Réponse parfaite"><i class="fa-solid fa-circle-check fa-xl"></i></span></span>
+          <span class="emoji-rating"><span class="rating-ok" title="Réponse acceptable"><i class="fa-solid fa-circle-plus fa-xl"></i></span></span>
+          <span class="emoji-rating"><span class="rating-missing" title="Réponse incomplète"><i class="fa-solid fa-circle-minus fa-xl"></i></span></span>
+          <span class="emoji-rating"><span class="rating-wrong" title="Réponse fausse"><i class="fa-solid fa-circle-exclamation fa-xl"></i></span></span>
+          <button id="open-text-feedback">Text Feedback</button> 
+        `;
+
+    chatHistory.appendChild(feedbackSection);
+
+    // Add click event listeners to each emoji rating element
+    const emojiRatings = document.querySelectorAll('.emoji-rating');
+    emojiRatings.forEach(emojiRating => emojiRating.addEventListener('click', handleEmojiRatingClick));
+
+    const textFeedbackButton = document.getElementById('open-text-feedback');
+    textFeedbackButton.addEventListener('click', handleTextFeedbackClick);
+}
+
+function handleEmojiRatingClick(event) {
+  // Get the parent element (emoji-rating) of the clicked element
+  const ratingElement = event.currentTarget;
+
+  // Highlight the clicked element and remove highlight from siblings
+  const feedbackName = ratingElement.querySelector('span').className;
+  ratingElement.querySelector('span').classList.add('selected');
+
+  const ratings = ratingElement.parentElement.querySelectorAll('.emoji-rating');
+  for (const r of ratings){
+      if (r !== ratingElement){
+          r.querySelector('span').classList.remove('selected');
+      }
+  }
+
+  let previousElement =  ratingElement.parentElement.previousSibling;
+  while (previousElement && !previousElement.classList.contains('bot-message')) {
+    previousElement = previousElement.previousSibling;
+  }
+  let bot_answer = "";
+  if (previousElement) {
+      bot_answer = previousElement.textContent;
+  }
+
+  previousElement =  ratingElement.parentElement.previousSibling;
+  while (previousElement && !previousElement.classList.contains('user-message')) {
+    previousElement = previousElement.previousSibling;
+  }
+  let user_question = "";
+  if (previousElement) {
+      user_question = previousElement.textContent;
+  }
+
+  // send feedback for processing
+  if (feedbackName) {
+      fetch('send_short_feedback/', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: new URLSearchParams({
+              'csrfmiddlewaretoken': csrfmiddlewaretoken,
+              'short_feedback': feedbackName,
+              'user_message': user_question,
+              'bot_message': bot_answer,
+          })
+      })
+          .then(response => {
+              if (response.ok) {
+                  console.info("Feedback reçu !");
+              } else {
+                  response.json().then(data => {
+                      window.alert(data.error_message);
+                  });
+              }
+          });
+  }
+}
+
+// Function to handle click on the text feedback button (optional)
+function handleTextFeedbackClick(event) {
+  const feedbackButton = event.currentTarget;
+  feedbackButton.classList.add('selected');
+
+  // Implement your logic for opening a text feedback form or modal here
+  let feedback = prompt("Veuillez saisir la réponse attendue :", "");
+
+  // Search for related messages (bot and user)
+  let previousElement =  feedbackButton.parentElement.previousSibling;
+  while (previousElement && !previousElement.classList.contains('bot-message')) {
+    previousElement = previousElement.previousSibling;
+  }
+  let bot_answer = "";
+  if (previousElement) {
+      bot_answer = previousElement.textContent;
+  }
+
+  previousElement =  feedbackButton.parentElement.previousSibling;
+  while (previousElement && !previousElement.classList.contains('user-message')) {
+    previousElement = previousElement.previousSibling;
+  }
+  let user_question = "";
+  if (previousElement) {
+      user_question = previousElement.textContent;
+  }
+
+  // send back answer
+  if (feedback){
+      fetch('send_long_feedback/', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: new URLSearchParams({
+              'csrfmiddlewaretoken': csrfmiddlewaretoken,
+              'long_feedback': feedback,
+              'user_message': user_question,
+              'bot_message': bot_answer,
+          })
+      })
+          .then(response => {
+              if (response.ok) {
+                  console.info("Feedback texte reçu !");
+              } else {
+                  response.json().then(data => {
+                      window.alert(data.error_message);
+                  });
+              }
+          });
+
+  }
 }
