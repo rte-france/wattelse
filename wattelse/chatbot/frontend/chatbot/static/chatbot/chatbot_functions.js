@@ -120,11 +120,8 @@ function initializeLayout(){
         });
     }
 
-    // Welcome message
-    createBotMessage("Bonjour <b><span style='font-weight:bold;color:" +
-        getComputedStyle(document.documentElement).getPropertyValue('--main-color')+";'>"+userName +
-        "</span></b> ! Posez-moi des questions en lien avec les documents sélectionnés...",
-        false, "documents");
+    // Set default tab
+    activateTab("documents");
 }
 
 function updateAvailableDocuments(){
@@ -572,4 +569,18 @@ function removeUserFromGroup(userNameToDelete) {
             }
         });
     }
+}
+
+// Delete chat history
+function resetChatHistory() {
+    fetch('reset/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+        })
+    })
+    .then(response => {
+        chatHistory.innerHTML = `<div class="bot-message">Bonjour <span class="username">${userName}</span> ! Posez-moi une question sur les documents.</div>`
+    })
 }

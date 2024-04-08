@@ -4,6 +4,7 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import io
+import uuid
 import json
 import tempfile
 from typing import Dict, Tuple, List
@@ -39,9 +40,6 @@ def chatbot(request):
     
     # Get user group_id
     user_group_id = get_user_group_id(request.user)
-
-    # Get user chat history
-    chats = Chat.objects.filter(user=request.user)
 
     # Get list of available documents
     available_docs = RAG_API.list_available_docs(user_group_id)
@@ -91,11 +89,20 @@ def chatbot(request):
                     "url"] = f'file_viewer/{extract["metadata"]["file_name"]}#page={page_number}'
 
         # Save query and response in DB
-        chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
+        chat = Chat(
+            user=request.user,
+            group_id=user_group_id,
+            conversation_id=uuid.uuid4(),
+            message=message,
+            response=answer,
+            )
         chat.save()
 
         return JsonResponse({"messages": message, "answer": answer, "relevant_extracts": relevant_extracts}, status=200)
     else:
+        # Get user chat history
+        chats = Chat.objects.filter(user=request.user)
+        
         # Get user permissions
         can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
         can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
@@ -294,8 +301,9 @@ def reset(request):
     """Reset chat history from DB"""
     if request.method == "POST":
         Chat.objects.filter(user=request.user).delete()
-    # Need to return an empty HttpResponse
-    return HttpResponse()
+        return HttpResponse(status=200)
+    else:
+        raise Http404()
 
 
 def get_filename_parts(filename: str) -> Tuple[str, str]:

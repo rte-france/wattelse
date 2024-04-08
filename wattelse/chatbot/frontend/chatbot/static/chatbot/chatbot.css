@@ -95,7 +95,7 @@
 }
 
 .input-field {
-    width: 92%;
+    width: 84%;
     padding: 1%;
     border: 1px solid #ccc;
     border-radius: 10px;
@@ -103,7 +103,8 @@
     background-color: #e7e7e7;
 }
 
-.send-button {
+.send-button,
+.reset-button {
     width: 5% ;
     padding: 0.5rem 0.5rem;
     border: none;
@@ -111,6 +112,10 @@
     background-color: var(--main-color);
     color: white;
     font-weight: 600;
+}
+
+.reset-button {
+  background-color: crimson;
 }
 
 .disclaimer{

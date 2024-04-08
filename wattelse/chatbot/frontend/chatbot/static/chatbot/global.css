@@ -87,7 +87,8 @@ a {
   text-decoration: inherit;
 }
 
-.groupname {
+.groupname,
+.username {
   color: var(--main-color);
   font-weight: 800;
 }

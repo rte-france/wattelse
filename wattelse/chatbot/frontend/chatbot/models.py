@@ -8,14 +8,19 @@ from django.contrib.auth.models import User
 
 class Chat(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    group_id = models.TextField()
+    conversation_id = models.UUIDField()
     message = models.TextField()
     response = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    short_feedback = models.TextField(default="")
+    long_feedback = models.TextField(default="")
+
 
     def __str__(self):
         return f'{self.user.username}: {self.message}'
     
-        
+
 class SuperUserPermissions(models.Model):
     """
     Dummy model for managing users permissions.
