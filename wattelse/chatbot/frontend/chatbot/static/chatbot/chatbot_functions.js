@@ -623,25 +623,7 @@ function handleEmojiRatingClick(event) {
 
   // send feedback for processing
   if (feedbackName) {
-      fetch('send_short_feedback/', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: new URLSearchParams({
-              'csrfmiddlewaretoken': csrfmiddlewaretoken,
-              'short_feedback': feedbackName,
-              'user_message': user_question,
-              'bot_message': bot_answer,
-          })
-      })
-          .then(response => {
-              if (response.ok) {
-                  console.info("Feedback reçu !");
-              } else {
-                  response.json().then(data => {
-                      window.alert(data.error_message);
-                  });
-              }
-          });
+    sendFeedback("send_short_feedback/", feedbackName, user_question, bot_answer);
   }
 }
 
@@ -674,25 +656,31 @@ function handleTextFeedbackClick(event) {
 
   // send back answer
   if (feedback){
-      fetch('send_long_feedback/', {
+      sendFeedback("send_long_feedback/", feedback, user_question, bot_answer);
+  }
+}
+
+
+// Common function that sends feedback message
+function sendFeedback(endpoint, feedback, user_message, bot_message){
+    fetch(endpoint, {
           method: 'POST',
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: new URLSearchParams({
               'csrfmiddlewaretoken': csrfmiddlewaretoken,
-              'long_feedback': feedback,
-              'user_message': user_question,
-              'bot_message': bot_answer,
+              'feedback': feedback,
+              'user_message': user_message,
+              'bot_message': bot_message,
           })
       })
           .then(response => {
               if (response.ok) {
-                  console.info("Feedback texte reçu !");
+                  console.info("Feedback reçu!");
               } else {
                   response.json().then(data => {
                       window.alert(data.error_message);
                   });
               }
           });
-
-  }
 }
+
