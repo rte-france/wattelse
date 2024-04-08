@@ -493,8 +493,9 @@ color: salmon;
   cursor: pointer; /* Indicate clickable behavior */
 }
 
-.feedback-section button:hover {
-  background-color: var(--main-color);
+.feedback-section button:hover, .feedback-section button.selected {
+    color: white;
+    background-color: var(--main-color);
 }
 
 .feedback-section textarea {
@@ -506,5 +507,24 @@ color: salmon;
 }
 
 .feedback-section:last-child { /* Target the last feedback section */
-  margin-bottom: 2rem; /* Add extra space at the bottom of the last section */
+  margin-bottom: 1rem; /* Add extra space at the bottom of the last section */
+}
+
+.emoji-rating{
+    margin-right: 1.5rem;
+    cursor: pointer;
+    color: black;
+}
+
+.rating-great:hover, .rating-great.selected {
+    color: mediumseagreen;
+}
+.rating-ok:hover, .rating-ok.selected {
+    color: var(--main-color);
+}
+.rating-missing:hover, .rating-missing.selected {
+    color: orange;
+}
+.rating-wrong:hover, .rating-wrong.selected {
+    color: indianred;
 }
