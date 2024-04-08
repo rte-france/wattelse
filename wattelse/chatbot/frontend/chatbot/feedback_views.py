@@ -32,7 +32,10 @@ def insert_feedback(request, short: bool):
         # Try to find the matching Chat object based on user, message, and response
         try:
             chat_message = Chat.objects.get(user=user, message=user_message, response=bot_message)
-            chat_message.short_feedback = feedback
+            if short:
+                chat_message.short_feedback = feedback
+            else:
+                chat_message.long_feedback = feedback
             chat_message.save()
             return HttpResponse(status=200)
         except Chat.DoesNotExist:
