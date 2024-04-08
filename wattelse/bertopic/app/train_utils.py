@@ -14,7 +14,9 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
+
 from wattelse.bertopic.train import train_BERTopic
+
 
 @st.cache_data
 def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parameters, cache_base_name: str) -> Tuple:
@@ -39,9 +41,9 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
         min_samples=form_parameters["hdbscan_min_samples"],
         metric=form_parameters["hdbscan_metric"],
         cluster_selection_method=form_parameters["hdbscan_cluster_selection_method"],
-        cluster_selection_epsilon=form_parameters["hdbscan_cluster_selection_epsilon"], ######## NEW ########
-        max_cluster_size=form_parameters["hdbscan_max_cluster_size"], ######## NEW ########
-        allow_single_cluster=form_parameters["hdbscan_allow_single_cluster"], ######## NEW ########
+        cluster_selection_epsilon=form_parameters["hdbscan_cluster_selection_epsilon"], 
+        max_cluster_size=form_parameters["hdbscan_max_cluster_size"], 
+        allow_single_cluster=form_parameters["hdbscan_allow_single_cluster"],
         prediction_data=True,
     )
 
@@ -61,7 +63,7 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
     # Step 5 - c-TF-IDF model
     ctfidf_model = ClassTfidfTransformer(
         reduce_frequent_words=form_parameters["ctfidf_reduce_frequent_words"],
-        bm25_weighting=form_parameters["ctfidf_bm25_weighting"] ######## NEW ########
+        bm25_weighting=form_parameters["ctfidf_bm25_weighting"]
     )
 
     return train_BERTopic(
@@ -79,3 +81,9 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
         use_cache=form_parameters["use_cached_embeddings"],
         cache_base_name = cache_base_name
     )
+    
+    
+
+    
+
+

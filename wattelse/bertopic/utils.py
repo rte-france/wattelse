@@ -8,9 +8,11 @@ import os
 import ssl
 from loguru import logger
 from pathlib import Path
+import re
 
 import nltk
 import pandas as pd
+from transformers import AutoTokenizer
 
 from wattelse.common import BASE_DATA_PATH, BASE_OUTPUT_PATH, BASE_CACHE_PATH
 
@@ -69,7 +71,7 @@ def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
     """Clean dataset. So far, only removes short text."""
     cleaned_dataset = dataset.loc[
         dataset[TEXT_COLUMN].str.len() >= length_criteria
-    ].reset_index(drop=True)
+    ]
     return cleaned_dataset
 
 
@@ -78,6 +80,59 @@ def split_df_by_paragraphs(dataset: pd.DataFrame):
     df = dataset.copy()  # to avoid modifying the original dataframe
     df[TEXT_COLUMN] = df[TEXT_COLUMN].str.split("\n")
     df = df.explode(TEXT_COLUMN)
-    df = df[df[TEXT_COLUMN] != ""].reset_index(drop=True)
+    df = df[df[TEXT_COLUMN] != ""]
     return df
 
+
+def split_df_by_paragraphs_v2(dataset: pd.DataFrame, tokenizer: AutoTokenizer, max_length: int = 512, min_length: int = 5):
+    """Split text into multiple paragraphs all while ensuring that paragraphs aren't longer than embedding model's max sequence length"""
+    df = dataset.copy()  # to avoid modifying the original dataframe
+    new_rows = []
+    for _, row in df.iterrows():
+        doc = row['text']
+        timestamp = row['timestamp']
+
+        # Split the document into paragraphs
+        paragraphs = re.split(r'\n+', doc)
+
+        for paragraph in paragraphs:
+            # Split the paragraph into sentences
+            sentences = re.split(r'(?<=[.!?])\s+', paragraph)
+
+            current_doc = ""
+            for sentence in sentences:
+                sentence_ids = tokenizer.encode(sentence, padding=False, truncation=False, add_special_tokens=False)
+
+                if len(sentence_ids) > max_length:
+                    # If a single sentence is longer than max_length, split it into smaller chunks
+                    sentence_chunks = [sentence[i:i+max_length] for i in range(0, len(sentence), max_length)]
+                    for chunk in sentence_chunks:
+                        new_row = row.copy()
+                        new_row['text'] = chunk
+                        new_row['is_split'] = True
+                        new_row['num_tokens'] = len(tokenizer.encode(chunk, padding=False, truncation=False, add_special_tokens=False))
+                        new_rows.append(new_row)
+                else:
+                    ids = tokenizer.encode(current_doc + " " + sentence, padding=False, truncation=False, add_special_tokens=False)
+                    num_tokens = len(ids)
+
+                    if num_tokens <= max_length:
+                        current_doc += " " + sentence
+                    else:
+                        if current_doc.strip():
+                            new_row = row.copy()
+                            new_row['text'] = current_doc.strip()
+                            new_row['is_split'] = True
+                            new_row['num_tokens'] = len(tokenizer.encode(current_doc.strip(), padding=False, truncation=False, add_special_tokens=False))
+                            new_rows.append(new_row)
+                        current_doc = sentence
+
+            if current_doc.strip():
+                new_row = row.copy()
+                new_row['text'] = current_doc.strip()
+                new_row['is_split'] = True
+                new_row['num_tokens'] = len(tokenizer.encode(current_doc.strip(), padding=False, truncation=False, add_special_tokens=False))
+                new_rows.append(new_row)
+
+    new_df = pd.DataFrame(new_rows)
+    return new_df

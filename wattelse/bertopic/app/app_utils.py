@@ -9,7 +9,6 @@ import plotly.express as px
 import streamlit as st
 from pathlib import Path
 
-
 from wattelse.bertopic.app.state_utils import register_widget
 from wattelse.bertopic.utils import (TEXT_COLUMN, TIMESTAMP_COLUMN, GROUPED_TIMESTAMP_COLUMN, URL_COLUMN, TITLE_COLUMN,
                                      CITATION_COUNT_COL, load_data)
@@ -17,8 +16,8 @@ from wattelse.common import BASE_CACHE_PATH
 from wattelse.common.cache_utils import load_embeddings
 
 DEFAULT_PARAMETERS = {
-    "embedding_model_name": "dangvantuan/sentence-camembert-large",
-    "use_cached_embeddings": True,
+    "embedding_model_name": "antoinelouis/biencoder-camembert-base-mmarcoFR",
+    "use_cached_embeddings": False,
     "bertopic_nr_topics": 0,
     "bertopic_top_n_words": 5,
     "umap_n_neighbors": 15,
@@ -181,7 +180,7 @@ def plot_docs_reparition_over_time(df, freq):
     count["timestamp"] = count["timestamp"].dt.strftime('%Y-%m-%d')
 
     fig = px.bar(count, x="timestamp", y="size")
-    st.write(fig)
+    st.plotly_chart(fig, use_container_width=True)
 
 def plot_remaining_docs_repartition_over_time(df_base, df_remaining, freq):
     # Concatenate df

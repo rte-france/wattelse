@@ -13,11 +13,18 @@ import datetime
 from bertopic import BERTopic
 from typing import List
 import plotly.graph_objects as go
+from transformers import AutoTokenizer
+from sentence_transformers import SentenceTransformer
+import re
+import ast
+
+from wattelse.bertopic.temporal_metrics_embedding import TempTopic
 
 from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN,
     clean_dataset,
     split_df_by_paragraphs,
+    split_df_by_paragraphs_v2,
     DATA_DIR,
     TEXT_COLUMN,
 )
@@ -43,6 +50,30 @@ from wattelse.bertopic.app.app_utils import (
 )
 
 
+
+def preprocess_text(text):
+    # Replace hyphens and similar characters with spaces
+    text = re.sub(r'\b(-|/|;|:)', ' ', text)
+
+    # Remove specific prefixes like "l'", "d'", "l’", and "d’" from words
+    text = re.sub(r"\b(l'|L'|D'|d'|l’|L’|D’|d’)", '', text)
+
+    # Remove punctuations, excluding apostrophes, hyphens, and importantly, newlines
+    # Here, we modify the expression to keep newlines by adding them to the set of allowed characters
+    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', '', text)
+
+    # Replace special characters with a space, preserving accented characters, common Latin extensions, and newlines
+    # Again, ensure newlines are not removed by including them in the allowed set
+    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
+
+    # Replace multiple spaces with a single space, but do not touch newlines
+    # Here, we're careful not to collapse newlines into spaces, so this operation targets spaces only
+    text = re.sub(r'[ \t]+', ' ', text)
+
+    return text
+
+
+
 def select_data():
     st.write("## Data selection")
 
@@ -52,72 +83,29 @@ def select_data():
     if st.session_state["selected_files"]:
         loaded_dfs = []
         for file_path in st.session_state["selected_files"]:
-            
             df = load_data_wrapper(file_path)
             df.sort_values(by=TIMESTAMP_COLUMN, ascending=False, inplace=True)
             loaded_dfs.append(df)
 
-        # Concatenate all loaded DataFrames if there's more than one, else just use the single loaded DataFrame
-        st.session_state["raw_df"] = pd.concat(loaded_dfs).reset_index(drop=True).reset_index() if len(loaded_dfs) > 1 else loaded_dfs[0].reset_index(drop=True).reset_index()
+        st.session_state["raw_df"] = pd.concat(loaded_dfs) if len(loaded_dfs) > 1 else loaded_dfs[0]
     else:
         st.error("Please select at least one file to proceed.")
         st.stop()
 
-    ########## Remaining parts of the function do not need adjustments for multi-file logic ##########
+    ########## Remove duplicates from raw_df ##########
+    st.session_state["raw_df"] = st.session_state["raw_df"].drop_duplicates(subset=TEXT_COLUMN, keep='first')
+    st.session_state["raw_df"].sort_values(by=[TIMESTAMP_COLUMN], ascending=True, inplace=True)
     
-    # Filter text length parameter
-    register_widget("min_text_length")
-    st.number_input(
-        "Select the minimum number of characters each docs should contain",
-        min_value=0,
-        key="min_text_length",
-        on_change=save_widget_state,
-    )
-
-    # Split DF by paragraphs parameter
-    register_widget("split_by_paragraphs")
-    st.toggle(
-        "Split texts by paragraphs",
-        value=False,
-        key="split_by_paragraphs",
-        on_change=save_widget_state,
-    )
-
-    # Split if parameter is selected
-    if st.session_state["split_by_paragraphs"]:
-        st.session_state["initial_df"] = st.session_state[
-            "raw_df"
-        ].copy()  # this DF is used later for newsletter generation
-        st.session_state["raw_df"] = (
-            split_df_by_paragraphs(st.session_state["raw_df"])
-            .drop("index", axis=1)
-            .sort_values(
-                by=TIMESTAMP_COLUMN,
-                ascending=False,
-            )
-            .reset_index(drop=True)
-            .reset_index()
-        )
-
-    # Clean dataset using min_text_length
-    st.session_state["cleaned_df"] = clean_dataset(
-        st.session_state["raw_df"],
-        st.session_state["min_text_length"],
-    )
-
-    # Stop app if dataset is empty
-    if st.session_state["cleaned_df"].empty:
-        st.error("Not enough remaining data after cleaning", icon="🚨")
-        st.stop()
 
     # Select time range
-    min_max = st.session_state["cleaned_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
+    min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
     register_widget("timestamp_range")
     if "timestamp_range" not in st.session_state:
         st.session_state["timestamp_range"] = (
             min_max["min"].to_pydatetime(),
             min_max["max"].to_pydatetime(),
         )
+
     timestamp_range = st.slider(
         "Select the range of timestamps you want to use for training",
         min_value=min_max["min"].to_pydatetime(),
@@ -126,20 +114,77 @@ def select_data():
         on_change=save_widget_state,
     )
 
-    # Filter dataset to select only text within time range
-    st.session_state["timefiltered_df"] = (
-        st.session_state["cleaned_df"]
-        .query(
-            f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'"
-        )
-        .reset_index(drop=True)
+    # Filter text length parameter
+    register_widget("min_text_length")
+    st.number_input(
+        "Select the minimum number of characters each document should contain",
+        min_value=0,
+        key="min_text_length",
+        on_change=save_widget_state,
+    )
+
+    # Split DF by paragraphs parameter
+    register_widget("split_option")
+    split_options = ["No split", "Default split", "Enhanced split"]
+    split_option = st.radio(
+        "Select the split option",
+        split_options,
+        key="split_option",
+        on_change=save_widget_state,
+        help="""
+        - No split: No splitting on the documents.
+        - Default split: Split by paragraph (Warning: might produce paragraphs longer than embedding model's maximum supported input length).
+        - Enhanced split: Split by paragraph. If a paragraph is longer than the embedding model's maximum input length, then split by sentence.
+        """
     )
     
-    ########## Remove duplicates from timefiltered_df, just in case of overlapping documents throughout different files ##########
-    st.session_state["timefiltered_df"] = (st.session_state["timefiltered_df"].drop_duplicates(keep='first').reset_index(drop=True))
-    st.session_state["timefiltered_df"]["index"] = st.session_state["timefiltered_df"].index
-    st.write(f"Found {len(st.session_state['timefiltered_df'])} documents.")
-    # print("DEBUG: ", st.session_state["timefiltered_df"].columns)
+
+    ########## Split DF by paragraphs ##########
+    if split_option == "Default split":
+        st.session_state["raw_df"] = split_df_by_paragraphs(st.session_state["raw_df"])
+    elif split_option == "Enhanced split":
+        model_name = ast.literal_eval(st.session_state['parameters'])['embedding_model_name']
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        max_length = SentenceTransformer(model_name).get_max_seq_length()
+        if max_length == 514: max_length = 512
+        st.session_state["raw_df"] = split_df_by_paragraphs_v2(
+            dataset=st.session_state["raw_df"],
+            tokenizer=tokenizer,
+            max_length=max_length-2,
+            min_length=0
+        )
+    else:
+        pass
+
+    ########## Preprocess the text ##########
+    st.session_state["raw_df"][TEXT_COLUMN] = st.session_state["raw_df"][TEXT_COLUMN].apply(preprocess_text)
+
+    ########## Remove unwanted rows from raw_df ##########
+    st.session_state["raw_df"] = st.session_state["raw_df"][
+        (st.session_state["raw_df"][TEXT_COLUMN].str.strip() != "") &
+        (st.session_state["raw_df"][TEXT_COLUMN].apply(lambda x: len(re.findall(r'[a-zA-Z]', x)) >= 5))
+    ]
+
+    st.session_state["raw_df"].reset_index(drop=True, inplace=True)
+    st.session_state["raw_df"]["index"] = st.session_state["raw_df"].index
+
+    # Filter dataset to select only text within time range
+    st.session_state["timefiltered_df"] = st.session_state["raw_df"].query(
+        f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'"
+    )
+
+    # Clean dataset using min_text_length
+    st.session_state["timefiltered_df"] = clean_dataset(
+        st.session_state["timefiltered_df"],
+        st.session_state["min_text_length"],
+    )
+
+    if st.session_state["timefiltered_df"].empty:
+        st.error("Not enough remaining data after cleaning", icon="🚨")
+        st.stop()
+    else:
+        st.write(f"Found {len(st.session_state['timefiltered_df'])} documents after final cleaning.")
+        st.dataframe(st.session_state['timefiltered_df'][['text', 'timestamp']], use_container_width=True)
 
 
 
@@ -156,14 +201,18 @@ def train_model():
                 st.session_state["topics"],
                 _,
                 st.session_state["embeddings"],
+                st.session_state["token_embeddings"],
+                st.session_state["token_strings"],
             ) = train_BERTopic_wrapper(
                 dataset=full_dataset,
                 indices=indices,
                 form_parameters=st.session_state["parameters"],
                 cache_base_name=st.session_state["data_name"]
-                if not st.session_state["split_by_paragraphs"]
-                else f'{st.session_state["data_name"]}_split_by_paragraphs',
+                # if not st.session_state["split_by_paragraphs"]
+                # else f'{st.session_state["data_name"]}_split_by_paragraphs',
             )
+            
+            st.info("Token embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
             
             st.session_state["topics_info"] = (
                 st.session_state["topic_model"].get_topic_info().iloc[1:]
@@ -185,6 +234,7 @@ def train_model():
             
             logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
             logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
+            
             st.session_state['model_trained'] = True
             if not st.session_state['model_saved']: st.warning('Don\'t forget to save your model!', icon="⚠️")
             
@@ -239,6 +289,7 @@ st.set_page_config(page_title="Wattelse® topic", layout="wide")
 
 
 
+
 # Restore widget state
 restore_widget_state()
 
@@ -249,6 +300,7 @@ st.title("Topic modelling")
 
 # Initialize default parameters
 initialize_default_parameters_keys()
+
 if 'model_trained' not in st.session_state: st.session_state['model_trained'] = False
 if 'model_saved' not in st.session_state: st.session_state['model_saved'] = False
 
@@ -292,7 +344,8 @@ with st.sidebar.form("parameters_sidebar"):
     parameters_sidebar_clicked = st.form_submit_button(
         "Train model", type="primary", on_click=save_widget_state
     )    
-    
+
+
 # Load selected DataFrame
 select_data()
 

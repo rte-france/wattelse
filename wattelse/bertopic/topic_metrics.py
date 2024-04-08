@@ -126,14 +126,12 @@ def proportion_unique_words(topics, topk):
     topics: a list of lists of words
     topk: top k words on which the topic diversity will be computed
     """
-    if topk > len(topics[0]):
-        raise Exception('Words in topics are less than '+str(topk))
-    else:
-        unique_words = set()
-        for topic in topics:
-            unique_words = unique_words.union(set(topic[:topk]))
-        puw = len(unique_words) / (topk * len(topics))
-        return puw
+
+    unique_words = set()
+    for topic in topics:
+        unique_words = unique_words.union(set(topic[:topk]))
+    puw = len(unique_words) / (topk * len(topics))
+    return puw
 
 
 def pairwise_jaccard_diversity(topics, topk):
