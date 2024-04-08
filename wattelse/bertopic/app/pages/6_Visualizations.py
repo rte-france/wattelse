@@ -8,6 +8,8 @@ from umap import UMAP
 import numpy as np
 import datamapplot
 from jinja2 import Template
+import codecs
+from sklearn.manifold import TSNE
 
 
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN
@@ -69,36 +71,6 @@ def overall_results():
         st.warning(f"Try to change the UMAP parameters", icon="⚠️")
         st.stop()
 
-
-def dynamic_topic_modelling():
-    with st.spinner("Computing topics over time..."):
-        with st.expander("Dynamic topic modelling"):
-            if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():
-                st.write("## Dynamic topic modelling")
-
-                # Parameters
-                st.text_input(
-                    "Topics list (format 1,12,52 or 1:20)",
-                    key="dynamic_topics_list",
-                    value="0:10",
-                )
-                # st.number_input("nr_bins", min_value=1, value=10, key="nr_bins")
-
-                # Compute topics over time only when train button is clicked
-                st.session_state["topics_over_time"] = compute_topics_over_time(
-                    st.session_state["parameters"],
-                    st.session_state["topic_model"],
-                    st.session_state["timefiltered_df"],
-                    nr_bins=10,
-                )
-
-                # Visualize
-                st.plotly_chart(plot_topics_over_time(
-                        st.session_state["topics_over_time"],
-                        st.session_state["dynamic_topics_list"],
-                        st.session_state["topic_model"],
-                    ), use_container_width=True)
-
                 
 
 def create_topic_info_dataframe():
@@ -127,6 +99,7 @@ def create_topic_info_dataframe():
         lambda x: ", ".join([word for word, _ in st.session_state['topic_model'].get_topic(x)]) if x != -1 else "Outlier"
     )
 
+    topic_info_agg = topic_info_agg[topic_info_agg['topic'] != "Outlier"]
     # Update session state with the DataFrame for later use
     st.session_state["topic_info_df"] = topic_info_agg
 
@@ -178,14 +151,15 @@ def create_treemap():
 def create_datamap():
     with st.spinner("Loading Data-map plot..."):
         # Calculate 2D embeddings
-        reduced_embeddings = UMAP(n_neighbors=10, n_components=2, min_dist=0.0, metric='cosine', verbose=True).fit_transform(st.session_state["embeddings"])
-        
+        tsne = TSNE(n_components=2, random_state=42, metric="cosine")
+        reduced_embeddings = tsne.fit_transform(st.session_state["embeddings"])
+        # reduced_embeddings = UMAP(n_neighbors=10, n_components=2, min_dist=0, metric='cosine', verbose=True).fit_transform(st.session_state["embeddings"])
+
         # Create a dataframe that associates documents with their embeddings and the topics they belong to
         topic_nums = list(set(st.session_state['topics']))
-        topic_info = st.session_state['topic_model'].get_topic_info()  
+        topic_info = st.session_state['topic_model'].get_topic_info()
         topic_representations = {row['Topic']: row['Name'] for index, row in topic_info.iterrows() if row['Topic'] in topic_nums}
         docs = st.session_state['timefiltered_df'][TEXT_COLUMN].tolist()
-                
         data = {
             "document": docs,
             "embedding": list(reduced_embeddings),
@@ -193,29 +167,36 @@ def create_datamap():
             "topic_representation": [topic_representations[topic] for topic in st.session_state['topics']]
         }
         df = pd.DataFrame(data)
-        
+        df = df[df['topic_num'] != -1]
+
         # Prepare the data for datamapplot (conversion to numpy arrays)
         embeddings_array = np.array(df['embedding'].tolist())
-
-        df.loc[df['topic_num'] == -1, 'topic_representation'] = 'Unlabeled'
+        # df.loc[df['topic_num'] == -1, 'topic_representation'] = 'Unlabeled'
 
         # Convert the topic_representation column to a NumPy array
         topic_representations_array = df['topic_representation'].values
+
         plot = datamapplot.create_interactive_plot(
-                embeddings_array,
-                topic_representations_array,
-                hover_text = docs,
-                enable_search=True,
-                darkmode=False,
-                noise_color="#aaaaaa44",
-                logo='https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/RTE_logo.svg/1024px-RTE_logo.svg.png',
-                logo_width=80,
-            )
-        
-        plot.save('datamapplot.html')
+            embeddings_array,
+            topic_representations_array,
+            hover_text=df['document'].tolist(),
+            enable_search=True,
+            darkmode=True,
+            noise_color="#aaaaaa44",
+            logo='https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/RTE_logo.svg/1024px-RTE_logo.svg.png',
+            logo_width=80,
+        )
+
+        # Encode the HTML string using UTF-8
+        html_str = plot._html_str.encode(encoding='UTF-8', errors='replace')
+
+        # Save the encoded HTML string to a file
+        with open('datamapplot.html', 'wb') as f:
+            f.write(html_str)
+
         HtmlFile = open("datamapplot.html", 'r', encoding='utf-8')
-        source_code = HtmlFile.read() 
-        components.html(source_code, width=1200, height=800)
+        source_code = HtmlFile.read()
+        components.html(source_code, width=1400, height=800)
         
 
 
@@ -244,10 +225,7 @@ restore_widget_state()
 st.title("Visualizations")
 
 # Overall results
-# overall_results()
-
-# Dynamic topic modelling
-dynamic_topic_modelling()
+overall_results()
 
 # For treemap
 create_treemap()

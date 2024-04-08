@@ -9,6 +9,7 @@ from wattelse.bertopic.utils import TIMESTAMP_COLUMN
 from wattelse.bertopic.newsletter_features import get_most_representative_docs
 from app_utils import print_docs_for_specific_topic, plot_topics_over_time, load_data
 from state_utils import register_widget, save_widget_state, restore_widget_state
+from wattelse.bertopic.app.app_utils import compute_topics_over_time
 
 # Set locale to get french date names
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
@@ -20,6 +21,19 @@ restore_widget_state()
 if "topic_model" not in st.session_state.keys():
 	st.error("Train a model to explore generated topics.", icon="🚨")
 	st.stop()
+ 
+
+# Prepare topics over time if not done already
+if "topics_over_time" not in st.session_state.keys():
+	if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():
+		# Compute topics over time only when train button is clicked
+		st.session_state["topics_over_time"] = compute_topics_over_time(
+			st.session_state["parameters"],
+			st.session_state["topic_model"],
+			st.session_state["timefiltered_df"],
+			nr_bins=10,
+		)
+			
 
 ### SIDEBAR ###
 

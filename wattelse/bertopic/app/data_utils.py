@@ -29,53 +29,6 @@ def data_overview(df: pd.DataFrame):
 
 
 
-'''
-def choose_data(base_dir: Path, filters: List[str]):
-    data_folders = sorted(
-        set(
-            f.parent
-            for f in itertools.chain.from_iterable(
-                [list(base_dir.glob(f"**/{filter}")) for filter in filters]
-            )
-        )
-    )
-    if "data_folder" not in st.session_state:
-        st.session_state["data_folder"] = data_folders[0] if data_folders else base_dir
-
-    data_options = ["None"] + sorted(
-        [
-            p.name
-            for p in itertools.chain.from_iterable(
-                [
-                    list(st.session_state["data_folder"].glob(f"{filter}"))
-                    for filter in filters
-                ]
-            )
-        ]
-    )
-
-    if "data_name" not in st.session_state:
-        st.session_state["data_name"] = data_options[0]
-
-    register_widget("data_name")
-    register_widget("data_folder")
-    col1, col2 = st.columns([0.4, 0.6])
-    with col1:
-        st.selectbox(
-            "Base folder", data_folders, key="data_folder", on_change=reset_data
-        )
-    with col2:
-        st.selectbox(
-            "Select data to continue",
-            data_options,
-            key="data_name",
-            on_change=reset_all,
-        )
-
-    # Stop the app as long as no data is selected
-    if st.session_state["data_name"] == "None":
-        st.stop()
-'''
 
 def choose_data(base_dir: Path, filters: List[str]):
     data_folders = sorted(

@@ -15,6 +15,11 @@ from numpy import ndarray
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
+import numpy as np
+import streamlit as st
+import numpy as np
+from tqdm import tqdm
+
 
 from wattelse.bertopic.utils import (
     TEXT_COLUMN,
@@ -62,13 +67,30 @@ class EmbeddingModel(BaseEmbedder):
 
         logger.info(f"Loading embedding model: {model_name} on device: {device}")
         self.embedding_model = SentenceTransformer(model_name)
-        self.embedding_model.max_seq_length = 512
+
+        # Handle the particular scenario of when max seq length in original model is abnormal (not a power of 2)
+        if self.embedding_model.max_seq_length == 514: self.embedding_model.max_seq_length = 512
+
         self.name = model_name
         logger.debug("Embedding model loaded")
 
     def embed(self, documents: List[str], verbose=True) -> List:
-        embeddings = self.embedding_model.encode(documents, show_progress_bar=verbose)
+        embeddings = self.embedding_model.encode(documents, show_progress_bar=verbose, output_value=None)
         return embeddings
+
+
+
+def convert_to_numpy(obj, type=None):
+    if isinstance(obj, torch.Tensor):
+        if type=='token_id': return obj.numpy().astype(np.int64)
+        else : return obj.numpy().astype(np.float32)
+        
+    elif isinstance(obj, list):
+        return [convert_to_numpy(item) for item in obj]
+    
+    else:
+        raise TypeError("Object must be a list or torch.Tensor")
+
 
 
 def train_BERTopic(
@@ -82,7 +104,7 @@ def train_BERTopic(
     ctfidf_model: ClassTfidfTransformer = DEFAULT_CTFIDF_MODEL,
     representation_model: MaximalMarginalRelevance = DEFAULT_REPRESENTATION_MODEL,
     top_n_words: int = DEFAULT_TOP_N_WORDS,
-    nr_topics: int = DEFAULT_NR_TOPICS,
+    nr_topics: (str | int) = DEFAULT_NR_TOPICS,
     use_cache: bool = True,
     cache_base_name: str = None,
 ) -> Tuple[BERTopic, List[int], ndarray]:
@@ -133,20 +155,56 @@ def train_BERTopic(
 
     logger.debug(f"Using cache: {use_cache}")
     embedding_model = EmbeddingModel(embedding_model_name)
+
+    # Filter the dataset based on the provided indices
+    if indices is not None:
+        filtered_dataset = full_dataset[full_dataset.index.isin(indices)].reset_index(drop=True)
+    else:
+        filtered_dataset = full_dataset
+    
+    logger.debug(f"FILTERED DATA : {filtered_dataset.iloc[:5]['text'].tolist()}")
+    
     if cache_path.exists() and use_cache:
         # use previous cache
         embeddings = load_embeddings(cache_path)
         logger.info(f"Embeddings loaded from cache file: {cache_path}")
+        token_embeddings = None
+        token_strings = None
     else:
         logger.info("Computing embeddings")
-        embeddings = embedding_model.embed(full_dataset[column])
+        output = embedding_model.embed(filtered_dataset[column])
+        
+        embeddings = [item['sentence_embedding'].detach().cpu() for item in output]
+        embeddings = torch.stack(embeddings)
+        embeddings = embeddings.numpy()
+        
+        token_embeddings = [item['token_embeddings'].detach().cpu() for item in output]
+        token_ids = [item['input_ids'].detach().cpu() for item in output]
+        
+        token_embeddings = convert_to_numpy(token_embeddings)
+        token_ids = convert_to_numpy(token_ids, type='token_id')
+        
+        tokenizer = embedding_model.embedding_model._first_module().tokenizer
+
+        # logger.debug("Document and token_ids before grouping:")
+        # for i in range(len(filtered_dataset[column])):
+        #     logger.debug(f"Document: {filtered_dataset[column][i]} LENGTH : {len(filtered_dataset[column][i])}")
+
+
+        # logger.debug(f"BEFORE grouping: {len(token_embeddings)}")
+        token_strings, token_embeddings = group_tokens(tokenizer, token_ids, token_embeddings, language="french")
+        # logger.debug(f"AFTER grouping: {len(token_embeddings)}")
+
         if use_cache:
             save_embeddings(embeddings, cache_path)
             logger.info(f"Embeddings stored to cache file: {cache_path}")
 
+
+    if nr_topics == 0: nr_topics = "auto"
+    
     # Build BERTopic model
     topic_model = BERTopic(
-        embedding_model=embedding_model,
+        embedding_model=embedding_model.embedding_model,
         umap_model=umap_model,
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
@@ -159,13 +217,114 @@ def train_BERTopic(
     )
 
     logger.info("Fitting BERTopic...")
+    
     if indices is None:
-        indices = full_dataset.index
+            indices = full_dataset.index
     topics, probs = topic_model.fit_transform(
-        full_dataset[column][indices], embeddings[indices]
+        filtered_dataset[column],
+        embeddings
     )
+    
+    return topic_model, topics, probs, embeddings, token_embeddings, token_strings
 
-    return topic_model, topics, probs, embeddings[indices]
+
+
+def group_tokens(tokenizer, token_ids, token_embeddings, language="english"):
+    grouped_token_lists = []
+    grouped_embedding_lists = []
+    for token_id, token_embedding in tqdm(zip(token_ids, token_embeddings), desc="Processing documents"):
+        # print(tokenizer.convert_ids_to_tokens(token_id))
+        if language == "english":
+            tokens, embeddings = remove_special_tokens_english(tokenizer, token_id, token_embedding)
+            grouped_tokens, grouped_embeddings = group_subword_tokens_english(tokens, embeddings)
+
+        elif language == "french":
+            tokens, embeddings = remove_special_tokens_french(tokenizer, token_id, token_embedding)
+            grouped_tokens, grouped_embeddings = group_subword_tokens_french(tokens, embeddings)
+        else:
+            raise ValueError("Invalid language. Supported languages: 'english', 'french'")
+        
+        grouped_token_lists.append(grouped_tokens)
+        grouped_embedding_lists.append(np.stack(grouped_embeddings))  # Stack to form numpy arrays
+    return grouped_token_lists, grouped_embedding_lists
+
+def remove_special_tokens_english(tokenizer, token_id, token_embedding):
+    special_tokens = ["[CLS]", "[SEP]", "[PAD]"]
+    tokens = tokenizer.convert_ids_to_tokens(token_id)
+    
+    filtered_tokens = []
+    filtered_embeddings = []
+    for token, embedding in zip(tokens, token_embedding):
+        if token not in special_tokens:
+            filtered_tokens.append(token)
+            filtered_embeddings.append(embedding)
+    
+    return filtered_tokens, filtered_embeddings
+
+def remove_special_tokens_french(tokenizer, token_id, token_embedding):
+    special_tokens = ["<s>", "</s>", "<pad>"]
+    tokens = tokenizer.convert_ids_to_tokens(token_id)
+    
+    filtered_tokens = []
+    filtered_embeddings = []
+    for token, embedding in zip(tokens, token_embedding):
+        if token not in special_tokens:
+            filtered_tokens.append(token)
+            filtered_embeddings.append(embedding)
+    
+    return filtered_tokens, filtered_embeddings
+
+def group_subword_tokens_english(tokens, embeddings):
+    grouped_tokens = []
+    grouped_embeddings = []
+    current_token = []
+    current_embedding_sum = np.zeros_like(embeddings[0])
+    num_subtokens = 0
+    for token, embedding in zip(tokens, embeddings):
+        if token.startswith("##"):
+            current_token.append(token[2:])
+            current_embedding_sum += embedding  # Use numpy addition
+            num_subtokens += 1
+        else:
+            if current_token:
+                grouped_tokens.append("".join(current_token))
+                grouped_embeddings.append(current_embedding_sum / num_subtokens)  # Use numpy division for average
+            current_token = []
+            current_embedding_sum = np.zeros_like(embedding)  # Reset with numpy zeros
+            num_subtokens = 0
+            current_token.append(token)
+            current_embedding_sum += embedding
+            num_subtokens += 1
+    if current_token:
+        grouped_tokens.append("".join(current_token))
+        grouped_embeddings.append(current_embedding_sum / num_subtokens)  # Final averaging
+    return grouped_tokens, grouped_embeddings
+
+def group_subword_tokens_french(tokens, embeddings):
+    grouped_tokens = []
+    grouped_embeddings = []
+    current_token = []
+    current_embedding_sum = np.zeros_like(embeddings[0])
+    num_subtokens = 0
+    for token, embedding in zip(tokens, embeddings):
+        if token.startswith("▁"):
+            if current_token:
+                grouped_tokens.append("".join(current_token))
+                grouped_embeddings.append(current_embedding_sum / num_subtokens)  # Use numpy division for average
+            current_token = [token[1:]]  # Remove the '▁' character
+            current_embedding_sum = embedding
+            num_subtokens = 1
+        else:
+            current_token.append(token)
+            current_embedding_sum += embedding  # Use numpy addition
+            num_subtokens += 1
+    if current_token:
+        grouped_tokens.append("".join(current_token))
+        grouped_embeddings.append(current_embedding_sum / num_subtokens)  # Final averaging
+    return grouped_tokens, grouped_embeddings
+
+
+
 
 
 if __name__ == "__main__":
