@@ -563,6 +563,8 @@ function newConversation() {
     })
     .then(response => {
         createWelcomeMessage();
+        extractList.innerHTML = "";
+        activateTab("documents");
     })
 }
 
