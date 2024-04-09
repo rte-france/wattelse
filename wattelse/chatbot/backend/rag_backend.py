@@ -86,7 +86,6 @@ class RAGBackEnd:
 
         # Load document collection
         self.document_collection = load_document_collection(group)
-        self.document_filter = None
 
         # Retriever parameters
         self.top_n_extracts = retriever_config["top_n_extracts"]
@@ -152,10 +151,10 @@ class RAGBackEnd:
         available_docs.sort()
         return available_docs
 
-    def get_text_list(self) -> List[str]:
+    def get_text_list(self, document_filter: Dict | None) -> List[str]:
         """Returns the list of texts in the collection, using the current document filter"""
         data = self.document_collection.collection.get(include=["documents"],
-                                                       where={} if not self.document_filter else self.document_filter)
+                                                       where={} if not document_filter else document_filter)
         return data["documents"]
 
     def get_document_filter(self, file_names: List[str]):
@@ -170,7 +169,7 @@ class RAGBackEnd:
     def select_by_keywords(self, keywords: List[str]):
         """Create a filter on the document collection based on a list of keywords"""
         # TODO: to be implemented
-        self.document_filter = None
+        pass
 
     def query_rag(self, message: str, history: List[dict[str, str]] = None, selected_files: List[str] = None, stream: bool = False) -> Dict | StreamingResponse:
         """Query the RAG"""
@@ -197,7 +196,7 @@ class RAGBackEnd:
             retriever = dense_retriever
 
         elif self.retrieval_method in [BM25, ENSEMBLE]:
-            bm25_retriever = BM25Retriever.from_texts(self.get_text_list())
+            bm25_retriever = BM25Retriever.from_texts(self.get_text_list(document_filter))
             bm25_retriever.k = self.top_n_extracts
             if self.similarity_threshold == BM25:
                 retriever = bm25_retriever
