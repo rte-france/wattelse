@@ -104,7 +104,7 @@
 }
 
 .send-button,
-.reset-button {
+.new-conversation-button {
     width: 5% ;
     padding: 0.5rem 0.5rem;
     border: none;
@@ -114,8 +114,8 @@
     font-weight: 600;
 }
 
-.reset-button {
-  background-color: crimson;
+.new-conversation-button {
+  background-color: orange;
 }
 
 .disclaimer{
@@ -142,7 +142,7 @@
 }
 
 .panel-container .superuser-tab {
-color: salmon;
+color: orange;
 }
 
 .panel-container .tab:hover {
@@ -160,7 +160,7 @@ color: salmon;
 }
 
 .panel-container .superuser-tab.active {
-  background-color: salmon; /* Blue background for active tab */
+  background-color: orange; /* Blue background for active tab */
   color: #fff; /* White text color for active tab */
   box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
 }

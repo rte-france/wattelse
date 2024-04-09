@@ -83,6 +83,7 @@ function initializeLayout(){
             targetContent.style.display = 'block';
         });
     });
+    activateTab("documents");
 
     // Display available documents
     updateAvailableDocuments();
@@ -119,12 +120,6 @@ function initializeLayout(){
             }
         });
     }
-
-    // Welcome message
-    createBotMessage("Bonjour <b><span style='font-weight:bold;color:" +
-        getComputedStyle(document.documentElement).getPropertyValue('--main-color')+";'>"+userName +
-        "</span></b> ! Posez-moi des questions en lien avec les documents sélectionnés...",
-        false, "documents");
 }
 
 function updateAvailableDocuments(){
@@ -190,9 +185,9 @@ function postUserMessageToRAG(userMessage) {
     if (userMessage === '') {
         return;
     }
-    console.log("Posting user message: "+userMessage)
+    console.log("Posting user message: "+userMessage);
 
-    fetch('', {
+    fetch('query_rag/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -266,12 +261,18 @@ function createBotMessage(message, showFeedbackSection = true, nextTab="extracts
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 
     // Call the function to activate the "Extracts" tab
-    activateTab(nextTab);
-
+    if (nextTab) {
+        activateTab(nextTab);
+    }
+    
     // Feedback section (modify based on your chosen approach)
     if (showFeedbackSection) {
         provideFeedback();
     }
+}
+
+function createWelcomeMessage() {
+    chatHistory.innerHTML = `<div class="bot-message">Bonjour <span class="username">${userName}</span> ! Posez-moi une question sur les documents.</div>`
 }
 
 function createErrorMessage(message) {
@@ -552,8 +553,8 @@ function removeUserFromGroup(userNameToDelete) {
 }
 
 // Delete chat history
-function resetChatHistory() {
-    fetch('reset/', {
+function newConversation() {
+    fetch('new_conversation/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -561,7 +562,7 @@ function resetChatHistory() {
         })
     })
     .then(response => {
-        chatHistory.innerHTML = `<div class="bot-message">Bonjour <span class="username">${userName}</span> ! Posez-moi une question sur les documents.</div>`
+        createWelcomeMessage();
     })
 }
 

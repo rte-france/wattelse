@@ -30,9 +30,9 @@ RAG_API = RAGOrchestratorClient()
 
 
 def chatbot(request):
-    """Main function for chatbot interface.
-    If request method is GET : render chatbot.html
-    If request method is POST : make a call to RAGOrchestratorClient and return response as json
+    """
+    Main function for chatbot interface.
+    Render chatbot.html webpage with associated context.
     """
     # If user is not authenticated, redirect to login
     if not request.user.is_authenticated:
@@ -44,10 +44,50 @@ def chatbot(request):
     # Get list of available documents
     available_docs = RAG_API.list_available_docs(user_group_id)
 
-    # If request method is POST, call RAG API and return response to query
-    # else render template
+    # Get user chat history
+    history = get_user_history(request.user)
+    print(history)
+    
+    # Get user permissions
+    can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
+    can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
+    can_manage_users = request.user.has_perm("chatbot.can_manage_users")
+
+    # If can manage users, find usernames of its group
+    if can_manage_users:
+        group_usernames_list = get_group_usernames_list(user_group_id)
+        # Remove admin so it cannot be deleted
+        group_usernames_list.remove("admin")
+    else:
+        group_usernames_list = None
+    return render(
+        request, "chatbot/chatbot.html",
+        {
+            "history": history,
+            "available_docs": available_docs,
+            "can_upload_documents": can_upload_documents,
+            "can_remove_documents": can_remove_documents,
+            "can_manage_users": can_manage_users,
+            "user_group": user_group_id,
+            "group_usernames_list": group_usernames_list,
+        }
+    )
+
+def query_rag(request):
+    """
+    Main function for query RAG calls.
+    Call RAGOrchestratorAPI and return response as JSON.
+    """
     if request.method == "POST":
+        # Get user group_id
+        user_group_id = get_user_group_id(request.user)
+
+        # Get user chat history
+        history = get_user_history(request.user)
+
+        # Get posted message
         message = request.POST.get("message", None)
+
         if not message:
             logger.warning("No user message received")
             error_message = "Veuillez saisir une question"
@@ -100,33 +140,7 @@ def chatbot(request):
 
         return JsonResponse({"messages": message, "answer": answer, "relevant_extracts": relevant_extracts}, status=200)
     else:
-        # Get user chat history
-        chats = Chat.objects.filter(user=request.user)
-        
-        # Get user permissions
-        can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
-        can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
-        can_manage_users = request.user.has_perm("chatbot.can_manage_users")
-
-        # If can manage users, find usernames of its group
-        if can_manage_users:
-            group_usernames_list = get_group_usernames_list(user_group_id)
-            # Remove admin so it cannot be deleted
-            group_usernames_list.remove("admin")
-        else:
-            group_usernames_list = None
-        return render(
-            request, "chatbot/chatbot.html",
-            {
-                "chats": chats,
-                "available_docs": available_docs,
-                "can_upload_documents": can_upload_documents,
-                "can_remove_documents": can_remove_documents,
-                "can_manage_users": can_manage_users,
-                "user_group": user_group_id,
-                "group_usernames_list": group_usernames_list,
-            }
-        )
+        raise Http404()
 
 
 def file_viewer(request, file_name: str):
@@ -297,7 +311,7 @@ def logout(request):
     return redirect("/login")
 
 
-def reset(request):
+def new_conversation(request):
     """Reset chat history from DB"""
     if request.method == "POST":
         Chat.objects.filter(user=request.user).delete()
@@ -422,3 +436,21 @@ def remove_user_from_group(request):
         return HttpResponse(status=201)
     else:
         raise Http404()
+
+def get_user_history(user: User) -> List[Dict[str, str]] | None:
+    """
+    Return chat history following OpenAI API format :
+    [
+        {"role": "user", "content": "message1"},
+        {"role": "assistant", "content": "message2"},
+        {"role": "user", "content": "message3"},
+        {...}
+    ]
+    If no history is found return None.
+    """
+    history = []
+    history_query = Chat.objects.filter(user=user)
+    for chat in history_query:
+            history.append({"role": "user", "content": chat.message})
+            history.append({"role": "assistant", "content": chat.response})
+    return None if len(history) == 0 else history
