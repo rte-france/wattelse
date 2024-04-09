@@ -30,7 +30,6 @@ from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
     LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
 from wattelse.indexer.document_splitter import split_file
-from wattelse.chatbot.backend.chat_history import ChatHistory
 from wattelse.common.config_utils import parse_literal
 from wattelse.indexer.document_parser import parse_file
 
@@ -76,13 +75,6 @@ def get_chat_model(llm_api_name) -> BaseChatModel:
 class RAGBackEnd:
     def __init__(self, group: str):
         logger.debug(f"Initialization of chatbot backend for group {group}")
-        # Initialize history
-        # log_chat_history_on_disk = True
-        # if log_chat_history_on_disk:
-        #     self.chat_history = ChatHistory(DATA_DIR / "chat_history" / login /
-        #                                     datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        # else:
-        #     self.chat_history = ChatHistory()
 
         # Load document collection
         self.document_collection = load_document_collection(group)
@@ -262,9 +254,6 @@ class RAGBackEnd:
             sources = resp.get("context")
             # Transform sources
             relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
-
-        # Update chat history
-        # self.chat_history.add_to_database(question, answer)
 
         # Return answer and sources
         return {"answer": answer, "relevant_extracts": relevant_extracts}
