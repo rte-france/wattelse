@@ -13,7 +13,6 @@ urlpatterns = [
     path('login/', views.login, name='login'),
     path('register/', views.register, name='register'),
     path('logout/', views.logout, name='logout'),
-    path('new_conversation/', views.new_conversation, name='new_conversation'),
     path('delete/', views.delete, name='delete'),
     path('upload/', views.upload, name='upload'),
     path('file_viewer/<str:file_name>', views.file_viewer, name='file_viewer'),

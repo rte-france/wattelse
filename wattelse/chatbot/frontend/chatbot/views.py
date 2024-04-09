@@ -41,12 +41,11 @@ def chatbot(request):
     # Get user group_id
     user_group_id = get_user_group_id(request.user)
 
+    # Generate a new conversation_id
+    conversation_id = str(uuid.uuid4())
+
     # Get list of available documents
     available_docs = RAG_API.list_available_docs(user_group_id)
-
-    # Get user chat history
-    history = get_user_history(request.user)
-    print(history)
     
     # Get user permissions
     can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
@@ -63,7 +62,7 @@ def chatbot(request):
     return render(
         request, "chatbot/chatbot.html",
         {
-            "history": history,
+            "conversation_id": conversation_id,
             "available_docs": available_docs,
             "can_upload_documents": can_upload_documents,
             "can_remove_documents": can_remove_documents,
@@ -82,8 +81,12 @@ def query_rag(request):
         # Get user group_id
         user_group_id = get_user_group_id(request.user)
 
+        # Get conversation id
+        conversation_id = uuid.UUID(request.POST.get("conversation_id"))
+
         # Get user chat history
-        history = get_user_history(request.user)
+        history = get_conversation_history(request.user, conversation_id)
+        logger.debug(f"History: {history}")
 
         # Get posted message
         message = request.POST.get("message", None)
@@ -132,7 +135,7 @@ def query_rag(request):
         chat = Chat(
             user=request.user,
             group_id=user_group_id,
-            conversation_id=uuid.uuid4(),
+            conversation_id=conversation_id,
             message=message,
             response=answer,
             )
@@ -311,15 +314,6 @@ def logout(request):
     return redirect("/login")
 
 
-def new_conversation(request):
-    """Reset chat history from DB"""
-    if request.method == "POST":
-        Chat.objects.filter(user=request.user).delete()
-        return HttpResponse(status=200)
-    else:
-        raise Http404()
-
-
 def get_filename_parts(filename: str) -> Tuple[str, str]:
     """
   This function splits a filename into its prefix and suffix.
@@ -437,7 +431,7 @@ def remove_user_from_group(request):
     else:
         raise Http404()
 
-def get_user_history(user: User) -> List[Dict[str, str]] | None:
+def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dict[str, str]] | None:
     """
     Return chat history following OpenAI API format :
     [
@@ -449,7 +443,7 @@ def get_user_history(user: User) -> List[Dict[str, str]] | None:
     If no history is found return None.
     """
     history = []
-    history_query = Chat.objects.filter(user=user)
+    history_query = Chat.objects.filter(user=user, conversation_id=conversation_id)
     for chat in history_query:
             history.append({"role": "user", "content": chat.message})
             history.append({"role": "assistant", "content": chat.response})

@@ -187,6 +187,7 @@ function postUserMessageToRAG(userMessage) {
     }
     console.log("Posting user message: "+userMessage);
 
+    const conversationId = chatHistory.id;
     fetch('query_rag/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -194,6 +195,7 @@ function postUserMessageToRAG(userMessage) {
             'csrfmiddlewaretoken': csrfmiddlewaretoken,
             'message': userMessage,
             'selected_docs': JSON.stringify(getSelectedFileNames("available-list")),
+            'conversation_id': conversationId,
         })
     })
     .then(response => response.json())
@@ -552,20 +554,12 @@ function removeUserFromGroup(userNameToDelete) {
     }
 }
 
-// Delete chat history
+// Create a new conversation
 function newConversation() {
-    fetch('new_conversation/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            'csrfmiddlewaretoken': csrfmiddlewaretoken,
-        })
-    })
-    .then(response => {
-        createWelcomeMessage();
-        extractList.innerHTML = "";
-        activateTab("documents");
-    })
+    chatHistory.id = uuid4();
+    createWelcomeMessage();
+    extractList.innerHTML = "";
+    activateTab("documents");
 }
 
 // Functions to collect user feedback
@@ -687,3 +681,8 @@ function sendFeedback(endpoint, feedback, user_message, bot_message){
           });
 }
 
+function uuid4() {
+    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+      (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
+    );
+  }
