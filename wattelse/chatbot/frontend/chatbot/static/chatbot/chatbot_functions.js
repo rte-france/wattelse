@@ -120,6 +120,8 @@ function initializeLayout(){
             }
         });
     }
+    //  Create welcome message
+    createWelcomeMessage();
 }
 
 function updateAvailableDocuments(){
@@ -163,6 +165,10 @@ function handleUserMessage(userMessage) {
         lastFeedbackDiv.remove()
     }
 
+    // Remove welcome message if it exists
+    removeWelcomeMessage();
+
+    // Diplsay user message
     createUserMessage(userMessage);
 
     // Simulate bot response with a delay
@@ -274,7 +280,18 @@ function createBotMessage(message, showFeedbackSection = true, nextTab="extracts
 }
 
 function createWelcomeMessage() {
-    chatHistory.innerHTML = `<div class="bot-message">Bonjour <span class="username">${userName}</span> ! Posez-moi une question sur les documents.</div>`
+    chatHistory.innerHTML = `
+    <div class="welcome-container">
+        <div class="welcome-message">Bonjour <span class="username">${userName}</span> !<br>Posez une question sur les documents.</div>
+    </div>
+    `;
+}
+
+function removeWelcomeMessage() {
+    const welcomeMessage = document.querySelector(".welcome-container");
+    if (welcomeMessage) {
+        welcomeMessage.remove();
+    }
 }
 
 function createErrorMessage(message) {
