@@ -528,3 +528,15 @@ color: salmon;
 .rating-wrong:hover, .rating-wrong.selected {
     color: indianred;
 }
+
+.conversation-button {
+
+}
+
+.conversation-button-new {
+  
+}
+
+.conversation-button-selected {
+  background-color: var(--main-color);
+}

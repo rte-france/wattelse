@@ -9,10 +9,12 @@ from . import views, simple_views, feedback_views
 app_name = 'chatbot'
 urlpatterns = [
     path('', views.chatbot, name='chatbot'),
+	path('query_rag/', views.query_rag, name='query_rag'),
     path('login/', views.login, name='login'),
     path('register/', views.register, name='register'),
     path('logout/', views.logout, name='logout'),
-    path('reset/', views.reset, name='reset'),
+	path('select_conversation/', views.select_conversation, name='select_conversation'),
+	path('reset_history/', views.delete_conversation, name='reset_history'),
     path('delete/', views.delete, name='delete'),
     path('upload/', views.upload, name='upload'),
     path('file_viewer/<str:file_name>', views.file_viewer, name='file_viewer'),

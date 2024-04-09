@@ -15,7 +15,8 @@
 {% endif %}
 
 {{ user.username|json_script:'user_name' }}
-{{ available_docs|json_script:'available_docs'}}
+{{ available_docs|json_script:'available_docs' }}
+{{ conversations_ids|json_script:'conversations_ids' }}
 
 <!-- Main container for the page -->
 <div class="wrapper">
@@ -24,13 +25,14 @@
     <div class="chat-container">
 
         <!-- Chat history div -->
-        <div class="chat-history">
+        <div class="chat-history" id="{{ conversation_id }}">
             <!-- If chat history exists print it-->
-            {% if chats %}
-                {% for chat in chats %}
-                    {% if chat.user == request.user %}
-                        <div class="user-message">{{ chat.message }}</div>
-                        <div class="bot-message">{{ chat.response }}</div>
+            {% if history %}
+                {% for message in history %}
+                    {% if message.role == "user" %}
+                        <div class="user-message">{{ message.content }}</div>
+                    {% elif message.role == "assistant" %}
+                        <div class="bot-message">{{ message.content }}</div>
                     {% endif %}
                 {% endfor %}
             <!-- Else print welcome message -->
@@ -46,7 +48,7 @@
                 <input type="text" class="input-field"
                     placeholder="Entrez votre question en lien avec les documents fournis..." />
                 <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
-                <button class="reset-button" onclick="resetChatHistory()"><i class="fa-solid fa-trash-can"></i></button>
+                <button class="reset-button" onclick="newConversation()"><i class="fa-solid fa-plus"></i></button>
             </div>
             <div class="disclaimer">
                 WattElse peut afficher des informations inexactes. Vérifiez ses réponses.
@@ -60,6 +62,7 @@
         <!-- All users have access to these tabs -->
         <div class="tab" data-content="extracts">Extraits</div>
         <div class="tab active" data-content="documents">Documents</div>
+        <div class="tab" data-content="conversations">Conversations</div>
 
         <!-- These tabs need specific rights to be displayed -->
         {% if can_upload_documents %}
@@ -93,6 +96,12 @@
                 
                 <ul class="document-list available-list"></ul>
             </div>
+        </div>
+
+        <!-- Conversations tab content -->
+        <div class="tab-content conversations">
+            <ul class="document-list conversations-list"></ul>
+            <button class="reset-button" onclick="deleteConversation()"><i class="fa-solid fa-trash-can"></i></button>
         </div>
 
         <!-- Upload document tab content -->

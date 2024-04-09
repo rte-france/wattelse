@@ -17,6 +17,7 @@ const contentSections = documentPanel.querySelectorAll('.tab-content');
 const extractList = document.getElementById('extract-list');
 const availableDocumentList = document.querySelector('.available-list');
 const removalDocumentList = document.querySelector('.removal-list');
+const conversationsList = document.querySelector('.conversations-list');
 
 const selectAll = document.getElementById('select-all');
 
@@ -33,6 +34,7 @@ const addUsersInputField = document.getElementById("add-users-input-field");
 
 // variables related to Django templates
 const userName =  JSON.parse(document.getElementById('user_name').textContent);
+const conversationsIds = JSON.parse(document.getElementById('conversations_ids').textContent);
 let availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
 const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
@@ -66,6 +68,14 @@ function initializeLayout(){
         }
     });
 
+    // Initialization of chat history
+    if (conversationsIds.length === 0) {
+        newConversation();
+    }
+    else {
+        selectConversation(conversationsIds[0]);
+    };
+
     // Initialization of tabs
     tabs.forEach((tab) => {
         tab.addEventListener('click', () => {
@@ -86,6 +96,9 @@ function initializeLayout(){
 
     // Display available documents
     updateAvailableDocuments();
+
+    // Initiliaze conversations list
+    initializeConversationsList()
 
     // Select all documents by default
     selectAll.click();
@@ -191,14 +204,16 @@ function postUserMessageToRAG(userMessage) {
         return;
     }
     console.log("Posting user message: "+userMessage)
-
-    fetch('', {
+    // Remove "new" attribute of conversation
+    document.getElementById(getSelectedConversationId()).classList.remove("conversation-button-new");
+    fetch('query_rag/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
             'csrfmiddlewaretoken': csrfmiddlewaretoken,
             'message': userMessage,
             'selected_docs': JSON.stringify(getSelectedFileNames("available-list")),
+            'conversation_id': getSelectedConversationId(),
         })
     })
     .then(response => response.json())
@@ -250,6 +265,10 @@ function updateRelevantExtracts(relevant_extracts){
     });
 }
 
+function createWelcomeMessage() {
+    chatHistory.innerHTML = `<div class="bot-message">Bonjour <span class="username">${userName}</span> ! Posez-moi une question sur les documents.</div>`
+}
+
 function createUserMessage(message) {
     const userDiv = document.createElement('div');
     userDiv.classList.add('user-message');
@@ -265,11 +284,10 @@ function createBotMessage(message, showFeedbackSection = true, nextTab="extracts
     chatHistory.appendChild(botDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 
-    // Call the function to activate the "Extracts" tab
-    activateTab(nextTab);
-
     // Feedback section (modify based on your chosen approach)
     if (showFeedbackSection) {
+        // Call the function to activate the "Extracts" tab
+        activateTab(nextTab);
         provideFeedback();
     }
 }
@@ -552,16 +570,19 @@ function removeUserFromGroup(userNameToDelete) {
 }
 
 // Delete chat history
-function resetChatHistory() {
-    fetch('reset/', {
+function deleteConversation() {
+    const selectedConversationId = getSelectedConversationId()
+    fetch('reset_history/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
             'csrfmiddlewaretoken': csrfmiddlewaretoken,
+            'conversation_id': selectedConversationId,
         })
     })
     .then(response => {
-        chatHistory.innerHTML = `<div class="bot-message">Bonjour <span class="username">${userName}</span> ! Posez-moi une question sur les documents.</div>`
+        document.getElementById(selectedConversationId).remove();
+        newConversation();
     })
 }
 
@@ -684,3 +705,90 @@ function sendFeedback(endpoint, feedback, user_message, bot_message){
           });
 }
 
+function selectConversation(conversationId) {
+    fetch('select_conversation/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+            'conversation_id': conversationId,
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const conversationItems = document.querySelectorAll(".conversation-button");
+        conversationItems.forEach((button) => button.classList.remove("conversation-button-selected"));
+        document.getElementById(conversationId).classList.add("conversation-button-selected");
+        chatHistory.innerHTML = "";
+        if (data.history) {
+            data.history.forEach((message) => {
+                if (message.role === "user") {
+                    createUserMessage(message.content)
+                }
+                if (message.role === "assistant") {
+                    createBotMessage(message.content, showFeedbackSection=false)
+                }
+            })
+        }
+        else {
+            createWelcomeMessage();
+        }
+    });
+}
+
+function createConversationsListItem(conversationId) {
+    const listItem = document.createElement('li');
+    listItem.innerHTML = `
+          <div class="col">OK</div>
+          <div class="col">
+              <div class="file-name">
+                  <div class="name">${conversationId}</div>
+              </div>
+          </div>
+          <div class="col">
+              <svg xmlns="http://www.w3.org/2000/svg" class="tick" height="20" width="20"><path d="m8.229 14.438-3.896-3.917 1.438-1.438 2.458 2.459 6-6L15.667 7Z"/></svg>
+          </div>
+    `;
+    listItem.classList.add("conversation-button", "conversation-button-new");
+    listItem.id = conversationId;
+    listItem.addEventListener('click', () => {
+        selectConversation(conversationId);
+    });
+    conversationsList.appendChild(listItem);
+  }
+
+function newConversation() {
+    const newConversationsButtons = document.querySelector(".conversation-button-new");
+    if (newConversationsButtons) {
+        selectConversation(newConversationsButtons.id);
+    }
+    else {
+        // var newConversationButton = document.createElement("button");
+        // newConversationButton.classList.add("conversation-button", "conversation-button-new");
+        // const newUUID4 = uuid4();
+        // newConversationButton.onclick = function() {
+        //     selectConversation(newUUID4);
+        // };
+        // newConversationButton.innerHTML = newUUID4;
+        // newConversationButton.id = newUUID4;
+        const newUUID4 = uuid4();
+        createConversationsListItem(newUUID4);
+        selectConversation(newUUID4);
+    }
+}
+
+function uuid4() {
+    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+      (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
+    );
+}
+
+function getSelectedConversationId() {
+    return document.querySelector(".conversation-button-selected").id;
+}
+
+function initializeConversationsList() {
+    conversationsIds.forEach((conversationId) => {
+        createConversationsListItem(conversationId);
+    })
+}
