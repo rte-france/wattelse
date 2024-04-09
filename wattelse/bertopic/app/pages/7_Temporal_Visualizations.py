@@ -13,7 +13,7 @@ import plotly.express as px
 
 
 
-from wattelse.bertopic.temporal_metrics_embedding import TempTopic
+# from wattelse.bertopic.temporal_metrics_embedding import TempTopic
 import plotly.graph_objects as go
 
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
@@ -26,6 +26,34 @@ from wattelse.bertopic.app.app_utils import (
     compute_topics_over_time,
 )
 
+
+
+
+from sklearn.preprocessing import normalize
+from sklearn.metrics.pairwise import cosine_similarity
+import pandas as pd
+from typing import List, Union, Tuple, Dict
+from tqdm import tqdm
+from bertopic import BERTopic
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
+from scipy.sparse import lil_matrix
+import itertools
+import plotly.graph_objects as go
+import plotly.express as px
+import torch
+import umap
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.manifold import TSNE
+from loguru import logger
+
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output, State
+import plotly.express as px
+import numpy as np
+import plotly.graph_objs as go
 
 
 
@@ -127,7 +155,7 @@ if time_granularity != "":
         indices = st.session_state["timefiltered_df"]["index"]
 
         # Extract docs using the indices
-        docs = [st.session_state["raw_df"][TEXT_COLUMN][i] for i in indices]
+        docs = [st.session_state["split_df"][TEXT_COLUMN][i] for i in indices]
 
         # Create a dictionary mapping the original index to the aggregated timestamp
         index_to_timestamp = {}
@@ -223,7 +251,8 @@ if time_granularity != "":
 
 
         st.header("Overall Topic Stability")
-        fig_overall_stability = temptopic.plot_overall_topic_stability(topics_to_show=topics_to_show)
+        normalize_overall_stability = st.checkbox("Normalize", value=False)
+        fig_overall_stability = temptopic.plot_overall_topic_stability(topics_to_show=topics_to_show, normalize=normalize_overall_stability)
         st.plotly_chart(fig_overall_stability, use_container_width=True)
 
         st.header("3D Topic Evolution Visualization")

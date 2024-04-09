@@ -4,6 +4,8 @@ import streamlit as st
 
 from wattelse.bertopic.metrics import TopicMetrics, TIME_WEIGHT
 from state_utils import register_widget, save_widget_state, restore_widget_state
+from wattelse.bertopic.utils import TIMESTAMP_COLUMN
+from wattelse.bertopic.app.app_utils import compute_topics_over_time
 
 # Restore widget state
 restore_widget_state()
@@ -14,8 +16,13 @@ if "topic_model" not in st.session_state.keys():
     st.stop()
 
 if "topics_over_time"  not in st.session_state.keys():
-    st.error("Topics over time required to plot topic map.", icon="🚨")
-    st.stop()
+    if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():
+        st.session_state["topics_over_time"] = compute_topics_over_time(
+            st.session_state["parameters"],
+            st.session_state["topic_model"],
+            st.session_state["timefiltered_df"],
+            nr_bins=10,
+        )
 
 if "tw" not in st.session_state.keys():
     st.session_state["tw"] = TIME_WEIGHT

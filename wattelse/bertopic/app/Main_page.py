@@ -68,173 +68,24 @@ def preprocess_text(text):
     return text
 
 
-
-def select_data():
-    st.write("## Data selection")
-
-    choose_data(DATA_DIR, ["*.csv", "*.jsonl*"])
-
-    ########## Adjusting to handle multiple files selection ##########
-    if st.session_state["selected_files"]:
-        loaded_dfs = []
-        for file_path in st.session_state["selected_files"]:
-            df = load_data_wrapper(file_path)
-            df.sort_values(by=TIMESTAMP_COLUMN, ascending=False, inplace=True)
-            loaded_dfs.append(df)
-
-        st.session_state["raw_df"] = pd.concat(loaded_dfs) if len(loaded_dfs) > 1 else loaded_dfs[0]
-    else:
-        st.error("Please select at least one file to proceed.")
-        st.stop()
-
-    ########## Remove duplicates from raw_df ##########
-    st.session_state["raw_df"] = st.session_state["raw_df"].drop_duplicates(subset=TEXT_COLUMN, keep='first')
-    st.session_state["raw_df"].sort_values(by=[TIMESTAMP_COLUMN], ascending=True, inplace=True)
-    
-
-    # Select time range
-    min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
-    register_widget("timestamp_range")
-    if "timestamp_range" not in st.session_state:
-        st.session_state["timestamp_range"] = (
-            min_max["min"].to_pydatetime(),
-            min_max["max"].to_pydatetime(),
-        )
-
-    timestamp_range = st.slider(
-        "Select the range of timestamps you want to use for training",
-        min_value=min_max["min"].to_pydatetime(),
-        max_value=min_max["max"].to_pydatetime(),
-        key="timestamp_range",
-        on_change=save_widget_state,
-    )
-
-    # Filter text length parameter
-    register_widget("min_text_length")
-    st.number_input(
-        "Select the minimum number of characters each document should contain",
-        min_value=0,
-        key="min_text_length",
-        on_change=save_widget_state,
-    )
-
-    # Split DF by paragraphs parameter
-    register_widget("split_option")
-    split_options = ["No split", "Default split", "Enhanced split"]
-    split_option = st.radio(
-        "Select the split option",
-        split_options,
-        key="split_option",
-        on_change=save_widget_state,
-        help="""
-        - No split: No splitting on the documents.
-        - Default split: Split by paragraph (Warning: might produce paragraphs longer than embedding model's maximum supported input length).
-        - Enhanced split: Split by paragraph. If a paragraph is longer than the embedding model's maximum input length, then split by sentence.
-        """
-    )
-    
-
-    ########## Split DF by paragraphs ##########
+def split_dataframe(split_option):
     if split_option == "Default split":
-        st.session_state["raw_df"] = split_df_by_paragraphs(st.session_state["raw_df"])
+        st.session_state["split_df"] = split_df_by_paragraphs(st.session_state["raw_df"])
+        st.session_state["split_by_paragraphs"] = True
     elif split_option == "Enhanced split":
         model_name = ast.literal_eval(st.session_state['parameters'])['embedding_model_name']
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         max_length = SentenceTransformer(model_name).get_max_seq_length()
         if max_length == 514: max_length = 512
-        st.session_state["raw_df"] = split_df_by_paragraphs_v2(
-            dataset=st.session_state["raw_df"],
-            tokenizer=tokenizer,
-            max_length=max_length-2,
-            min_length=0
-        )
-    else:
-        pass
-
-    ########## Preprocess the text ##########
-    st.session_state["raw_df"][TEXT_COLUMN] = st.session_state["raw_df"][TEXT_COLUMN].apply(preprocess_text)
-
-    ########## Remove unwanted rows from raw_df ##########
-    st.session_state["raw_df"] = st.session_state["raw_df"][
-        (st.session_state["raw_df"][TEXT_COLUMN].str.strip() != "") &
-        (st.session_state["raw_df"][TEXT_COLUMN].apply(lambda x: len(re.findall(r'[a-zA-Z]', x)) >= 5))
-    ]
-
-    st.session_state["raw_df"].reset_index(drop=True, inplace=True)
-    st.session_state["raw_df"]["index"] = st.session_state["raw_df"].index
-
-    # Filter dataset to select only text within time range
-    st.session_state["timefiltered_df"] = st.session_state["raw_df"].query(
-        f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'"
-    )
-
-    # Clean dataset using min_text_length
-    st.session_state["timefiltered_df"] = clean_dataset(
-        st.session_state["timefiltered_df"],
-        st.session_state["min_text_length"],
-    )
-
-    if st.session_state["timefiltered_df"].empty:
-        st.error("Not enough remaining data after cleaning", icon="🚨")
-        st.stop()
-    else:
-        st.write(f"Found {len(st.session_state['timefiltered_df'])} documents after final cleaning.")
-        st.dataframe(st.session_state['timefiltered_df'][['text', 'timestamp']], use_container_width=True)
-
-
-
-
-
-def train_model():
-    ### TRAIN MODEL ###
-    if parameters_sidebar_clicked:
-        if "timefiltered_df" in st.session_state and not st.session_state["timefiltered_df"].empty:
-            full_dataset = st.session_state["raw_df"]
-            indices = st.session_state["timefiltered_df"]["index"]
-                        
-            (   st.session_state["topic_model"],
-                st.session_state["topics"],
-                _,
-                st.session_state["embeddings"],
-                st.session_state["token_embeddings"],
-                st.session_state["token_strings"],
-            ) = train_BERTopic_wrapper(
-                dataset=full_dataset,
-                indices=indices,
-                form_parameters=st.session_state["parameters"],
-                cache_base_name=st.session_state["data_name"]
-                # if not st.session_state["split_by_paragraphs"]
-                # else f'{st.session_state["data_name"]}_split_by_paragraphs',
+        with st.spinner("Splitting the dataset..."):
+            st.session_state["split_df"] = split_df_by_paragraphs_v2(
+                dataset=st.session_state["raw_df"],
+                tokenizer=tokenizer,
+                max_length=max_length-2,
+                min_length=0
             )
-            
-            st.info("Token embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
-            
-            st.session_state["topics_info"] = (
-                st.session_state["topic_model"].get_topic_info().iloc[1:]
-            )  # exclude -1 topic from topic list
-
-            # Computes coherence value
-            coherence_score_type = "c_npmi"
-            coherence = get_coherence_value(
-                st.session_state["topic_model"],
-                st.session_state["topics"],
-                st.session_state["timefiltered_df"][TEXT_COLUMN],
-                coherence_score_type
-            )
-            diversity_score_type = "puw"
-            diversity = get_diversity_value(st.session_state["topic_model"],
-                                            st.session_state["topics"],
-                                            st.session_state["timefiltered_df"][TEXT_COLUMN],
-                                            diversity_score_type="puw")
-            
-            logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
-            logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
-            
-            st.session_state['model_trained'] = True
-            if not st.session_state['model_saved']: st.warning('Don\'t forget to save your model!', icon="⚠️")
-            
-        else:
-            st.error("No data available for training. Please ensure data is correctly loaded.")
+        st.session_state["split_by_paragraphs"] = True
+        
 
 
 
@@ -339,6 +190,171 @@ with st.sidebar.form("parameters_sidebar"):
     parameters_sidebar_clicked = st.form_submit_button(
         "Train model", type="primary", on_click=save_widget_state
     )    
+
+def select_data():
+    st.write("## Data selection")
+
+    choose_data(DATA_DIR, ["*.csv", "*.jsonl*"])
+
+    ########## Adjusting to handle multiple files selection ##########
+    if st.session_state["selected_files"]:
+        loaded_dfs = []
+        for file_path in st.session_state["selected_files"]:
+            df = load_data_wrapper(file_path)
+            df.sort_values(by=TIMESTAMP_COLUMN, ascending=False, inplace=True)
+            loaded_dfs.append(df)
+
+        st.session_state["raw_df"] = pd.concat(loaded_dfs) if len(loaded_dfs) > 1 else loaded_dfs[0]
+    else:
+        st.error("Please select at least one file to proceed.")
+        st.stop()
+
+    ########## Remove duplicates from raw_df ##########
+    st.session_state["raw_df"] = st.session_state["raw_df"].drop_duplicates(subset=TEXT_COLUMN, keep='first')
+    st.session_state["raw_df"].sort_values(by=[TIMESTAMP_COLUMN], ascending=True, inplace=True)
+    
+
+    # Select time range
+    min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
+    register_widget("timestamp_range")
+    if "timestamp_range" not in st.session_state:
+        st.session_state["timestamp_range"] = (
+            min_max["min"].to_pydatetime(),
+            min_max["max"].to_pydatetime(),
+        )
+
+    timestamp_range = st.slider(
+        "Select the range of timestamps you want to use for training",
+        min_value=min_max["min"].to_pydatetime(),
+        max_value=min_max["max"].to_pydatetime(),
+        key="timestamp_range",
+        on_change=save_widget_state,
+    )
+
+    # Filter text length parameter
+    register_widget("min_text_length")
+    st.number_input(
+        "Select the minimum number of characters each document should contain",
+        min_value=0,
+        key="min_text_length",
+        on_change=save_widget_state,
+    )
+
+    # Split DF by paragraphs parameter
+    register_widget("split_option")
+    split_options = ["No split", "Default split", "Enhanced split"]
+    split_option = st.radio(
+        "Select the split option",
+        split_options,
+        key="split_option",
+        on_change=save_widget_state,
+        help="""
+        - No split: No splitting on the documents.
+        - Default split: Split by paragraph (Warning: might produce paragraphs longer than embedding model's maximum supported input length).
+        - Enhanced split: Split by paragraph. If a paragraph is longer than the embedding model's maximum input length, then split by sentence.
+        """
+    )
+    
+
+    if ("split_method" not in st.session_state or st.session_state["split_method"] != split_option or
+        "prev_timestamp_range" not in st.session_state or st.session_state["prev_timestamp_range"] != timestamp_range or
+        "prev_min_text_length" not in st.session_state or st.session_state["prev_min_text_length"] != st.session_state["min_text_length"]):
+        st.session_state["split_method"] = split_option
+        st.session_state["prev_timestamp_range"] = timestamp_range
+        st.session_state["prev_min_text_length"] = st.session_state["min_text_length"]
+        
+        if split_option != "No split":
+            split_dataframe(split_option)
+        else: # If No Splitting is done
+            st.session_state["split_df"] = st.session_state["raw_df"]
+            st.session_state["split_by_paragraphs"] = False
+
+    ########## Preprocess the text ##########
+    st.session_state["split_df"][TEXT_COLUMN] = st.session_state["split_df"][TEXT_COLUMN].apply(preprocess_text)
+
+    ########## Remove unwanted rows from split_df ##########
+    st.session_state["split_df"] = st.session_state["split_df"][
+        (st.session_state["split_df"][TEXT_COLUMN].str.strip() != "") &
+        (st.session_state["split_df"][TEXT_COLUMN].apply(lambda x: len(re.findall(r'[a-zA-Z]', x)) >= 5))
+    ]
+
+    st.session_state["split_df"].reset_index(drop=True, inplace=True)
+    st.session_state["split_df"]["index"] = st.session_state["split_df"].index
+
+    # Filter dataset to select only text within time range
+    st.session_state["timefiltered_df"] = st.session_state["split_df"].query(
+        f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'"
+    )
+
+    # Clean dataset using min_text_length
+    st.session_state["timefiltered_df"] = clean_dataset(
+        st.session_state["timefiltered_df"],
+        st.session_state["min_text_length"],
+    )
+
+    st.session_state["timefiltered_df"] = st.session_state["timefiltered_df"].reset_index(drop=True).reset_index()
+
+    if st.session_state["timefiltered_df"].empty:
+        st.error("Not enough remaining data after cleaning", icon="🚨")
+        st.stop()
+    else:
+        st.write(f"Found {len(st.session_state['timefiltered_df'])} documents after final cleaning.")
+        st.dataframe(st.session_state['timefiltered_df'][['index','text', 'timestamp']], use_container_width=True)
+
+
+def train_model():
+    ### TRAIN MODEL ###
+    if parameters_sidebar_clicked:
+        if "timefiltered_df" in st.session_state and not st.session_state["timefiltered_df"].empty:
+            
+            full_dataset = st.session_state["split_df"]
+            indices = st.session_state["timefiltered_df"]["index"].tolist()
+            full_dataset = full_dataset.loc[indices]
+
+            
+            (   st.session_state["topic_model"],
+                st.session_state["topics"],
+                _,
+                st.session_state["embeddings"],
+                st.session_state["token_embeddings"],
+                st.session_state["token_strings"],
+            ) = train_BERTopic_wrapper(
+                dataset=full_dataset,
+                indices=indices,
+                form_parameters=st.session_state["parameters"],
+                cache_base_name=st.session_state["data_name"]
+                if st.session_state["split_method"] == "No split"
+                else f'{st.session_state["data_name"]}_split_by_paragraphs',
+            )
+            
+            st.info("Token embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
+            
+            st.session_state["topics_info"] = (
+                st.session_state["topic_model"].get_topic_info().iloc[1:]
+            )  # exclude -1 topic from topic list
+
+            # Computes coherence value
+            coherence_score_type = "c_npmi"
+            coherence = get_coherence_value(
+                st.session_state["topic_model"],
+                st.session_state["topics"],
+                st.session_state["timefiltered_df"][TEXT_COLUMN],
+                coherence_score_type
+            )
+            diversity_score_type = "puw"
+            diversity = get_diversity_value(st.session_state["topic_model"],
+                                            st.session_state["topics"],
+                                            st.session_state["timefiltered_df"][TEXT_COLUMN],
+                                            diversity_score_type="puw")
+            
+            logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
+            logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
+            
+            st.session_state['model_trained'] = True
+            if not st.session_state['model_saved']: st.warning('Don\'t forget to save your model!', icon="⚠️")
+            
+        else:
+            st.error("No data available for training. Please ensure data is correctly loaded.")
 
 
 # Load selected DataFrame
