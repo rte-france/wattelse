@@ -16,7 +16,7 @@ from wattelse.common import BASE_CACHE_PATH
 from wattelse.common.cache_utils import load_embeddings
 
 DEFAULT_PARAMETERS = {
-    "embedding_model_name": "antoinelouis/biencoder-camembert-base-mmarcoFR",
+    "embedding_model_name": "dangvantuan/sentence-camembert-large",
     "use_cached_embeddings": False,
     "bertopic_nr_topics": 0,
     "bertopic_top_n_words": 5,

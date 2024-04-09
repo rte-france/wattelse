@@ -107,7 +107,7 @@ if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():
 # Show most representative documents belonging to the topic
 st.write("## Sélection d'articles représentatifs")
 
-if st.session_state["split_by_paragraphs"]:
+if st.session_state["split_by_paragraphs"] == True:
 	representative_df = get_most_representative_docs(st.session_state["topic_model"],
 												     st.session_state["initial_df"],
 												     st.session_state["topics"],

@@ -280,32 +280,43 @@ class TempTopic:
         for _, row in self.final_df.iterrows():
             topic_id = row['Topic']
             timestamp = row['Timestamp']
-            representation = [word.lower() for word in row['Words'].split(', ')]
+            representation = [phrase.lower() for phrase in row['Words'].split(', ')]
             token_strings = [[token.lower() for token in tokens] for tokens in row['Token_Strings']]
             word_embeddings = row['Token_Embeddings']
 
             embedding_list = []
             updated_representation = []  # Store the updated representation without missing words
-            for word in representation:
-                if word != '':
-                    try:
-                        embedding = self._get_aggregated_word_embedding(word, word_embeddings, token_strings, double_agg, doc_agg, global_agg)
-                        embedding_list.append(embedding)
-                        updated_representation.append(word)  # Add the word to the updated representation
-                    except ValueError:
-                        logger.debug(f"Word '{word}' not found in topic {topic_id} at timestamp {timestamp}. Retrying by looking inside the entire topic.")
-                        topic_data = self.final_df[self.final_df['Topic'] == topic_id]
-                        all_token_strings = list(itertools.chain.from_iterable(topic_data['Token_Strings'].tolist()))
-                        all_token_strings = [[token.lower() for token in doc_tokens] for doc_tokens in all_token_strings]
-                        all_word_embeddings = list(itertools.chain.from_iterable(topic_data['Token_Embeddings'].tolist()))
-
+            for phrase in representation:
+                if phrase != '':
+                    if ' ' in phrase:  # If the phrase is an ngram
+                        ngram_tokens = phrase.split(' ')
+                        ngram_embeddings = []
+                        for i in range(len(token_strings)):
+                            for j in range(len(token_strings[i]) - len(ngram_tokens) + 1):
+                                if all(ngram_token == token_strings[i][j + k] for k, ngram_token in enumerate(ngram_tokens)):
+                                    ngram_embedding = np.mean([word_embeddings[i][j + k] for k in range(len(ngram_tokens))], axis=0)
+                                    ngram_embeddings.append(ngram_embedding)
+                        if ngram_embeddings:
+                            embedding_list.append(np.mean(ngram_embeddings, axis=0))
+                            updated_representation.append(phrase)
+                    else:  # If the phrase is a unigram
                         try:
-                            embedding = self._get_aggregated_word_embedding(word, all_word_embeddings, all_token_strings, double_agg, doc_agg, global_agg)
+                            embedding = self._get_aggregated_word_embedding(phrase, word_embeddings, token_strings, double_agg, doc_agg, global_agg)
                             embedding_list.append(embedding)
-                            updated_representation.append(word)  # Add the word to the updated representation
+                            updated_representation.append(phrase)  # Add the word to the updated representation
                         except ValueError:
-                            logger.debug(f"The word '{word}' was not found in any of the documents for topic {topic_id}. Skipping...")
-                            # Skip the word and continue without adding it to the updated representation
+                            logger.debug(f"Word '{phrase}' not found in topic {topic_id} at timestamp {timestamp}. Retrying by looking inside the entire topic.")
+                            topic_data = self.final_df[self.final_df['Topic'] == topic_id]
+                            all_token_strings = list(itertools.chain.from_iterable(topic_data['Token_Strings'].tolist()))
+                            all_token_strings = [[token.lower() for token in doc_tokens] for doc_tokens in all_token_strings]
+                            all_word_embeddings = list(itertools.chain.from_iterable(topic_data['Token_Embeddings'].tolist()))
+
+                            try:
+                                embedding = self._get_aggregated_word_embedding(phrase, all_word_embeddings, all_token_strings, double_agg, doc_agg, global_agg)
+                                embedding_list.append(embedding)
+                                updated_representation.append(phrase)  # Add the word to the updated representation
+                            except ValueError:
+                                logger.debug(f"The word '{phrase}' was not found in any of the documents for topic {topic_id}. Skipping...")
 
             representation_embeddings.append({
                 'Topic ID': topic_id,
@@ -417,11 +428,16 @@ class TempTopic:
                 start_row = sorted_group.iloc[i]
                 end_row = sorted_group.iloc[i + window_size - 1]
 
+
                 start_embeddings = start_row['Representation Embeddings']
                 end_embeddings = end_row['Representation Embeddings']
 
+                if len(end_embeddings) == 0:
+                    logger.debug(f"{sorted_group}")
+
                 similarity_scores = []
                 for start_embedding in start_embeddings:
+                    # logger.debug(f"{len(start_embedding)}, {len(end_embeddings)}, {len(end_embeddings[0])}")
                     cosine_similarities = cosine_similarity([start_embedding], end_embeddings)[0]
                     top_k_indices = cosine_similarities.argsort()[-k:][::-1]
                     top_k_similarities = cosine_similarities[top_k_indices]
@@ -484,20 +500,30 @@ class TempTopic:
 
         # Merge the two DataFrames on 'Topic ID', 'Start Timestamp', and 'End Timestamp'
         merged_df = pd.merge(topic_stability_df, representation_stability_df,
-                             on=['Topic ID', 'Start Timestamp', 'End Timestamp'])
+                                on=['Topic ID', 'Start Timestamp', 'End Timestamp'])
 
         # Calculate the weighted average of the two stability scores for each topic and timestamp
         merged_df['Overall Stability Score'] = alpha * merged_df['Stability Score'] + \
-                                               (1 - alpha) * merged_df['Representation Stability Score']
+                                                (1 - alpha) * merged_df['Representation Stability Score']
 
-        # Group by 'Topic ID' and calculate the average Overall Stability Score for each topic
-        self.overall_stability_df = merged_df.groupby('Topic ID')['Overall Stability Score'].mean().reset_index()
+        # Count the number of unique timestamps for each topic
+        topic_timestamps = merged_df.groupby('Topic ID')['Start Timestamp'].nunique() + 1
+
+        # Calculate the average stability score for each topic
+        self.overall_stability_df = merged_df[merged_df['Topic ID'].isin(topic_timestamps.index)].groupby('Topic ID')['Overall Stability Score'].mean().reset_index()
+
+        # Normalize the overall stability scores to be between 0 and 1
+        min_score = self.overall_stability_df['Overall Stability Score'].min()
+        max_score = self.overall_stability_df['Overall Stability Score'].max()
+        self.overall_stability_df['Normalized Stability Score'] = (self.overall_stability_df['Overall Stability Score'] - min_score) / (max_score - min_score)
+
+        # Add the number of timestamps for each topic
+        self.overall_stability_df['Number of Timestamps'] = topic_timestamps[self.overall_stability_df['Topic ID']]
 
         return self.overall_stability_df
     
 
-
-    def plot_overall_topic_stability(self, darkmode: bool = True, topics_to_show: List[int] = None):
+    def plot_overall_topic_stability(self, darkmode: bool = True, normalize=False, topics_to_show: List[int] = None):
         """
         Plot overall topic stability as a histogram with a color gradient from blue to red.
         Green: High overall topic stability
@@ -505,14 +531,16 @@ class TempTopic:
 
         Parameters:
         - darkmode: for the aesthetic of the plot only
-        - topics_to_show: Optional list of topic IDs to display. If None or empty, show all.
+        - topics_to_show: Optional list of topic IDs to display. If None or empty, show all
+        - normalize: Normalize the overall topic stability to reduce bias towards the number of timestamps a topic appears in
         """
 
         if self.overall_stability_df is None:
-            self.calculate_overall_topic_stability()
-            
+                self.calculate_overall_topic_stability()
 
-        metric_column = "Overall Stability Score"
+        if normalize: metric_column = "Normalized Stability Score"
+        else: metric_column = "Overall Stability Score"
+
         df = self.overall_stability_df
 
         # If topics_to_show is None or empty, include all topics; otherwise, filter
@@ -538,6 +566,7 @@ class TempTopic:
             topic_id = row['Topic ID']
             metric_value = row[metric_column]
             words = self.final_df[self.final_df['Topic'] == topic_id]['Words'].values[0] if topic_id in self.final_df['Topic'].values else "No words"
+            num_timestamps = row['Number of Timestamps']
             
             fig.add_trace(go.Bar(
                 x=[topic_id],
@@ -545,7 +574,9 @@ class TempTopic:
                 marker_color=row['Color'],
                 name=f'Topic {topic_id}',
                 hovertext=f"Topic {topic_id} Representation: {words}",
-                hoverinfo="text+y"
+                hoverinfo="text+y",
+                text=[num_timestamps],  # Display the number of timestamps on top of the bar
+                textposition='outside'
             ))
 
         # Update layout for histogram
@@ -557,6 +588,8 @@ class TempTopic:
         )
 
         return fig
+
+    
 
 
     def plot_temporal_stability_metrics(self, metric: str, darkmode: bool = True, topics_to_show: List[int] = None, smoothing_factor: float = 0.2):
