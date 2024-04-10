@@ -268,23 +268,27 @@ class RAGBackEnd:
         if not self.remember_recent_messages or history is None:
             return message
         else:
-            # logger.debug("Contextualizing prompt with history...")
-            # prompt = ChatPromptTemplate(input_variables=["history", "query"],
-            #                             messages=[HumanMessagePromptTemplate(
-            #                                 prompt=PromptTemplate(
-            #                                     input_variables=["history", "query"],
-            #                                     template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
-            #                             )])
+            logger.debug("Contextualizing prompt with history...")
+            prompt = ChatPromptTemplate(input_variables=["history", "query"],
+                                        messages=[HumanMessagePromptTemplate(
+                                            prompt=PromptTemplate(
+                                                input_variables=["history", "query"],
+                                                template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
+                                        )])
 
-            # chain = ({"query": RunnablePassthrough(), "history": RunnablePassthrough()}
-            #         | prompt
-            #         | self.llm
-            #         | StrOutputParser())
-            # contextualized_question = chain.invoke([messages, messages[:-1]])
-            # logger.debug(f"Contextualized question: {contextualized_question}")
-            # return contextualized_question
-            logger.error("TODO: Implement contextualize_question in RAGBackend")
-            return "ERROR"
+            chain = ({"query": RunnablePassthrough(), "history": RunnablePassthrough()}
+                    | prompt
+                    | self.llm
+                    | StrOutputParser())
+            
+            # Format messages into a single string
+            history_as_text = ""
+            for turn in history:
+                history_as_text += f"{turn['role']}: {turn['content']}\n"
+            contextualized_question = chain.invoke([history_as_text, message])
+            logger.debug(f"Contextualized question: {contextualized_question}")
+            return contextualized_question
+
 
     def get_detail_level(self, question: str):
         """Returns the level of detail we wish in the answer. Values are in this range: {"courte", "détaillée"}"""

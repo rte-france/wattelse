@@ -108,9 +108,6 @@ def query_rag(request):
             logger.warning("No selected docs received, using all available docs")
             selected_docs = []
 
-        # TODO: Get user conversation history
-        history = None 
-
         # Query RAG
         try:
             response = RAG_API.query_rag(
