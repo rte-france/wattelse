@@ -20,7 +20,7 @@ body, html {
 /* Define global variable that are reused in mutiple elements */
 :root {
   --main-color: cornflowerblue; /* Main color to apply to colored elements */
-  --complementary-color: #FF7F50;
+  --complementary-color: #fa8b4f;
 }
 
 button { /* Change pointer when hover a button */

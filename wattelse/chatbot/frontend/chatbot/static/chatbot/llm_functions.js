@@ -43,7 +43,7 @@ function initializeLayout(){
     // Welcome message
     createBotMessage("Bonjour <b><span style='font-weight:bold;color:" +
         getComputedStyle(document.documentElement).getPropertyValue('--main-color')+";'>"+userName +
-        "</span></b> ! Posez-moi des questions en lien avec les documents sélectionnés...",
+        "</span></b> !",
         false, "documents");
 }
 
