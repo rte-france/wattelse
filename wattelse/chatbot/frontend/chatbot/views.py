@@ -56,7 +56,10 @@ def chatbot(request):
     if can_manage_users:
         group_usernames_list = get_group_usernames_list(user_group_id)
         # Remove admin so it cannot be deleted
-        group_usernames_list.remove("admin")
+        try:
+            group_usernames_list.remove("admin")
+        except ValueError:
+            pass # admin may not be in the list depending on how users have been defined
     else:
         group_usernames_list = None
     return render(

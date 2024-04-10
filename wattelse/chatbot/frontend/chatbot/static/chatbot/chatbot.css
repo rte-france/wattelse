@@ -135,7 +135,7 @@
 }
 
 .new-conversation-button {
-  background-color: orange;
+  background-color: var(--complementary-color);
 }
 
 .disclaimer{
@@ -162,7 +162,7 @@
 }
 
 .panel-container .superuser-tab {
-color: orange;
+color: var(--complementary-color);
 }
 
 .panel-container .tab:hover {
@@ -180,7 +180,7 @@ color: orange;
 }
 
 .panel-container .superuser-tab.active {
-  background-color: orange; /* Blue background for active tab */
+  background-color: var(--complementary-color);
   color: #fff; /* White text color for active tab */
   box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
 }
@@ -543,7 +543,7 @@ color: orange;
     color: var(--main-color);
 }
 .rating-missing:hover, .rating-missing.selected {
-    color: orange;
+    color: var(--complementary-color);
 }
 .rating-wrong:hover, .rating-wrong.selected {
     color: indianred;
