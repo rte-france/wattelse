@@ -19,7 +19,6 @@ from django.contrib.auth.models import User, Group
 from loguru import logger
 from pathlib import Path
 
-from django.utils import timezone
 from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
@@ -46,7 +45,10 @@ def chatbot(request):
     conversation_id = str(uuid.uuid4())
 
     # Get list of available documents
-    available_docs = RAG_API.list_available_docs(user_group_id)
+    try:
+        available_docs = RAG_API.list_available_docs(user_group_id)
+    except RAGAPIError:
+        return redirect("/login")
     
     # Get user permissions
     can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
