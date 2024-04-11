@@ -253,13 +253,14 @@ def display_feedback_rates():
         "Ratio of long feedback", f"{nb_long_feedbacks/nb_questions*100:.1f}%", ""
     )
     idx = 0
-    for k, v in FEEDBACK_COLORS.items():
-        idx += 1
-        cols[idx].metric(
-            f":{v}[Ratio of feedback '{k}']",
-            f"{short_feedback_counts[k]/nb_questions*100:.1f}%",
-            "",
-        )
+    for k in short_feedback_counts.index:
+        if k in FEEDBACK_COLORS.keys():
+            idx += 1
+            cols[idx].metric(
+                f":{FEEDBACK_COLORS[k]}[Ratio of feedback '{k}']",
+                f"{short_feedback_counts[k]/nb_questions*100:.1f}%",
+                "",
+            )
 
 
 def main():
