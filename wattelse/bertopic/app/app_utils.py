@@ -22,11 +22,11 @@ DEFAULT_PARAMETERS = {
     "hdbscan_min_samples": 10,
     "hdbscan_metric": "euclidean",
     "hdbscan_cluster_selection_method": "eom",
-    "hdbscan_cluster_selection_epsilon": 0.0, ######## NEW ########
-    "hdbscan_max_cluster_size": 0, ######## NEW ########
-    "hdbscan_allow_single_cluster": False, ######## NEW ########
+    "hdbscan_cluster_selection_epsilon": 0.0, 
+    "hdbscan_max_cluster_size": 0, 
+    "hdbscan_allow_single_cluster": False, 
     "countvectorizer_stop_words": "french",
-    "countvectorizer_ngram_range": (1, 1),
+    "countvectorizer_ngram_range": (1, 2),
     "ctfidf_reduce_frequent_words": True,
     "ctfidf_bm25_weighting":False
 }

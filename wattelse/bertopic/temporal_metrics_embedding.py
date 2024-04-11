@@ -5,21 +5,11 @@ from typing import List, Union, Tuple, Dict
 from tqdm import tqdm
 from bertopic import BERTopic
 import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer
-from scipy.sparse import lil_matrix
 import itertools
 import plotly.graph_objects as go
 import plotly.express as px
-import torch
-import umap
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.manifold import TSNE
 from loguru import logger
-
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output, State
 import plotly.express as px
 import numpy as np
 import plotly.graph_objs as go
@@ -271,7 +261,7 @@ class TempTopic:
         return self.stability_scores_df, self.avg_stability_score
     
 
-    def _calculate_representation_embeddings(self, double_agg: bool = True, doc_agg: str = "mean", global_agg: str = "max"):
+    def _calculate_representation_embeddings(self, double_agg: bool = True, doc_agg: str = "mean", global_agg: str = "max", window_size: int = 10):
         """
         Calculate the aggregated word embeddings for each topic's representation at each timestamp.
         """
@@ -292,13 +282,26 @@ class TempTopic:
                         ngram_tokens = phrase.split(' ')
                         ngram_embeddings = []
                         for i in range(len(token_strings)):
-                            for j in range(len(token_strings[i]) - len(ngram_tokens) + 1):
-                                if all(ngram_token == token_strings[i][j + k] for k, ngram_token in enumerate(ngram_tokens)):
-                                    ngram_embedding = np.mean([word_embeddings[i][j + k] for k in range(len(ngram_tokens))], axis=0)
+                            for j in range(len(token_strings[i]) - window_size + 1):
+                                if all(ngram_token in token_strings[i][j:j+window_size] for ngram_token in ngram_tokens):
+                                    ngram_embedding = np.mean([word_embeddings[i][token_strings[i][j:j+window_size].index(ngram_token)] for ngram_token in ngram_tokens], axis=0)
                                     ngram_embeddings.append(ngram_embedding)
+                        if not ngram_embeddings:
+                            logger.debug(f"Ngram '{phrase}' not found in topic {topic_id} at timestamp {timestamp}. Retrying by looking inside the entire topic.")
+                            topic_data = self.final_df[self.final_df['Topic'] == topic_id]
+                            all_token_strings = list(itertools.chain.from_iterable(topic_data['Token_Strings'].tolist()))
+                            all_token_strings = [[token.lower() for token in doc_tokens] for doc_tokens in all_token_strings]
+                            all_word_embeddings = list(itertools.chain.from_iterable(topic_data['Token_Embeddings'].tolist()))
+                            for i in range(len(all_token_strings)):
+                                for j in range(len(all_token_strings[i]) - window_size + 1):
+                                    if all(ngram_token in all_token_strings[i][j:j+window_size] for ngram_token in ngram_tokens):
+                                        ngram_embedding = np.mean([all_word_embeddings[i][all_token_strings[i][j:j+window_size].index(ngram_token)] for ngram_token in ngram_tokens], axis=0)
+                                        ngram_embeddings.append(ngram_embedding)
                         if ngram_embeddings:
                             embedding_list.append(np.mean(ngram_embeddings, axis=0))
                             updated_representation.append(phrase)
+                        else:
+                            logger.debug(f"The ngram '{phrase}' was not found in any of the documents for topic {topic_id}. Skipping...")
                     else:  # If the phrase is a unigram
                         try:
                             embedding = self._get_aggregated_word_embedding(phrase, word_embeddings, token_strings, double_agg, doc_agg, global_agg)
@@ -310,7 +313,6 @@ class TempTopic:
                             all_token_strings = list(itertools.chain.from_iterable(topic_data['Token_Strings'].tolist()))
                             all_token_strings = [[token.lower() for token in doc_tokens] for doc_tokens in all_token_strings]
                             all_word_embeddings = list(itertools.chain.from_iterable(topic_data['Token_Embeddings'].tolist()))
-
                             try:
                                 embedding = self._get_aggregated_word_embedding(phrase, all_word_embeddings, all_token_strings, double_agg, doc_agg, global_agg)
                                 embedding_list.append(embedding)
@@ -687,7 +689,7 @@ class TempTopic:
         - color_palette: Color palette to use for topics. Can be 'Plotly', 'D3', 'Alphabet', or a list of colors.
         """
 
-        
+
         # Get topic information from the topic model
         topic_info = self.topic_model.get_topic_info()
         
@@ -763,10 +765,11 @@ class TempTopic:
             colors = color_palette
 
         topics_to_show = sorted(topics_to_show)
+
         # Create a scatter plot for each topic
         for i, topic_id in enumerate(topics_to_show):
             if topic_id not in topic_data:
-                print(f"Skipping Topic {topic_id} due to insufficient samples.")
+                logger.debug(f"Skipping Topic {topic_id} due to insufficient samples.")
                 continue
 
             embeddings = topic_data[topic_id]['embeddings']
@@ -789,6 +792,9 @@ class TempTopic:
             elif granularity == "Year":
                 timestamps_numeric = [ts.year for ts in timestamps]
 
+            # Create customdata for each data point
+            customdata = np.stack((np.full(len(timestamps_numeric), topic_id), timestamps_numeric), axis=-1)
+
             scatter = go.Scatter3d(
                 x=embeddings[:, 0],
                 y=embeddings[:, 1],
@@ -798,7 +804,8 @@ class TempTopic:
                 hovertext=[f'Topic: {topic_id}<br>Timestamp: {timestamp}<br>Words: {words[i]}' for i, timestamp in enumerate(timestamps)],
                 hoverinfo='text',
                 marker=dict(size=5, color=topic_color, opacity=0.7),
-                visible='legendonly'  # Initially deactivated
+                visible='legendonly',
+                customdata=customdata  # Add customdata to the scatter trace
             )
             fig.add_trace(scatter)
 
@@ -813,7 +820,11 @@ class TempTopic:
             )
         )
 
+            # Add a click_data output to the figure
+        fig.update_layout(clickmode='event+select', hovermode='closest')
+
         return fig
+
 
 
 
@@ -860,3 +871,5 @@ class TempTopic:
                                     break
         
         return similar_topic_pairs_by_timestamp
+
+

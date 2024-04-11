@@ -10,7 +10,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
 
-from wattelse.bertopic.train import train_BERTopic
+from wattelse.bertopic.train import train_BERTopic, STOP_WORDS_RTE
 
 
 @st.cache_data
@@ -50,7 +50,7 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
     )
 
     vectorizer_model = CountVectorizer(
-        stop_words=stop_words,
+        stop_words=stop_words + STOP_WORDS_RTE,
         ngram_range=form_parameters["countvectorizer_ngram_range"],
         min_df=form_parameters["countvectorizer_min_df"],
     )
