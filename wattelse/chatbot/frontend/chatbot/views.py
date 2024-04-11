@@ -6,6 +6,7 @@
 import io
 import uuid
 import json
+import socket
 import tempfile
 from typing import Dict, Tuple, List
 
@@ -448,3 +449,6 @@ def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dic
             history.append({"role": "user", "content": chat.message})
             history.append({"role": "assistant", "content": chat.response})
     return None if len(history) == 0 else history
+
+def dashboard(request):
+    return redirect(f"http://{socket.gethostbyname(socket.gethostname())}:9090")

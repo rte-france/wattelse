@@ -2,7 +2,7 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-
+import numpy as np
 import pandas as pd
 import streamlit as st
 import sqlite3
@@ -25,10 +25,10 @@ WRONG = "wrong"
 
 # Color mapping for feedback values
 FEEDBACK_COLORS = {
-    GREAT: "mediumseagreen",
-    OK: "cornflowerblue",
+    GREAT: "green",
+    OK: "blue",
     MISSING: "orange",
-    WRONG: "indianred",
+    WRONG: "red",
 }
 
 
@@ -242,6 +242,26 @@ def display_feedback_charts_over_time():
     st.plotly_chart(go.Figure(data=data, layout=layout).update_layout(barmode="stack"))
 
 
+def display_feedback_rates():
+    filtered_df = st.session_state["filtered_data"]
+    nb_questions = len(filtered_df.message)
+    nb_long_feedbacks = len(filtered_df.replace("", np.nan).long_feedback.dropna())
+    short_feedback_counts = filtered_df["short_feedback"].value_counts()
+    cols = st.columns(5)
+
+    cols[0].metric(
+        "Ratio of long feedback", f"{nb_long_feedbacks/nb_questions*100:.1f}%", ""
+    )
+    idx = 0
+    for k, v in FEEDBACK_COLORS.items():
+        idx += 1
+        cols[idx].metric(
+            f":{v}[Ratio of feedback '{k}']",
+            f"{short_feedback_counts[k]/nb_questions*100:.1f}%",
+            "",
+        )
+
+
 def main():
     # Wide layout
     st.set_page_config(page_title="Wattelse dashboard", layout="wide")
@@ -266,7 +286,10 @@ def main():
                 # empty placeholder
                 pass
 
-        with st.expander("Feedback", expanded=True):
+        with st.expander("Feedback rates", expanded=True):
+            display_feedback_rates()
+
+        with st.expander("Short feedback", expanded=True):
             col1, col2 = st.columns(2)
             with col1:
                 display_feedback_charts()

@@ -21,4 +21,5 @@ urlpatterns = [
     path('llm/', simple_views.basic_chat, name='basic_chat'),
     path('send_short_feedback/', feedback_views.manage_short_feedback, name="manage_short_feedback"),
     path('send_long_feedback/', feedback_views.manage_long_feedback, name="manage_long_feedback"),
+    path('dashboard/', views.dashboard, name="dashboard"),
 ]
