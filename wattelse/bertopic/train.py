@@ -49,7 +49,9 @@ DEFAULT_HBSCAN_MODEL = HDBSCAN(
     cluster_selection_method="eom",
     prediction_data=True,
 )
-DEFAULT_STOP_WORDS = stopwords.words("french")
+
+STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
+DEFAULT_STOP_WORDS = stopwords.words("french") + STOP_WORDS_RTE
 DEFAULT_VECTORIZER_MODEL = CountVectorizer(
     stop_words=DEFAULT_STOP_WORDS,
     ngram_range=DEFAULT_NGRAM_RANGE,
@@ -58,7 +60,6 @@ DEFAULT_VECTORIZER_MODEL = CountVectorizer(
 DEFAULT_CTFIDF_MODEL = ClassTfidfTransformer(reduce_frequent_words=True)
 
 DEFAULT_REPRESENTATION_MODEL = MaximalMarginalRelevance(diversity=0.3)
-
 
 class EmbeddingModel(BaseEmbedder):
     """
@@ -166,9 +167,7 @@ def train_BERTopic(
         filtered_dataset = full_dataset[full_dataset.index.isin(indices)].reset_index(drop=True)
     else:
         filtered_dataset = full_dataset
-    
-    logger.debug(f"FILTERED DATA : {filtered_dataset.iloc[:5]['text'].tolist()}")
-    
+        
     if cache_path.exists() and use_cache:
         # use previous cache
         embeddings = load_embeddings(cache_path)

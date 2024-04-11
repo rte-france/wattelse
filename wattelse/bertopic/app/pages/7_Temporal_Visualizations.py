@@ -9,11 +9,16 @@ from typing import List
 import numpy as np
 from sklearn.manifold import TSNE
 import plotly.express as px
+from plotly_click_show import plotly_events
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
 
 
 
 
-# from wattelse.bertopic.temporal_metrics_embedding import TempTopic
+from wattelse.bertopic.temporal_metrics_embedding import TempTopic
+
+
 import plotly.graph_objects as go
 
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
@@ -47,14 +52,27 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.manifold import TSNE
 from loguru import logger
 
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output, State
 import plotly.express as px
 import numpy as np
 import plotly.graph_objs as go
 
+
+chat = ChatOpenAI(model="gpt-3.5-turbo-1106", temperature=0, openai_api_key="")
+
+
+
+def display_documents_on_click(clicked_point):
+    if clicked_point:
+        point = clicked_point['points'][0]
+        topic_id = int(point['customdata'][0])
+        timestamp = pd.to_datetime(point['customdata'][1], unit='D')  # Convert to datetime
+
+        topic_data = temptopic.final_df[(temptopic.final_df['Topic'] == topic_id) & (temptopic.final_df['Timestamp'] == timestamp)]
+        documents = topic_data['Document'].tolist()
+
+        with st.expander(f"Documents for Topic {topic_id} at Timestamp {timestamp}"):
+            for doc in documents:
+                st.write(doc)
 
 
 # Set locale to get French date names
@@ -223,6 +241,7 @@ if time_granularity != "":
     with st.expander("Topic Evolution Dataframe"):
         st.dataframe(temptopic.final_df[["Topic", "Words", "Document", "Frequency", "Timestamp"]].sort_values(by=['Topic', 'Timestamp'], ascending=[True, True]),
                     use_container_width=True)
+        temptopic.final_df[["Topic", "Words", "Document", "Frequency", "Timestamp"]].sort_values(by=['Topic', 'Timestamp'], ascending=[True, True]).to_json('final_df_test.json')
 
     with st.expander("Topic Info Dataframe"):
         st.dataframe(temptopic.topic_model.get_topic_info(), use_container_width=True)
@@ -261,9 +280,44 @@ if time_granularity != "":
         metric = st.selectbox("T-SNE Metric", ["cosine", "euclidean", "manhattan"])
         color_palette = st.selectbox("Color Palette", ["Plotly", "D3", "Alphabet"])
 
-        fig_topic_evolution = temptopic.plot_topic_evolution(granularity=time_granularity, perplexity=perplexity, color_palette=color_palette,topics_to_show=topics_to_show)
-        st.plotly_chart(fig_topic_evolution, use_container_width=True)
+        fig_topic_evolution, customdata_list = temptopic.plot_topic_evolution(granularity=time_granularity, perplexity=perplexity, color_palette=color_palette,topics_to_show=topics_to_show)
+        st.plotly_chart(fig_topic_evolution, theme="streamlit", use_container_width=True)
 
+
+    with st.expander("Sélectionner un Topic et une Date"):
+        available_topics = temptopic.final_df['Topic'].unique()
+        selected_topic = st.selectbox("Sélectionnez un topic", available_topics)
+        topic_data = temptopic.final_df[temptopic.final_df['Topic'] == selected_topic]
+        available_dates = topic_data['Timestamp'].unique()
+        selected_date = st.selectbox("Sélectionnez une date", available_dates)
+        filtered_data = topic_data[topic_data['Timestamp'] == selected_date]
+
+        if not filtered_data.empty:
+            documents = filtered_data['Document'].tolist()
+            topic_name = filtered_data['Words'].iloc[0] 
+            st.header(f"Topic '{topic_name}' à la date {selected_date}")
+
+            prompt = f"Voici le contenu du topic '{topic_name}' à la date {selected_date}:\n\n"
+            for i, document in enumerate(documents):
+                prompt += f"Document {i+1} : {document}\n"
+            prompt += "\nVeuillez fournir un titre et un résumé concis du contenu de ce topic."
+            
+            if st.button("Générer un résumé"):
+                with st.spinner("Création du résumé..."):
+                    messages = [
+                        SystemMessage(
+                            content="Vous êtes un assistant qui résume le contenu d'un topic."
+                        ),
+                        HumanMessage(
+                            content=prompt
+                        ),
+                    ]
+
+                    summary = chat.invoke(messages)
+
+                    st.write(summary.content)
+        else:
+            st.write("Aucun document trouvé pour le topic et la date sélectionnés.")
 
 
 
@@ -295,6 +349,8 @@ with st.spinner("Computing topics over time..."):
                     st.session_state["dynamic_topics_list"],
                     st.session_state["topic_model"],
                 ), use_container_width=True)
+            
+
 
 
 

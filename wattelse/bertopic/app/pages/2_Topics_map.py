@@ -42,7 +42,7 @@ st.slider("Time weight", min_value=0.0, max_value=0.1, step=0.005, key="tw", on_
 ### Main page ###
 topic_metrics = TopicMetrics(st.session_state["topic_model"], st.session_state["topics_over_time"])
 try:
-    st.plotly_chart(topic_metrics.plot_TEM_map(st.session_state["tw"]))
+    st.plotly_chart(topic_metrics.plot_TEM_map(st.session_state["tw"]), use_container_width=True)
 except StatisticsError as se:
     st.warning(f"Try to change the Time Weight value: {se}", icon="⚠️")
     st.stop()
