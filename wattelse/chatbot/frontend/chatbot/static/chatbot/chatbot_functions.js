@@ -187,6 +187,29 @@ function handleUserMessage(userMessage) {
     userInput.value = '';
 }
 
+function postUserMessageToRAG(user) {
+    const eventSource = new EventSource("/chatbot/stream/");
+  
+    eventSource.onmessage = function(event) {
+      const data = JSON.parse(event.data);
+  
+      if (data.documents) {
+        // Initial payload with documents list
+        documentList = data.documents;
+      } else {
+        // Subsequent chunks with only text
+        const chatText = data.text;
+        // Update chat interface with received text chunk
+        updateChatInterface(chatText);
+      }
+    };
+  
+    eventSource.onerror = function(error) {
+      console.error("Error:", error);
+      // Handle connection errors
+    };
+  }
+
 function postUserMessageToRAG(userMessage) {
     if (userMessage === '') {
         return;
@@ -261,10 +284,9 @@ function createUserMessage(message) {
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
-function createBotMessage(message, showFeedbackSection = true, nextTab="extracts") {
+function createBotMessage(message, showFeedbackSection = true, nextTab="extracts", typingSpeed=10) {
     const botDiv = document.createElement('div');
     botDiv.classList.add('bot-message');
-    botDiv.innerHTML = message
     chatHistory.appendChild(botDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 
@@ -272,11 +294,29 @@ function createBotMessage(message, showFeedbackSection = true, nextTab="extracts
     if (nextTab) {
         activateTab(nextTab);
     }
-    
-    // Feedback section (modify based on your chosen approach)
-    if (showFeedbackSection) {
-        provideFeedback();
-    }
+
+    // Fake streaming message
+    typeWriter(botDiv, message, typingSpeed, () => {
+        if (showFeedbackSection) {
+            provideFeedback();
+        }
+    });
+}
+
+function typeWriter(botDiv, message, typingSpeed, callback) {
+    let index = 0;
+
+    const type = () => {
+        if (index < message.length) {
+            botDiv.innerHTML += message.charAt(index);
+            index++;
+            setTimeout(type, typingSpeed);
+        } else if (callback) {
+            callback();
+        }
+    };
+
+    type();
 }
 
 function createWelcomeMessage() {
@@ -702,4 +742,4 @@ function uuid4() {
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
       (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
     );
-  }
+}
