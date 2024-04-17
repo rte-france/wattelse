@@ -5,8 +5,6 @@
 
 import configparser
 import json
-import uuid
-from datetime import datetime, timedelta
 from pathlib import Path
 
 from loguru import logger
@@ -82,7 +80,7 @@ def upload(group_id: str, files: List[UploadFile] = File(...)):
                 f"File {file.filename} already present in the collection {collection_name}, skippping indexing and chunking")
             continue
 
-        RAG_SESSIONS[group_id].add_file_to_collection(file)
+        RAG_SESSIONS[group_id].add_file_to_collection(file.filename, file.file)
 
     return {"message": f"[group_id: {group_id}] Successfully uploaded {[file.filename for file in files]}"}
 

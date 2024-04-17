@@ -7,10 +7,8 @@ import configparser
 import json
 import logging
 import os
-from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, BinaryIO
 
-from fastapi import UploadFile
 from fastapi.responses import StreamingResponse
 from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
 from langchain_community.chat_models import ChatOllama
@@ -95,11 +93,11 @@ class RAGBackEnd:
         # Generate llm config for langchain
         self.llm = get_chat_model(self.llm_api_name)
 
-    def add_file_to_collection(self, file: UploadFile):
+    def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
         # Store the file
-        contents = file.file.read()
-        path = DATA_DIR / self.document_collection.collection_name / file.filename
+        contents = file.read()
+        path = DATA_DIR / self.document_collection.collection_name / file_name
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
             f.write(contents)
@@ -112,7 +110,7 @@ class RAGBackEnd:
         # Split the file into smaller chunks as a list of Document
         logger.debug(f"Chunking: {path}")
         splits = split_file(path.suffix, docs)
-        logger.info(f"Number of chunks for file {file.filename}: {len(splits)}")
+        logger.info(f"Number of chunks for file {file_name}: {len(splits)}")
 
         # Store and embed documents in the vector database
         self.document_collection.add_documents(splits)
