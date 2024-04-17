@@ -11,6 +11,7 @@ from loguru import logger
 from typing import List, Dict
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, \
@@ -40,6 +41,7 @@ class RAGQuery(BaseModel):
     message: str
     history: List[Dict[str, str]] | None
     selected_files: List[str] | None
+    stream: bool = False
     
 
 
@@ -112,20 +114,29 @@ def list_available_docs(group_id: str) -> str:
     file_names = RAG_SESSIONS[group_id].get_available_docs()
     return json.dumps(file_names)
 
+def data_streamer(stream_data):
+    """Generator to stream response from RAGBackend to RAG client.
+    Encodes received chunks in a binary format and streams them.
+    """
+    for i in stream_data:
+        yield f'{i}'.encode('utf-8')
+
 
 @app.get(ENDPOINT_QUERY_RAG)
-def query_rag(rag_query: RAGQuery) -> str:
+async def query_rag(rag_query: RAGQuery) -> str:
     """Query the RAG and returns the answer and associated sources"""
     logger.debug(f"Received query: {rag_query.message}")
     check_if_session_exists(rag_query.group_id)
-    # TODO: stream response, cf https://www.vidavolta.io/streaming-with-fastapi/
-    return json.dumps(
-        RAG_SESSIONS[rag_query.group_id].query_rag(
+    response = RAG_SESSIONS[rag_query.group_id].query_rag(
             rag_query.message,
             history=rag_query.history,
             selected_files=rag_query.selected_files,
+            stream=rag_query.stream,
             )
-        )
+    if rag_query.stream:
+        return StreamingResponse(data_streamer(response), media_type='text/event-stream')
+    else:
+        return json.dumps(response)
 
 @app.post(ENDPOINT_CLEAN_SESSIONS + "/{group_id}")
 def clean_sessions(group_id: str | None = None):

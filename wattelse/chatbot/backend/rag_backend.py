@@ -231,21 +231,23 @@ class RAGBackEnd:
         logger.debug(f"Calling RAG chain for question : \"{contextualized_question}\"...")
 
         # Handle answer
-        chunks = []
-        relevant_extracts = []
         if stream:
-            # stream response on server side...
-            # TODO: manage streaming to the client
-            for chunk in rag_chain.stream(contextualized_question):
-                s = chunk.get("context")
-                if s:
-                    sources = s
-                    # Transform sources
-                    relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
-                chunks.append(chunk.get("answer", ""))
-                print(chunk, end="", flush=True)
-            answer = "".join(chunks)
-            # return StreamingResponse(streamer(rag_chain.stream(contextualized_question)))
+            def preprocess_streaming_data(streaming_data):
+                """Generator to preprocess the streaming data coming from LangChain `rag_chain.stream()`.
+                First sent chunk contains relevant_extracts in a convenient format.
+                Following chunks contain the actual response from the model token by token.
+                """
+                for chunk in streaming_data:
+                    context_chunk = chunk.get("context")
+                    if context_chunk:
+                        relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in context_chunk]
+                        relevant_extracts = {"relevant_extracts": relevant_extracts}
+                        yield json.dumps(relevant_extracts)
+                    answer_chunk = chunk.get("answer")
+                    if answer_chunk:
+                        yield json.dumps(chunk)
+
+            return preprocess_streaming_data(rag_chain.stream(contextualized_question))
         else:
             resp = rag_chain.invoke(contextualized_question)
             answer = resp.get("answer")
@@ -253,8 +255,8 @@ class RAGBackEnd:
             # Transform sources
             relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
 
-        # Return answer and sources
-        return {"answer": answer, "relevant_extracts": relevant_extracts}
+            # Return answer and sources
+            return {"answer": answer, "relevant_extracts": relevant_extracts}
 
     def contextualize_question(self, message: str, history: List[dict[str, str]] = None) -> str:
         """

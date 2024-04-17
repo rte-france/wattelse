@@ -93,36 +93,36 @@ class RAGOrchestratorClient:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
-    def query_rag(self, group_id: str, message: str, history: List[Dict[str, str]] = None, selected_files: List[str] = None) -> Dict:
+    def query_rag(self,
+                  group_id: str,
+                  message: str,
+                  history: List[Dict[str, str]] = None,
+                  selected_files: List[str] = None,
+                  stream: str = False) -> Dict:
         """Query the RAG and returns an answer"""
         # TODO: handle additional parameters to temporarily change the default config: number of retrieved docs & memory
         logger.debug(f"Question: {message}")
-        stream = False
-        if not stream:
-            response = requests.get(url=self.url + ENDPOINT_QUERY_RAG,
-                                    data=json.dumps({
-                                        "group_id": group_id,
-                                        "message": message,
-                                        "history": history,
-                                        "selected_files": selected_files,
-                                        })
-                                    )
-            if response.status_code == 200:
+
+        response = requests.get(url=self.url + ENDPOINT_QUERY_RAG,
+                                data=json.dumps({
+                                    "group_id": group_id,
+                                    "message": message,
+                                    "history": history,
+                                    "selected_files": selected_files,
+                                    "stream": stream,
+                                    }),
+                                stream=stream,
+                                )
+        if response.status_code == 200:
+            if stream:
+                return response
+            else:
                 rag_answer = json.loads(response.json())
                 logger.debug(f"Response: {rag_answer}")
                 return rag_answer
-            else:
-                logger.error(f"Error: {response.status_code, response.text}")
-                raise RAGAPIError(f"Error: {response.status_code, response.text}")
         else:
-            logger.debug("Response:")
-            chunks = []
-            with requests.get(url=self.url + ENDPOINT_QUERY_RAG,
-                              data=json.dumps({"group_id": group_id, "message": message, "history": history})) as r:
-                for chunk in r.iter_lines():
-                    chunks += chunk + "\n"
-                    print(chunk)
-            return chunks
+            logger.error(f"Error: {response.status_code, response.text}")
+            raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
     def get_current_sessions(self) -> List[str]:
         """Returns current sessions ids"""

@@ -12,7 +12,7 @@ from typing import Dict, Tuple, List
 
 import mammoth
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse, Http404
+from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
 
 from django.contrib import auth
 from django.contrib.auth.models import User, Group
@@ -81,7 +81,9 @@ def chatbot(request):
 def query_rag(request):
     """
     Main function for query RAG calls.
-    Call RAGOrchestratorAPI and return response as JSON.
+    Call RAGOrchestratorAPI with `stream=True` and streams the response to frontend.
+    First chunk contains `relevant_extracts` data,
+    other chunks contain streamed answer tokens.
     """
     if request.method == "POST":
         # Get user group_id
@@ -111,43 +113,45 @@ def query_rag(request):
             logger.warning("No selected docs received, using all available docs")
             selected_docs = []
 
-        # Query RAG
+        # Query RAG and stream response
         try:
             response = RAG_API.query_rag(
                 user_group_id,
                 message,
                 history=history,
                 selected_files=selected_docs,
+                stream=True,
                 )
+            def streaming_generator(data_stream):
+                """Generator to decode the chunks received from RAGOrchestratorClient"""
+                with data_stream as r:
+                    for chunk in r.iter_content(chunk_size=None):
+                        # Add delimiter `\n` at the end because if streaming is to fast,
+                        # frontend can receive multiple chunks in one pass so we need to split them.
+                        yield chunk.decode("utf-8") + "\n"
+            return StreamingHttpResponse(streaming_generator(response), status=200, content_type='text/event-stream')
+
         except RAGAPIError as e:
             logger.error(e)
             return JsonResponse({"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500)
-
-        # separate text answer and relevant extracts
-        answer = response["answer"]
-        relevant_extracts = response["relevant_extracts"]
-
-        # Update url in relevant_extracts to make it openable accessible from the web page
-        if relevant_extracts:
-            for extract in relevant_extracts:
-                page_number = int(extract["metadata"].get("page", "0")) + 1
-                extract["metadata"][
-                    "url"] = f'file_viewer/{extract["metadata"]["file_name"]}#page={page_number}'
-
+    else:
+        raise Http404()
+    
+def save_interaction(request):
+    """Function called to save query and response in DB once response streaming is finished."""
+    if request.method =="POST":
         # Save query and response in DB
         chat = Chat(
             user=request.user,
-            group_id=user_group_id,
-            conversation_id=conversation_id,
-            message=message,
-            response=answer,
+            group_id=get_user_group_id(request.user),
+            conversation_id=request.POST.get("conversation_id", ""),
+            message=request.POST.get("message", ""),
+            response=request.POST.get("answer", ""),
             )
         chat.save()
-
-        return JsonResponse({"messages": message, "answer": answer, "relevant_extracts": relevant_extracts}, status=200)
+        return HttpResponse(status=200)
     else:
         raise Http404()
-
 
 def file_viewer(request, file_name: str):
     """

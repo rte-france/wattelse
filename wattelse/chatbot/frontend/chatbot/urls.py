@@ -10,6 +10,7 @@ app_name = 'chatbot'
 urlpatterns = [
     path('', views.chatbot, name='chatbot'),
 	path('query_rag/', views.query_rag, name='query_rag'),
+	path('save_interaction/', views.save_interaction, name='save_interaction'),
     path('login/', views.login, name='login'),
     path('register/', views.register, name='register'),
     path('logout/', views.logout, name='logout'),
