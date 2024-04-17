@@ -171,53 +171,15 @@ function handleUserMessage(userMessage) {
     // Diplsay user message
     createUserMessage(userMessage);
 
-    // Simulate bot response with a delay
-    const waitDiv = document.createElement('div');
-    waitDiv.id = 'wait-div';
-    const botDiv = document.createElement('p');
-    botDiv.classList.add('bot-message');
-    botDiv.innerHTML='<i class="fa-solid fa-ellipsis fa-fade"></i>'
-    waitDiv.appendChild(botDiv);
-    chatHistory.appendChild(waitDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-
     // Post Message to RAG
     postUserMessageToRAG(userMessage);
 
     userInput.value = '';
 }
 
-function postUserMessageToRAG(user) {
-    const eventSource = new EventSource("/chatbot/stream/");
-  
-    eventSource.onmessage = function(event) {
-      const data = JSON.parse(event.data);
-  
-      if (data.documents) {
-        // Initial payload with documents list
-        documentList = data.documents;
-      } else {
-        // Subsequent chunks with only text
-        const chatText = data.text;
-        // Update chat interface with received text chunk
-        updateChatInterface(chatText);
-      }
-    };
-  
-    eventSource.onerror = function(error) {
-      console.error("Error:", error);
-      // Handle connection errors
-    };
-  }
-
-function postUserMessageToRAG(userMessage) {
-    if (userMessage === '') {
-        return;
-    }
-    console.log("Posting user message: "+userMessage);
-
+async function postUserMessageToRAG(userMessage) {
     const conversationId = chatHistory.id;
-    fetch('query_rag/', {
+    const response = await fetch('query_rag/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -226,18 +188,62 @@ function postUserMessageToRAG(userMessage) {
             'selected_docs': JSON.stringify(getSelectedFileNames("available-list")),
             'conversation_id': conversationId,
         })
-    })
-    .then(response => response.json())
-    .then(data => {
-        document.getElementById('wait-div').remove();
-        createBotMessage(data.answer);
-        updateRelevantExtracts(data.relevant_extracts);
+    });
+    let isFirstChunk = true; // Track for first chunk processing containing relevant extracts
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    // Create bot waiting div
+    const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
+    botDiv.classList.add("waiting-div");
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+    while (true) {
+        const { done, value } = await reader.read();
+        // Must handle cases where multiple chunks are received in one read
+        const strJsonObjects = decoder.decode(value).split("\n").filter(elm => elm);
+        const dataChunks = strJsonObjects.map(JSON.parse);
+        // Handle last chunk
+        if (done) {
+            break;
+        }
+        // Handle other chunks
+        else {
+            dataChunks.forEach((chunk) => {
+                if (isFirstChunk) {
+                    updateRelevantExtracts(chunk.relevant_extracts);
+                    isFirstChunk = false;
+                } else {
+                    // Remove wainting div
+                    if (botDiv.classList.contains("waiting-div")) {
+                        botDiv.innerHTML = "";
+                        botDiv.classList.remove("waiting-div");
+                    }
+                    botDiv.innerHTML += chunk.answer;
+                }
+            });
+        }
+        
+    }
+    // When streaming is done, show feedback section and save interaction
+    provideFeedback();
+    saveInteraction(conversationId, userMessage, botDiv.innerHTML);
+}
+
+function saveInteraction(conversationId, userMessage, botResponse) {
+    fetch('save_interaction/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+            'conversation_id': conversationId,
+            'message': userMessage,
+            'answer': botResponse,
+        })
     })
     .catch(error => {
-        createErrorMessage(error.message);
-        console.error('There was a problem with the Fetch operation:', error);
+        console.error('There was a problem saving interaction :', error);
     });
 }
+
 
 function deleteDocumentsInCollection(){
     const selectedFileNames = getSelectedFileNames("removal-list")
@@ -268,12 +274,15 @@ function deleteDocumentsInCollection(){
     }
 }
 
-function updateRelevantExtracts(relevant_extracts){
-    extractList.innerHTML = ""
-    relevant_extracts.forEach((extract) => {
-        const listItem = createExtract(extract.content, extract.metadata.url, extract.metadata.file_name);
-        extractList.appendChild(listItem);
-    });
+function updateRelevantExtracts(relevantExtracts){
+    extractList.innerHTML = "";
+    if (relevantExtracts.length>0) {
+        relevantExtracts.forEach((extract) => {
+            const url = `file_viewer/${extract["metadata"]["file_name"]}#page=${parseInt(extract["metadata"]["page"] ?? 0)+1}`
+            const listItem = createExtract(extract.content, url, extract.metadata.file_name);
+            extractList.appendChild(listItem);
+        });
+    }
 }
 
 function createUserMessage(message) {
@@ -284,9 +293,10 @@ function createUserMessage(message) {
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
-function createBotMessage(message, showFeedbackSection = true, nextTab="extracts", typingSpeed=10) {
+function createBotMessage(message, nextTab="extracts") {
     const botDiv = document.createElement('div');
     botDiv.classList.add('bot-message');
+    botDiv.innerHTML = message;
     chatHistory.appendChild(botDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 
@@ -295,12 +305,7 @@ function createBotMessage(message, showFeedbackSection = true, nextTab="extracts
         activateTab(nextTab);
     }
 
-    // Fake streaming message
-    typeWriter(botDiv, message, typingSpeed, () => {
-        if (showFeedbackSection) {
-            provideFeedback();
-        }
-    });
+    return botDiv;
 }
 
 function typeWriter(botDiv, message, typingSpeed, callback) {
