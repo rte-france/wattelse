@@ -14,13 +14,13 @@ from transformers import AutoTokenizer
 
 
 class FastchatAPI:
-    def __init__(self):
+    def __init__(self, url=None):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent / "fastchat_api.cfg")
         self.base_url = config.get("API_CONFIG", "openai_url")
         self.llm_client = OpenAI(
             api_key=config.get("API_CONFIG", "openai_api_key"),
-            base_url=self.base_url,
+            base_url=self.base_url if url is None else url,
         )
         self.model_name = self.get_api_model_name()
         self.tokenizer = (

@@ -39,4 +39,4 @@ else
 fi
 
 # launch API server
-python3 -m fastchat.serve.openai_api_server --host $HOST --port $PORT --controller-address http://$HOST:$PORT_CONTROLLER &
+python3 -m fastchat.serve.openai_api_server --host 0.0.0.0 --port $PORT --controller-address http://$HOST:$PORT_CONTROLLER &
