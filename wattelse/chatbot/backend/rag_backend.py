@@ -238,8 +238,8 @@ class RAGBackEnd:
                 Following chunks contain the actual response from the model token by token.
                 """
                 for chunk in streaming_data:
-                    context_chunk = chunk.get("context")
-                    if context_chunk:
+                    context_chunk = chunk.get("context", None)
+                    if context_chunk is not None:
                         relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in context_chunk]
                         relevant_extracts = {"relevant_extracts": relevant_extracts}
                         yield json.dumps(relevant_extracts)
