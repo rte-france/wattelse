@@ -24,11 +24,11 @@ class RAGAPIError(Exception):
 class RAGOrchestratorClient:
     """Class in charge of routing requests to right backend depending on user group"""
 
-    def __init__(self):
+    def __init__(self, url:str=None):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent / "rag_orchestrator.cfg")
         self.port = config.get("RAG_ORCHESTRATOR_API_CONFIG", "port")
-        self.url = f'http://localhost:{self.port}'
+        self.url = f'http://localhost:{self.port}' if url is None else url
         if self.check_service():
             logger.debug("RAG Orchestrator is running")
         else:
