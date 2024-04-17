@@ -37,7 +37,7 @@ def chatbot(request):
     # If user is not authenticated, redirect to login
     if not request.user.is_authenticated:
         return redirect("/login")
-    
+
     # Get user group_id
     user_group_id = get_user_group_id(request.user)
 
@@ -49,7 +49,7 @@ def chatbot(request):
         available_docs = RAG_API.list_available_docs(user_group_id)
     except RAGAPIError:
         return redirect("/login")
-    
+
     # Get user permissions
     can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
     can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
@@ -62,7 +62,7 @@ def chatbot(request):
         try:
             group_usernames_list.remove("admin")
         except ValueError:
-            pass # admin may not be in the list depending on how users have been defined
+            pass  # admin may not be in the list depending on how users have been defined
     else:
         group_usernames_list = None
     return render(
@@ -77,6 +77,15 @@ def chatbot(request):
             "group_usernames_list": group_usernames_list,
         }
     )
+
+
+def streaming_generator(data_stream):
+    """Generator to decode the chunks received from RAGOrchestratorClient"""
+    with data_stream as r:
+        for chunk in r.iter_content(chunk_size=None):
+            # Add delimiter `\n` at the end because if streaming is too fast,
+            # frontend can receive multiple chunks in one pass, so we need to split them.
+            yield chunk.decode("utf-8") + "\n"
 
 def query_rag(request):
     """
@@ -121,14 +130,8 @@ def query_rag(request):
                 history=history,
                 selected_files=selected_docs,
                 stream=True,
-                )
-            def streaming_generator(data_stream):
-                """Generator to decode the chunks received from RAGOrchestratorClient"""
-                with data_stream as r:
-                    for chunk in r.iter_content(chunk_size=None):
-                        # Add delimiter `\n` at the end because if streaming is to fast,
-                        # frontend can receive multiple chunks in one pass so we need to split them.
-                        yield chunk.decode("utf-8") + "\n"
+            )
+
             return StreamingHttpResponse(streaming_generator(response), status=200, content_type='text/event-stream')
 
         except RAGAPIError as e:
@@ -136,10 +139,11 @@ def query_rag(request):
             return JsonResponse({"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500)
     else:
         raise Http404()
-    
+
+
 def save_interaction(request):
     """Function called to save query and response in DB once response streaming is finished."""
-    if request.method =="POST":
+    if request.method == "POST":
         # Save query and response in DB
         chat = Chat(
             user=request.user,
@@ -147,11 +151,12 @@ def save_interaction(request):
             conversation_id=request.POST.get("conversation_id", ""),
             message=request.POST.get("message", ""),
             response=request.POST.get("answer", ""),
-            )
+        )
         chat.save()
         return HttpResponse(status=200)
     else:
         raise Http404()
+
 
 def file_viewer(request, file_name: str):
     """
@@ -203,7 +208,8 @@ def delete(request):
                 rag_response = RAG_API.remove_documents(user_group_id, json.loads(selected_docs))
             except RAGAPIError as e:
                 logger.error(f"Error in deleting documents {selected_docs}: {e}")
-                return JsonResponse({"error_message": f"Erreur pour supprimer les documents {selected_docs}"}, status=500)
+                return JsonResponse({"error_message": f"Erreur pour supprimer les documents {selected_docs}"},
+                                    status=500)
             # Returns the list of updated available documents
             return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
 
@@ -424,12 +430,11 @@ def remove_user_from_group(request):
         else:
             error_message = f"Le nom d'utilisateur {username_to_remove} n'a pas été trouvé"
             return JsonResponse({"error_message": error_message}, status=500)
-        
+
         # Send an error if a user tries to remove himself
         if request.user.username == username_to_remove:
             error_message = f"Vous ne pouvez pas vous supprimer du groupe"
             return JsonResponse({"error_message": error_message}, status=500)
-
 
         # Remove user_to_remove
         logger.info(f"Removing {username_to_remove} from group {superuser_group_id}")
@@ -437,6 +442,7 @@ def remove_user_from_group(request):
         return HttpResponse(status=201)
     else:
         raise Http404()
+
 
 def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dict[str, str]] | None:
     """
@@ -452,9 +458,10 @@ def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dic
     history = []
     history_query = Chat.objects.filter(user=user, conversation_id=conversation_id)
     for chat in history_query:
-            history.append({"role": "user", "content": chat.message})
-            history.append({"role": "assistant", "content": chat.response})
+        history.append({"role": "user", "content": chat.message})
+        history.append({"role": "assistant", "content": chat.response})
     return None if len(history) == 0 else history
+
 
 def dashboard(request):
     return redirect(f"http://{socket.gethostbyname(socket.gethostname())}:9090")

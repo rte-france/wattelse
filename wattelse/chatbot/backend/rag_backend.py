@@ -38,7 +38,6 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 class RAGError(Exception):
     pass
 
-
 def get_chat_model(llm_api_name) -> BaseChatModel:
     llm_config_file = LLM_CONFIGS.get(llm_api_name, None)
     if llm_config_file is None:
@@ -68,6 +67,22 @@ def get_chat_model(llm_api_name) -> BaseChatModel:
         return ChatOllama(**llm_config)
     else:
         raise RAGError(f"Unrecognized LLM API name {llm_api_name}")
+
+
+def preprocess_streaming_data(streaming_data):
+    """Generator to preprocess the streaming data coming from LangChain `rag_chain.stream()`.
+    First sent chunk contains relevant_extracts in a convenient format.
+    Following chunks contain the actual response from the model token by token.
+    """
+    for chunk in streaming_data:
+        context_chunk = chunk.get("context", None)
+        if context_chunk is not None:
+            relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in context_chunk]
+            relevant_extracts = {"relevant_extracts": relevant_extracts}
+            yield json.dumps(relevant_extracts)
+        answer_chunk = chunk.get("answer")
+        if answer_chunk:
+            yield json.dumps(chunk)
 
 
 class RAGBackEnd:
@@ -232,21 +247,6 @@ class RAGBackEnd:
 
         # Handle answer
         if stream:
-            def preprocess_streaming_data(streaming_data):
-                """Generator to preprocess the streaming data coming from LangChain `rag_chain.stream()`.
-                First sent chunk contains relevant_extracts in a convenient format.
-                Following chunks contain the actual response from the model token by token.
-                """
-                for chunk in streaming_data:
-                    context_chunk = chunk.get("context", None)
-                    if context_chunk is not None:
-                        relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in context_chunk]
-                        relevant_extracts = {"relevant_extracts": relevant_extracts}
-                        yield json.dumps(relevant_extracts)
-                    answer_chunk = chunk.get("answer")
-                    if answer_chunk:
-                        yield json.dumps(chunk)
-
             return preprocess_streaming_data(rag_chain.stream(contextualized_question))
         else:
             resp = rag_chain.invoke(contextualized_question)
