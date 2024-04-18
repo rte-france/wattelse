@@ -27,6 +27,7 @@ from .models import Chat
 
 # RAG API
 RAG_API = RAGOrchestratorClient()
+SPECIAL_SEPARATOR = "¤¤¤¤¤"
 
 
 def chatbot(request):
@@ -85,7 +86,7 @@ def streaming_generator(data_stream):
         for chunk in r.iter_content(chunk_size=None):
             # Add delimiter `\n` at the end because if streaming is too fast,
             # frontend can receive multiple chunks in one pass, so we need to split them.
-            yield chunk.decode("utf-8") + "\n"
+            yield chunk.decode("utf-8") + SPECIAL_SEPARATOR
 
 def query_rag(request):
     """

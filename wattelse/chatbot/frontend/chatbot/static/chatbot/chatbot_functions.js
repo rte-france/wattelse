@@ -36,6 +36,9 @@ const userName =  JSON.parse(document.getElementById('user_name').textContent);
 let availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
 const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
+// separator used for streaming
+const SPECIAL_SEPARATOR = '¤¤¤¤¤';
+
 // initialize layout
 initializeLayout();
 
@@ -177,6 +180,17 @@ function handleUserMessage(userMessage) {
     userInput.value = '';
 }
 
+// Helper function to check if the buffer contains a complete JSON object
+function isCompleteJSON(buffer) {
+  try {
+    JSON.parse(buffer);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+
 async function postUserMessageToRAG(userMessage) {
     const conversationId = chatHistory.id;
     const response = await fetch('query_rag/', {
@@ -189,42 +203,58 @@ async function postUserMessageToRAG(userMessage) {
             'conversation_id': conversationId,
         })
     });
+
     let isFirstChunk = true; // Track for first chunk processing containing relevant extracts
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+
     // Create bot waiting div
     const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
     botDiv.classList.add("waiting-div");
     chatHistory.scrollTop = chatHistory.scrollHeight;
-    while (true) {
-        const { done, value } = await reader.read();
-        // Must handle cases where multiple chunks are received in one read
-        const strJsonObjects = decoder.decode(value).split("\n").filter(elm => elm);
-        const dataChunks = strJsonObjects.map(JSON.parse);
+
+    let accumulatedData = "";
+    let chunk;
+    do {
+        chunk = await reader.read();
+
         // Handle last chunk
-        if (done) {
+        if (chunk.done) {
             break;
         }
-        // Handle other chunks
-        else {
-            dataChunks.forEach((chunk) => {
-                if (isFirstChunk) {
-                    updateRelevantExtracts(chunk.relevant_extracts);
-                    isFirstChunk = false;
-                } else {
-                    // Remove wainting div
-                    if (botDiv.classList.contains("waiting-div")) {
-                        botDiv.innerHTML = "";
-                        botDiv.classList.remove("waiting-div");
-                    }
-                    botDiv.innerHTML += chunk.answer;
-                }
-            });
+
+        // Must handle cases where multiple chunks are received in one read and
+        // also the case in which long json chunks are received in multiple (incomplete json chunks)
+        accumulatedData += decoder.decode(chunk.value);
+        if (! isCompleteJSON(accumulatedData.split(SPECIAL_SEPARATOR)[0]))
+        {
+            continue;
         }
-        
-    }
+        const strJsonObjects = accumulatedData.split(SPECIAL_SEPARATOR).filter(elm => elm);
+        accumulatedData="";
+        const dataChunks = strJsonObjects.map(JSON.parse);
+
+        // Handle other chunks
+        dataChunks.forEach((json_chunk) => {
+            if (isFirstChunk) {
+                updateRelevantExtracts(json_chunk.relevant_extracts);
+                isFirstChunk = false;
+            } else {
+                // Remove wainting div
+                if (botDiv.classList.contains("waiting-div")) {
+                    botDiv.innerHTML = "";
+                    botDiv.classList.remove("waiting-div");
+                }
+                botDiv.innerHTML += json_chunk.answer;
+            }
+        });
+
+    } while (true);
+
     // When streaming is done, show feedback section and save interaction
     provideFeedback();
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
     saveInteraction(conversationId, userMessage, botDiv.innerHTML);
 }
 
