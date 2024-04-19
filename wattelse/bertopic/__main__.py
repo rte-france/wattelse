@@ -283,8 +283,9 @@ if __name__ == "__main__":
         schedule = newsletter_cfg.get(NEWSLETTER_SECTION, "update_frequency")
         id = newsletter_cfg.get(NEWSLETTER_SECTION, "id")
         proxy = os.getenv("https_proxy")
+        api_key = os.getenv("OPENAI_API_KEY")
         command = f"{sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {LOG_DIR}/cron_newsletter_{id}.log 2>&1"
-        env_vars = f"CUDA_VISIBLE_DEVICES={cuda_devices} http_proxy='{proxy}' https_proxy='{proxy}'"
+        env_vars = f"OPENAI_API_KEY={api_key} CUDA_VISIBLE_DEVICES={cuda_devices} http_proxy='{proxy}' https_proxy='{proxy}'"
         add_job_to_crontab(schedule, command, env_vars)
 
     @app.command("list-newsletters")
