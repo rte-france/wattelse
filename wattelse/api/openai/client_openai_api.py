@@ -4,6 +4,7 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import configparser
+import os
 from pathlib import Path
 
 import openai
@@ -18,8 +19,12 @@ class OpenAI_API:
     def __init__(self):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent / "openai.cfg")
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            logger.error("WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services.")
+            raise EnvironmentError(f"OPENAI_API_KEY environment variable not found.")
         self.llm_client = OpenAI(
-            api_key=config.get("API_CONFIG", "openai_api_key"),
+            api_key=api_key,
             organization=config.get("API_CONFIG", "openai_organization"),
             timeout=Timeout(TIMEOUT, connect=10.0),
             max_retries=MAX_ATTEMPTS,

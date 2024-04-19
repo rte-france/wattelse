@@ -6,5 +6,11 @@
 from django.contrib import admin
 from .models import Chat
 
+
+class ChatAdmin(admin.ModelAdmin):
+    list_display = ('user_id', 'group_id', 'conversation_id', 'message', 'response', 'timestamp')
+    list_filter = ('user_id', 'group_id', 'conversation_id', 'timestamp')
+
+
 # Register your models here.
-admin.site.register(Chat)
+admin.site.register(Chat, ChatAdmin)

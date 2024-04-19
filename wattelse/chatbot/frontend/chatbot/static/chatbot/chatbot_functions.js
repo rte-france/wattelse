@@ -36,6 +36,9 @@ const userName =  JSON.parse(document.getElementById('user_name').textContent);
 let availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
 const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
+// separator used for streaming
+const SPECIAL_SEPARATOR = '¤¤¤¤¤';
+
 // initialize layout
 initializeLayout();
 
@@ -83,6 +86,7 @@ function initializeLayout(){
             targetContent.style.display = 'block';
         });
     });
+    activateTab("documents");
 
     // Display available documents
     updateAvailableDocuments();
@@ -119,12 +123,8 @@ function initializeLayout(){
             }
         });
     }
-
-    // Welcome message
-    createBotMessage("Bonjour <b><span style='font-weight:bold;color:" +
-        getComputedStyle(document.documentElement).getPropertyValue('--main-color')+";'>"+userName +
-        "</span></b> ! Posez-moi des questions en lien avec les documents sélectionnés...",
-        false, "documents");
+    //  Create welcome message
+    createWelcomeMessage();
 }
 
 function updateAvailableDocuments(){
@@ -168,17 +168,11 @@ function handleUserMessage(userMessage) {
         lastFeedbackDiv.remove()
     }
 
-    createUserMessage(userMessage);
+    // Remove welcome message if it exists
+    removeWelcomeMessage();
 
-    // Simulate bot response with a delay
-    const waitDiv = document.createElement('div');
-    waitDiv.id = 'wait-div';
-    const botDiv = document.createElement('p');
-    botDiv.classList.add('bot-message');
-    botDiv.innerHTML='<i class="fa-solid fa-ellipsis fa-fade"></i>'
-    waitDiv.appendChild(botDiv);
-    chatHistory.appendChild(waitDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    // Diplsay user message
+    createUserMessage(userMessage);
 
     // Post Message to RAG
     postUserMessageToRAG(userMessage);
@@ -186,32 +180,100 @@ function handleUserMessage(userMessage) {
     userInput.value = '';
 }
 
-function postUserMessageToRAG(userMessage) {
-    if (userMessage === '') {
-        return;
-    }
-    console.log("Posting user message: "+userMessage)
+// Helper function to check if the buffer contains a complete JSON object
+function isCompleteJSON(buffer) {
+  try {
+    JSON.parse(buffer);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
 
-    fetch('', {
+
+async function postUserMessageToRAG(userMessage) {
+    const conversationId = chatHistory.id;
+    const response = await fetch('query_rag/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
             'csrfmiddlewaretoken': csrfmiddlewaretoken,
             'message': userMessage,
             'selected_docs': JSON.stringify(getSelectedFileNames("available-list")),
+            'conversation_id': conversationId,
+        })
+    });
+
+    let isFirstChunk = true; // Track for first chunk processing containing relevant extracts
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    // Create bot waiting div
+    const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
+    botDiv.classList.add("waiting-div");
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    let accumulatedData = "";
+    let chunk;
+    do {
+        chunk = await reader.read();
+
+        // Handle last chunk
+        if (chunk.done) {
+            break;
+        }
+
+        // Must handle cases where multiple chunks are received in one read and
+        // also the case in which long json chunks are received in multiple (incomplete json chunks)
+        accumulatedData += decoder.decode(chunk.value);
+        if (! isCompleteJSON(accumulatedData.split(SPECIAL_SEPARATOR)[0]))
+        {
+            continue;
+        }
+        const strJsonObjects = accumulatedData.split(SPECIAL_SEPARATOR).filter(elm => elm);
+        accumulatedData="";
+        const dataChunks = strJsonObjects.map(JSON.parse);
+
+        // Handle other chunks
+        dataChunks.forEach((json_chunk) => {
+            if (isFirstChunk) {
+                updateRelevantExtracts(json_chunk.relevant_extracts);
+                isFirstChunk = false;
+            } else {
+                // Remove wainting div
+                if (botDiv.classList.contains("waiting-div")) {
+                    botDiv.innerHTML = "";
+                    botDiv.classList.remove("waiting-div");
+                }
+                botDiv.innerHTML += json_chunk.answer;
+            }
+        });
+
+    } while (true);
+
+    // When streaming is done, show feedback section and save interaction
+    provideFeedback();
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    saveInteraction(conversationId, userMessage, botDiv.innerHTML);
+}
+
+function saveInteraction(conversationId, userMessage, botResponse) {
+    fetch('save_interaction/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+            'conversation_id': conversationId,
+            'message': userMessage,
+            'answer': botResponse,
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        document.getElementById('wait-div').remove();
-        createBotMessage(data.answer);
-        updateRelevantExtracts(data.relevant_extracts);
-    })
     .catch(error => {
-        createErrorMessage(error.message);
-        console.error('There was a problem with the Fetch operation:', error);
+        console.error('There was a problem saving interaction :', error);
     });
 }
+
 
 function deleteDocumentsInCollection(){
     const selectedFileNames = getSelectedFileNames("removal-list")
@@ -242,12 +304,15 @@ function deleteDocumentsInCollection(){
     }
 }
 
-function updateRelevantExtracts(relevant_extracts){
-    extractList.innerHTML = ""
-    relevant_extracts.forEach((extract) => {
-        const listItem = createExtract(extract.content, extract.metadata.url, extract.metadata.file_name);
-        extractList.appendChild(listItem);
-    });
+function updateRelevantExtracts(relevantExtracts){
+    extractList.innerHTML = "";
+    if (relevantExtracts.length>0) {
+        relevantExtracts.forEach((extract) => {
+            const url = `file_viewer/${extract["metadata"]["file_name"]}#page=${parseInt(extract["metadata"]["page"] ?? 0)+1}`
+            const listItem = createExtract(extract.content, url, extract.metadata.file_name);
+            extractList.appendChild(listItem);
+        });
+    }
 }
 
 function createUserMessage(message) {
@@ -258,19 +323,49 @@ function createUserMessage(message) {
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
-function createBotMessage(message, showFeedbackSection = true, nextTab="extracts") {
+function createBotMessage(message, nextTab="extracts") {
     const botDiv = document.createElement('div');
     botDiv.classList.add('bot-message');
-    botDiv.innerHTML = message
+    botDiv.innerHTML = message;
     chatHistory.appendChild(botDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 
     // Call the function to activate the "Extracts" tab
-    activateTab(nextTab);
+    if (nextTab) {
+        activateTab(nextTab);
+    }
 
-    // Feedback section (modify based on your chosen approach)
-    if (showFeedbackSection) {
-        provideFeedback();
+    return botDiv;
+}
+
+function typeWriter(botDiv, message, typingSpeed, callback) {
+    let index = 0;
+
+    const type = () => {
+        if (index < message.length) {
+            botDiv.innerHTML += message.charAt(index);
+            index++;
+            setTimeout(type, typingSpeed);
+        } else if (callback) {
+            callback();
+        }
+    };
+
+    type();
+}
+
+function createWelcomeMessage() {
+    chatHistory.innerHTML = `
+    <div class="welcome-container">
+        <div class="welcome-message">Bonjour <span class="username">${userName}</span> !<br>Posez une question sur les documents.</div>
+    </div>
+    `;
+}
+
+function removeWelcomeMessage() {
+    const welcomeMessage = document.querySelector(".welcome-container");
+    if (welcomeMessage) {
+        welcomeMessage.remove();
     }
 }
 
@@ -366,29 +461,6 @@ function setSelectedFileNames(listName, textsToSelect) {
   }
 }
 
-//TODO!
-function provideFeedback() {
-    const feedbackSection = document.createElement('div');
-    feedbackSection.classList.add('feedback-section');
-
-    feedbackSection.innerHTML = `
-          <button id="open-text-feedback">Text Feedback</button> 
-          <span class="emoji-rating" style="margin-right: 1.5rem"><i class="fa-solid fa-thumbs-up"></i></span>
-          <span class="emoji-rating" style="margin-right: 1.5rem"><i class="fa-solid fa-thumbs-down"></i></span>
-        `;
-
-    chatHistory.appendChild(feedbackSection);
-
-    /*
-    emojiRatings.forEach((emoji) => {
-        emoji.addEventListener('click', (event) => {
-            const feedback = event.target.textContent; // Get the emoji text
-            // TODO
-            // Process emoji feedback (implement logic as needed)
-        });
-    });
-    */
-}
 
 function initializeUploadArea(){
     // upload files with browse button
@@ -572,4 +644,137 @@ function removeUserFromGroup(userNameToDelete) {
             }
         });
     }
+}
+
+// Create a new conversation
+function newConversation() {
+    chatHistory.id = uuid4();
+    createWelcomeMessage();
+    extractList.innerHTML = "";
+    activateTab("documents");
+}
+
+// Functions to collect user feedback
+function provideFeedback() {
+    const feedbackSection = document.createElement('div');
+    feedbackSection.classList.add('feedback-section');
+
+    feedbackSection.innerHTML = `
+          <span class="emoji-rating"><span class="rating-great" title="Réponse parfaite"><i class="fa-solid fa-circle-check fa-xl"></i></span></span>
+          <span class="emoji-rating"><span class="rating-ok" title="Réponse acceptable"><i class="fa-solid fa-circle-half-stroke fa-xl"></i></span></span>
+          <span class="emoji-rating"><span class="rating-missing" title="Réponse incomplète"><i class="fa-solid fa-circle-minus fa-xl"></i></span></span>
+          <span class="emoji-rating"><span class="rating-wrong" title="Réponse fausse"><i class="fa-solid fa-circle-exclamation fa-xl"></i></span></span>
+          <button id="open-text-feedback">Text Feedback</button> 
+        `;
+
+    chatHistory.appendChild(feedbackSection);
+
+    // Add click event listeners to each emoji rating element
+    const emojiRatings = document.querySelectorAll('.emoji-rating');
+    emojiRatings.forEach(emojiRating => emojiRating.addEventListener('click', handleEmojiRatingClick));
+
+    const textFeedbackButton = document.getElementById('open-text-feedback');
+    textFeedbackButton.addEventListener('click', handleTextFeedbackClick);
+}
+
+function handleEmojiRatingClick(event) {
+  // Get the parent element (emoji-rating) of the clicked element
+  const ratingElement = event.currentTarget;
+
+  // Highlight the clicked element and remove highlight from siblings
+  const feedbackName = ratingElement.querySelector('span').className;
+  ratingElement.querySelector('span').classList.add('selected');
+
+  const ratings = ratingElement.parentElement.querySelectorAll('.emoji-rating');
+  for (const r of ratings){
+      if (r !== ratingElement){
+          r.querySelector('span').classList.remove('selected');
+      }
+  }
+
+  let previousElement =  ratingElement.parentElement.previousSibling;
+  while (previousElement && !previousElement.classList.contains('bot-message')) {
+    previousElement = previousElement.previousSibling;
+  }
+  let bot_answer = "";
+  if (previousElement) {
+      bot_answer = previousElement.textContent;
+  }
+
+  previousElement =  ratingElement.parentElement.previousSibling;
+  while (previousElement && !previousElement.classList.contains('user-message')) {
+    previousElement = previousElement.previousSibling;
+  }
+  let user_question = "";
+  if (previousElement) {
+      user_question = previousElement.textContent;
+  }
+
+  // send feedback for processing
+  if (feedbackName) {
+    sendFeedback("send_short_feedback/", feedbackName, user_question, bot_answer);
+  }
+}
+
+// Function to handle click on the text feedback button (optional)
+function handleTextFeedbackClick(event) {
+  const feedbackButton = event.currentTarget;
+  feedbackButton.classList.add('selected');
+
+  // Implement your logic for opening a text feedback form or modal here
+  let feedback = prompt("Veuillez saisir la réponse attendue :", "");
+
+  // Search for related messages (bot and user)
+  let previousElement =  feedbackButton.parentElement.previousSibling;
+  while (previousElement && !previousElement.classList.contains('bot-message')) {
+    previousElement = previousElement.previousSibling;
+  }
+  let bot_answer = "";
+  if (previousElement) {
+      bot_answer = previousElement.textContent;
+  }
+
+  previousElement =  feedbackButton.parentElement.previousSibling;
+  while (previousElement && !previousElement.classList.contains('user-message')) {
+    previousElement = previousElement.previousSibling;
+  }
+  let user_question = "";
+  if (previousElement) {
+      user_question = previousElement.textContent;
+  }
+
+  // send back answer
+  if (feedback){
+      sendFeedback("send_long_feedback/", feedback, user_question, bot_answer);
+  }
+}
+
+
+// Common function that sends feedback message
+function sendFeedback(endpoint, feedback, user_message, bot_message){
+    fetch(endpoint, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: new URLSearchParams({
+              'csrfmiddlewaretoken': csrfmiddlewaretoken,
+              'feedback': feedback,
+              'user_message': user_message,
+              'bot_message': bot_message,
+          })
+      })
+          .then(response => {
+              if (response.ok) {
+                  console.info("Feedback reçu!");
+              } else {
+                  response.json().then(data => {
+                      window.alert(data.error_message);
+                  });
+              }
+          });
+}
+
+function uuid4() {
+    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+      (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
+    );
 }

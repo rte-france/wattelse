@@ -24,15 +24,8 @@
     <div class="chat-container">
 
         <!-- Chat history div -->
-        <div class="chat-history">
-            {% for chat in chats %}
-                {% if chat.user == request.user %}
-                    <!-- <script>
-                        createUserMessage("{{chat.message}}");
-                        createBotMessage("{{chat.response}}");
-                    </script> -->
-                {% endif %}
-            {% endfor %}
+        <div class="chat-history" id="{{ conversation_id }}">
+            <!-- Messages will be displayed here -->
         </div>
         
         <!-- Message input field (everything in this div will be fixed at the bottom) -->
@@ -41,7 +34,8 @@
             <div class="chat-input">
                 <input type="text" class="input-field"
                     placeholder="Entrez votre question en lien avec les documents fournis..." />
-                <button class="send-button">OK</button>
+                <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
+                <button class="new-conversation-button" onclick="newConversation()"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
             </div>
             <div class="disclaimer">
                 WattElse peut afficher des informations inexactes. Vérifiez ses réponses.

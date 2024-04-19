@@ -54,6 +54,26 @@
   width: 100%;
 }
 
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.welcome-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 1.5s;
+}
+
+.welcome-message {
+    font-size: 2em;
+    font-weight: 800;
+    color: #c4c7c5;
+}
+
 .user-message,
 .bot-message,
 .error-message {
@@ -95,7 +115,7 @@
 }
 
 .input-field {
-    width: 92%;
+    width: 84%;
     padding: 1%;
     border: 1px solid #ccc;
     border-radius: 10px;
@@ -103,7 +123,8 @@
     background-color: #e7e7e7;
 }
 
-.send-button {
+.send-button,
+.new-conversation-button {
     width: 5% ;
     padding: 0.5rem 0.5rem;
     border: none;
@@ -111,6 +132,10 @@
     background-color: var(--main-color);
     color: white;
     font-weight: 600;
+}
+
+.new-conversation-button {
+  background-color: var(--complementary-color);
 }
 
 .disclaimer{
@@ -137,7 +162,7 @@
 }
 
 .panel-container .superuser-tab {
-color: salmon;
+color: var(--complementary-color);
 }
 
 .panel-container .tab:hover {
@@ -155,7 +180,7 @@ color: salmon;
 }
 
 .panel-container .superuser-tab.active {
-  background-color: salmon; /* Blue background for active tab */
+  background-color: var(--complementary-color);
   color: #fff; /* White text color for active tab */
   box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
 }
@@ -488,8 +513,9 @@ color: salmon;
   cursor: pointer; /* Indicate clickable behavior */
 }
 
-.feedback-section button:hover {
-  background-color: var(--main-color);
+.feedback-section button:hover, .feedback-section button.selected {
+    color: white;
+    background-color: var(--main-color);
 }
 
 .feedback-section textarea {
@@ -501,5 +527,24 @@ color: salmon;
 }
 
 .feedback-section:last-child { /* Target the last feedback section */
-  margin-bottom: 2rem; /* Add extra space at the bottom of the last section */
+  margin-bottom: 1rem; /* Add extra space at the bottom of the last section */
+}
+
+.emoji-rating{
+    margin-right: 1.5rem;
+    cursor: pointer;
+    color: black;
+}
+
+.rating-great:hover, .rating-great.selected {
+    color: mediumseagreen;
+}
+.rating-ok:hover, .rating-ok.selected {
+    color: var(--main-color);
+}
+.rating-missing:hover, .rating-missing.selected {
+    color: var(--complementary-color);
+}
+.rating-wrong:hover, .rating-wrong.selected {
+    color: indianred;
 }

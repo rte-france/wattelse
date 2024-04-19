@@ -7,10 +7,8 @@ import configparser
 import json
 import logging
 import os
-from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, BinaryIO
 
-from fastapi import UploadFile
 from fastapi.responses import StreamingResponse
 from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
 from langchain_community.chat_models import ChatOllama
@@ -30,7 +28,6 @@ from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
     LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
 from wattelse.indexer.document_splitter import split_file
-from wattelse.chatbot.backend.chat_history import ChatHistory
 from wattelse.common.config_utils import parse_literal
 from wattelse.indexer.document_parser import parse_file
 
@@ -40,7 +37,6 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
 class RAGError(Exception):
     pass
-
 
 def get_chat_model(llm_api_name) -> BaseChatModel:
     llm_config_file = LLM_CONFIGS.get(llm_api_name, None)
@@ -73,20 +69,28 @@ def get_chat_model(llm_api_name) -> BaseChatModel:
         raise RAGError(f"Unrecognized LLM API name {llm_api_name}")
 
 
+def preprocess_streaming_data(streaming_data):
+    """Generator to preprocess the streaming data coming from LangChain `rag_chain.stream()`.
+    First sent chunk contains relevant_extracts in a convenient format.
+    Following chunks contain the actual response from the model token by token.
+    """
+    for chunk in streaming_data:
+        context_chunk = chunk.get("context", None)
+        if context_chunk is not None:
+            relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in context_chunk]
+            relevant_extracts = {"relevant_extracts": relevant_extracts}
+            yield json.dumps(relevant_extracts)
+        answer_chunk = chunk.get("answer")
+        if answer_chunk:
+            yield json.dumps(chunk)
+
+
 class RAGBackEnd:
-    def __init__(self, login: str, group: str):
-        logger.debug(f"Initialization of chatbot backend for user {login} (group {group})")
-        # Initialize history
-        log_chat_history_on_disk = True
-        if log_chat_history_on_disk:
-            self.chat_history = ChatHistory(DATA_DIR / "chat_history" / login /
-                                            datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        else:
-            self.chat_history = ChatHistory()
+    def __init__(self, group: str):
+        logger.debug(f"Initialization of chatbot backend for group {group}")
 
         # Load document collection
         self.document_collection = load_document_collection(group)
-        self.document_filter = None
 
         # Retriever parameters
         self.top_n_extracts = retriever_config["top_n_extracts"]
@@ -104,11 +108,11 @@ class RAGBackEnd:
         # Generate llm config for langchain
         self.llm = get_chat_model(self.llm_api_name)
 
-    def add_file_to_collection(self, file: UploadFile):
+    def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
         # Store the file
-        contents = file.file.read()
-        path = DATA_DIR / self.document_collection.collection_name / file.filename
+        contents = file.read()
+        path = DATA_DIR / self.document_collection.collection_name / file_name
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
             f.write(contents)
@@ -121,7 +125,7 @@ class RAGBackEnd:
         # Split the file into smaller chunks as a list of Document
         logger.debug(f"Chunking: {path}")
         splits = split_file(path.suffix, docs)
-        logger.info(f"Number of chunks for file {file.filename}: {len(splits)}")
+        logger.info(f"Number of chunks for file {file_name}: {len(splits)}")
 
         # Store and embed documents in the vector database
         self.document_collection.add_documents(splits)
@@ -152,36 +156,39 @@ class RAGBackEnd:
         available_docs.sort()
         return available_docs
 
-    def get_text_list(self) -> List[str]:
+    def get_text_list(self, document_filter: Dict | None) -> List[str]:
         """Returns the list of texts in the collection, using the current document filter"""
         data = self.document_collection.collection.get(include=["documents"],
-                                                       where={} if not self.document_filter else self.document_filter)
+                                                       where={} if not document_filter else document_filter)
         return data["documents"]
 
-    def select_docs(self, file_names: List[str]):
+    def get_document_filter(self, file_names: List[str]):
         """Create a filter on the document collection based on a list of file names"""
         if not file_names:
-            self.document_filter = None
+            return None
         elif len(file_names) == 1:
-            self.document_filter = {"file_name": file_names[0]}
+            return {"file_name": file_names[0]}
         else:
-            self.document_filter = {"$or": [{"file_name": f} for f in file_names]}
+            return {"$or": [{"file_name": f} for f in file_names]}
 
     def select_by_keywords(self, keywords: List[str]):
         """Create a filter on the document collection based on a list of keywords"""
         # TODO: to be implemented
-        self.document_filter = None
+        pass
 
-    def query_rag(self, question: str, stream=False) -> Dict | StreamingResponse:
+    def query_rag(self, message: str, history: List[dict[str, str]] = None, selected_files: List[str] = None, stream: bool = False) -> Dict | StreamingResponse:
         """Query the RAG"""
         # Sanity check
         if self.document_collection is None:
             raise RAGError("No active document collection!")
+        
+        # Get document filter
+        document_filter = self.get_document_filter(selected_files)
 
         # Configure retriever
         search_kwargs = {
             "k": self.top_n_extracts,  # number of retrieved docs
-            "filter": {} if not self.document_filter else self.document_filter,
+            "filter": {} if not document_filter else document_filter,
         }
         if self.retrieval_method == SIMILARITY_SCORE_THRESHOLD:
             search_kwargs["score_threshold"] = self.similarity_threshold
@@ -194,7 +201,7 @@ class RAGBackEnd:
             retriever = dense_retriever
 
         elif self.retrieval_method in [BM25, ENSEMBLE]:
-            bm25_retriever = BM25Retriever.from_texts(self.get_text_list())
+            bm25_retriever = BM25Retriever.from_texts(self.get_text_list(document_filter))
             bm25_retriever.k = self.top_n_extracts
             if self.similarity_threshold == BM25:
                 retriever = bm25_retriever
@@ -233,27 +240,14 @@ class RAGBackEnd:
         ).assign(answer=rag_chain_from_docs)
 
         # TODO: implement reranking (optional)
-        logger.debug(f"Calling RAG chain for question {question}...")
 
         # Handle conversation history
-        contextualized_question = self.contextualize_question(question) if self.remember_recent_messages else question
+        contextualized_question = self.contextualize_question(message, history)
+        logger.debug(f"Calling RAG chain for question : \"{contextualized_question}\"...")
 
         # Handle answer
-        chunks = []
-        relevant_extracts = []
         if stream:
-            # stream response on server side...
-            # TODO: manage streaming to the client
-            for chunk in rag_chain.stream(contextualized_question):
-                s = chunk.get("context")
-                if s:
-                    sources = s
-                    # Transform sources
-                    relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
-                chunks.append(chunk.get("answer", ""))
-                print(chunk, end="", flush=True)
-            answer = "".join(chunks)
-            # return StreamingResponse(streamer(rag_chain.stream(contextualized_question)))
+            return preprocess_streaming_data(rag_chain.stream(contextualized_question))
         else:
             resp = rag_chain.invoke(contextualized_question)
             answer = resp.get("answer")
@@ -261,33 +255,40 @@ class RAGBackEnd:
             # Transform sources
             relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
 
-        # Update chat history
-        self.chat_history.add_to_database(question, answer)
+            # Return answer and sources
+            return {"answer": answer, "relevant_extracts": relevant_extracts}
 
-        # Return answer and sources
-        return {"answer": answer, "relevant_extracts": relevant_extracts}
+    def contextualize_question(self, message: str, history: List[dict[str, str]] = None) -> str:
+        """
+        If self.remember_recent_messages is False or no message in history:
+            Return last user query
+        Else :
+            Use recent interaction context to enrich the user query
+        """
+        if not self.remember_recent_messages or history is None:
+            return message
+        else:
+            logger.debug("Contextualizing prompt with history...")
+            prompt = ChatPromptTemplate(input_variables=["history", "query"],
+                                        messages=[HumanMessagePromptTemplate(
+                                            prompt=PromptTemplate(
+                                                input_variables=["history", "query"],
+                                                template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
+                                        )])
 
-    def contextualize_question(self, question: str) -> str:
-        """Use recent interaction context to enrich the user query"""
-        logger.debug("Contextualizing prompt with history...")
-        recent_history = self.chat_history.get_recent_history()
-        if not recent_history:
-            logger.warning("No recent history available!")
-            return question
-        prompt = ChatPromptTemplate(input_variables=["history", "query"],
-                                    messages=[HumanMessagePromptTemplate(
-                                        prompt=PromptTemplate(
-                                            input_variables=["history", "query"],
-                                            template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
-                                    )])
+            chain = ({"query": RunnablePassthrough(), "history": RunnablePassthrough()}
+                    | prompt
+                    | self.llm
+                    | StrOutputParser())
+            
+            # Format messages into a single string
+            history_as_text = ""
+            for turn in history:
+                history_as_text += f"{turn['role']}: {turn['content']}\n"
+            contextualized_question = chain.invoke([history_as_text, message])
+            logger.debug(f"Contextualized question: {contextualized_question}")
+            return contextualized_question
 
-        chain = ({"query": RunnablePassthrough(), "history": RunnablePassthrough()}
-                 | prompt
-                 | self.llm
-                 | StrOutputParser())
-        contextualized_question = chain.invoke([question, recent_history])
-        logger.debug(f"Contextualized question: {contextualized_question}")
-        return contextualized_question
 
     def get_detail_level(self, question: str):
         """Returns the level of detail we wish in the answer. Values are in this range: {"courte", "détaillée"}"""

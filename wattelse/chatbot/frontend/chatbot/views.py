@@ -4,53 +4,111 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import io
+import uuid
 import json
+import socket
 import tempfile
 from typing import Dict, Tuple, List
 
 import mammoth
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse, Http404
+from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
 
 from django.contrib import auth
 from django.contrib.auth.models import User, Group
 from loguru import logger
 from pathlib import Path
 
-from django.utils import timezone
 from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
 from wattelse.chatbot.backend import DATA_DIR
 from .models import Chat
 
-# Mapping table between user login and RAG clients
-rag_dict: Dict[str, RAGOrchestratorClient] = {}
+# RAG API
+RAG_API = RAGOrchestratorClient()
+SPECIAL_SEPARATOR = "¤¤¤¤¤"
 
 
 def chatbot(request):
-    """Main function for chatbot interface.
-    If request method is GET : render chatbot.html
-    If request method is POST : make a call to RAGOrchestratorClient and return response as json
+    """
+    Main function for chatbot interface.
+    Render chatbot.html webpage with associated context.
     """
     # If user is not authenticated, redirect to login
     if not request.user.is_authenticated:
         return redirect("/login")
 
-    # Get user chat history
-    chats = Chat.objects.filter(user=request.user)
-    rag_client = rag_dict.get(request.user.get_username())
-    if not is_active_session(rag_client):
-        # session expired for some reason
-        return redirect("/login")
+    # Get user group_id
+    user_group_id = get_user_group_id(request.user)
+
+    # Generate a new conversation_id
+    conversation_id = str(uuid.uuid4())
 
     # Get list of available documents
-    available_docs = rag_client.list_available_docs()
+    try:
+        available_docs = RAG_API.list_available_docs(user_group_id)
+    except RAGAPIError:
+        return redirect("/login")
 
-    # If request method is POST, call RAG API and return response to query
-    # else render template
+    # Get user permissions
+    can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
+    can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
+    can_manage_users = request.user.has_perm("chatbot.can_manage_users")
+
+    # If can manage users, find usernames of its group
+    if can_manage_users:
+        group_usernames_list = get_group_usernames_list(user_group_id)
+        # Remove admin so it cannot be deleted
+        try:
+            group_usernames_list.remove("admin")
+        except ValueError:
+            pass  # admin may not be in the list depending on how users have been defined
+    else:
+        group_usernames_list = None
+    return render(
+        request, "chatbot/chatbot.html",
+        {
+            "conversation_id": conversation_id,
+            "available_docs": available_docs,
+            "can_upload_documents": can_upload_documents,
+            "can_remove_documents": can_remove_documents,
+            "can_manage_users": can_manage_users,
+            "user_group": user_group_id,
+            "group_usernames_list": group_usernames_list,
+        }
+    )
+
+
+def streaming_generator(data_stream):
+    """Generator to decode the chunks received from RAGOrchestratorClient"""
+    with data_stream as r:
+        for chunk in r.iter_content(chunk_size=None):
+            # Add delimiter `\n` at the end because if streaming is too fast,
+            # frontend can receive multiple chunks in one pass, so we need to split them.
+            yield chunk.decode("utf-8") + SPECIAL_SEPARATOR
+
+def query_rag(request):
+    """
+    Main function for query RAG calls.
+    Call RAGOrchestratorAPI with `stream=True` and streams the response to frontend.
+    First chunk contains `relevant_extracts` data,
+    other chunks contain streamed answer tokens.
+    """
     if request.method == "POST":
+        # Get user group_id
+        user_group_id = get_user_group_id(request.user)
+
+        # Get conversation id
+        conversation_id = uuid.UUID(request.POST.get("conversation_id"))
+
+        # Get user chat history
+        history = get_conversation_history(request.user, conversation_id)
+        logger.debug(f"History: {history}")
+
+        # Get posted message
         message = request.POST.get("message", None)
+
         if not message:
             logger.warning("No user message received")
             error_message = "Veuillez saisir une question"
@@ -59,63 +117,46 @@ def chatbot(request):
 
         # Select documents for RAG
         selected_docs = request.POST.get("selected_docs", None)
+        selected_docs = json.loads(selected_docs)
         logger.debug(f"Selected docs: {selected_docs}")
         if not selected_docs:
             logger.warning("No selected docs received, using all available docs")
             selected_docs = []
-        rag_client.select_documents_by_name(json.loads(selected_docs))
 
-        # Query RAG
+        # Query RAG and stream response
         try:
-            response = rag_client.query_rag(message)
+            response = RAG_API.query_rag(
+                user_group_id,
+                message,
+                history=history,
+                selected_files=selected_docs,
+                stream=True,
+            )
+
+            return StreamingHttpResponse(streaming_generator(response), status=200, content_type='text/event-stream')
+
         except RAGAPIError as e:
             logger.error(e)
             return JsonResponse({"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500)
-
-        # separate text answer and relevant extracts
-        answer = response["answer"]
-        relevant_extracts = response["relevant_extracts"]
-
-        # Update url in relevant_extracts to make it openable accessible from the web page
-        if relevant_extracts:
-            for extract in relevant_extracts:
-                page_number = int(extract["metadata"].get("page", "0")) + 1
-                extract["metadata"][
-                    "url"] = f'file_viewer/{extract["metadata"]["file_name"]}#page={page_number}'
-
-        # Save query and response in DB
-        chat = Chat(user=request.user, message=message, response=response, created_at=timezone.now())
-        chat.save()
-
-        return JsonResponse({"message": message, "answer": answer, "relevant_extracts": relevant_extracts}, status=200)
     else:
-        # Get user permissions
-        can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
-        can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
-        can_manage_users = request.user.has_perm("chatbot.can_manage_users")
+        raise Http404()
 
-        # Get user groupname
-        user_group = get_user_groupname(request.user)
 
-        # If can manage users, find usernames of its group
-        if can_manage_users:
-            group_usernames_list = get_group_usernames_list(user_group)
-            # Remove admin so it cannot be deleted
-            group_usernames_list.remove("admin")
-        else:
-            group_usernames_list = None
-        return render(
-            request, "chatbot/chatbot.html",
-            {
-                "chats": chats,
-                "available_docs": available_docs,
-                "can_upload_documents": can_upload_documents,
-                "can_remove_documents": can_remove_documents,
-                "can_manage_users": can_manage_users,
-                "user_group": user_group,
-                "group_usernames_list": group_usernames_list,
-            }
+def save_interaction(request):
+    """Function called to save query and response in DB once response streaming is finished."""
+    if request.method == "POST":
+        # Save query and response in DB
+        chat = Chat(
+            user=request.user,
+            group_id=get_user_group_id(request.user),
+            conversation_id=request.POST.get("conversation_id", ""),
+            message=request.POST.get("message", ""),
+            response=request.POST.get("answer", ""),
         )
+        chat.save()
+        return HttpResponse(status=200)
+    else:
+        raise Http404()
 
 
 def file_viewer(request, file_name: str):
@@ -126,7 +167,7 @@ def file_viewer(request, file_name: str):
     """
     # TODO: manage more file type
     # FIXME: to be rethought in case of distributed deployment (here we suppose RAG backend and Django on the same server...)
-    file_path = DATA_DIR / request.user.groups.all()[0].name / file_name
+    file_path = DATA_DIR / get_user_group_id(request.user) / file_name
     if file_path.exists():
         suffix = file_path.suffix.lower()
         if suffix == ".pdf":
@@ -163,17 +204,15 @@ def delete(request):
             logger.warning("No docs selected for removal received, action ignored")
             return JsonResponse({"warning_message": "No document removed"}, status=202)
         else:
-            rag_client = rag_dict[request.user.get_username()]
-            if not is_active_session(rag_client):
-                # session expired for some reason
-                return redirect("/login")
+            user_group_id = get_user_group_id(request.user)
             try:
-                rag_response = rag_client.remove_documents(json.loads(selected_docs))
+                rag_response = RAG_API.remove_documents(user_group_id, json.loads(selected_docs))
             except RAGAPIError as e:
                 logger.error(f"Error in deleting documents {selected_docs}: {e}")
-                return JsonResponse({"error_message": f"Erreur pour supprimer les documents {selected_docs}"}, status=500)
+                return JsonResponse({"error_message": f"Erreur pour supprimer les documents {selected_docs}"},
+                                    status=500)
             # Returns the list of updated available documents
-            return JsonResponse({"available_docs": rag_client.list_available_docs()}, status=200)
+            return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
 
 
 def upload(request):
@@ -188,11 +227,8 @@ def upload(request):
             logger.warning("No file to be uploaded, action ignored")
             return JsonResponse({"error_message": "No file received!"}, status=500)
         else:
+            user_group_id = get_user_group_id(request.user)
             logger.debug(f"Received file: {uploaded_file.name}")
-            rag_client = rag_dict[request.user.get_username()]
-            if not is_active_session(rag_client):
-                # session expired for some reason
-                return redirect("/login")
 
             # Create a temporary directory
             # TODO: investigate in memory temp file, probably a better option
@@ -207,14 +243,14 @@ def upload(request):
 
                 try:
                     # Use the temporary file path for upload
-                    rag_client.upload_files([temp_file_path])
+                    RAG_API.upload_files(user_group_id, [temp_file_path])
                 except RAGAPIError as e:
                     logger.error(e)
                     return JsonResponse({"error_message": f"Erreur de téléchargement de {uploaded_file.name}\n{e}"},
                                         status=500)
 
             # Returns the list of updated available documents
-            return JsonResponse({"available_docs": rag_client.list_available_docs()}, status=200)
+            return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
 
 
 def login(request):
@@ -229,13 +265,13 @@ def login(request):
         # If user exists: check group, login and redirect to chatbot
         if user is not None:
             # If user doesn't belong to a group, return error
-            group = get_user_groupname(user)
-            if group is None:
+            user_group_id = get_user_group_id(user)
+            if user_group_id is None:
                 error_message = "Vous n'appartenez à aucun groupe."
                 return render(request, "chatbot/login.html", {"error_message": error_message})
             else:
                 auth.login(request, user)
-                rag_dict[user.get_username()] = RAGOrchestratorClient(user.get_username(), group)
+                RAG_API.create_session(user_group_id)
                 return redirect("/")
         # Else return error
         else:
@@ -286,33 +322,10 @@ def new_user_created(request, username=None):
         return render(request, "chatbot/new_user_created.html", {"username": username})
 
 
-def is_active_session(rag_client: RAGOrchestratorClient) -> bool:
-    """Return true is the rag_client backend session ID is in the list of current sessions as reported by the backend
-    (the backend performs some automatic cleaning, that's why we need to check...)"""
-    if not rag_client:
-        return False
-    elif rag_client.session_id in rag_client.get_current_sessions():
-        return True
-    else:  # clean Django sessions as well
-        for k, v in rag_dict.items():
-            if v == rag_client:
-                rag_dict.pop(k)
-                break
-        return False
-
-
 def logout(request):
     """Log a user out and redirect to login page"""
     auth.logout(request)
     return redirect("/login")
-
-
-def reset(request):
-    """Reset chat history from DB"""
-    if request.method == "POST":
-        Chat.objects.filter(user=request.user).delete()
-    # Need to return an empty HttpResponse
-    return HttpResponse()
 
 
 def get_filename_parts(filename: str) -> Tuple[str, str]:
@@ -335,9 +348,9 @@ def get_filename_parts(filename: str) -> Tuple[str, str]:
     return prefix, suffix
 
 
-def get_user_groupname(user: User) -> str:
+def get_user_group_id(user: User) -> str:
     """
-    Given a user, return the name of the group it belongs to.
+    Given a user, return the id of the group it belongs to.
     If user doesn't belong to a group, return None.
 
     A user should belong to only 1 group.
@@ -351,11 +364,11 @@ def get_user_groupname(user: User) -> str:
         return group_list[0].name
 
 
-def get_group_usernames_list(groupname: str) -> List[str]:
+def get_group_usernames_list(group_id: str) -> List[str]:
     """
     Return the list of users username belonging to the group.
     """
-    group = Group.objects.get(name=groupname)
+    group = Group.objects.get(name=group_id)
     users_list = User.objects.filter(groups=group)
     usernames_list = [user.username for user in users_list]
     return usernames_list
@@ -371,8 +384,8 @@ def add_user_to_group(request):
     if request.method == "POST":
         # Get superuser group object
         superuser = request.user
-        superuser_groupname = get_user_groupname(superuser)
-        superuser_group = Group.objects.get(name=superuser_groupname)
+        superuser_group_id = get_user_group_id(superuser)
+        superuser_group = Group.objects.get(name=superuser_group_id)
 
         # Get new_username user object if it exists
         new_username = request.POST.get("new_username", None)
@@ -384,14 +397,14 @@ def add_user_to_group(request):
             return JsonResponse({"error_message": error_message}, status=500)
 
         # If new_user already in a group then return error status code
-        if get_user_groupname(new_user) is not None:
+        if get_user_group_id(new_user) is not None:
             logger.error(f"User with username {new_username} already belongs to a group")
             error_message = f"L'utilisateur {new_username} appartient déjà à un groupe"
             return JsonResponse({"error_message": error_message}, status=500)
 
         # If new_user has no group then add it to superuser group
         else:
-            logger.info(f"Adding {new_username} to group {superuser_groupname}")
+            logger.info(f"Adding {new_username} to group {superuser_group_id}")
             new_user.groups.add(superuser_group)
             return HttpResponse(status=201)
     else:
@@ -408,8 +421,8 @@ def remove_user_from_group(request):
     if request.method == "POST":
         # Get superuser group object
         superuser = request.user
-        superuser_groupname = get_user_groupname(superuser)
-        superuser_group = Group.objects.get(name=superuser_groupname)
+        superuser_group_id = get_user_group_id(superuser)
+        superuser_group = Group.objects.get(name=superuser_group_id)
 
         # Get username_to_remove user object if it exists
         username_to_remove = request.POST.get("username_to_delete", None)
@@ -418,16 +431,38 @@ def remove_user_from_group(request):
         else:
             error_message = f"Le nom d'utilisateur {username_to_remove} n'a pas été trouvé"
             return JsonResponse({"error_message": error_message}, status=500)
-        
+
         # Send an error if a user tries to remove himself
         if request.user.username == username_to_remove:
             error_message = f"Vous ne pouvez pas vous supprimer du groupe"
             return JsonResponse({"error_message": error_message}, status=500)
 
-
         # Remove user_to_remove
-        logger.info(f"Removing {username_to_remove} from group {superuser_groupname}")
+        logger.info(f"Removing {username_to_remove} from group {superuser_group_id}")
         user_to_remove.groups.remove(superuser_group)
         return HttpResponse(status=201)
     else:
         raise Http404()
+
+
+def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dict[str, str]] | None:
+    """
+    Return chat history following OpenAI API format :
+    [
+        {"role": "user", "content": "message1"},
+        {"role": "assistant", "content": "message2"},
+        {"role": "user", "content": "message3"},
+        {...}
+    ]
+    If no history is found return None.
+    """
+    history = []
+    history_query = Chat.objects.filter(user=user, conversation_id=conversation_id)
+    for chat in history_query:
+        history.append({"role": "user", "content": chat.message})
+        history.append({"role": "assistant", "content": chat.response})
+    return None if len(history) == 0 else history
+
+
+def dashboard(request):
+    return redirect(f"http://{socket.gethostbyname(socket.gethostname())}:9090")
