@@ -5,15 +5,17 @@
 
 import os
 import re
-from typing import List
+from typing import List, Iterator, AsyncIterator
 
 import bs4
+import pandas as pd
 from langchain_community.document_loaders import PyMuPDFLoader, BSHTMLLoader, UnstructuredPowerPointLoader, \
     UnstructuredWordDocumentLoader, UnstructuredExcelLoader, WebBaseLoader, TextLoader
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from pathlib import Path
 
+from langchain_core.document_loaders import BaseLoader
 from langchain_core.documents import Document
 
 
@@ -96,9 +98,9 @@ def _parse_pptx(file: Path) -> List[Document]:
 
 
 def _parse_xslx(file: Path) -> List[Document]:
-    loader = UnstructuredExcelLoader(file.absolute().as_posix())
+    loader = CustomXLSXDocumentLoader(file.absolute().as_posix())
     data = loader.load()
-    # NB. return one document
+    # NB. return one document per line
     return data
 
 
@@ -141,3 +143,31 @@ def _clean_text(x):
     x = x.strip()
 
     return x
+
+
+class CustomXLSXDocumentLoader(BaseLoader):
+    """An example document loader that reads a file line by line."""
+
+    def __init__(self, file_path: str) -> None:
+        """Initialize the loader with a file path.
+
+        Args:
+            file_path: The path to the file to load.
+        """
+        self.file_path = file_path
+        df = pd.read_excel(self.file_path)
+        df = df.astype(str)
+        self.df = df
+
+    def lazy_load(self) -> Iterator[Document]:
+        """A lazy loader that reads a file line by line.
+        Returns a generator to yield documents one by one.
+        """
+        with open(self.file_path, encoding="utf-8") as f:
+            for index, row in self.df.iterrows():
+                row_d = row.to_dict()
+                line = " ".join(list(row_d.values()))
+                yield Document(
+                    page_content=line,
+                    metadata={"line_number": index, "source": self.file_path},
+                )
