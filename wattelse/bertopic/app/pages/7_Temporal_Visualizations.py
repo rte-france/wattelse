@@ -9,9 +9,8 @@ from typing import List
 import numpy as np
 from sklearn.manifold import TSNE
 import plotly.express as px
-from plotly_click_show import plotly_events
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
+# from langchain_openai import ChatOpenAI
+# from langchain_core.messages import HumanMessage, SystemMessage
 
 
 
@@ -57,7 +56,7 @@ import numpy as np
 import plotly.graph_objs as go
 
 
-chat = ChatOpenAI(model="gpt-3.5-turbo-1106", temperature=0, openai_api_key="")
+# chat = ChatOpenAI(model="gpt-3.5-turbo-1106", temperature=0, openai_api_key="")
 
 
 
@@ -280,44 +279,44 @@ if time_granularity != "":
         metric = st.selectbox("T-SNE Metric", ["cosine", "euclidean", "manhattan"])
         color_palette = st.selectbox("Color Palette", ["Plotly", "D3", "Alphabet"])
 
-        fig_topic_evolution, customdata_list = temptopic.plot_topic_evolution(granularity=time_granularity, perplexity=perplexity, color_palette=color_palette,topics_to_show=topics_to_show)
+        fig_topic_evolution = temptopic.plot_topic_evolution(granularity=time_granularity, perplexity=perplexity, color_palette=color_palette,topics_to_show=topics_to_show)
         st.plotly_chart(fig_topic_evolution, theme="streamlit", use_container_width=True)
 
 
-    with st.expander("Sélectionner un Topic et une Date"):
-        available_topics = temptopic.final_df['Topic'].unique()
-        selected_topic = st.selectbox("Sélectionnez un topic", available_topics)
-        topic_data = temptopic.final_df[temptopic.final_df['Topic'] == selected_topic]
-        available_dates = topic_data['Timestamp'].unique()
-        selected_date = st.selectbox("Sélectionnez une date", available_dates)
-        filtered_data = topic_data[topic_data['Timestamp'] == selected_date]
+    # with st.expander("Sélectionner un Topic et une Date"):
+    #     available_topics = temptopic.final_df['Topic'].unique()
+    #     selected_topic = st.selectbox("Sélectionnez un topic", available_topics)
+    #     topic_data = temptopic.final_df[temptopic.final_df['Topic'] == selected_topic]
+    #     available_dates = topic_data['Timestamp'].unique()
+    #     selected_date = st.selectbox("Sélectionnez une date", available_dates)
+    #     filtered_data = topic_data[topic_data['Timestamp'] == selected_date]
 
-        if not filtered_data.empty:
-            documents = filtered_data['Document'].tolist()
-            topic_name = filtered_data['Words'].iloc[0] 
-            st.header(f"Topic '{topic_name}' à la date {selected_date}")
+    #     if not filtered_data.empty:
+    #         documents = filtered_data['Document'].tolist()
+    #         topic_name = filtered_data['Words'].iloc[0] 
+    #         st.header(f"Topic '{topic_name}' à la date {selected_date}")
 
-            prompt = f"Voici le contenu du topic '{topic_name}' à la date {selected_date}:\n\n"
-            for i, document in enumerate(documents):
-                prompt += f"Document {i+1} : {document}\n"
-            prompt += "\nVeuillez fournir un titre et un résumé concis du contenu de ce topic."
+    #         prompt = f"Voici le contenu du topic '{topic_name}' à la date {selected_date}:\n\n"
+    #         for i, document in enumerate(documents):
+    #             prompt += f"Document {i+1} : {document}\n"
+    #         prompt += "\nVeuillez fournir un titre et un résumé concis du contenu de ce topic."
             
-            if st.button("Générer un résumé"):
-                with st.spinner("Création du résumé..."):
-                    messages = [
-                        SystemMessage(
-                            content="Vous êtes un assistant qui résume le contenu d'un topic."
-                        ),
-                        HumanMessage(
-                            content=prompt
-                        ),
-                    ]
+    #         if st.button("Générer un résumé"):
+    #             with st.spinner("Création du résumé..."):
+    #                 messages = [
+    #                     SystemMessage(
+    #                         content="Vous êtes un assistant qui résume le contenu d'un topic."
+    #                     ),
+    #                     HumanMessage(
+    #                         content=prompt
+    #                     ),
+    #                 ]
 
-                    summary = chat.invoke(messages)
+    #                 summary = chat.invoke(messages)
 
-                    st.write(summary.content)
-        else:
-            st.write("Aucun document trouvé pour le topic et la date sélectionnés.")
+    #                 st.write(summary.content)
+    #     else:
+    #         st.write("Aucun document trouvé pour le topic et la date sélectionnés.")
 
 
 
