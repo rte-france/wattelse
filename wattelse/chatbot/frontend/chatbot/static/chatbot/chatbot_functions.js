@@ -192,7 +192,15 @@ function isCompleteJSON(buffer) {
 
 
 async function postUserMessageToRAG(userMessage) {
+    // Get conversation id
     const conversationId = chatHistory.id;
+
+    // Create bot waiting div
+    const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
+    botDiv.classList.add("waiting-div");
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    // Fetch response
     const response = await fetch('query_rag/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -207,11 +215,6 @@ async function postUserMessageToRAG(userMessage) {
     let isFirstChunk = true; // Track for first chunk processing containing relevant extracts
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-
-    // Create bot waiting div
-    const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
-    botDiv.classList.add("waiting-div");
-    chatHistory.scrollTop = chatHistory.scrollHeight;
 
     let accumulatedData = "";
     let chunk;
