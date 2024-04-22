@@ -36,12 +36,28 @@
     <div class="main-navbar">
 
         <!-- WattElse title on the top-left -->
-        <a href="/" class="wattelse-title"><i class="fa-solid fa-bolt-lightning" style="color: var(--main-color);"></i>
-            WattElse</a>
+        <a href="/" class="wattelse-title">
+            <i class="fa-solid fa-bolt-lightning" style="color: var(--main-color);"></i>WattElse
+        </a>
 
+        <!-- If admin, add changing group form -->
+        {% if user.is_superuser %}
+            <form method="post" action="admin_change_group/">
+                {% csrf_token %}
+                <select name="new_group" onchange="this.form.submit()">
+                    {% for group in admin_group_selection %}
+                        {% if group == user_group %}
+                            <option selected="selected">{{ group }}</option>
+                        {% else %}
+                            <option>{{ group }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </form>
+        {% endif %}
         <!-- Buttons on the top-right -->
         <div class="top-right-tabs-list">
-            {% if user.username == 'admin' %}
+            {% if user.is_superuser %}
                 <a href="/dashboard" target="_blank" class="tabs"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
             {% endif %}
 

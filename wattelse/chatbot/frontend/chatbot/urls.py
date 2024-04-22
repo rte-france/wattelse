@@ -23,4 +23,5 @@ urlpatterns = [
     path('send_short_feedback/', feedback_views.manage_short_feedback, name="manage_short_feedback"),
     path('send_long_feedback/', feedback_views.manage_long_feedback, name="manage_long_feedback"),
     path('dashboard/', views.dashboard, name="dashboard"),
+	path('admin_change_group/', views.admin_change_group, name="admin_change_group"),
 ]

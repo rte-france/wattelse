@@ -66,6 +66,12 @@ def chatbot(request):
             pass  # admin may not be in the list depending on how users have been defined
     else:
         group_usernames_list = None
+
+    # Special case for admin
+    if request.user.is_superuser:
+        admin_group_selection = [group.name for group in Group.objects.filter()]
+    else:
+        admin_group_selection = None
     return render(
         request, "chatbot/chatbot.html",
         {
@@ -76,6 +82,7 @@ def chatbot(request):
             "can_manage_users": can_manage_users,
             "user_group": user_group_id,
             "group_usernames_list": group_usernames_list,
+            "admin_group_selection": admin_group_selection,
         }
     )
 
@@ -442,6 +449,20 @@ def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dic
         history.append({"role": "user", "content": chat.message})
         history.append({"role": "assistant", "content": chat.response})
     return None if len(history) == 0 else history
+
+def admin_change_group(request):
+    """Special function for admins to change group using web interface"""
+    if request.method == "POST":
+        print(request.POST)
+        if request.user.is_superuser:
+            request.user.groups.clear()
+            new_group = Group.objects.get(name=request.POST.get("new_group"))
+            request.user.groups.add(new_group)
+            return redirect("/")
+        else:
+            raise Http404()
+    else:
+        raise Http404()
 
 
 def dashboard(request):
