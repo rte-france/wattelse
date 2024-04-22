@@ -722,7 +722,7 @@ function handleTextFeedbackClick(event) {
   feedbackButton.classList.add('selected');
 
   // Implement your logic for opening a text feedback form or modal here
-  let feedback = prompt("Veuillez saisir la réponse attendue :", "");
+  let feedback = prompt("Veuillez saisir la réponse attendue. \nVotre réponse sera ajoutée à la FAQ du groupe.", "");
 
   // Search for related messages (bot and user)
   let previousElement =  feedbackButton.parentElement.previousSibling;

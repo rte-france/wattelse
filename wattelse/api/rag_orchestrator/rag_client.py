@@ -14,7 +14,7 @@ from loguru import logger
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, ENDPOINT_QUERY_RAG, \
     ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, \
-    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS
+    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD
 
 
 class RAGAPIError(Exception):
@@ -137,46 +137,22 @@ class RAGOrchestratorClient:
     def clear_sessions(self, group_id: str | None = None):
         """
         Remove the specific session backend from RAG_SESSIONS.
-        If no `session_id` is provided, remove all sessions backend.
+        If no `session_id` is provided, remove all sessions' backend.
         """
         response = requests.post(url=f"{self.url}{ENDPOINT_CLEAN_SESSIONS}/{group_id}")
         if response.status_code ==200:
-            logger.debug(f"Successfuly removed {group_id if group_id else 'ALL'} session(s)")
+            logger.debug(f"Successfully removed {group_id if group_id else 'ALL'} session(s)")
         else:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
-def main():
-    docs = [
-        "NMT - Avenant n°4 de révision à l'accord sur le temps de travail.pdf", "NMT - Accord télétravail.pdf"
-    ]
-
-    files = [Path(__file__).parent.parent.parent.parent / "data" / "chatbot" / "drh" / doc for doc in docs]
-
-    # create one client per user
-    rag_client = RAGOrchestratorClient("alice", "drh")
-
-    # upload data files
-    rag_client.upload_files(files)
-    rag_client.list_available_docs()
-
-    # select document selection
-    rag_client.select_documents_by_name([docs[1]])
-
-    # query rag based on selected document collection
-    rag_client.query_rag("Y'a une prime pour le télétravail?")
-
-    # create one client per user
-    rag_client2 = RAGOrchestratorClient("bob", "maintenance")
-    rag_client2.upload_files([files[0]])
-    rag_client2.query_rag("Y'a une prime pour le télétravail?")
-
-    # delete doc
-    rag_client2.remove_documents([docs[0]])
-
-    # current sessions
-    rag_client2.get_current_sessions()
-
-
-if __name__ == "__main__":
-    main()
+    def download_to_dir(self, group_id: str, file_name: str, target_path: Path):
+        """Downloads a collection file to the specified target path"""
+        response = requests.get(url=f"{self.url}{ENDPOINT_DOWNLOAD}/{group_id}/{file_name}")
+        if response.status_code ==200:
+            logger.debug(f"Successfully downloaded {file_name}")
+            with open(target_path, "wb") as f:
+                f.write(response.content)
+        else:
+            logger.error(f"Error: {response.status_code, response.text}")
+            raise RAGAPIError(f"Error: {response.status_code, response.text}")
