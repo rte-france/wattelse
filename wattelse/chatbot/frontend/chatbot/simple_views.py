@@ -8,7 +8,9 @@ import configparser
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from langchain.chains import LLMChain
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from loguru import logger
 
@@ -49,13 +51,15 @@ def basic_chat(request):
         logger.info(f"User: {request.user.username} - Query: {message}")
 
         # Query LLM
-        template = """Question: {question}
-
-        Réponse: Let's think step by step."""
+        template = """Veuillez répondre à la question suivante: {question}
+        """
         prompt = PromptTemplate.from_template(template)
+        chain = ({"question": RunnablePassthrough()}
+                 | prompt
+                 | llm
+                 | StrOutputParser())
         try:
-            llm_chain = LLMChain(prompt=prompt, llm=llm)
-            answer = llm_chain.run(message)
+            answer = chain.invoke([message])
             return JsonResponse({"message": message, "answer": answer}, status=200)
 
         except Exception as e:
