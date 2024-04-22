@@ -11,12 +11,12 @@ from loguru import logger
 from typing import List, Dict
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from starlette.responses import FileResponse, StreamingResponse
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, \
     ENDPOINT_QUERY_RAG, ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, \
-    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS
+    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
 SESSION_TIMEOUT = 30  # in minutes
@@ -123,7 +123,7 @@ def data_streamer(stream_data):
 
 
 @app.get(ENDPOINT_QUERY_RAG)
-async def query_rag(rag_query: RAGQuery) -> str:
+async def query_rag(rag_query: RAGQuery) -> StreamingResponse:
     """Query the RAG and returns the answer and associated sources"""
     logger.debug(f"Received query: {rag_query.message}")
     check_if_session_exists(rag_query.group_id)
@@ -158,6 +158,14 @@ def check_if_session_exists(group_id: str):
     if group_id not in RAG_SESSIONS:
         raise RAGOrchestratorAPIError(f"Session {group_id} does not exist, please reconnect")
 
+@app.get(ENDPOINT_DOWNLOAD + "/{group_id}/{file_name}")
+def download_file(group_id: str, file_name: str):
+    check_if_session_exists(group_id)
+    if file_name in RAG_SESSIONS[group_id].get_available_docs():
+        file_path = RAG_SESSIONS[group_id].get_file_path(file_name)
+        if file_path:
+            return FileResponse(file_path, media_type="application/octet-stream", filename=file_name)
+    raise HTTPException(status_code=404, detail=f"File: {file_name} not found.")
 
 # to run the API (reload each time the python is changed)
 # uvicorn rag_orchestrator_api:app --reload

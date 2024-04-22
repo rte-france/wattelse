@@ -8,7 +8,7 @@ import uuid
 import json
 import socket
 import tempfile
-from typing import Dict, Tuple, List
+from typing import Dict, List
 
 import mammoth
 from django.shortcuts import render, redirect
@@ -326,26 +326,6 @@ def logout(request):
     """Log a user out and redirect to login page"""
     auth.logout(request)
     return redirect("/login")
-
-
-def get_filename_parts(filename: str) -> Tuple[str, str]:
-    """
-  This function splits a filename into its prefix and suffix.
-
-  Args:
-      filename: The filename as a string.
-
-  Returns:
-      A tuple containing the prefix (without the dot) and the suffix (including the dot).
-  """
-    dot_index = filename.rfind(".")
-    if dot_index == -1:
-        prefix = filename
-        suffix = ""
-    else:
-        prefix = filename[:dot_index]
-        suffix = filename[dot_index:]
-    return prefix, suffix
 
 
 def get_user_group_id(user: User) -> str:

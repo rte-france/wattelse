@@ -7,6 +7,7 @@ import configparser
 import json
 import logging
 import os
+import typing
 from typing import List, Dict, BinaryIO
 
 from fastapi.responses import StreamingResponse
@@ -156,6 +157,14 @@ class RAGBackEnd:
         available_docs.sort()
         return available_docs
 
+    def get_file_path(self, file_name: str) -> str:
+        """Returns the contents of a file of the collection"""
+        file_path = DATA_DIR / self.document_collection.collection_name / file_name
+        if file_path.is_file():
+            return file_path
+        else:
+            return None
+
     def get_text_list(self, document_filter: Dict | None) -> List[str]:
         """Returns the list of texts in the collection, using the current document filter"""
         data = self.document_collection.collection.get(include=["documents"],
@@ -176,7 +185,8 @@ class RAGBackEnd:
         # TODO: to be implemented
         pass
 
-    def query_rag(self, message: str, history: List[dict[str, str]] = None, selected_files: List[str] = None, stream: bool = False) -> Dict | StreamingResponse:
+    def query_rag(self, message: str, history: List[dict[str, str]] = None,
+                  selected_files: List[str] = None, stream: bool = False) -> typing.Union[Dict,StreamingResponse]:
         """Query the RAG"""
         # Sanity check
         if self.document_collection is None:
