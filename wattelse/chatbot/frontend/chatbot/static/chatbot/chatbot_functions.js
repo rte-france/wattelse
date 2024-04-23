@@ -39,6 +39,9 @@ const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]')
 // separator used for streaming
 const SPECIAL_SEPARATOR = '¤¤¤¤¤';
 
+// messages
+const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte généré peut contenir des erreurs."
+
 // initialize layout
 initializeLayout();
 
@@ -159,7 +162,7 @@ function updateAvailableDocuments(){
 
 function handleUserMessage(userMessage) {
     if (getSelectedFileNames("available-list").length ===0){
-        createErrorMessage("Aucun document sélectionné.")
+        createWarningMessage("Aucun document sélectionné.")
         return
     }
     // Remove last feedback div
@@ -241,6 +244,9 @@ async function postUserMessageToRAG(userMessage) {
         dataChunks.forEach((json_chunk) => {
             if (isFirstChunk) {
                 updateRelevantExtracts(json_chunk.relevant_extracts);
+                if (json_chunk.relevant_extracts.length===0){
+                    createWarningMessage(NO_EXTRACT_MSG);
+                }
                 isFirstChunk = false;
             } else {
                 // Remove wainting div
@@ -315,6 +321,9 @@ function updateRelevantExtracts(relevantExtracts){
             const listItem = createExtract(extract.content, url, extract.metadata.file_name);
             extractList.appendChild(listItem);
         });
+    } else {
+         const listItem = createExtract("Aucun extrait trouvé !", "", "");
+         extractList.appendChild(listItem);
     }
 }
 
@@ -380,6 +389,14 @@ function createErrorMessage(message) {
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
+function createWarningMessage(message) {
+    const warningDiv = document.createElement('div');
+    warningDiv.classList.add('warning-message');
+    warningDiv.innerHTML = message;
+    chatHistory.appendChild(warningDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
+}
+
 function activateTab(tabName) {
   // Find the tab with the data-content attribute set to "extracts"
   const tabToBeActivated = Array.from(tabs).find(tab => tab.dataset.content === tabName);
@@ -399,8 +416,10 @@ function createExtract(text, sourceUrl, fileName) {
     link.classList.add('source-link'); // Optional styling class
 
     listItem.appendChild(paragraph);
-    listItem.appendChild(horizontalLine);
-    listItem.appendChild(link);
+    if (sourceUrl) {
+        listItem.appendChild(horizontalLine);
+        listItem.appendChild(link);
+    }
 
     return listItem;
 }

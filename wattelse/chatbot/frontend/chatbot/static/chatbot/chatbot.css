@@ -76,13 +76,18 @@
 
 .user-message,
 .bot-message,
-.error-message {
+.error-message,
+.warning-message{
     width: 98%;
     margin-bottom: 30px;
 }
 
 .error-message {
   color: red;
+}
+
+.warning-message {
+  color: var(--complementary-color);
 }
 
 .user-message::before { /* Add content before the message */
@@ -108,6 +113,15 @@
     margin-right: 1rem;
     color: red; /* Set icon color */
 }
+
+.warning-message::before { /* Add content before the message */
+    content: "\f071";
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color:  var(--complementary-color); /* Set icon color */
+}
+
 
 .chat-input {
     width: 100%;
