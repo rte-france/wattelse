@@ -290,10 +290,6 @@ class RAGBackEnd:
                                                 template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
                                         )])
 
-            history_as_text = ""
-            for turn in history:
-                history_as_text += f"{turn['role']}: {turn['content']}\n"
-            logger.debug(f'Contextualized prompt: {prompt.invoke({"query": message, "history": history})}')
             chain = (prompt
                      | self.llm
                      | StrOutputParser())
@@ -307,7 +303,6 @@ class RAGBackEnd:
             return contextualized_question
 
     def filter_history(self, history, window_size):
-        logger.debug(f"History: {history}")
         return history
 
     def get_detail_level(self, question: str):
