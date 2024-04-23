@@ -38,8 +38,7 @@ def create_topic_models(docs, embedding_model, embeddings, umap_model, hdbscan_m
         top_n_words=top_n_words,
         zeroshot_topic_list=zeroshot_topic_list,
         zeroshot_min_similarity=zeroshot_min_similarity
-    )
-    topics, probs = topic_model.fit_transform(docs, embeddings)
+    ).fit(docs, embeddings)
     return topic_model, docs
 
 
@@ -65,24 +64,6 @@ def detect_weak_signals(topic_models, zeroshot_topic_list):
     
     return weak_signal_trends
 
-
-# # Function to preprocess topic models
-# def preprocess_model(topic_model, docs):
-#     # Get topic information
-#     topic_info = topic_model.get_topic_info()
-#     # Get document information
-#     doc_info = topic_model.get_document_info(docs)
-#     # Group documents by topic
-#     doc_groups = doc_info.groupby('Topic')['Document'].apply(list)
-#     # Create a DataFrame with topic information and document groups
-#     topic_df = pd.DataFrame({
-#         'Topic': topic_info['Topic'],
-#         'Count': topic_info['Count'],
-#         'Representation': topic_info['Representation'],
-#         'Documents': doc_groups.reindex(topic_info['Topic']).tolist(),
-#         'Embedding': topic_model.topic_embeddings_.tolist()
-#     })
-#     return topic_df
 
 def preprocess_model(topic_model, docs, embeddings):
     # Get topic information
@@ -115,77 +96,55 @@ def preprocess_model(topic_model, docs, embeddings):
     return topic_df
 
 
-
 def merge_models(df1, df2, min_similarity, timestamp):
     merged_df = df1.copy()
     merge_history = []
-    new_topics = []  # List to store newly added topics
+    new_topics = []
 
-    for topic2, count2, representation2, documents2, embedding2, doc_embeddings2 in df2.itertuples(index=False):
-        if count2 == 1:
-            if not np.allclose(embedding2[:5], doc_embeddings2[0][:5], atol=1e-4):
-                logger.warning(f"Document embedding for Topic {topic2} is not equal to the first document embedding to the .4f level")
+    embeddings1 = np.stack(df1['Embedding'].values)
+    embeddings2 = np.stack(df2['Embedding'].values)
 
-        max_similarity = -1
-        max_similar_topic = None
+    similarities = cosine_similarity(embeddings1, embeddings2)
+    max_similarities = np.max(similarities, axis=0)
+    max_similar_topics = df1['Topic'].values[np.argmax(similarities, axis=0)]
 
-        for _, row1 in df1.iterrows():
-            embedding1 = row1['Embedding']
-            similarity = cosine_similarity([embedding1], [embedding2])[0][0]
+    new_topics_mask = max_similarities < min_similarity
+    new_topics_data = df2[new_topics_mask].copy()
+    new_topics_data['Topic'] = np.arange(merged_df['Topic'].max() + 1, merged_df['Topic'].max() + 1 + len(new_topics_data))
+    new_topics_data['Timestamp'] = timestamp
 
-            if similarity > max_similarity:
-                max_similarity = similarity
-                max_similar_topic = row1['Topic']
+    merged_df = pd.concat([merged_df, new_topics_data], ignore_index=True)
+    new_topics = new_topics_data.copy()
 
-        if max_similarity < min_similarity:
-            # Add a new entry to the merged dataframe
-            new_topic = merged_df['Topic'].max() + 1 if not merged_df.empty else 0
-            new_entry = pd.DataFrame({
-                'Timestamp': [timestamp],
-                'Topic': [new_topic],
-                'Count': [count2],
-                'Representation': [representation2],
-                'Documents': [documents2],
-                'Embedding': [embedding2],
-                'DocEmbeddings': [doc_embeddings2]
-            })
-            merged_df = pd.concat([merged_df, new_entry], ignore_index=True)
-            new_topics.append(new_entry)  # Add the new topic to the list of newly added topics
-        else:
-            # Merge with the most similar topic from df1
-            similar_row = merged_df[merged_df['Topic'] == max_similar_topic].iloc[0]
-            count1 = similar_row['Count']
-            documents1 = similar_row['Documents']
-            doc_embeddings1 = similar_row['DocEmbeddings']
+    merge_topics_mask = ~new_topics_mask
+    for topic2, count2, representation2, documents2, embedding2, doc_embeddings2 in df2[merge_topics_mask].itertuples(index=False):
+        max_similar_topic = max_similar_topics[topic2]
+        similar_row = merged_df[merged_df['Topic'] == max_similar_topic].iloc[0]
+        count1 = similar_row['Count']
+        documents1 = similar_row['Documents']
 
-            merged_count = count1 + count2
-            merged_documents = documents1 + documents2
-            merged_doc_embeddings = doc_embeddings1 + doc_embeddings2
+        merged_count = count1 + count2
+        merged_documents = documents1 + documents2
 
-            # Calculate the new embedding as the mean of all document embeddings
-            merged_embedding = np.mean(merged_doc_embeddings, axis=0)
+        index = merged_df[merged_df['Topic'] == max_similar_topic].index[0]
+        merged_df.at[index, 'Count'] = merged_count
+        merged_df.at[index, 'Documents'] = merged_documents
+        merged_df.at[index, 'Embedding'] = similar_row['Embedding']
 
-            index = merged_df[merged_df['Topic'] == max_similar_topic].index[0]
-            merged_df.at[index, 'Count'] = merged_count
-            merged_df.at[index, 'Documents'] = merged_documents
-            merged_df.at[index, 'Embedding'] = merged_embedding.tolist()
-            merged_df.at[index, 'DocEmbeddings'] = merged_doc_embeddings
+        merge_history.append({
+            'Timestamp': timestamp,
+            'Topic1': max_similar_topic,
+            'Topic2': topic2,
+            'Representation1': similar_row['Representation'],
+            'Representation2': representation2,
+            'Embedding1': similar_row['Embedding'],
+            'Embedding2': embedding2,
+            'Similarity': max_similarities[topic2],
+            'Count1': count1,
+            'Count2': count2
+        })
 
-            # Log the merge history with the 'Timestamp' column
-            merge_history.append({
-                'Timestamp': timestamp,
-                'Topic1': max_similar_topic,
-                'Topic2': topic2,
-                'Representation1': similar_row['Representation'],
-                'Representation2': representation2,
-                'Embedding1': similar_row['Embedding'],
-                'Embedding2': embedding2,
-                'Similarity': max_similarity,
-                'Count1': count1,
-                'Count2': count2
-            })
-
-    return merged_df, pd.DataFrame(merge_history), pd.concat(new_topics, ignore_index=True) if new_topics else pd.DataFrame()
+    return merged_df, pd.DataFrame(merge_history), new_topics
 
 
 
@@ -197,20 +156,23 @@ def transform_dataframe(df):
     timestamps = transformed_df['Timestamp'].unique()
     timestamp_index_map = {timestamp: index for index, timestamp in enumerate(timestamps)}
     transformed_df['Timestamp_Index'] = transformed_df['Timestamp'].map(timestamp_index_map)
-    
+
     # Group by Topic1 and collect the list of timestamp indices where each Topic1 value appears
     topic1_timestamp_indices = transformed_df.groupby('Topic1')['Timestamp_Index'].apply(list).to_dict()
-    
+
     # Initialize variables to store the source, destination, representation, timestamp, and count values
     src_values = []
     dest_values = []
     representation_values = []
     timestamp_values = []
     count_values = []
-    
+
     # Initialize a dictionary to store the mapping of (topic1, timestamp_index) to the new destination topic
     topic1_dest_map = {}
-    
+
+    # Initialize a dictionary to store the mapping of (topic1, timestamp_index) to the merged count
+    topic1_count_map = {}
+
     # Group by Timestamp and process each row
     for timestamp, group in transformed_df.groupby('Timestamp'):
         for _, row in group.iterrows():
@@ -229,6 +191,10 @@ def transform_dataframe(df):
             # Check if (topic1, timestamp_index) has a destination topic in the topic1_dest_map
             if (topic1, timestamp_index) in topic1_dest_map:
                 dest_topic = topic1_dest_map[(topic1, timestamp_index)]
+                
+                # Update the merged count for the destination topic
+                topic1_count_map[(topic1, timestamp_index)] += count2
+                count_merged = topic1_count_map[(topic1, timestamp_index)]
             else:
                 # Find the next timestamp index where Topic1 appears
                 topic1_future_timestamp_indices = [idx for idx in topic1_timestamp_indices[topic1] if idx > timestamp_index]
@@ -242,14 +208,18 @@ def transform_dataframe(df):
                 
                 # Store the mapping of (topic1, timestamp_index) to the new destination topic
                 topic1_dest_map[(topic1, timestamp_index)] = dest_topic
+                
+                # Initialize the merged count for the destination topic
+                topic1_count_map[(topic1, timestamp_index)] = count1 + count2
+                count_merged = topic1_count_map[(topic1, timestamp_index)]
             
             # Append the source, destination, representation, timestamp, and count values to the respective lists
             src_values.extend([src_topic1, src_topic2])
             dest_values.extend([dest_topic, dest_topic])
             representation_values.extend([representation1, representation2])
             timestamp_values.extend([timestamp, timestamp])
-            count_values.extend([count1, count2])
-    
+            count_values.extend([count1, count_merged])
+
     # Create a new dataframe with the source, destination, representation, timestamp, and count values
     transformed_df_new = pd.DataFrame({
         'Source': src_values,
@@ -258,14 +228,17 @@ def transform_dataframe(df):
         'Timestamp': timestamp_values,
         'Count': count_values
     })
-    
+
     # Convert lists to tuples in the 'Representation' column
     transformed_df_new['Representation'] = transformed_df_new['Representation'].apply(lambda x: tuple(x) if isinstance(x, list) else x)
-    
-    # Drop duplicate rows based on all columns
-    transformed_df_new = transformed_df_new.drop_duplicates()
-    
+
+    # Group by Timestamp, Source, and Destination, and keep the row with the smallest Count value for each group
+    transformed_df_new = transformed_df_new.loc[transformed_df_new.groupby(['Timestamp', 'Source', 'Destination'])['Count'].idxmin()]
+
     return transformed_df_new
+
+
+
 
 def create_sankey_diagram(all_merge_histories_df, search_term=None, max_pairs=None):
     # Filter the dataframe based on the search term if provided
@@ -307,7 +280,7 @@ def create_sankey_diagram(all_merge_histories_df, search_term=None, max_pairs=No
         target_topic_id = target_node.split('_')[-1]
         
         # Generate label for source node
-        source_label = ', '.join(representation.split(', ')[:5])
+        source_label = ', '.join(representation.split(', ')[:10])
         
         # Add source node if not already present
         if source_node not in [node['name'] for node in nodes]:
@@ -375,7 +348,9 @@ def create_sankey_diagram(all_merge_histories_df, search_term=None, max_pairs=No
     return fig
 
 
-def preprocess_text(text):
+
+
+def preprocess_french_text(text):
     # Replace hyphens and similar characters with spaces
     text = re.sub(r'\b(-|/|;|:)', ' ', text)
 
@@ -400,14 +375,14 @@ def preprocess_text(text):
 
 # Sidebar menu for BERTopic hyperparameters
 st.sidebar.header("BERTopic Hyperparameters")
-language = st.sidebar.selectbox("Select Language", ["English", "French"], key='language')
+language = st.sidebar.selectbox("Select Language", ["French", "English"], key='language')
 
 if language == "English":
     stopwords = stopwords.words("english")
     embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-MiniLM-L12-v2", "all-mpnet-base-v2"], key='embedding_model_name')
 elif language == "French" : 
-    stopwords = stopwords.words("french") + STOP_WORDS_RTE
-    embedding_model_name = st.sidebar.selectbox("Embedding Model", ["antoinelouis/biencoder-distilcamembert-mmarcoFR", "dangvantuan/sentence-camembert-large"], key='embedding_model_name')
+    stopwords = stopwords.words("english") + stopwords.words("french") + STOP_WORDS_RTE
+    embedding_model_name = st.sidebar.selectbox("Embedding Model", [ "dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
 
 
 with st.sidebar.expander("UMAP Hyperparameters", expanded=True):
@@ -416,14 +391,14 @@ with st.sidebar.expander("UMAP Hyperparameters", expanded=True):
 with st.sidebar.expander("HDBSCAN Hyperparameters", expanded=True):
     hdbscan_min_cluster_size = st.number_input("HDBSCAN min_cluster_size", value=2, min_value=2, max_value=100, key='hdbscan_min_cluster_size')
     hdbscan_min_samples = st.number_input("HDBSCAN min_sample", value=1, min_value=1, max_value=100, key='hdbscan_min_samples')
-    hdbscan_cluster_selection_method = st.selectbox("Cluster Selection Method", ["eom", "leaf"], key='hdbscan_cluster_selection_method')
+    hdbscan_cluster_selection_method = st.selectbox("Cluster Selection Method", ["leaf", "eom"], key='hdbscan_cluster_selection_method')
 with st.sidebar.expander("Vectorizer Hyperparameters", expanded=True):
     top_n_words = st.number_input("Top N Words", value=10, min_value=1, max_value=50, key='top_n_words')
     min_df = st.number_input("min_df", value=1, min_value=1, max_value=50, key='min_df')
 with st.sidebar.expander("Merging Hyperparameters", expanded=True):
-    min_similarity = st.slider("Minimum Similarity for Merging", 0.0, 1.0, 0.9, 0.01, key='min_similarity')
+    min_similarity = st.slider("Minimum Similarity for Merging", 0.0, 1.0, 0.7, 0.01, key='min_similarity')
 with st.sidebar.expander("Zero-shot Parameters", expanded=True):
-    zeroshot_min_similarity = st.slider("Zeroshot Minimum Similarity", 0.0, 1.0, 0.45, 0.01, key='zeroshot_min_similarity')
+    zeroshot_min_similarity = st.slider("Zeroshot Minimum Similarity", 0.0, 1.0, 0.3, 0.01, key='zeroshot_min_similarity')
 
 # Load data
 cwd = os.getcwd()
@@ -452,11 +427,22 @@ def load_data(selected_file):
     return df
 
 @st.cache_data
-def preprocess_data(df, language):
+def preprocess_french_data(df, language):
     if language == "French":
-        df['text'] = df['text'].apply(preprocess_text)
+        df['text'] = df['text'].apply(preprocess_french_text)
     return df
 
+def group_by_days(df, day_granularity=1):
+    # Ensure the 'timestamp' column is in datetime format
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    
+    # Group by the specified number of days
+    grouped = df.groupby(pd.Grouper(key='timestamp', freq=f'{day_granularity}D'))
+    
+    # Create a dictionary where each key is the timestamp group and the value is the corresponding dataframe
+    dict_of_dfs = {name: group for name, group in grouped}
+    
+    return dict_of_dfs
 
 
 
@@ -465,10 +451,10 @@ st.session_state['raw_df'] = load_data(selected_file)
 df = st.session_state['raw_df']
 
 # Preprocess the data if the language is French
-df = preprocess_data(df, language)
+df = preprocess_french_data(df, language)
 
 # Add a toggle button to split text by paragraphs
-split_by_paragraph = st.checkbox("Split text by paragraphs", value=False, key="split_by_paragraph")
+split_by_paragraph = st.checkbox("Split text by paragraphs", value=True, key="split_by_paragraph")
 
 # Split by paragraphs if selected
 if split_by_paragraph:
@@ -483,16 +469,11 @@ if split_by_paragraph:
 
 
 # Minimum characters input
-min_chars = st.number_input("Minimum Characters", value=0, min_value=0, max_value=1000, key='min_chars')
+min_chars = st.number_input("Minimum Characters", value=200, min_value=0, max_value=1000, key='min_chars')
 if min_chars > 0: df = df[df['text'].str.len() >= min_chars]
 
 # Remove rows with empty text
-df = df[df['text'].str.strip() != '']
-
-
-# Reset the index of the DataFrame
-df.reset_index(drop=True, inplace=True)
-
+df = df[df['text'].str.strip() != ''].reset_index(drop=True)
 
 # Select timeframe
 min_date = df['timestamp'].min().date()
@@ -500,8 +481,7 @@ max_date = df['timestamp'].max().date()
 start_date, end_date = st.slider("Select Timeframe", min_value=min_date, max_value=max_date, value=(min_date, max_date), key='timeframe_slider')
 
 # Filter the DataFrame based on the selected timeframe
-df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)]
-
+df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)].sort_values(by='timestamp').reset_index(drop=True)
 
 
 
@@ -509,7 +489,7 @@ st.session_state['timefiltered_df'] = df_filtered
 st.write(f"Number of documents in selected timeframe: {len(st.session_state['timefiltered_df'])}")
 
 # Zero-shot topic definition
-zeroshot_topic_list = st.text_input("Enter zero-shot topics (separated by /)", value="Viruses, diseases, pandemics outbreaks, WHO, Health.")
+zeroshot_topic_list = st.text_input("Enter zero-shot topics (separated by /)", value="Pannes / Nucélaire / Marches écologistes, Manifestations")
 zeroshot_topic_list = [topic.strip() for topic in zeroshot_topic_list.split("/")]
 
 # Embed documents
@@ -530,21 +510,17 @@ if 'timefiltered_df' in st.session_state and len(st.session_state.timefiltered_d
     st.session_state['timefiltered_df']['text'] = st.session_state['timefiltered_df']['text'].astype(str)
 
     # Select granularity
-    granularity = st.selectbox("Select Granularity", ["Day", "Week", "Month"], key='granularity_selectbox')
+    granularity = st.number_input("Select Granularity", value=7, min_value=1, max_value=30, key='granularity_select')
 
     # Show documents per grouped timestamp
     with st.expander("Documents per Timestamp", expanded=True):
-        if granularity == "Day":
-            resampled_data = st.session_state['timefiltered_df'].resample('D', on='timestamp')
-        elif granularity == "Week":
-            resampled_data = st.session_state['timefiltered_df'].resample('W-MON', on='timestamp')  # Group by week starting on Monday
-        else:  # Month
-            resampled_data = st.session_state['timefiltered_df'].resample('MS', on='timestamp')  # Group by month starting on the first day
+        
+        grouped_data = group_by_days(df, day_granularity=granularity)
 
-        non_empty_timestamps = [timestamp for timestamp, group in resampled_data if not group.empty]
+        non_empty_timestamps = [timestamp for timestamp, group in grouped_data.items() if not group.empty]
         if len(non_empty_timestamps) > 0:
             selected_timestamp = st.select_slider("Select Timestamp", options=non_empty_timestamps, key='timestamp_slider')
-            selected_docs = resampled_data.get_group(selected_timestamp)
+            selected_docs = grouped_data[selected_timestamp]
             st.dataframe(selected_docs[['timestamp', 'text']], use_container_width=True)
         else:
             st.warning("No data available for the selected granularity.")
@@ -555,23 +531,27 @@ if 'timefiltered_df' in st.session_state and len(st.session_state.timefiltered_d
         progress_bar = st.progress(0)
         progress_text = st.empty()
 
+        # Set up BERTopic components
+        umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, random_state=42, metric="cosine", verbose=False)
+        hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean', cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
+        vectorizer_model = CountVectorizer(stop_words=stopwords, min_df=min_df, ngram_range=(1, 2))
+        mmr_model = MaximalMarginalRelevance(diversity=0.3)
+
+
         # Create topic models based on selected granularity
         topic_models = {}
         doc_groups = {}
         emb_groups = {}
-        non_empty_groups = [(period, group) for period, group in resampled_data if not group.empty]
+        non_empty_groups = [(period, group) for period, group in grouped_data.items() if not group.empty]
         for i, (period, group) in enumerate(non_empty_groups):
             docs = group['text'].tolist()
             embeddings_subset = st.session_state.embeddings[group.index]
-            umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, random_state=42, metric="cosine", verbose=False)
-            hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean', cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
-            vectorizer_model = CountVectorizer(stop_words=stopwords, min_df=min_df, ngram_range=(1, 2))
-            mmr_model = MaximalMarginalRelevance(diversity=0.3)
-
+            
             topic_model, docs = create_topic_models(docs, st.session_state.embedding_model, embeddings_subset, umap_model, hdbscan_model, vectorizer_model, mmr_model, top_n_words, zeroshot_topic_list, zeroshot_min_similarity)
             topic_models[period] = topic_model
             doc_groups[period] = docs
             emb_groups[period] = embeddings_subset
+
             # Update progress bar
             progress = (i + 1) / len(non_empty_groups)
             progress_bar.progress(progress)
@@ -620,7 +600,6 @@ if 'topic_models' in st.session_state:
     # Display weak signal trend
     weak_signal_trends = detect_weak_signals(topic_models, zeroshot_topic_list)
 
-
     with st.expander("Zero-shot Weak Signal Trends", expanded=True):
         # Define the Max Popularity and History values
         max_popularity = st.number_input("Max Popularity", min_value=0, max_value=1000, value=50)
@@ -663,12 +642,21 @@ if 'topic_models' in st.session_state:
             # Create a scatter plot trace for each topic with the cumulative count and hover text
             fig_trend.add_trace(go.Scatter(x=sorted(weak_signal_trend.keys()), y=cumulative_count, mode='lines+markers', name=topic, hovertext=hovertext, hoverinfo='text'))
 
+        # Collect all timestamps from weak_signal_trends
+        all_timestamps = set()
+        for weak_signal_trend in weak_signal_trends.values():
+            all_timestamps.update(weak_signal_trend.keys())
+
+        # Find the oldest and newest timestamps
+        oldest_timestamp = min(all_timestamps)
+        newest_timestamp = max(all_timestamps)
+
         # Add a horizontal line for the Max Popularity threshold
-        fig_trend.add_shape(type="line", x0=min(weak_signal_trend.keys()), y0=max_popularity, x1=max(weak_signal_trend.keys()), y1=max_popularity, line=dict(color="green", width=2, dash="dash"))
+        fig_trend.add_shape(type="line", x0=oldest_timestamp, y0=max_popularity, x1=newest_timestamp, y1=max_popularity, line=dict(color="green", width=2, dash="dash"))
 
         # Add a horizontal line at 0 to indicate the noise level
-        fig_trend.add_shape(type="line", x0=min(weak_signal_trend.keys()), y0=0, x1=max(weak_signal_trend.keys()), y1=0, line=dict(color="red", width=2, dash="dash"))
-
+        fig_trend.add_shape(type="line", x0=oldest_timestamp, y0=0, x1=newest_timestamp, y1=0, line=dict(color="red", width=2, dash="dash"))
+        
         # Update the plot layout with title and axis labels
         fig_trend.update_layout(title="Cumulative Frequency of Weak Signals with Degradation", xaxis_title="Timestamp", yaxis_title="Cumulative Frequency")
 
@@ -694,40 +682,48 @@ if 'topic_models' in st.session_state:
     # Merge models button
     if st.button("Merge Models"):
         with st.spinner("Merging models..."):
+
             # Preprocess topic models
             topic_dfs = {}
-            for period in st.session_state.topic_models.keys():
+            for period, topic_model in st.session_state.topic_models.items():
                 docs = st.session_state.doc_groups[period]
                 embeddings = st.session_state.emb_groups[period]
-                topic_model = st.session_state.topic_models[period]
                 topic_dfs[period] = preprocess_model(topic_model, docs, embeddings)
 
             # Merge models
             timestamps = sorted(topic_dfs.keys())  # Sort timestamps in ascending order
-            merged_df = topic_dfs[timestamps[0]]  # Initialize merged_df with the first entry
-            merged_docs = st.session_state.doc_groups[timestamps[0]]
-            merged_dfs = {timestamps[0]: merged_df}  # Store merged dataframes at each timestep
+            merged_df_without_outliers = None
             all_merge_histories = []  # Store all merge histories
             all_new_topics = []  # Store all newly added topics
             
             progress_bar = st.progress(0)
             
-            for i in range(1, len(timestamps)):
-                timestamp = timestamps[i]
-                topic_df = topic_dfs[timestamp]
-                
-                # Remove rows with "Topic" equal to -1 (outlier topic) from both dataframes
-                merged_df_without_outliers = merged_df[merged_df['Topic'] != -1]
-                topic_df_without_outliers = topic_df[topic_df['Topic'] != -1]
-                
-                prev_df = merged_df_without_outliers.copy()
-                merged_df_without_outliers, merge_history, new_topics = merge_models(merged_df_without_outliers, topic_df_without_outliers, min_similarity=min_similarity, timestamp=timestamp)
-                
-                # Update merged_docs to include only the documents corresponding to the topics in merged_df_without_outliers
-                merged_docs = [doc for doc, topic in zip(merged_docs, merged_df['Topic']) if topic != -1]
-                merged_docs.extend([doc for doc, topic in zip(st.session_state.doc_groups[timestamp], topic_df['Topic']) if topic != -1])
-                
-                merged_dfs[timestamp] = merged_df_without_outliers  # Store the merged dataframe at each timestep
+            for i in range(len(timestamps) - 1):
+
+                current_timestamp = timestamps[i]
+                next_timestamp = timestamps[i+1]
+
+                df1 = topic_dfs[current_timestamp]
+                df1 = df1[df1['Topic'] != -1]
+
+                df2 = topic_dfs[next_timestamp]
+                df2 = df2[df2['Topic'] != -1]
+
+                if merged_df_without_outliers is None:
+                    merged_df_without_outliers, merge_history, new_topics = merge_models(df1, 
+                                                                                         df2, 
+                                                                                         min_similarity=min_similarity, 
+                                                                                         timestamp=current_timestamp)
+                    
+                    st.write("First merging process")
+
+                else:
+                    merged_df_without_outliers, merge_history, new_topics = merge_models(merged_df_without_outliers, 
+                                                                                         df2, 
+                                                                                         min_similarity=min_similarity, 
+                                                                                         timestamp=current_timestamp)
+
+                                
                 all_merge_histories.append(merge_history)  # Store the merge history at each timestep
                 all_new_topics.append(new_topics)  # Store the newly added topics at each timestep
                 
@@ -745,67 +741,67 @@ if 'topic_models' in st.session_state:
             st.session_state.merged_df = merged_df_without_outliers
             st.session_state.all_merge_histories_df = all_merge_histories_df
             st.session_state.all_new_topics_df = all_new_topics_df
-        
+
         st.success("Model merging complete!")
         
     # Display merged_df
     if "all_merge_histories_df" in st.session_state:
-        # Display topic evolution plot
-        fig = go.Figure()
+        if not st.session_state.all_merge_histories_df.empty:
+            # Display topic evolution plot
+            fig = go.Figure()
 
-        # Create a dictionary to store the cumulative sum of topic sizes
-        topic_sizes = {}
+            # Create a dictionary to store the cumulative sum of topic sizes
+            topic_sizes = {}
 
-        # Iterate over each row in the all_merge_histories_df dataframe
-        for _, row in st.session_state.all_merge_histories_df.iterrows():
-            topic1 = row['Topic1']
-            timestamp = row['Timestamp']
-            count1 = row['Count1']
+            # Iterate over each row in the all_merge_histories_df dataframe
+            for _, row in st.session_state.all_merge_histories_df.iterrows():
+                topic1 = row['Topic1']
+                timestamp = row['Timestamp']
+                count1 = row['Count1']
+                
+                if topic1 not in topic_sizes:
+                    topic_sizes[topic1] = {'Timestamp': [timestamp], 'Size': [count1]}
+                else:
+                    topic_sizes[topic1]['Timestamp'].append(timestamp)
+                    topic_sizes[topic1]['Size'].append(topic_sizes[topic1]['Size'][-1] + count1)
             
-            if topic1 not in topic_sizes:
-                topic_sizes[topic1] = {'Timestamp': [timestamp], 'Size': [count1]}
-            else:
-                topic_sizes[topic1]['Timestamp'].append(timestamp)
-                topic_sizes[topic1]['Size'].append(topic_sizes[topic1]['Size'][-1] + count1)
-        
-        # Add traces for each topic
-        for topic, data in topic_sizes.items():
-            fig.add_trace(go.Scatter(
-                x=data['Timestamp'],
-                y=data['Size'],
-                mode='lines+markers',
-                name=f'Topic {topic}',
-                hovertemplate='Topic: %{text}<br>Size: %{y}<br>Timestamp: %{x}<extra></extra>',
-                text=[st.session_state.all_merge_histories_df[(st.session_state.all_merge_histories_df['Topic1'] == topic) & (st.session_state.all_merge_histories_df['Timestamp'] == ts)]['Representation1'].values[0] if i == 0 else st.session_state.all_merge_histories_df[(st.session_state.all_merge_histories_df['Topic1'] == topic) & (st.session_state.all_merge_histories_df['Timestamp'] == ts)]['Representation2'].values[0] for i, ts in enumerate(data['Timestamp'])]
-            ))
-        
-        # Update the layout
-        fig.update_layout(
-            title='Topic Size Evolution',
-            xaxis_title='Timestamp',
-            yaxis_title='Topic Size',
-            hovermode='x',
-            legend_title='Topics'
-        )
-        
-        # Display the figure
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Call the transform_dataframe function with your dataframe
-        transformed_df = transform_dataframe(st.session_state.all_merge_histories_df)
+            # Add traces for each topic
+            for topic, data in topic_sizes.items():
+                fig.add_trace(go.Scatter(
+                    x=data['Timestamp'],
+                    y=data['Size'],
+                    mode='lines+markers',
+                    name=f'Topic {topic}',
+                    hovertemplate='Topic: %{text}<br>Size: %{y}<br>Timestamp: %{x}<extra></extra>',
+                    text=[st.session_state.all_merge_histories_df[(st.session_state.all_merge_histories_df['Topic1'] == topic) & (st.session_state.all_merge_histories_df['Timestamp'] == ts)]['Representation1'].values[0] if i == 0 else st.session_state.all_merge_histories_df[(st.session_state.all_merge_histories_df['Topic1'] == topic) & (st.session_state.all_merge_histories_df['Timestamp'] == ts)]['Representation2'].values[0] for i, ts in enumerate(data['Timestamp'])]
+                ))
+            
+            # Update the layout
+            fig.update_layout(
+                title='Topic Size Evolution',
+                xaxis_title='Timestamp',
+                yaxis_title='Topic Size',
+                hovermode='x',
+                legend_title='Topics'
+            )
+            
+            # Display the figure
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Call the transform_dataframe function with your dataframe
+            transformed_df = transform_dataframe(st.session_state.all_merge_histories_df)
 
-        # st.dataframe(st.session_state.all_merge_histories_df, use_container_width=True)
-        # st.dataframe(transformed_df, use_container_width=True)
+            # Create search box and slider using Streamlit
+            search_term = st.text_input("Search topics by keyword:")
+            max_pairs = st.slider("Max number of topic pairs to display", min_value=1, max_value=1000, value=50)
 
-        # Create search box and slider using Streamlit
-        search_term = st.text_input("Search topics by keyword:")
-        max_pairs = st.slider("Max number of topic pairs to display", min_value=1, max_value=1000, value=50)
+            # Create the Sankey Diagram
+            sankey_diagram = create_sankey_diagram(transformed_df, search_term, max_pairs)
 
-        # Create the Sankey Diagram
-        sankey_diagram = create_sankey_diagram(transformed_df, search_term, max_pairs)
+            # Display the diagram using Streamlit
+            st.plotly_chart(sankey_diagram, use_container_width=True)
 
-        # Display the diagram using Streamlit
-        st.plotly_chart(sankey_diagram, use_container_width=True)
+        
 
         # New scatter plot for newly emerged topics
         fig_new_topics = go.Figure()
@@ -842,9 +838,12 @@ if 'topic_models' in st.session_state:
 
         # Display the plot using Streamlit
         st.plotly_chart(fig_new_topics, use_container_width=True)
-                    
+
+        
+        # st.dataframe(st.session_state.merged_df[['Topic', 'Count', 'Representation', 'Documents']].sort_values(by='Topic', ascending=True))
+
+                                
         
         
-# st.session_state.all_merge_histories_df = pd.read_json('all_merge_histories_df.json')
 
 
