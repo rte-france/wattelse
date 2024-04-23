@@ -39,6 +39,7 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 class RAGError(Exception):
     pass
 
+
 def get_chat_model(llm_api_name) -> BaseChatModel:
     llm_config_file = LLM_CONFIGS.get(llm_api_name, None)
     if llm_config_file is None:
@@ -186,12 +187,12 @@ class RAGBackEnd:
         pass
 
     def query_rag(self, message: str, history: List[dict[str, str]] = None,
-                  selected_files: List[str] = None, stream: bool = False) -> typing.Union[Dict,StreamingResponse]:
+                  selected_files: List[str] = None, stream: bool = False) -> typing.Union[Dict, StreamingResponse]:
         """Query the RAG"""
         # Sanity check
         if self.document_collection is None:
             raise RAGError("No active document collection!")
-        
+
         # Get document filter
         document_filter = self.get_document_filter(selected_files)
 
@@ -268,7 +269,8 @@ class RAGBackEnd:
             # Return answer and sources
             return {"answer": answer, "relevant_extracts": relevant_extracts}
 
-    def contextualize_question(self, message: str, history: List[dict[str, str]] = None) -> str:
+    def contextualize_question(self, message: str, history: List[dict[str, str]] = None,
+                               interaction_window: int = 3) -> str:
         """
         If self.remember_recent_messages is False or no message in history:
             Return last user query
@@ -278,6 +280,8 @@ class RAGBackEnd:
         if not self.remember_recent_messages or history is None:
             return message
         else:
+            history = self.filter_history(history, interaction_window)
+
             logger.debug("Contextualizing prompt with history...")
             prompt = ChatPromptTemplate(input_variables=["history", "query"],
                                         messages=[HumanMessagePromptTemplate(
@@ -286,19 +290,25 @@ class RAGBackEnd:
                                                 template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
                                         )])
 
-            chain = ({"query": RunnablePassthrough(), "history": RunnablePassthrough()}
-                    | prompt
-                    | self.llm
-                    | StrOutputParser())
-            
+            history_as_text = ""
+            for turn in history:
+                history_as_text += f"{turn['role']}: {turn['content']}\n"
+            logger.debug(f'Contextualized prompt: {prompt.invoke({"query": message, "history": history})}')
+            chain = (prompt
+                     | self.llm
+                     | StrOutputParser())
+
             # Format messages into a single string
             history_as_text = ""
             for turn in history:
                 history_as_text += f"{turn['role']}: {turn['content']}\n"
-            contextualized_question = chain.invoke([history_as_text, message])
+            contextualized_question = chain.invoke({"query": message, "history": history})
             logger.debug(f"Contextualized question: {contextualized_question}")
             return contextualized_question
 
+    def filter_history(self, history, window_size):
+        logger.debug(f"History: {history}")
+        return history
 
     def get_detail_level(self, question: str):
         """Returns the level of detail we wish in the answer. Values are in this range: {"courte", "détaillée"}"""
