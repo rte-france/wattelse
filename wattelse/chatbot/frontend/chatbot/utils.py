@@ -1,0 +1,162 @@
+import uuid
+import tempfile
+import pandas as pd
+
+from pathlib import Path
+from typing import List, Dict
+from loguru import logger
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User, Group
+from django.http import HttpResponse, Http404, JsonResponse
+
+from .models import Chat
+
+from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError 
+
+# RAG API
+RAG_API = RAGOrchestratorClient()
+
+# Separator to split json object from streaming chunks
+SPECIAL_SEPARATOR = "¤¤¤¤¤"
+
+# Feedback identifiers in the database
+GREAT = "great"
+OK = "ok"
+MISSING = "missing_info"
+WRONG = "wrong"
+
+# Long feedback FAQ file
+FAQ_FILE_PATTERN = "_FAQ.xlsx"
+
+def get_user_group_id(user: User) -> str:
+    """
+    Given a user, return the id of the group it belongs to.
+    If user doesn't belong to a group, return None.
+
+    A user should belong to only 1 group.
+    If it belongs to more than 1 group, return the first group.
+    """
+    group_list = user.groups.all()
+    logger.info(f"Group list for user {user.get_username()} : {group_list}")
+    if len(group_list) == 0:
+        return None
+    else:
+        return group_list[0].name
+
+def get_group_usernames_list(group_id: str) -> List[str]:
+    """
+    Return the list of users username belonging to the group.
+    """
+    group = Group.objects.get(name=group_id)
+    users_list = User.objects.filter(groups=group)
+    usernames_list = [user.username for user in users_list]
+    return usernames_list
+
+def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dict[str, str]] | None:
+    """
+    Return chat history following OpenAI API format :
+    [
+        {"role": "user", "content": "message1"},
+        {"role": "assistant", "content": "message2"},
+        {"role": "user", "content": "message3"},
+        {...}
+    ]
+    If no history is found return None.
+    """
+    history = []
+    history_query = Chat.objects.filter(user=user, conversation_id=conversation_id)
+    for chat in history_query:
+        history.append({"role": "user", "content": chat.message})
+        history.append({"role": "assistant", "content": chat.response})
+    return None if len(history) == 0 else history
+
+def new_user_created(request, username=None):
+    """
+    Webpage rendered when a new user is created.
+    It warns the user that no group is associated yet and need to contact an administrator.
+    """
+    if username is None:
+        return redirect("/login")
+    else:
+        return render(request, "chatbot/new_user_created.html", {"username": username})
+
+def streaming_generator(data_stream):
+    """Generator to decode the chunks received from RAGOrchestratorClient"""
+    with data_stream as r:
+        for chunk in r.iter_content(chunk_size=None):
+            # Add delimiter `\n` at the end because if streaming is too fast,
+            # frontend can receive multiple chunks in one pass, so we need to split them.
+            yield chunk.decode("utf-8") + SPECIAL_SEPARATOR
+
+def insert_feedback(request, short: bool):
+    """
+    Function that collects feedback sent from the user interface about the last
+    interaction (matching between the user question and the bot answer).
+    """
+    if request.method == "POST":
+        # Get user info
+        user = request.user
+
+        # Get feedback info from the request
+        feedback = request.POST.get("feedback", None)
+        if short:
+            feedback = to_short_feedback(feedback)
+        user_message = request.POST.get("user_message", None)
+        bot_message = request.POST.get("bot_message", None)
+
+        # Try to find the matching Chat object based on user, message, and response
+        try:
+            chat_message = (Chat.objects.filter(user=user, message=user_message, response=bot_message)
+                            .order_by('-timestamp').first()) # in case multiple chat messages match, take the newest
+            if short:
+                chat_message.short_feedback = feedback
+            else:
+                if feedback:
+                    chat_message.long_feedback = feedback
+                    update_FAQ(chat_message)
+            chat_message.save()
+            return HttpResponse(status=200)
+        except Chat.DoesNotExist:
+            # Handle case where message not found (log error, display message, etc.)
+            error_message = f"Chat message not found for user: {user}, message: {user_message}, response: {bot_message}"
+            return JsonResponse({"error_message": error_message}, status=500)
+    else:
+        raise Http404()
+
+def update_FAQ(chat_message: Chat):
+    """Update a FAQ file with the long feedback"""
+    # Retrieve current FAQ file if it exists
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Construct the full path for the downloaded file within the temporary directory
+        temp_file_path = Path(temp_dir) / FAQ_FILE_PATTERN
+
+        try:
+            RAG_API.download_to_dir(chat_message.group_id, FAQ_FILE_PATTERN, temp_file_path)
+            df = pd.read_excel(temp_file_path)
+        except RAGAPIError:
+            # No file available, create new one
+            df = pd.DataFrame(columns=["question", "answer"])
+
+        # Update the feedback data and file
+        df.loc[len(df)] =  {"question": chat_message.message, "answer": chat_message.long_feedback}
+        df.to_excel(temp_file_path, index=False)
+
+        # Uploads the file and updates its embeddings in the collection
+        RAG_API.remove_documents(chat_message.group_id, [FAQ_FILE_PATTERN])
+        RAG_API.upload_files(chat_message.group_id, [temp_file_path])
+
+def to_short_feedback(feedback: str) -> str:
+    """
+    Function that converts the identifiers of the short feedback sent from the user interface into
+    another identifier stored in the database.
+    """
+    if feedback == "rating-great":
+        return GREAT
+    if feedback == "rating-ok":
+        return OK
+    if feedback == "rating-missing":
+        return MISSING
+    if feedback == "rating-wrong":
+        return WRONG
+    return feedback

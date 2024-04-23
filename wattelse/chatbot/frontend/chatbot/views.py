@@ -8,7 +8,6 @@ import uuid
 import json
 import socket
 import tempfile
-from typing import Dict, List
 
 import mammoth
 from django.shortcuts import render, redirect
@@ -21,16 +20,21 @@ from pathlib import Path
 
 from xlsx2html import xlsx2html
 
-from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
+from wattelse.api.rag_orchestrator.rag_client import RAGAPIError
 from wattelse.chatbot.backend import DATA_DIR
 from .models import Chat
 
-# RAG API
-RAG_API = RAGOrchestratorClient()
-SPECIAL_SEPARATOR = "¤¤¤¤¤"
+from .utils import (
+	get_user_group_id,
+	get_group_usernames_list,
+	new_user_created,
+    get_conversation_history,
+    streaming_generator,
+    insert_feedback,
+    RAG_API,
+)
 
-
-def chatbot(request):
+def main_page(request):
     """
     Main function for chatbot interface.
     Render chatbot.html webpage with associated context.
@@ -86,14 +90,66 @@ def chatbot(request):
         }
     )
 
+def login(request):
+    """Main function for login page.
+    If request method is GET : render login.html
+    If request method is POST : log the user in and redirect to chatbot.html
+    """
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        user = auth.authenticate(request, username=username, password=password)
+        # If user exists: check group, login and redirect to chatbot
+        if user is not None:
+            # If user doesn't belong to a group, return error
+            user_group_id = get_user_group_id(user)
+            if user_group_id is None:
+                error_message = "Vous n'appartenez à aucun groupe."
+                return render(request, "chatbot/login.html", {"error_message": error_message})
+            else:
+                auth.login(request, user)
+                RAG_API.create_session(user_group_id)
+                return redirect("/")
+        # Else return error
+        else:
+            error_message = "Nom d'utilisateur ou mot de passe invalides"
+            return render(request, "chatbot/login.html", {"error_message": error_message})
+    else:
+        return render(request, "chatbot/login.html")
 
-def streaming_generator(data_stream):
-    """Generator to decode the chunks received from RAGOrchestratorClient"""
-    with data_stream as r:
-        for chunk in r.iter_content(chunk_size=None):
-            # Add delimiter `\n` at the end because if streaming is too fast,
-            # frontend can receive multiple chunks in one pass, so we need to split them.
-            yield chunk.decode("utf-8") + SPECIAL_SEPARATOR
+def register(request):
+    """Main function for register page.
+    If request method is GET : render register.html
+    If request method is POST : create a new user and print an new_user_created webpage
+    """
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password1 = request.POST.get("password1")
+        password2 = request.POST.get("password2")
+
+        # Check username is not already taken
+        if User.objects.filter(username=username).exists():
+            error_message = "Nom d'utilisateur indisponible"
+            return render(request, "chatbot/register.html", {"error_message": error_message})
+
+        # Check both password are the same
+        if password1 == password2:
+            try:
+                user = User.objects.create_user(username, password=password1)
+                user.save()
+                return new_user_created(request, username=user.username)
+            except:
+                error_message = "Erreur lors de la  création du compte"
+                return render(request, "chatbot/register.html", {"error_message": error_message})
+        else:
+            error_message = "Mots de passe non identiques"
+            return render(request, "chatbot/register.html", {"error_message": error_message})
+    return render(request, "chatbot/register.html")
+
+def logout(request):
+    """Log a user out and redirect to login page"""
+    auth.logout(request)
+    return redirect("/login")
 
 def query_rag(request):
     """
@@ -148,7 +204,6 @@ def query_rag(request):
     else:
         raise Http404()
 
-
 def save_interaction(request):
     """Function called to save query and response in DB once response streaming is finished."""
     if request.method == "POST":
@@ -164,63 +219,21 @@ def save_interaction(request):
         return HttpResponse(status=200)
     else:
         raise Http404()
-
-
-def file_viewer(request, file_name: str):
+    
+def manage_short_feedback(request):
     """
-    Main function to render a PDF file. The url to access this function should be :
-    file_viewer/file_name.pdf
-    It will render the file if the user belongs to the right group and if the file format is supported
+    Function that collects short feedback sent from the user interface about the last
+    interaction (matching between the user question and the bot answer).
     """
-    # TODO: manage more file type
-    # FIXME: to be rethought in case of distributed deployment (here we suppose RAG backend and Django on the same server...)
-    file_path = DATA_DIR / get_user_group_id(request.user) / file_name
-    if file_path.exists():
-        suffix = file_path.suffix.lower()
-        if suffix == ".pdf":
-            content_type = 'application/pdf'
-            with open(file_path, 'rb') as f:
-                response = HttpResponse(f.read(), content_type=content_type)
-                response['Content-Disposition'] = f'inline; filename="{file_path.name}"'
-                return response
-        elif suffix == ".docx":
-            with open(file_path, "rb") as docx_file:
-                result = mammoth.convert_to_html(docx_file)
-                html = result.value  # The generated HTML
-                return HttpResponse(html)
-        elif suffix == ".xlsx":
-            xlsx_file = open(file_path, 'rb')
-            out_file = io.StringIO()
-            xlsx2html(xlsx_file, out_file, locale='en')
-            out_file.seek(0)
-            return HttpResponse(out_file.read())
-
-    else:
-        raise Http404()
+    return insert_feedback(request, short=True)
 
 
-def delete(request):
-    """Main function for delete interface.
-    If request method is POST : make a call to RAGOrchestratorClient to delete the specified documents
+def manage_long_feedback(request):
     """
-    if request.method == "POST":
-        # Select documents for removal
-        selected_docs = request.POST.get("selected_docs", None)
-        logger.debug(f"Docs selected for removal: {selected_docs}")
-        if not selected_docs:
-            logger.warning("No docs selected for removal received, action ignored")
-            return JsonResponse({"warning_message": "No document removed"}, status=202)
-        else:
-            user_group_id = get_user_group_id(request.user)
-            try:
-                rag_response = RAG_API.remove_documents(user_group_id, json.loads(selected_docs))
-            except RAGAPIError as e:
-                logger.error(f"Error in deleting documents {selected_docs}: {e}")
-                return JsonResponse({"error_message": f"Erreur pour supprimer les documents {selected_docs}"},
-                                    status=500)
-            # Returns the list of updated available documents
-            return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
-
+    Function that collects long feedback sent from the user interface about the last
+    interaction (matching between the user question and the bot answer).
+    """
+    return insert_feedback(request, short=False)
 
 def upload(request):
     """Main function for delete interface.
@@ -259,107 +272,58 @@ def upload(request):
             # Returns the list of updated available documents
             return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
 
-
-def login(request):
-    """Main function for login page.
-    If request method is GET : render login.html
-    If request method is POST : log the user in and redirect to chatbot.html
+def delete(request):
+    """Main function for delete interface.
+    If request method is POST : make a call to RAGOrchestratorClient to delete the specified documents
     """
     if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        user = auth.authenticate(request, username=username, password=password)
-        # If user exists: check group, login and redirect to chatbot
-        if user is not None:
-            # If user doesn't belong to a group, return error
-            user_group_id = get_user_group_id(user)
-            if user_group_id is None:
-                error_message = "Vous n'appartenez à aucun groupe."
-                return render(request, "chatbot/login.html", {"error_message": error_message})
-            else:
-                auth.login(request, user)
-                RAG_API.create_session(user_group_id)
-                return redirect("/")
-        # Else return error
+        # Select documents for removal
+        selected_docs = request.POST.get("selected_docs", None)
+        logger.debug(f"Docs selected for removal: {selected_docs}")
+        if not selected_docs:
+            logger.warning("No docs selected for removal received, action ignored")
+            return JsonResponse({"warning_message": "No document removed"}, status=202)
         else:
-            error_message = "Nom d'utilisateur ou mot de passe invalides"
-            return render(request, "chatbot/login.html", {"error_message": error_message})
-    else:
-        return render(request, "chatbot/login.html")
-
-
-def register(request):
-    """Main function for register page.
-    If request method is GET : render register.html
-    If request method is POST : create a new user and print an new_user_created webpage
-    """
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password1 = request.POST.get("password1")
-        password2 = request.POST.get("password2")
-
-        # Check username is not already taken
-        if User.objects.filter(username=username).exists():
-            error_message = "Nom d'utilisateur indisponible"
-            return render(request, "chatbot/register.html", {"error_message": error_message})
-
-        # Check both password are the same
-        if password1 == password2:
+            user_group_id = get_user_group_id(request.user)
             try:
-                user = User.objects.create_user(username, password=password1)
-                user.save()
-                return new_user_created(request, username=user.username)
-            except:
-                error_message = "Erreur lors de la  création du compte"
-                return render(request, "chatbot/register.html", {"error_message": error_message})
-        else:
-            error_message = "Mots de passe non identiques"
-            return render(request, "chatbot/register.html", {"error_message": error_message})
-    return render(request, "chatbot/register.html")
-
-
-def new_user_created(request, username=None):
+                rag_response = RAG_API.remove_documents(user_group_id, json.loads(selected_docs))
+            except RAGAPIError as e:
+                logger.error(f"Error in deleting documents {selected_docs}: {e}")
+                return JsonResponse({"error_message": f"Erreur pour supprimer les documents {selected_docs}"},
+                                    status=500)
+            # Returns the list of updated available documents
+            return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
+        
+def file_viewer(request, file_name: str):
     """
-    Webpage rendered when a new user is created.
-    It warns the user that no group is associated yet and need to contact an administrator.
+    Main function to render a file. The url to access this function should be :
+    file_viewer/file_name.suffix
+    It will render the file if the user belongs to the right group and if the file format is supported.
     """
-    if username is None:
-        return redirect("/login")
+    # TODO: manage more file type
+    # FIXME: to be rethought in case of distributed deployment (here we suppose RAG backend and Django on the same server...)
+    file_path = DATA_DIR / get_user_group_id(request.user) / file_name
+    if file_path.exists():
+        suffix = file_path.suffix.lower()
+        if suffix == ".pdf":
+            content_type = 'application/pdf'
+            with open(file_path, 'rb') as f:
+                response = HttpResponse(f.read(), content_type=content_type)
+                response['Content-Disposition'] = f'inline; filename="{file_path.name}"'
+                return response
+        elif suffix == ".docx":
+            with open(file_path, "rb") as docx_file:
+                result = mammoth.convert_to_html(docx_file)
+                html = result.value  # The generated HTML
+                return HttpResponse(html)
+        elif suffix == ".xlsx":
+            xlsx_file = open(file_path, 'rb')
+            out_file = io.StringIO()
+            xlsx2html(xlsx_file, out_file, locale='en')
+            out_file.seek(0)
+            return HttpResponse(out_file.read())
     else:
-        return render(request, "chatbot/new_user_created.html", {"username": username})
-
-
-def logout(request):
-    """Log a user out and redirect to login page"""
-    auth.logout(request)
-    return redirect("/login")
-
-
-def get_user_group_id(user: User) -> str:
-    """
-    Given a user, return the id of the group it belongs to.
-    If user doesn't belong to a group, return None.
-
-    A user should belong to only 1 group.
-    If it belongs to more than 1 group, return the first group.
-    """
-    group_list = user.groups.all()
-    logger.info(f"Group list for user {user.get_username()} : {group_list}")
-    if len(group_list) == 0:
-        return None
-    else:
-        return group_list[0].name
-
-
-def get_group_usernames_list(group_id: str) -> List[str]:
-    """
-    Return the list of users username belonging to the group.
-    """
-    group = Group.objects.get(name=group_id)
-    users_list = User.objects.filter(groups=group)
-    usernames_list = [user.username for user in users_list]
-    return usernames_list
-
+        raise Http404()
 
 def add_user_to_group(request):
     """
@@ -397,7 +361,6 @@ def add_user_to_group(request):
     else:
         raise Http404()
 
-
 def remove_user_from_group(request):
     """
     Function to remove a user from a group.
@@ -430,25 +393,6 @@ def remove_user_from_group(request):
         return HttpResponse(status=201)
     else:
         raise Http404()
-
-
-def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dict[str, str]] | None:
-    """
-    Return chat history following OpenAI API format :
-    [
-        {"role": "user", "content": "message1"},
-        {"role": "assistant", "content": "message2"},
-        {"role": "user", "content": "message3"},
-        {...}
-    ]
-    If no history is found return None.
-    """
-    history = []
-    history_query = Chat.objects.filter(user=user, conversation_id=conversation_id)
-    for chat in history_query:
-        history.append({"role": "user", "content": chat.message})
-        history.append({"role": "assistant", "content": chat.response})
-    return None if len(history) == 0 else history
 
 def admin_change_group(request):
     """Special function for admins to change group using web interface"""
