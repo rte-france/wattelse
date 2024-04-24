@@ -19,10 +19,22 @@ import plotly.graph_objects as go
 import os
 import glob
 import re
+import json
 
 
+# Working directory
+cwd = os.getcwd()+'/Weak-Signals-Investigations/'
 
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
+
+
+# Define the path to your JSON file
+stopwords_fr_file = cwd+'stopwords-fr.json'
+
+# Read the JSON data from the file and directly assign it to the list
+with open(stopwords_fr_file, 'r', encoding='utf-8') as file:
+    FRENCH_STOPWORDS = json.load(file)
+
 
 # Set page title
 st.set_page_config(page_title="BERTopic Topic Detection", layout="wide")
@@ -381,7 +393,7 @@ if language == "English":
     stopwords = stopwords.words("english")
     embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-MiniLM-L12-v2", "all-mpnet-base-v2"], key='embedding_model_name')
 elif language == "French" : 
-    stopwords = stopwords.words("english") + stopwords.words("french") + STOP_WORDS_RTE
+    stopwords = stopwords.words("english") + FRENCH_STOPWORDS + STOP_WORDS_RTE
     embedding_model_name = st.sidebar.selectbox("Embedding Model", [ "dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
 
 
@@ -394,18 +406,19 @@ with st.sidebar.expander("HDBSCAN Hyperparameters", expanded=True):
     hdbscan_cluster_selection_method = st.selectbox("Cluster Selection Method", ["leaf", "eom"], key='hdbscan_cluster_selection_method')
 with st.sidebar.expander("Vectorizer Hyperparameters", expanded=True):
     top_n_words = st.number_input("Top N Words", value=10, min_value=1, max_value=50, key='top_n_words')
+    vectorizer_ngram_range = st.selectbox("N-Gram range", [(1,2), (1,1), (2,2)], key='vectorizer_ngram_range')
     min_df = st.number_input("min_df", value=1, min_value=1, max_value=50, key='min_df')
 with st.sidebar.expander("Merging Hyperparameters", expanded=True):
     min_similarity = st.slider("Minimum Similarity for Merging", 0.0, 1.0, 0.7, 0.01, key='min_similarity')
 with st.sidebar.expander("Zero-shot Parameters", expanded=True):
     zeroshot_min_similarity = st.slider("Zeroshot Minimum Similarity", 0.0, 1.0, 0.3, 0.01, key='zeroshot_min_similarity')
 
-# Load data
-cwd = os.getcwd()
-csv_files = glob.glob(os.path.join(cwd, '*.csv'))
-parquet_files = glob.glob(os.path.join(cwd, '*.parquet'))
-json_files = glob.glob(os.path.join(cwd, '*.json'))
-jsonl_files = glob.glob(os.path.join(cwd, '*.jsonl'))
+
+cwd_data = cwd+'/data/'
+csv_files = glob.glob(os.path.join(cwd_data, '*.csv'))
+parquet_files = glob.glob(os.path.join(cwd_data, '*.parquet'))
+json_files = glob.glob(os.path.join(cwd_data, '*.json'))
+jsonl_files = glob.glob(os.path.join(cwd_data, '*.jsonl'))
 
 file_list = [(os.path.basename(f), os.path.splitext(f)[-1][1:]) for f in csv_files + parquet_files + json_files + jsonl_files]
 
@@ -416,13 +429,13 @@ def load_data(selected_file):
 
     # Load the data based on the file extension
     if file_ext == 'csv':
-        df = pd.read_csv(os.path.join(cwd, file_name))
+        df = pd.read_csv(os.path.join(cwd_data, file_name))
     elif file_ext == 'parquet':
-        df = pd.read_parquet(os.path.join(cwd, file_name))
+        df = pd.read_parquet(os.path.join(cwd_data, file_name))
     elif file_ext == 'json':
-        df = pd.read_json(os.path.join(cwd, file_name))
+        df = pd.read_json(os.path.join(cwd_data, file_name))
     elif file_ext == 'jsonl':
-        df = pd.read_json(os.path.join(cwd, file_name), lines=True)
+        df = pd.read_json(os.path.join(cwd_data, file_name), lines=True)
 
     return df
 
@@ -534,7 +547,7 @@ if 'timefiltered_df' in st.session_state and len(st.session_state.timefiltered_d
         # Set up BERTopic components
         umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, random_state=42, metric="cosine", verbose=False)
         hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean', cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
-        vectorizer_model = CountVectorizer(stop_words=stopwords, min_df=min_df, ngram_range=(1, 2))
+        vectorizer_model = CountVectorizer(stop_words=stopwords, min_df=min_df, ngram_range=vectorizer_ngram_range)
         mmr_model = MaximalMarginalRelevance(diversity=0.3)
 
 
