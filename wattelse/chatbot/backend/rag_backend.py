@@ -87,6 +87,11 @@ def preprocess_streaming_data(streaming_data):
             yield json.dumps(chunk)
 
 
+def filter_history(history, window_size):
+    # window size = question + answser, we return the last ones
+    return history[-2*window_size:]
+
+
 class RAGBackEnd:
     def __init__(self, group: str):
         logger.debug(f"Initialization of chatbot backend for group {group}")
@@ -280,7 +285,7 @@ class RAGBackEnd:
         if not self.remember_recent_messages or history is None:
             return message
         else:
-            history = self.filter_history(history, interaction_window)
+            history = filter_history(history, interaction_window)
 
             logger.debug("Contextualizing prompt with history...")
             prompt = ChatPromptTemplate(input_variables=["history", "query"],
@@ -301,9 +306,6 @@ class RAGBackEnd:
             contextualized_question = chain.invoke({"query": message, "history": history})
             logger.debug(f"Contextualized question: {contextualized_question}")
             return contextualized_question
-
-    def filter_history(self, history, window_size):
-        return history
 
     def get_detail_level(self, question: str):
         """Returns the level of detail we wish in the answer. Values are in this range: {"courte", "détaillée"}"""
