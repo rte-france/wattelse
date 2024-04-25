@@ -4,8 +4,7 @@ import plotly.graph_objects as go
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance
 from sentence_transformers import SentenceTransformer
-from umap import UMAP
-from hdbscan import HDBSCAN
+from bertopic.vectorizers import ClassTfidfTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.corpus import stopwords
 from tqdm import tqdm
@@ -26,12 +25,40 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel
 from sklearn.preprocessing import MinMaxScaler
 
+from umap import UMAP
+from hdbscan import HDBSCAN
+from joblib import Parallel, delayed
 
+# from cuml.cluster import HDBSCAN
+# from cuml.manifold import UMAP
 
 # Working directory
 cwd = os.getcwd()+'/Weak-Signals-Investigations/'
 
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
+COMMON_NGRAMS = [
+    "éléctricité",
+    "RTE",
+    "France",
+    "électrique",
+    "projet",
+    "année",
+    "transport électricité",
+    "réseau électrique",
+    "gestionnaire réseau",
+    "réseau transport",
+    "production électricité",
+    "milliards euros",
+    "euros",
+    "2022",
+    "2023",
+    "2024",
+    "électricité RTE",
+    "Réseau transport",
+    "RTE gestionnaire",
+    "électricité France",
+    "système électrique"
+]
 
 
 # Define the path to your JSON file
@@ -52,6 +79,7 @@ def create_topic_models(docs, embedding_model, embeddings, umap_model, hdbscan_m
         umap_model=umap_model,
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
+        ctfidf_model=ClassTfidfTransformer(reduce_frequent_words=True, bm25_weighting=True),
         representation_model=mmr_model,
         top_n_words=top_n_words,
         zeroshot_topic_list=zeroshot_topic_list,
@@ -185,7 +213,9 @@ def merge_models(df1, df2, min_similarity, timestamp):
             'Embedding2': embedding2,
             'Similarity': max_similarities[topic2],
             'Count1': count1,
-            'Count2': count2
+            'Count2': count2,
+            'Documents1': documents1,
+            'Documents2': documents2,
         })
 
     return merged_df, pd.DataFrame(merge_history), new_topics
@@ -476,16 +506,16 @@ if language == "English":
     stopwords_list = stopwords.words("english")
     embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-MiniLM-L12-v2", "all-mpnet-base-v2"], key='embedding_model_name')
 elif language == "French" : 
-    stopwords_list = stopwords.words("english") + FRENCH_STOPWORDS + STOP_WORDS_RTE
+    stopwords_list = stopwords.words("english") + FRENCH_STOPWORDS + STOP_WORDS_RTE + COMMON_NGRAMS
     embedding_model_name = st.sidebar.selectbox("Embedding Model", [ "dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
 
 
 with st.sidebar.expander("UMAP Hyperparameters", expanded=True):
     umap_n_components = st.number_input("UMAP n_components", value=5, min_value=2, max_value=100, key='umap_n_components')
-    umap_n_neighbors = st.number_input("UMAP n_neighbors", value=15, min_value=2, max_value=100, key='umap_n_neighbors')
+    umap_n_neighbors = st.number_input("UMAP n_neighbors", value=5, min_value=2, max_value=100, key='umap_n_neighbors')
 with st.sidebar.expander("HDBSCAN Hyperparameters", expanded=True):
-    hdbscan_min_cluster_size = st.number_input("HDBSCAN min_cluster_size", value=2, min_value=2, max_value=100, key='hdbscan_min_cluster_size')
-    hdbscan_min_samples = st.number_input("HDBSCAN min_sample", value=1, min_value=1, max_value=100, key='hdbscan_min_samples')
+    hdbscan_min_cluster_size = st.number_input("HDBSCAN min_cluster_size", value=5, min_value=2, max_value=100, key='hdbscan_min_cluster_size')
+    hdbscan_min_samples = st.number_input("HDBSCAN min_sample", value=2, min_value=1, max_value=100, key='hdbscan_min_samples')
     hdbscan_cluster_selection_method = st.selectbox("Cluster Selection Method", ["leaf", "eom"], key='hdbscan_cluster_selection_method')
 with st.sidebar.expander("Vectorizer Hyperparameters", expanded=True):
     top_n_words = st.number_input("Top N Words", value=10, min_value=1, max_value=50, key='top_n_words')
@@ -576,8 +606,9 @@ min_date = df['timestamp'].min().date()
 max_date = df['timestamp'].max().date()
 start_date, end_date = st.slider("Select Timeframe", min_value=min_date, max_value=max_date, value=(min_date, max_date), key='timeframe_slider')
 
-# Filter the DataFrame based on the selected timeframe
-df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)].sort_values(by='timestamp').reset_index(drop=True)
+# Filter the DataFrame based on the selected timeframe and deduplicate the split documents
+df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)].drop_duplicates(subset='text', keep='first')
+df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
 
 
 
@@ -628,8 +659,9 @@ if 'timefiltered_df' in st.session_state and len(st.session_state.timefiltered_d
         progress_text = st.empty()
 
         # Set up BERTopic components
-        umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, random_state=42, metric="cosine", verbose=False)
-        hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean', cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
+        umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, random_state=42, metric="cosine")
+        hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean',
+                                 cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
         vectorizer_model = CountVectorizer(stop_words=stopwords_list, min_df=min_df, ngram_range=vectorizer_ngram_range)
         mmr_model = MaximalMarginalRelevance(diversity=0.3)
 
@@ -811,19 +843,21 @@ if 'topic_models' in st.session_state:
                 df2 = df2[df2['Topic'] != -1]
 
                 if merged_df_without_outliers is None:
-                    merged_df_without_outliers, merge_history, new_topics = merge_models(df1, 
-                                                                                         df2, 
-                                                                                         min_similarity=min_similarity, 
-                                                                                         timestamp=current_timestamp)
+                    if not (df1.empty or df2.empty):
+                        merged_df_without_outliers, merge_history, new_topics = merge_models(df1, 
+                                                                                            df2, 
+                                                                                            min_similarity=min_similarity, 
+                                                                                            timestamp=current_timestamp)
                     
                     st.write("First merging process")
 
-                else:
+                elif not df2.empty:
                     merged_df_without_outliers, merge_history, new_topics = merge_models(merged_df_without_outliers, 
                                                                                          df2, 
                                                                                          min_similarity=min_similarity, 
                                                                                          timestamp=current_timestamp)
-
+                else:
+                    continue
                                 
                 all_merge_histories.append(merge_history)  # Store the merge history at each timestep
                 all_new_topics.append(new_topics)  # Store the newly added topics at each timestep
@@ -847,64 +881,65 @@ if 'topic_models' in st.session_state:
         
     st.write("Merging process")
     if "all_merge_histories_df" in st.session_state and not st.session_state.all_merge_histories_df.empty:
-        # Display topic evolution plot with history and max popularity
         with st.expander("Topic Size Evolution", expanded=True):
             fig = go.Figure()
-
-            # Create a dictionary to store the cumulative sum of topic sizes
+            st.dataframe(st.session_state.all_merge_histories_df[['Timestamp', 'Topic1', 'Topic2', 'Representation1', 'Representation2', 'Count1', 'Count2', 'Documents1', 'Documents2']])
+            
             topic_sizes = {}
+            max_popularity = st.number_input("Max Popularity", min_value=0, max_value=1000, value=10, key='topic_size_max_popularity')
+            history = st.number_input("History (in days)", min_value=1, max_value=100, value=30, key='topic_size_history')
+            granularity_timedelta = pd.Timedelta(days=granularity)
 
-            # Define the Max Popularity and History values
-            max_popularity = st.number_input("Max Popularity", min_value=0, max_value=1000, value=5, key='topic_size_max_popularity')
-            history = st.number_input("History (in days)", min_value=1, max_value=100, value=7, key='topic_size_history')
-
-            # Iterate over each row in the all_merge_histories_df dataframe
-            for _, row in st.session_state.all_merge_histories_df.iterrows():
-                topic1 = row['Topic1']
+            for index, row in st.session_state.all_merge_histories_df.sort_values('Timestamp').iterrows():
+                current_topic = row['Topic1']
                 timestamp = row['Timestamp']
                 count1 = row['Count1']
-                
-                if topic1 not in topic_sizes:
-                    topic_sizes[topic1] = {'Timestamp': [timestamp], 'Popularity': [count1]}
+                count2 = row['Count2']
+                representation1 = row['Representation1']
+
+                if current_topic not in topic_sizes:
+                    topic_sizes[current_topic] = {
+                        'Timestamp': [timestamp, timestamp + granularity_timedelta],
+                        'Popularity': [count1, count1 + count2],
+                        'Updates': 1,  # Initialize updates count
+                        'Representation': str(current_topic) + '_' + '_'.join(representation1[:5])
+                    }
                 else:
-                    last_update_timestamp = topic_sizes[topic1]['Timestamp'][-1]
-                    days_since_last_update = (timestamp - last_update_timestamp).days
+                    topic_sizes[current_topic]['Popularity'].append(topic_sizes[current_topic]['Popularity'][-1] + count2)
+                    topic_sizes[current_topic]['Timestamp'].append(timestamp + granularity_timedelta)
+                    topic_sizes[current_topic]['Updates'] += 1
 
-                    # Apply degradation if no update on the current timestamp
-                    if days_since_last_update > 0:
-                        degradation_factor = days_since_last_update / history
-                        topic_sizes[topic1]['Popularity'][-1] -= topic_sizes[topic1]['Popularity'][-1] * degradation_factor
+                for topic, data in topic_sizes.items():
+                    if topic != current_topic:
+                        last_known_timestamp = data['Timestamp'][-1]
+                        if last_known_timestamp < timestamp:
+                            days_since_last_update = (timestamp - last_known_timestamp).days
+                            current_popularity = data['Popularity'][-1]
+                            for day in range(1, days_since_last_update + 1):
+                                degradation_factor = 1 / history
+                                current_popularity -= current_popularity * degradation_factor
+                                current_popularity = max(current_popularity, 0)
+                                decay_date = last_known_timestamp + pd.Timedelta(days=day)
+                                data['Timestamp'].append(decay_date)
+                                data['Popularity'].append(current_popularity)
 
-                        # Reset the size to 0 if it falls below 0 due to degradation
-                        if topic_sizes[topic1]['Popularity'][-1] < 0:
-                            topic_sizes[topic1]['Popularity'][-1] = 0
-
-                    topic_sizes[topic1]['Timestamp'].append(timestamp)
-                    topic_sizes[topic1]['Popularity'].append(topic_sizes[topic1]['Popularity'][-1] + count1)
-            
-            # Add traces for each topic
+            fig = go.Figure()
             for topic, data in topic_sizes.items():
                 fig.add_trace(go.Scatter(
                     x=data['Timestamp'],
                     y=data['Popularity'],
                     mode='lines+markers',
-                    name=f'Topic {topic}',
-                    hovertemplate='Topic: %{text}<br>Popularity: %{y}<br>Timestamp: %{x}<extra></extra>',
-                    text=[st.session_state.all_merge_histories_df[(st.session_state.all_merge_histories_df['Topic1'] == topic) & (st.session_state.all_merge_histories_df['Timestamp'] == ts)]['Representation1'].values[0] if i == 0 else st.session_state.all_merge_histories_df[(st.session_state.all_merge_histories_df['Topic1'] == topic) & (st.session_state.all_merge_histories_df['Timestamp'] == ts)]['Representation2'].values[0] for i, ts in enumerate(data['Timestamp'])]
+                    name=data['Representation'],
+                    hovertemplate='Topic: %{text}<extra></extra>',
+                    text=[topic] * len(data['Timestamp'])
                 ))
-            
-            # Find the oldest and newest timestamps
+
             all_timestamps = [timestamp for topic_data in topic_sizes.values() for timestamp in topic_data['Timestamp']]
             oldest_timestamp = min(all_timestamps)
             newest_timestamp = max(all_timestamps)
-
-            # Add a horizontal line for the Max Popularity threshold
             fig.add_shape(type="line", x0=oldest_timestamp, y0=max_popularity, x1=newest_timestamp, y1=max_popularity, line=dict(color="green", width=2, dash="dash"))
-
-            # Add a horizontal line at 0 to indicate the noise level
             fig.add_shape(type="line", x0=oldest_timestamp, y0=0, x1=newest_timestamp, y1=0, line=dict(color="red", width=2, dash="dash"))
-            
-            # Update the layout
+
             fig.update_layout(
                 title='Topic Size Evolution',
                 xaxis_title='Timestamp',
@@ -912,9 +947,18 @@ if 'topic_models' in st.session_state:
                 hovermode='x',
                 legend_title='Topics'
             )
-            
-            # Display the figure
+
             st.plotly_chart(fig, use_container_width=True)
+
+        # New Expander to display topics under maximum popularity, sorted by updates
+        with st.expander("Sorted Topics Under Maximum Popularity"):
+            filtered_sorted_topics = sorted(
+                ((topic, data['Updates']) for topic, data in topic_sizes.items() if data['Popularity'][-1] <= max_popularity),
+                key=lambda x: x[1],
+                reverse=True
+            )
+            for topic, updates in filtered_sorted_topics:
+                st.write(f"Topic: {topic}, Updates: {updates}")
         
         # Call the transform_dataframe function with your dataframe
         transformed_df = transform_dataframe(st.session_state.all_merge_histories_df)
