@@ -106,6 +106,22 @@
     color: var(--main-color); /* Set icon color */
 }
 
+.bot-message.animate::before { /* Animation while generation in progress */
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+    100% {
+      opacity: 1;
+    }
+}
+
 .error-message::before { /* Add content before the message */
     content: "\f188"; /* Font Awesome icon code for bug */
     font-family: FontAwesome; /* Font family for the icon library */

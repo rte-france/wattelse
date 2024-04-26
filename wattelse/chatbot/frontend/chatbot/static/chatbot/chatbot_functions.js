@@ -200,7 +200,7 @@ async function postUserMessageToRAG(userMessage) {
 
     // Create bot waiting div
     const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
-    botDiv.classList.add("waiting-div");
+    botDiv.classList.add("waiting-div", "animate");
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
     // Fetch response
@@ -261,6 +261,7 @@ async function postUserMessageToRAG(userMessage) {
     } while (true);
 
     // When streaming is done, show feedback section and save interaction
+    botDiv.classList.remove("animate"); // remove generation animation
     provideFeedback();
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
