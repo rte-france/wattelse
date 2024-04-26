@@ -56,7 +56,7 @@ def create_session(group_id: str) -> str:
     """When this is called, instantiates a RAG backend for a group."""
     if group_id not in RAG_SESSIONS.keys():
         RAG_SESSIONS[group_id] = RAGBackEnd(group_id)
-    logger.info(f"Created a RAGBackend for group {group_id}")
+    logger.info(f"[Group: {group_id}] RAGBackend created")
     return group_id
 
 
@@ -75,28 +75,17 @@ def upload(group_id: str, files: List[UploadFile] = File(...)):
     collection_name = collection.collection_name
 
     for file in files:
-        logger.debug(f"[group_id: {group_id}] Uploading file: {file.filename}...")
+        logger.debug(f"[Group: {group_id}] Uploading file: {file.filename}...")
         # Check if the file is already in the document collection
         if collection.is_present(file.filename):
             logger.warning(
-                f"File {file.filename} already present in the collection {collection_name}, skippping indexing and chunking")
+                f"[Group: {group_id}] File {file.filename} already present in the collection {collection_name}, "
+                f"skipping indexing and chunking")
             continue
 
         RAG_SESSIONS[group_id].add_file_to_collection(file.filename, file.file)
 
-    return {"message": f"[group_id: {group_id}] Successfully uploaded {[file.filename for file in files]}"}
-
-
-# @app.post(ENDPOINT_SELECT_BY_KEYWORDS + "/{session_id}")
-# def select_by_keywords(session_id: str, keywords: List[str] | None):
-#     """Select the documents to be used for the RAG among those the user have access to; if nothing is provided,
-#     uses all acessible documents"""
-#     logger.debug(f"List of selected keywords: {keywords}")
-#     check_if_session_exists(session_id)
-#     RAG_sessions[session_id].select_by_keywords(keywords)
-#     update_session_usage(session_id)
-#     return {
-#         "message": f"[session_id: {session_id}] Successfully filtered document collection based on keywords {keywords}"}
+    return {"message": f"[Group: {group_id}] Successfully uploaded {[file.filename for file in files]}"}
 
 
 @app.post(ENDPOINT_REMOVE_DOCS + "/{group_id}")
@@ -104,7 +93,7 @@ def remove_docs(group_id: str, doc_file_names: List[str]) -> Dict[str, str]:
     """Remove the documents from raw storage and vector database"""
     check_if_session_exists(group_id)
     RAG_SESSIONS[group_id].remove_docs(doc_file_names)
-    return {"message": f"[group_id: {group_id}] Successfully removed files {doc_file_names}"}
+    return {"message": f"[Group: {group_id}] Successfully removed files {doc_file_names}"}
 
 
 @app.get(ENDPOINT_LIST_AVAILABLE_DOCS + "/{group_id}")
@@ -125,8 +114,8 @@ def data_streamer(stream_data):
 @app.get(ENDPOINT_QUERY_RAG)
 async def query_rag(rag_query: RAGQuery) -> StreamingResponse:
     """Query the RAG and returns the answer and associated sources"""
-    logger.debug(f"Received query: {rag_query.message}")
     check_if_session_exists(rag_query.group_id)
+    logger.debug(f"[Group: {rag_query.group_id}] Received query: {rag_query.message}")
     response = RAG_SESSIONS[rag_query.group_id].query_rag(
             rag_query.message,
             history=rag_query.history,

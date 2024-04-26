@@ -93,11 +93,11 @@ def filter_history(history, window_size):
 
 
 class RAGBackEnd:
-    def __init__(self, group: str):
-        logger.debug(f"Initialization of chatbot backend for group {group}")
+    def __init__(self, group_id: str):
+        logger.info(f"[Group: {group_id}] Initialization of chatbot backend")
 
         # Load document collection
-        self.document_collection = load_document_collection(group)
+        self.document_collection = load_document_collection(group_id)
 
         # Retriever parameters
         self.top_n_extracts = retriever_config["top_n_extracts"]
@@ -123,7 +123,7 @@ class RAGBackEnd:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
             f.write(contents)
-        logger.debug(f"File stored in: {path}")
+        logger.debug(f"File {file_name} stored in: {path}")
 
         # Parse file
         logger.debug(f"Parsing: {path}")

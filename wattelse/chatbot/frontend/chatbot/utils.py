@@ -38,7 +38,7 @@ def get_user_group_id(user: User) -> str:
     If it belongs to more than 1 group, return the first group.
     """
     group_list = user.groups.all()
-    logger.info(f"Group list for user {user.get_username()} : {group_list}")
+    logger.trace(f"Group list for user {user.get_username()} : {group_list}")
     if len(group_list) == 0:
         return None
     else:
@@ -115,7 +115,7 @@ def insert_feedback(request, short: bool):
                 if feedback:
                     chat_message.long_feedback = feedback
                     update_FAQ(chat_message)
-            logger.debug(f'[User: {request.user.username}] Feedback: "{feedback}" for question "{chat_message.message}"')
+            logger.info(f'[User: {request.user.username}] Feedback: "{feedback}" for question "{chat_message.message}"')
             chat_message.save()
             return HttpResponse(status=200)
         except Chat.DoesNotExist:

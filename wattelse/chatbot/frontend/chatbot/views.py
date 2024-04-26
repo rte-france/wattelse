@@ -187,7 +187,7 @@ def query_rag(request):
         # Select documents for RAG
         selected_docs = request.POST.get("selected_docs", None)
         selected_docs = json.loads(selected_docs)
-        logger.debug(f"[User: {request.user.username}] Selected docs: {selected_docs}")
+        logger.info(f"[User: {request.user.username}] Selected docs: {selected_docs}")
         if not selected_docs:
             logger.warning(f"[User: {request.user.username}] No selected docs received, using all available docs")
             selected_docs = []

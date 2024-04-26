@@ -44,7 +44,7 @@ class RAGOrchestratorClient:
         response = requests.post(self.url + ENDPOINT_CREATE_SESSION + f"/{group_id}")
         if response.status_code == 200:
             group_id = response.json()
-            logger.info(f"Created a RAGBackend for group {group_id}")
+            logger.info(f"[Group: {group_id}] RAGBackend created")
             return group_id
         else:
             logger.error(f"Error: {response.status_code, response.text}")
@@ -55,28 +55,17 @@ class RAGOrchestratorClient:
 
         response = requests.post(url=f"{self.url}{ENDPOINT_UPLOAD_DOCS}/{group_id}", files=files)
         if response.status_code == 200:
-            logger.info(response.json()["message"])
+            logger.debug(f"[Group: {group_id}] {response.json()['message']}")
         else:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
-
-    # def select_documents_by_keywords(self, keywords: List[str] | None = None):
-    #     """Select a subset of documents in the collection the user has access to, based on the provided keywords.
-    #     If the list of keywords is empty or None, the full collection of documents is selected for the RAG"""
-    #     response = requests.post(url=f"{self.url}{ENDPOINT_SELECT_BY_KEYWORDS}/{self.session_id}",
-    #                              data=json.dumps(keywords))
-    #     if response.status_code == 200:
-    #         logger.info(response.json()["message"])
-    #     else:
-    #         logger.error(f"Error: {response.status_code, response.text}")
-    #         raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
     def remove_documents(self, group_id: str, doc_filenames: List[str]) -> str:
         """Removes documents from the collection the user has access to, as well as associated embeddings"""
         response = requests.post(url=f"{self.url}{ENDPOINT_REMOVE_DOCS}/{group_id}",
                                  data=json.dumps(doc_filenames))
         if response.status_code == 200:
-            logger.info(response.json())
+            logger.debug(f"[Group: {group_id}] {response.json()['message']}")
             return response.json()
         else:
             logger.error(f"Error: {response.status_code, response.text}")
@@ -87,7 +76,7 @@ class RAGOrchestratorClient:
         response = requests.get(url=f"{self.url}{ENDPOINT_LIST_AVAILABLE_DOCS}/{group_id}")
         if response.status_code == 200:
             docs = json.loads(response.json())
-            logger.info(f"Available docs: {docs}")
+            logger.info(f"[Group: {group_id}] Available docs: {docs}")
             return docs
         else:
             logger.error(f"Error: {response.status_code, response.text}")
@@ -101,7 +90,7 @@ class RAGOrchestratorClient:
                   stream: str = False) -> Dict:
         """Query the RAG and returns an answer"""
         # TODO: handle additional parameters to temporarily change the default config: number of retrieved docs & memory
-        logger.debug(f"Question: {message}")
+        logger.debug(f"[Group: {group_id}] Question: {message}")
 
         response = requests.get(url=self.url + ENDPOINT_QUERY_RAG,
                                 data=json.dumps({
@@ -118,11 +107,11 @@ class RAGOrchestratorClient:
                 return response
             else:
                 rag_answer = json.loads(response.json())
-                logger.debug(f"Response: {rag_answer}")
+                logger.debug(f"[Group: {group_id}] Response: {rag_answer}")
                 return rag_answer
         else:
-            logger.error(f"Error: {response.status_code, response.text}")
-            raise RAGAPIError(f"Error: {response.status_code, response.text}")
+            logger.error(f"[Group: {group_id}] Error: {response.status_code, response.text}")
+            raise RAGAPIError(f"[Group: {group_id}] Error: {response.status_code, response.text}")
 
     def get_current_sessions(self) -> List[str]:
         """Returns current sessions ids"""
@@ -141,18 +130,18 @@ class RAGOrchestratorClient:
         """
         response = requests.post(url=f"{self.url}{ENDPOINT_CLEAN_SESSIONS}/{group_id}")
         if response.status_code ==200:
-            logger.debug(f"Successfully removed {group_id if group_id else 'ALL'} session(s)")
+            logger.debug(f"[Group: {group_id}] Successfully removed {group_id if group_id else 'ALL'} session(s)")
         else:
-            logger.error(f"Error: {response.status_code, response.text}")
-            raise RAGAPIError(f"Error: {response.status_code, response.text}")
+            logger.error(f"[Group: {group_id}] Error: {response.status_code, response.text}")
+            raise RAGAPIError(f"[Group: {group_id}] Error: {response.status_code, response.text}")
 
     def download_to_dir(self, group_id: str, file_name: str, target_path: Path):
         """Downloads a collection file to the specified target path"""
         response = requests.get(url=f"{self.url}{ENDPOINT_DOWNLOAD}/{group_id}/{file_name}")
         if response.status_code ==200:
-            logger.debug(f"Successfully downloaded {file_name}")
+            logger.debug(f"[Group: {group_id}] Successfully downloaded {file_name}")
             with open(target_path, "wb") as f:
                 f.write(response.content)
         else:
-            logger.error(f"Error: {response.status_code, response.text}")
-            raise RAGAPIError(f"Error: {response.status_code, response.text}")
+            logger.error(f"[Group: {group_id}] Error: {response.status_code, response.text}")
+            raise RAGAPIError(f"[Group: {group_id}] Error: {response.status_code, response.text}")
