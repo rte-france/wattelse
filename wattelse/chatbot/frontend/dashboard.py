@@ -38,7 +38,7 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
     # Get column names from the table
     cur = con.cursor()
     cur.execute(
-        f"SELECT username, group_id, conversation_id, message, response, timestamp, "
+        f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, "
         f"short_feedback, long_feedback "
         f"FROM {DATA_TABLE}, {USER_TABLE} "
         f"WHERE {DATA_TABLE}.user_id = {USER_TABLE}.id"
@@ -50,7 +50,7 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
 
     # Create DataFrame with column names
     df = pd.DataFrame(data, columns=column_names)
-    df.timestamp = pd.to_datetime(df.timestamp)
+    df.answer_timestamp = pd.to_datetime(df.answer_timestamp)
     con.close()
     return df
 
@@ -76,7 +76,7 @@ def side_bar():
         )
 
         # Select time range
-        min_max = st.session_state["full_data"]["timestamp"].agg(["min", "max"])
+        min_max = st.session_state["full_data"]["answer_timestamp"].agg(["min", "max"])
         if "timestamp_range" not in st.session_state:
             st.session_state["timestamp_range"] = (
                 min_max["min"].to_pydatetime(),
@@ -105,7 +105,7 @@ def filter_data():
     # Filter dataset to select only text within time range
     timestamp_range = st.session_state["timestamp_range"]
     filtered = filtered.query(
-        f"timestamp >= '{timestamp_range[0]}' and timestamp <= '{timestamp_range[1]}'"
+        f"answer_timestamp >= '{timestamp_range[0]}' and answer_timestamp <= '{timestamp_range[1]}'"
     )
 
     st.session_state["filtered_data"] = filtered
@@ -158,7 +158,7 @@ def display_questions_over_time():
     df = st.session_state["filtered_data"]
 
     # Resample data by day and count messages
-    message_counts = df.resample("D", on="timestamp")["message"].count()
+    message_counts = df.resample("D", on="answer_timestamp")["message"].count()
 
     # Create plotly bar chart
     fig = bar(
@@ -213,7 +213,7 @@ def display_feedback_charts_over_time():
 
     # Resample data by day and count occurrences of each short_feedback value
     short_feedback_daily = (
-        filtered_df.resample("D", on="timestamp")["short_feedback"]
+        filtered_df.resample("D", on="answer_timestamp")["short_feedback"]
         .value_counts()
         .unstack()
     )

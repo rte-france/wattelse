@@ -195,6 +195,10 @@ function isCompleteJSON(buffer) {
 
 
 async function postUserMessageToRAG(userMessage) {
+    // Question timestamp
+    const currentDate = new Date();
+    const questionTimestampString = currentDate.toISOString();
+
     // Get conversation id
     const conversationId = chatHistory.id;
 
@@ -265,10 +269,10 @@ async function postUserMessageToRAG(userMessage) {
     provideFeedback();
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
-    saveInteraction(conversationId, userMessage, botDiv.innerHTML);
+    saveInteraction(conversationId, userMessage, botDiv.innerHTML, questionTimestampString);
 }
 
-function saveInteraction(conversationId, userMessage, botResponse) {
+function saveInteraction(conversationId, userMessage, botResponse, questionTimestampString) {
     fetch('save_interaction/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -277,6 +281,7 @@ function saveInteraction(conversationId, userMessage, botResponse) {
             'conversation_id': conversationId,
             'message': userMessage,
             'answer': botResponse,
+            'question_timestamp': questionTimestampString,
         })
     })
     .catch(error => {

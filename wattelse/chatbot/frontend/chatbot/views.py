@@ -8,8 +8,10 @@ import uuid
 import json
 import socket
 import tempfile
+from datetime import datetime
 
 import mammoth
+import pytz
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
 
@@ -215,12 +217,17 @@ def save_interaction(request):
     """Function called to save query and response in DB once response streaming is finished."""
     if request.method == "POST":
         # Save query and response in DB
+        question_ts_s = request.POST.get("question_timestamp", "")
+        question_ts = datetime.strptime(question_ts_s, "%Y-%m-%dT%H:%M:%S.%fZ") if question_ts_s else None
+        # Convert to non-naive timedate (required for Django)
+        question_ts = pytz.utc.localize(question_ts)
         chat = Chat(
             user=request.user,
             group_id=get_user_group_id(request.user),
             conversation_id=request.POST.get("conversation_id", ""),
             message=request.POST.get("message", ""),
             response=request.POST.get("answer", ""),
+            question_timestamp=question_ts,
         )
         chat.save()
         return HttpResponse(status=200)

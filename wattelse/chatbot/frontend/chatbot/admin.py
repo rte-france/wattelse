@@ -8,8 +8,9 @@ from .models import Chat
 
 
 class ChatAdmin(admin.ModelAdmin):
-    list_display = ('user_id', 'group_id', 'conversation_id', 'message', 'response', 'timestamp')
-    list_filter = ('user_id', 'group_id', 'conversation_id', 'timestamp')
+    list_display = ('user_id', 'group_id', 'conversation_id', 'message', 'response', 'question_timestamp',
+                    'answer_timestamp', 'answer_delay')
+    list_filter = ('user_id', 'group_id', 'conversation_id', 'question_timestamp', 'answer_timestamp', 'answer_delay')
 
 
 # Register your models here.

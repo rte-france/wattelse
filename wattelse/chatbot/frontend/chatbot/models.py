@@ -6,25 +6,38 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+
 class Chat(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     group_id = models.TextField()
     conversation_id = models.UUIDField()
     message = models.TextField()
     response = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+    question_timestamp = models.DateTimeField()
+    answer_timestamp = models.DateTimeField(auto_now_add=True)
     short_feedback = models.TextField(default="")
     long_feedback = models.TextField(default="")
-
+    answer_delay = models.DurationField(null=True, blank=True)  # Optional fields
 
     def __str__(self):
         return f'{self.user.username}: {self.message}'
-    
+
+    def calculate_answer_delay(self):
+        if self.answer_timestamp and self.question_timestamp:
+            return self.answer_timestamp - self.question_timestamp
+        return None
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs) # required to have self.*_timestamp set
+        self.answer_delay = self.calculate_answer_delay()
+        super().save(*args, **kwargs) # required to save self.answer_delay
+
 
 class SuperUserPermissions(models.Model):
     """
     Dummy model for managing users permissions.
     """
+
     class Meta:
         # No database table creation or deletion
         managed = False
