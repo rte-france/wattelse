@@ -20,20 +20,25 @@ import glob
 import re
 import json
 import pandas as pd
-
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel
 from sklearn.preprocessing import MinMaxScaler
 
+
+from joblib import Parallel, delayed
+
+
 from umap import UMAP
 from hdbscan import HDBSCAN
-from joblib import Parallel, delayed
 
 # from cuml.cluster import HDBSCAN
 # from cuml.manifold import UMAP
 
 # Working directory
 cwd = os.getcwd()+'/Weak-Signals-Investigations/'
+
+import torch
+# logger.debug(f"CUDA USAGE: {torch.cuda.is_available()}")
 
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
 COMMON_NGRAMS = [
@@ -73,7 +78,7 @@ with open(stopwords_fr_file, 'r', encoding='utf-8') as file:
 st.set_page_config(page_title="BERTopic Topic Detection", layout="wide")
 
 # Function to create BERTopic models
-def create_topic_models(docs, embedding_model, embeddings, umap_model, hdbscan_model, vectorizer_model, mmr_model, top_n_words, zeroshot_topic_list, zeroshot_min_similarity):
+def create_topic_model(docs, embedding_model, embeddings, umap_model, hdbscan_model, vectorizer_model, mmr_model, top_n_words, zeroshot_topic_list, zeroshot_min_similarity):
     topic_model = BERTopic(
         embedding_model=embedding_model,
         umap_model=umap_model,
@@ -85,7 +90,8 @@ def create_topic_models(docs, embedding_model, embeddings, umap_model, hdbscan_m
         zeroshot_topic_list=zeroshot_topic_list,
         zeroshot_min_similarity=zeroshot_min_similarity
     ).fit(docs, embeddings)
-    return topic_model, docs
+    
+    return topic_model
 
 
 
@@ -97,14 +103,15 @@ def detect_weak_signals_zeroshot(topic_models, zeroshot_topic_list):
         weak_signal_trends[topic] = {}
         
         for timestamp, topic_model in topic_models.items():
-            topic_info = topic_model.get_topic_info()
+            topic_info = topic_model.topic_info_df
             
             for _, row in topic_info.iterrows():
                 if row['Name'] == topic:
                     weak_signal_trends[topic][timestamp] = {
                         'Representation': row['Representation'],
                         'Representative_Docs': row['Representative_Docs'],
-                        'Count': row['Count']
+                        'Count': row['Count'],
+                        'Document_Count': row['Document_Count']
                     }
                     break
     
@@ -139,11 +146,11 @@ def detect_weak_signals(df, metric, num_signals, num_docs, _vectorizer):
 
 def preprocess_model(topic_model, docs, embeddings):
     # Get topic information
-    topic_info = topic_model.get_topic_info()
+    topic_info = topic_model.topic_info_df
     # Get document information
-    doc_info = topic_model.get_document_info(docs)
+    doc_info = topic_model.doc_info_df
     # Group documents by topic
-    doc_groups = doc_info.groupby('Topic')['Document'].apply(list)
+    doc_groups = doc_info.groupby('Topic')['Paragraph'].apply(list)
     
     # Create a list to store the document embeddings for each topic
     topic_doc_embeddings = []
@@ -159,6 +166,7 @@ def preprocess_model(topic_model, docs, embeddings):
     topic_df = pd.DataFrame({
         'Topic': topic_info['Topic'],
         'Count': topic_info['Count'],
+        'Document_Count': topic_info['Document_Count'],
         'Representation': topic_info['Representation'],
         'Documents': doc_groups.tolist(),
         'Embedding': topic_embeddings,
@@ -189,17 +197,20 @@ def merge_models(df1, df2, min_similarity, timestamp):
     new_topics = new_topics_data.copy()
 
     merge_topics_mask = ~new_topics_mask
-    for topic2, count2, representation2, documents2, embedding2, doc_embeddings2 in df2[merge_topics_mask].itertuples(index=False):
+    for topic2, count2, doc_count2, representation2, documents2, embedding2, doc_embeddings2 in df2[merge_topics_mask].itertuples(index=False):
         max_similar_topic = max_similar_topics[topic2]
         similar_row = merged_df[merged_df['Topic'] == max_similar_topic].iloc[0]
         count1 = similar_row['Count']
+        doc_count1 = similar_row['Document_Count']
         documents1 = similar_row['Documents']
 
         merged_count = count1 + count2
+        merged_doc_count = doc_count1 + doc_count2
         merged_documents = documents1 + documents2
 
         index = merged_df[merged_df['Topic'] == max_similar_topic].index[0]
         merged_df.at[index, 'Count'] = merged_count
+        merged_df.at[index, 'Document_Count'] = merged_doc_count
         merged_df.at[index, 'Documents'] = merged_documents
         merged_df.at[index, 'Embedding'] = similar_row['Embedding']
 
@@ -214,6 +225,8 @@ def merge_models(df1, df2, min_similarity, timestamp):
             'Similarity': max_similarities[topic2],
             'Count1': count1,
             'Count2': count2,
+            'Document_Count1': doc_count1,
+            'Document_Count2': doc_count2,
             'Documents1': documents1,
             'Documents2': documents2,
         })
@@ -257,6 +270,8 @@ def transform_dataframe(df):
             timestamp_index = row['Timestamp_Index']
             count1 = row['Count1']
             count2 = row['Count2']
+            doc_count1 = row['Document_Count1']
+            doc_count2 = row['Document_Count2']
             
             # Generate the source values for Topic1 and Topic2
             src_topic1 = f"{timestamp_index}_1_{topic1}"
@@ -267,7 +282,7 @@ def transform_dataframe(df):
                 dest_topic = topic1_dest_map[(topic1, timestamp_index)]
                 
                 # Update the merged count for the destination topic
-                topic1_count_map[(topic1, timestamp_index)] += count2
+                topic1_count_map[(topic1, timestamp_index)] += doc_count2
                 count_merged = topic1_count_map[(topic1, timestamp_index)]
             else:
                 # Find the next timestamp index where Topic1 appears
@@ -284,7 +299,7 @@ def transform_dataframe(df):
                 topic1_dest_map[(topic1, timestamp_index)] = dest_topic
                 
                 # Initialize the merged count for the destination topic
-                topic1_count_map[(topic1, timestamp_index)] = count1 + count2
+                topic1_count_map[(topic1, timestamp_index)] = doc_count1 + doc_count2
                 count_merged = topic1_count_map[(topic1, timestamp_index)]
             
             # Determine the timestamp for the current row
@@ -300,7 +315,7 @@ def transform_dataframe(df):
             dest_values.extend([dest_topic, dest_topic])
             representation_values.extend([representation1, representation2])
             timestamp_values.extend([timestamp, next_timestamp])
-            count_values.extend([count1, count_merged])
+            count_values.extend([doc_count1, count_merged])
 
     # Create a new dataframe with the source, destination, representation, timestamp, and count values
     transformed_df_new = pd.DataFrame({
@@ -359,7 +374,12 @@ def create_sankey_diagram(all_merge_histories_df, search_term=None, max_pairs=No
         
         # Extract the topic IDs from the source and destination nodes
         source_topic_id = source_node.split('_')[-1]
-        target_topic_id = target_node.split('_')[-1]
+        target_topic_id = target_node.split('_')
+        if target_topic_id[-1] == 'new':
+            target_topic_id = target_topic_id[-2]
+        else:
+            target_topic_id = target_topic_id[-1]
+
         
         # Generate label for source node
         source_label = ', '.join(representation.split(', ')[:5])
@@ -381,7 +401,6 @@ def create_sankey_diagram(all_merge_histories_df, search_term=None, max_pairs=No
             'source_topic_id': source_topic_id,
             'target_topic_id': target_topic_id,
             'representation': representation,
-            'count': count
         }
         if link not in links:
             links.append(link)
@@ -403,16 +422,13 @@ def create_sankey_diagram(all_merge_histories_df, search_term=None, max_pairs=No
             source=[nodes.index(next((node for node in nodes if node['name'] == link['source']), None)) for link in links],
             target=[nodes.index(next((node for node in nodes if node['name'] == link['target']), None)) for link in links],
             value=[link['value'] for link in links],
-            hovertemplate='Timestamp: %{customdata[0]}<br>' +
-                          'Source Topic ID: %{customdata[1]}<br>' +
-                          'Representation: %{customdata[3]}<br>' +
-                          'Count: %{customdata[4]}<extra></extra>',
-            customdata=[[
-                link['timestamp'],
-                link['source_topic_id'],
-                link['representation'],
-                link['count']
-            ] for link in links],
+            customdata=[(link['timestamp'], link['source_topic_id'], link['target_topic_id'], link['representation'], link['value']) for link in links],
+            hovertemplate='Timestamp: %{customdata[0]}<br />' +
+              'Source Topic ID: %{customdata[1]}<br />' +
+              'Target Topic ID: %{customdata[2]}<br />'
+              'Representation: %{customdata[3]}<br />' +
+              'Document Covered: %{customdata[4]}<extra></extra>',
+
             color=[colors[i % len(colors)] for i in range(len(links))]
         ),
         arrangement='snap'
@@ -573,7 +589,9 @@ def group_by_days(df, day_granularity=1):
 
 selected_file = st.selectbox("Select a dataset", file_list)
 st.session_state['raw_df'] = load_data(selected_file)
-df = st.session_state['raw_df']
+df = st.session_state['raw_df'].sort_values(by='timestamp', ascending=True).reset_index(drop=True)
+df['document_id'] = df.index
+
 
 # Preprocess the data if the language is French
 if language == "French":
@@ -581,6 +599,8 @@ if language == "French":
 
 # Add a toggle button to split text by paragraphs
 split_by_paragraph = st.checkbox("Split text by paragraphs", value=False, key="split_by_paragraph")
+
+
 
 # Split by paragraphs if selected
 if split_by_paragraph:
@@ -648,7 +668,7 @@ if 'timefiltered_df' in st.session_state and len(st.session_state.timefiltered_d
         if len(non_empty_timestamps) > 0:
             selected_timestamp = st.select_slider("Select Timestamp", options=non_empty_timestamps, key='timestamp_slider')
             selected_docs = grouped_data[selected_timestamp]
-            st.dataframe(selected_docs[['timestamp', 'text']], use_container_width=True)
+            st.dataframe(selected_docs[['timestamp', 'text', 'document_id']], use_container_width=True)
         else:
             st.warning("No data available for the selected granularity.")
 
@@ -661,13 +681,13 @@ if 'timefiltered_df' in st.session_state and len(st.session_state.timefiltered_d
         # Set up BERTopic components
         umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, random_state=42, metric="cosine")
         hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean',
-                                 cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
+                                cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
         vectorizer_model = CountVectorizer(stop_words=stopwords_list, min_df=min_df, ngram_range=vectorizer_ngram_range)
         mmr_model = MaximalMarginalRelevance(diversity=0.3)
 
         if zeroshot_topic_list == [""]:
             logger.warning("Warning: No zeroshot topics defined.")
-            zeroshot_topic_list= None
+            zeroshot_topic_list = None
 
         # Create topic models based on selected granularity
         topic_models = {}
@@ -678,7 +698,32 @@ if 'timefiltered_df' in st.session_state and len(st.session_state.timefiltered_d
             docs = group['text'].tolist()
             embeddings_subset = st.session_state.embeddings[group.index]
             try:
-                topic_model, docs = create_topic_models(docs, st.session_state.embedding_model, embeddings_subset, umap_model, hdbscan_model, vectorizer_model, mmr_model, top_n_words, zeroshot_topic_list, zeroshot_min_similarity)
+                topic_model = create_topic_model(docs, st.session_state.embedding_model, embeddings_subset, umap_model, hdbscan_model, vectorizer_model, mmr_model, top_n_words, zeroshot_topic_list, zeroshot_min_similarity)
+                
+                # Get the document info dataframe
+                doc_info_df = topic_model.get_document_info(docs=docs)
+                
+                # Rename the "Document" column to "Paragraph"
+                doc_info_df = doc_info_df.rename(columns={"Document": "Paragraph"})
+                
+                # Join the document info dataframe with the original dataframe to get the document_id
+                doc_info_df = doc_info_df.merge(group[['text', 'document_id']], left_on='Paragraph', right_on='text', how='left')
+                doc_info_df = doc_info_df.drop(columns=['text'])
+                
+                # Get the topic info dataframe
+                topic_info_df = topic_model.get_topic_info()
+                
+                # Join the document info dataframe with the topic info dataframe to get the document count per topic
+                topic_doc_count_df = doc_info_df.groupby('Topic')['document_id'].nunique().reset_index(name='Document_Count')
+                topic_info_df = topic_info_df.merge(topic_doc_count_df, on='Topic', how='left')
+                
+                # Select the desired columns for the topic info dataframe
+                topic_info_df = topic_info_df[['Topic', 'Count', 'Document_Count', 'Representation', 'Name', 'Representative_Docs']]
+                
+                # Assign the doc_info_df and topic_info_df to the topic model
+                topic_model.doc_info_df = doc_info_df
+                topic_model.topic_info_df = topic_info_df
+                
                 topic_models[period] = topic_model
                 doc_groups[period] = docs
                 emb_groups[period] = embeddings_subset
@@ -723,9 +768,8 @@ if 'topic_models' in st.session_state:
     with st.expander("Topic per timestamp", expanded=True):
         selected_model_period = st.select_slider("Select Model", options=model_periods, key='model_slider')
         selected_model = topic_models[selected_model_period]
-        selected_docs = st.session_state.doc_groups[selected_model_period]
-        st.dataframe(selected_model.get_document_info(docs=selected_docs), use_container_width=True)    
-        st.dataframe(selected_model.get_topic_info(), use_container_width=True)
+        st.dataframe(selected_model.doc_info_df[['Paragraph', 'document_id', 'Topic', 'Representation']], use_container_width=True)
+        st.dataframe(selected_model.topic_info_df, use_container_width=True)
 
 
     # Display weak signal trend
@@ -762,15 +806,16 @@ if 'topic_models' in st.session_state:
                             cumulative_count[-1] = 0
 
                     # Get the count for the current timestamp
-                    count = weak_signal_trend[timestamp]['Count']
+                    paragraph_count = weak_signal_trend[timestamp]['Count']
+                    count = weak_signal_trend[timestamp]['Document_Count']
 
                     # Add the count to the degraded cumulative count
-                    cumulative_count.append(cumulative_count[-1] + count if cumulative_count else count)
+                    cumulative_count.append(cumulative_count[-1] + paragraph_count if cumulative_count else paragraph_count)
                     last_update_timestamp = timestamp
 
                     # Prepare the hover text for the current timestamp
                     representation = weak_signal_trend[timestamp]['Representation']
-                    hovertext.append(f"Topic: {topic}<br>Representation: {representation}<br>Count: {count}")
+                    hovertext.append(f"Topic: {topic}<br>Representation: {representation}<br>Document Count: {count}<br>Paragraph Count: {paragraph_count}<br>Timestamp: {timestamp}")
 
                 # Create a scatter plot trace for each topic with the cumulative count and hover text
                 fig_trend.add_trace(go.Scatter(x=sorted(weak_signal_trend.keys()), y=cumulative_count, mode='lines+markers', name=topic, hovertext=hovertext, hoverinfo='text'))
@@ -804,7 +849,8 @@ if 'topic_models' in st.session_state:
                 for timestamp, data in weak_signal_trend.items():
                     topic_details.append({
                         'Representation': data['Representation'],
-                        'Count': data['Count'],
+                        'Paragraph Count': data['Count'],
+                        'Document Count': data['Document_Count'],
                         'Representative_Docs': ', '.join(data['Representative_Docs']),
                         'Timestamp': timestamp
                     })
@@ -849,7 +895,6 @@ if 'topic_models' in st.session_state:
                                                                                             min_similarity=min_similarity, 
                                                                                             timestamp=current_timestamp)
                     
-                    st.write("First merging process")
 
                 elif not df2.empty:
                     merged_df_without_outliers, merge_history, new_topics = merge_models(merged_df_without_outliers, 
@@ -877,37 +922,76 @@ if 'topic_models' in st.session_state:
             st.session_state.all_merge_histories_df = all_merge_histories_df
             st.session_state.all_new_topics_df = all_new_topics_df
 
+        st.dataframe(st.session_state.all_merge_histories_df, use_container_width=True)
         st.success("Model merging complete!")
-        
-    st.write("Merging process")
-    if "all_merge_histories_df" in st.session_state and not st.session_state.all_merge_histories_df.empty:
+
+
+    if "all_merge_histories_df" in st.session_state:
+        # history = st.number_input("History (in days)", min_value=1, max_value=100, value=30, key='topic_size_history')
         with st.expander("Topic Size Evolution", expanded=True):
+            st.dataframe(st.session_state.all_merge_histories_df, use_container_width=True)
             fig = go.Figure()
-            st.dataframe(st.session_state.all_merge_histories_df[['Timestamp', 'Topic1', 'Topic2', 'Representation1', 'Representation2', 'Count1', 'Count2', 'Documents1', 'Documents2']])
-            
             topic_sizes = {}
-            max_popularity = st.number_input("Max Popularity", min_value=0, max_value=1000, value=10, key='topic_size_max_popularity')
-            history = st.number_input("History (in days)", min_value=1, max_value=100, value=30, key='topic_size_history')
+
             granularity_timedelta = pd.Timedelta(days=granularity)
 
-            for index, row in st.session_state.all_merge_histories_df.sort_values('Timestamp').iterrows():
+            min_timestamp = st.session_state.all_merge_histories_df['Timestamp'].min()
+            max_timestamp = st.session_state.all_merge_histories_df['Timestamp'].max()
+
+            window_size = st.number_input("Past Window Size (in days)", min_value=1, max_value=365, value=30, key='window_size')
+            window_size_timedelta = pd.Timedelta(days=window_size)
+
+            # Convert timestamps to datetime objects
+            min_datetime = min_timestamp.to_pydatetime()
+            max_datetime = max_timestamp.to_pydatetime()
+
+            # Create a slider for the window end position
+            window_end = st.slider(
+                "Select window end",
+                min_value=min_datetime + window_size_timedelta,
+                max_value=max_datetime,
+                value=max_datetime,
+                format="YYYY-MM-DD"
+            )
+            window_start = window_end - window_size_timedelta
+
+            # Filter the data based on the selected window
+            filtered_df = st.session_state.all_merge_histories_df[
+                (st.session_state.all_merge_histories_df['Timestamp'] >= window_start) &
+                (st.session_state.all_merge_histories_df['Timestamp'] <= window_end)
+            ]
+
+            for index, row in filtered_df.sort_values('Timestamp').iterrows():
                 current_topic = row['Topic1']
                 timestamp = row['Timestamp']
                 count1 = row['Count1']
                 count2 = row['Count2']
+                doc_count1 = row['Document_Count1']
+                doc_count2 = row['Document_Count2']
                 representation1 = row['Representation1']
+                representation2 = row['Representation2']
+                documents1 = row['Documents1']
+                documents2 = row['Documents2']
 
                 if current_topic not in topic_sizes:
                     topic_sizes[current_topic] = {
-                        'Timestamp': [timestamp, timestamp + granularity_timedelta],
-                        'Popularity': [count1, count1 + count2],
-                        'Updates': 1,  # Initialize updates count
-                        'Representation': str(current_topic) + '_' + '_'.join(representation1[:5])
+                        'Timestamp': [timestamp],
+                        'Popularity': [doc_count1 + doc_count2],
+                        'Size': doc_count1 + doc_count2,
+                        'nb_paragraphs': count1 + count2,
+                        'Updates': 1,
+                        'Representation': str(current_topic) + '_' + '_'.join(representation1[:5]),
+                        'Representations': [f"{timestamp}: {'_'.join(representation1)}"],
+                        'Documents': documents1
                     }
                 else:
-                    topic_sizes[current_topic]['Popularity'].append(topic_sizes[current_topic]['Popularity'][-1] + count2)
-                    topic_sizes[current_topic]['Timestamp'].append(timestamp + granularity_timedelta)
+                    topic_sizes[current_topic]['Timestamp'].append(timestamp)
+                    topic_sizes[current_topic]['Popularity'].append(topic_sizes[current_topic]['Popularity'][-1] + doc_count2)
+                    topic_sizes[current_topic]['Size'] += doc_count2
+                    topic_sizes[current_topic]['nb_paragraphs'] += count2
                     topic_sizes[current_topic]['Updates'] += 1
+                    topic_sizes[current_topic]['Representations'].append(f"{timestamp}: {'_'.join(representation2)}")
+                    topic_sizes[current_topic]['Documents'] += documents2
 
                 for topic, data in topic_sizes.items():
                     if topic != current_topic:
@@ -915,13 +999,14 @@ if 'topic_models' in st.session_state:
                         if last_known_timestamp < timestamp:
                             days_since_last_update = (timestamp - last_known_timestamp).days
                             current_popularity = data['Popularity'][-1]
-                            for day in range(1, days_since_last_update + 1):
-                                degradation_factor = 1 / history
-                                current_popularity -= current_popularity * degradation_factor
-                                current_popularity = max(current_popularity, 0)
-                                decay_date = last_known_timestamp + pd.Timedelta(days=day)
-                                data['Timestamp'].append(decay_date)
-                                data['Popularity'].append(current_popularity)
+                            # Dynamically adjust the decay factor based on the number of days since last update
+                            degradation_factor = 1 / (days_since_last_update + 1)
+                            current_popularity *= np.exp(-degradation_factor)
+                            current_popularity = max(current_popularity, 0)
+                            decay_date = last_known_timestamp + pd.Timedelta(days=days_since_last_update)
+                            data['Timestamp'].append(decay_date)
+                            data['Representations'].append(f"{decay_date}: {'_'.join(data['Representations'][-1].split(': ')[1:])}")
+                            data['Popularity'].append(current_popularity)
 
             fig = go.Figure()
             for topic, data in topic_sizes.items():
@@ -930,41 +1015,121 @@ if 'topic_models' in st.session_state:
                     y=data['Popularity'],
                     mode='lines+markers',
                     name=data['Representation'],
-                    hovertemplate='Topic: %{text}<extra></extra>',
-                    text=[topic] * len(data['Timestamp'])
+                    hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Representation: %{customdata}<extra></extra>',
+                    text=[topic] * len(data['Timestamp']),
+                    customdata=[rep.split(': ')[1] for rep in data['Representations']],
+                    line_shape='spline'
                 ))
 
-            all_timestamps = [timestamp for topic_data in topic_sizes.values() for timestamp in topic_data['Timestamp']]
-            oldest_timestamp = min(all_timestamps)
-            newest_timestamp = max(all_timestamps)
-            fig.add_shape(type="line", x0=oldest_timestamp, y0=max_popularity, x1=newest_timestamp, y1=max_popularity, line=dict(color="green", width=2, dash="dash"))
-            fig.add_shape(type="line", x0=oldest_timestamp, y0=0, x1=newest_timestamp, y1=0, line=dict(color="red", width=2, dash="dash"))
+            # Log all popularity values within the selected window
+            all_popularity_values = []
+            for topic, data in topic_sizes.items():
+                window_popularities = [popularity for timestamp, popularity in zip(data['Timestamp'], data['Popularity']) if window_start <= timestamp <= window_end]
+                all_popularity_values.extend(window_popularities)
+
+            # Determine the quantiles based on the logged popularity values
+            q1 = np.percentile(all_popularity_values, 10)
+            q3 = np.percentile(all_popularity_values, 90)
+
+            # Add Q1 and Q3 lines to the graph
+            fig.add_shape(type="line", x0=window_start, y0=q1, x1=window_end, y1=q1, line=dict(color="red", width=2, dash="dash"))
+            fig.add_shape(type="line", x0=window_start, y0=q3, x1=window_end, y1=q3, line=dict(color="green", width=2, dash="dash"))
 
             fig.update_layout(
-                title='Topic Size Evolution',
+                title='Popularity Evolution',
                 xaxis_title='Timestamp',
-                yaxis_title='Topic Size',
-                hovermode='x',
+                yaxis_title='Popularity',
+                hovermode='closest',
                 legend_title='Topics'
             )
 
             st.plotly_chart(fig, use_container_width=True)
 
-        # New Expander to display topics under maximum popularity, sorted by updates
-        with st.expander("Sorted Topics Under Maximum Popularity"):
-            filtered_sorted_topics = sorted(
-                ((topic, data['Updates']) for topic, data in topic_sizes.items() if data['Popularity'][-1] <= max_popularity),
-                key=lambda x: x[1],
-                reverse=True
-            )
-            for topic, updates in filtered_sorted_topics:
-                st.write(f"Topic: {topic}, Updates: {updates}")
-        
+            # Classify topics based on their most recent popularity
+            noise_topics = []
+            weak_signal_topics = []
+            strong_signal_topics = []
+
+            for topic, data in topic_sizes.items():
+                latest_popularity = data['Popularity'][-1]
+                if latest_popularity < q1:
+                    noise_topics.append(topic)
+                elif q1 <= latest_popularity <= q3:
+                    weak_signal_topics.append(topic)
+                else:
+                    strong_signal_topics.append(topic)
+
+            # Create DataFrames for each category
+            noise_topics_data = []
+            weak_signal_topics_data = []
+            strong_signal_topics_data = []
+
+            for topic in noise_topics:
+                topic_data = topic_sizes[topic]
+                noise_topics_data.append({
+                    'Topic': topic,
+                    'Representation': topic_data['Representation'],
+                    'Latest Popularity': topic_data['Popularity'][-1],
+                    'Docs_Count': topic_data['Size'],
+                    'Paragraphs_Count': topic_data['nb_paragraphs'],
+                    'Merges_Count': topic_data['Updates'],
+                    'Latest_Timestamp': topic_data['Timestamp'][-1],
+                    'Representations': topic_data['Representations'],
+                    'Documents': topic_data['Documents']
+                })
+
+            for topic in weak_signal_topics:
+                topic_data = topic_sizes[topic]
+                weak_signal_topics_data.append({
+                    'Topic': topic,
+                    'Representation': topic_data['Representation'],
+                    'Latest Popularity': topic_data['Popularity'][-1],
+                    'Docs_Count': topic_data['Size'],
+                    'Paragraphs_Count': topic_data['nb_paragraphs'],
+                    'Merges_Count': topic_data['Updates'],
+                    'Latest_Timestamp': topic_data['Timestamp'][-1],
+                    'Representations': topic_data['Representations'],
+                    'Documents': topic_data['Documents']
+                })
+
+            for topic in strong_signal_topics:
+                topic_data = topic_sizes[topic]
+                strong_signal_topics_data.append({
+                    'Topic': topic,
+                    'Representation': topic_data['Representation'],
+                    'Latest Popularity': topic_data['Popularity'][-1],
+                    'Docs_Count': topic_data['Size'],
+                    'Paragraphs_Count': topic_data['nb_paragraphs'],
+                    'Merges_Count': topic_data['Updates'],
+                    'Latest_Timestamp': topic_data['Timestamp'][-1],
+                    'Representations': topic_data['Representations'],
+                    'Documents': topic_data['Documents']
+                })
+
+            noise_topics_df = pd.DataFrame(noise_topics_data)
+            weak_signal_topics_df = pd.DataFrame(weak_signal_topics_data)
+            strong_signal_topics_df = pd.DataFrame(strong_signal_topics_data)
+
+            # Display the DataFrames
+            columns = ['Topic', 'Representation', 'Latest Popularity', 'Docs_Count', 'Paragraphs_Count', 'Merges_Count', 'Latest_Timestamp', 'Representations', 'Documents']
+            st.subheader(":grey[Noisy signals]")
+            st.dataframe(noise_topics_df[columns])
+
+            st.subheader(":orange[Weak signals]")
+            st.dataframe(weak_signal_topics_df[columns])
+
+            st.subheader(":green[Strong signals]")
+            st.dataframe(strong_signal_topics_df[columns])
+
+
+
+
         # Call the transform_dataframe function with your dataframe
         transformed_df = transform_dataframe(st.session_state.all_merge_histories_df)
+
         # Create search box and slider using Streamlit
         search_term = st.text_input("Search topics by keyword:")
-        max_pairs = st.slider("Max number of topic pairs to display", min_value=1, max_value=1000, value=50)
+        max_pairs = st.slider("Max number of topic pairs to display", min_value=1, max_value=1000, value=20)
 
         # Create the Sankey Diagram
         sankey_diagram = create_sankey_diagram(transformed_df, search_term, max_pairs)
@@ -973,8 +1138,13 @@ if 'topic_models' in st.session_state:
         with st.expander("Topic Merging Process", expanded=True):
             st.plotly_chart(sankey_diagram, use_container_width=True)
 
-    st.write("Newly detected topics")  
+
+
+
+
+
     if "all_new_topics_df" in st.session_state and not st.session_state.all_new_topics_df.empty:
+
         # New scatter plot for newly emerged topics
         fig_new_topics = go.Figure()
 
@@ -982,11 +1152,11 @@ if 'topic_models' in st.session_state:
         for timestamp, topics_df in st.session_state.all_new_topics_df.groupby('Timestamp'):
             fig_new_topics.add_trace(go.Scatter(
                 x=[timestamp] * len(topics_df),
-                y=topics_df['Count'],
+                y=topics_df['Document_Count'],
                 text=topics_df['Topic'],
                 mode='markers',
                 marker=dict(
-                    size=topics_df['Count'],
+                    size=topics_df['Document_Count'],
                     sizemode='area',
                     sizeref=2. * max(topics_df['Count']) / (40. ** 2),
                     sizemin=4
@@ -1010,59 +1180,66 @@ if 'topic_models' in st.session_state:
 
         # New scatter plot for newly emerged topics in an expander
         with st.expander("Newly Emerged Topics", expanded=True):
-            st.dataframe(st.session_state.all_new_topics_df[['Topic', 'Count', 'Representation', 'Documents', 'Timestamp']].sort_values(by=['Timestamp', 'Count'], ascending=[True, False]))
+            st.dataframe(st.session_state.all_new_topics_df[['Topic', 'Count', 'Document_Count', 'Representation', 'Documents', 'Timestamp']].sort_values(by=['Timestamp', 'Document_Count'], ascending=[True, False]))
             st.plotly_chart(fig_new_topics, use_container_width=True)
-            
-        # Coherence calculation parameters
-        metric = st.selectbox("Coherence Metric", ["c_v", "c_npmi", "u_mass"])
-        num_signals = st.number_input("Number of Signals", value=5, min_value=1)
-        num_docs = st.number_input("Number of Documents per Signal", value=3, min_value=1)
-
-        if st.button("Detect"):
-            if "all_new_topics_df" in st.session_state:
-                new_topics_df = st.session_state.all_new_topics_df
-                vectorizer = CountVectorizer(stop_words=stopwords_list, min_df=min_df, ngram_range=vectorizer_ngram_range)
 
 
-                with st.spinner("Calculating coherence of topics...") : 
-                    st.session_state.top_topics, st.session_state.bottom_topics = detect_weak_signals(new_topics_df, metric, num_signals, num_docs, vectorizer)
 
-        if 'top_topics' in st.session_state and 'bottom_topics' in st.session_state:
-            # Display the top topics (coherent signals)
-            with st.expander("Coherent Signals"):
-                if len(st.session_state.top_topics) < num_signals:
-                    logger.warning(f"Only {len(st.session_state.top_topics)} coherent signals found.")
 
-                for _, topic in st.session_state.top_topics.iterrows():
-                    st.subheader(f"Topic: {topic['Topic']}")
-                    st.write(f"Representation: {topic['Representation']}")
-                    st.write(f"Timestamp: {topic['Timestamp']}")
-                    st.write(f"Coherence Score: {topic['Coherence']:.3f}")
-                    st.write(f"Count: {topic['Count']}")
-                    st.write(f"Coherence-Count Score: {topic['Coherence_Count_Score']:.3f}")
 
-                    docs = topic['Documents'][:num_docs]
-                    for i, doc in enumerate(docs, start=1):
-                        st.write(f"Document {i}:")
-                        st.write(doc)
-                        st.write("---")
 
-            # Display the bottom topics (noise)
-            with st.expander("Noise"):
-                if len(st.session_state.bottom_topics) < num_signals:
-                    logger.warning(f"Only {len(st.session_state.bottom_topics)} noise topics found.")
 
-                for _, topic in st.session_state.bottom_topics.iterrows():
-                    st.subheader(f"Topic: {topic['Topic']}")
-                    st.write(f"Representation: {topic['Representation']}")
-                    st.write(f"Timestamp: {topic['Timestamp']}")
-                    st.write(f"Coherence Score: {topic['Coherence']:.3f}")
-                    st.write(f"Count: {topic['Count']}")
-                    st.write(f"Coherence-Count Score: {topic['Coherence_Count_Score']:.3f}")
+      
+    #     # Coherence calculation parameters
+    #     metric = st.selectbox("Coherence Metric", ["c_v", "c_npmi", "u_mass"])
+    #     num_signals = st.number_input("Number of Signals", value=5, min_value=1)
+    #     num_docs = st.number_input("Number of Documents per Signal", value=3, min_value=1)
 
-                    docs = topic['Documents'][:num_docs]
-                    for i, doc in enumerate(docs, start=1):
-                        st.write(f"Document {i}:")
-                        st.write(doc)
-                        st.write("---")
+    #     if st.button("Detect"):
+    #         if "all_new_topics_df" in st.session_state:
+    #             new_topics_df = st.session_state.all_new_topics_df
+    #             vectorizer = CountVectorizer(stop_words=stopwords_list, min_df=min_df, ngram_range=vectorizer_ngram_range)
+
+
+    #             with st.spinner("Calculating coherence of topics...") : 
+    #                 st.session_state.top_topics, st.session_state.bottom_topics = detect_weak_signals(new_topics_df, metric, num_signals, num_docs, vectorizer)
+
+    #     if 'top_topics' in st.session_state and 'bottom_topics' in st.session_state:
+    #         # Display the top topics (coherent signals)
+    #         with st.expander("Coherent Signals"):
+    #             if len(st.session_state.top_topics) < num_signals:
+    #                 logger.warning(f"Only {len(st.session_state.top_topics)} coherent signals found.")
+
+    #             for _, topic in st.session_state.top_topics.iterrows():
+    #                 st.subheader(f"Topic: {topic['Topic']}")
+    #                 st.write(f"Representation: {topic['Representation']}")
+    #                 st.write(f"Timestamp: {topic['Timestamp']}")
+    #                 st.write(f"Coherence Score: {topic['Coherence']:.3f}")
+    #                 st.write(f"Count: {topic['Count']}")
+    #                 st.write(f"Coherence-Count Score: {topic['Coherence_Count_Score']:.3f}")
+
+    #                 docs = topic['Documents'][:num_docs]
+    #                 for i, doc in enumerate(docs, start=1):
+    #                     st.write(f"Document {i}:")
+    #                     st.write(doc)
+    #                     st.write("---")
+
+    #         # Display the bottom topics (noise)
+    #         with st.expander("Noise"):
+    #             if len(st.session_state.bottom_topics) < num_signals:
+    #                 logger.warning(f"Only {len(st.session_state.bottom_topics)} noise topics found.")
+
+    #             for _, topic in st.session_state.bottom_topics.iterrows():
+    #                 st.subheader(f"Topic: {topic['Topic']}")
+    #                 st.write(f"Representation: {topic['Representation']}")
+    #                 st.write(f"Timestamp: {topic['Timestamp']}")
+    #                 st.write(f"Coherence Score: {topic['Coherence']:.3f}")
+    #                 st.write(f"Count: {topic['Count']}")
+    #                 st.write(f"Coherence-Count Score: {topic['Coherence_Count_Score']:.3f}")
+
+    #                 docs = topic['Documents'][:num_docs]
+    #                 for i, doc in enumerate(docs, start=1):
+    #                     st.write(f"Document {i}:")
+    #                     st.write(doc)
+    #                     st.write("---")
 
