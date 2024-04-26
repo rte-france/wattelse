@@ -242,7 +242,6 @@ def manage_short_feedback(request):
     """
     return insert_feedback(request, short=True)
 
-
 def manage_long_feedback(request):
     """
     Function that collects long feedback sent from the user interface about the last

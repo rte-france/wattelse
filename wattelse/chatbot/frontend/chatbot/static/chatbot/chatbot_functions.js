@@ -195,6 +195,10 @@ function isCompleteJSON(buffer) {
 
 
 async function postUserMessageToRAG(userMessage) {
+    // Handle too long response from backend
+    const startTime = Date.now();
+    const timeout = 60000; // 60 seconds timeout
+
     // Question timestamp
     const currentDate = new Date();
     const questionTimestampString = currentDate.toISOString();
@@ -226,6 +230,14 @@ async function postUserMessageToRAG(userMessage) {
     let accumulatedData = "";
     let chunk;
     do {
+        // Handle too long response from backend
+        if (Date.now() - startTime > timeout) {
+            reader.cancel();
+            botDiv.classList.remove("animate"); // remove generation animation
+            createErrorMessage("Erreur : réponse du serveur trop lente.");
+            return;
+        }
+        // Read streaming chunks
         chunk = await reader.read();
 
         // Handle last chunk
