@@ -25,14 +25,15 @@ from wattelse.chatbot.backend import DATA_DIR
 from .models import Chat
 
 from .utils import (
-	get_user_group_id,
-	get_group_usernames_list,
-	new_user_created,
+    get_user_group_id,
+    get_group_usernames_list,
+    new_user_created,
     get_conversation_history,
     streaming_generator,
     insert_feedback,
     RAG_API,
 )
+
 
 def main_page(request):
     """
@@ -90,6 +91,7 @@ def main_page(request):
         }
     )
 
+
 def login(request):
     """Main function for login page.
     If request method is GET : render login.html
@@ -108,6 +110,7 @@ def login(request):
                 return render(request, "chatbot/login.html", {"error_message": error_message})
             else:
                 auth.login(request, user)
+                logger.info(f"[User: {request.user.username}] logged in")
                 RAG_API.create_session(user_group_id)
                 return redirect("/")
         # Else return error
@@ -116,6 +119,7 @@ def login(request):
             return render(request, "chatbot/login.html", {"error_message": error_message})
     else:
         return render(request, "chatbot/login.html")
+
 
 def register(request):
     """Main function for register page.
@@ -146,10 +150,13 @@ def register(request):
             return render(request, "chatbot/register.html", {"error_message": error_message})
     return render(request, "chatbot/register.html")
 
+
 def logout(request):
     """Log a user out and redirect to login page"""
+    logger.info(f"[User: {request.user.username}] logged out")
     auth.logout(request)
     return redirect("/login")
+
 
 def query_rag(request):
     """
@@ -167,23 +174,22 @@ def query_rag(request):
 
         # Get user chat history
         history = get_conversation_history(request.user, conversation_id)
-        logger.debug(f"History: {history}")
 
         # Get posted message
         message = request.POST.get("message", None)
 
         if not message:
-            logger.warning("No user message received")
+            logger.warning(f"[User: {request.user.username}] No user message received")
             error_message = "Veuillez saisir une question"
             return JsonResponse({"error_message": error_message}, status=500)
-        logger.info(f"User: {request.user.username} - Query: {message}")
+        logger.info(f"[User: {request.user.username}] Query: {message}")
 
         # Select documents for RAG
         selected_docs = request.POST.get("selected_docs", None)
         selected_docs = json.loads(selected_docs)
-        logger.debug(f"Selected docs: {selected_docs}")
+        logger.debug(f"[User: {request.user.username}] Selected docs: {selected_docs}")
         if not selected_docs:
-            logger.warning("No selected docs received, using all available docs")
+            logger.warning(f"[User: {request.user.username}] No selected docs received, using all available docs")
             selected_docs = []
 
         # Query RAG and stream response
@@ -199,10 +205,11 @@ def query_rag(request):
             return StreamingHttpResponse(streaming_generator(response), status=200, content_type='text/event-stream')
 
         except RAGAPIError as e:
-            logger.error(e)
+            logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse({"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500)
     else:
         raise Http404()
+
 
 def save_interaction(request):
     """Function called to save query and response in DB once response streaming is finished."""
@@ -219,7 +226,8 @@ def save_interaction(request):
         return HttpResponse(status=200)
     else:
         raise Http404()
-    
+
+
 def manage_short_feedback(request):
     """
     Function that collects short feedback sent from the user interface about the last
@@ -235,6 +243,7 @@ def manage_long_feedback(request):
     """
     return insert_feedback(request, short=False)
 
+
 def upload(request):
     """Main function for delete interface.
     If request method is POST : make a call to RAGOrchestratorClient to upload the specified documents
@@ -244,11 +253,11 @@ def upload(request):
         uploaded_file = request.FILES.get('file')
 
         if not uploaded_file:
-            logger.warning("No file to be uploaded, action ignored")
+            logger.warning(f"[User: {request.user.username}] No file to be uploaded, action ignored")
             return JsonResponse({"error_message": "No file received!"}, status=500)
         else:
             user_group_id = get_user_group_id(request.user)
-            logger.debug(f"Received file: {uploaded_file.name}")
+            logger.debug(f"[User: {request.user.username}] Received file: {uploaded_file.name}")
 
             # Create a temporary directory
             # TODO: investigate in memory temp file, probably a better option
@@ -265,12 +274,13 @@ def upload(request):
                     # Use the temporary file path for upload
                     RAG_API.upload_files(user_group_id, [temp_file_path])
                 except RAGAPIError as e:
-                    logger.error(e)
+                    logger.error(f"[User: {request.user.username}] {e}")
                     return JsonResponse({"error_message": f"Erreur de téléchargement de {uploaded_file.name}\n{e}"},
                                         status=500)
 
             # Returns the list of updated available documents
             return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
+
 
 def delete(request):
     """Main function for delete interface.
@@ -279,21 +289,22 @@ def delete(request):
     if request.method == "POST":
         # Select documents for removal
         selected_docs = request.POST.get("selected_docs", None)
-        logger.debug(f"Docs selected for removal: {selected_docs}")
+        logger.debug(f"[User: {request.user.username}] Docs selected for removal: {selected_docs}")
         if not selected_docs:
-            logger.warning("No docs selected for removal received, action ignored")
+            logger.warning(f"[User: {request.user.username}] No docs selected for removal received, action ignored")
             return JsonResponse({"warning_message": "No document removed"}, status=202)
         else:
             user_group_id = get_user_group_id(request.user)
             try:
                 rag_response = RAG_API.remove_documents(user_group_id, json.loads(selected_docs))
             except RAGAPIError as e:
-                logger.error(f"Error in deleting documents {selected_docs}: {e}")
+                logger.error(f"[User: {request.user.username}] Error in deleting documents {selected_docs}: {e}")
                 return JsonResponse({"error_message": f"Erreur pour supprimer les documents {selected_docs}"},
                                     status=500)
             # Returns the list of updated available documents
             return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
-        
+
+
 def file_viewer(request, file_name: str):
     """
     Main function to render a file. The url to access this function should be :
@@ -325,6 +336,7 @@ def file_viewer(request, file_name: str):
     else:
         raise Http404()
 
+
 def add_user_to_group(request):
     """
     Function to add a new user to a group.
@@ -343,23 +355,25 @@ def add_user_to_group(request):
         if User.objects.filter(username=new_username).exists():
             new_user = User.objects.get(username=new_username)
         else:
-            logger.error(f"Username {new_username} not found")
+            logger.error(f"[User: {request.user.username}] Username {new_username} not found")
             error_message = f"Le nom d'utilisateur {new_username} n'a pas été trouvé"
             return JsonResponse({"error_message": error_message}, status=500)
 
         # If new_user already in a group then return error status code
         if get_user_group_id(new_user) is not None:
-            logger.error(f"User with username {new_username} already belongs to a group")
+            logger.error(
+                f"[User: {request.user.username}] User with username {new_username} already belongs to a group")
             error_message = f"L'utilisateur {new_username} appartient déjà à un groupe"
             return JsonResponse({"error_message": error_message}, status=500)
 
         # If new_user has no group then add it to superuser group
         else:
-            logger.info(f"Adding {new_username} to group {superuser_group_id}")
+            logger.info(f"[User: {request.user.username}] Adding {new_username} to group {superuser_group_id}")
             new_user.groups.add(superuser_group)
             return HttpResponse(status=201)
     else:
         raise Http404()
+
 
 def remove_user_from_group(request):
     """
@@ -388,11 +402,12 @@ def remove_user_from_group(request):
             return JsonResponse({"error_message": error_message}, status=500)
 
         # Remove user_to_remove
-        logger.info(f"Removing {username_to_remove} from group {superuser_group_id}")
+        logger.info(f"[User: {request.user.username}] Removing {username_to_remove} from group {superuser_group_id}")
         user_to_remove.groups.remove(superuser_group)
         return HttpResponse(status=201)
     else:
         raise Http404()
+
 
 def admin_change_group(request):
     """Special function for admins to change group using web interface"""

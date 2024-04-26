@@ -7,7 +7,6 @@ import configparser
 
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
-from langchain.chains import LLMChain
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -45,10 +44,10 @@ def basic_chat(request):
     if request.method == "POST":
         message = request.POST.get("message", None)
         if not message:
-            logger.warning("No user message received")
+            logger.warning(f"[User: {request.user.username}] No user message received")
             error_message = "Veuillez saisir une question"
             return JsonResponse({"error_message": error_message}, status=500)
-        logger.info(f"User: {request.user.username} - Query: {message}")
+        logger.info(f"[User: {request.user.username}] Query: {message}")
 
         # Query LLM
         template = """Veuillez répondre à la question suivante: {question}
@@ -63,7 +62,7 @@ def basic_chat(request):
             return JsonResponse({"message": message, "answer": answer}, status=200)
 
         except Exception as e:
-            logger.error(e)
+            logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse({"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500)
     else:
         return render(
