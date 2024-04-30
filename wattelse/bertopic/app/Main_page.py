@@ -334,8 +334,9 @@ def train_model():
             
             st.info("Token embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
             
+            temp = st.session_state["topic_model"].get_topic_info()
             st.session_state["topics_info"] = (
-                st.session_state["topic_model"].get_topic_info().iloc[1:]
+                temp[temp['Topic'] != -1]
             )  # exclude -1 topic from topic list
 
             # Computes coherence value

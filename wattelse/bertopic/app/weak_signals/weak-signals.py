@@ -25,8 +25,6 @@ from gensim.models import CoherenceModel
 from sklearn.preprocessing import MinMaxScaler
 
 
-from joblib import Parallel, delayed
-
 # from cuml.cluster import HDBSCAN
 # from cuml.manifold import UMAP
 from umap import UMAP
@@ -587,10 +585,10 @@ parquet_files = glob.glob(os.path.join(cwd_data, '*.parquet'))
 json_files = glob.glob(os.path.join(cwd_data, '*.json'))
 jsonl_files = glob.glob(os.path.join(cwd_data, '*.jsonl'))
 
-file_list = [(os.path.basename(f), os.path.splitext(f)[-1][1:]) for f in csv_files + parquet_files + json_files + jsonl_files]
+
 
 @st.cache_data
-def load_data(selected_file):
+def load_and_preprocess_data(selected_file, language, min_chars, split_by_paragraph):
     # Get the selected file name and extension
     file_name, file_ext = selected_file
 
@@ -604,12 +602,46 @@ def load_data(selected_file):
     elif file_ext == 'jsonl':
         df = pd.read_json(os.path.join(cwd_data, file_name), lines=True)
 
+    df = df.sort_values(by='timestamp', ascending=True).reset_index(drop=True)
+    df['document_id'] = df.index
+
+    if 'url' in df.columns:
+        df['source'] = df['url'].apply(lambda x: x.split('/')[2] if pd.notna(x) else None)
+    else:
+        df['source'] = None
+        df['url'] = None
+
+    # Preprocess the data if the language is French
+    if language == "French":
+        df = preprocess_french_data(df)
+
+    # Split by paragraphs if selected
+    if split_by_paragraph:
+        new_rows = []
+        for _, row in df.iterrows():
+            paragraphs = row['text'].split('\n\n')
+            for paragraph in paragraphs:
+                new_row = row.copy()
+                new_row['text'] = paragraph
+                new_row['source'] = row['source']
+                new_rows.append(new_row)
+        df = pd.DataFrame(new_rows)
+
+    # Minimum characters input
+    if min_chars > 0:
+        df = df[df['text'].str.len() >= min_chars]
+
+    # Remove rows with empty text
+    df = df[df['text'].str.strip() != ''].reset_index(drop=True)
+
     return df
 
-@st.cache_data
+
+
 def preprocess_french_data(df):
     df['text'] = df['text'].apply(preprocess_french_text)
     return df
+
 
 def group_by_days(df, day_granularity=1):
     # Ensure the 'timestamp' column is in datetime format
@@ -624,46 +656,12 @@ def group_by_days(df, day_granularity=1):
     return dict_of_dfs
 
 
-
+file_list = [(os.path.basename(f), os.path.splitext(f)[-1][1:]) for f in csv_files + parquet_files + json_files + jsonl_files]
 selected_file = st.selectbox("Select a dataset", file_list)
-st.session_state['raw_df'] = load_data(selected_file)
-df = st.session_state['raw_df'].sort_values(by='timestamp', ascending=True).reset_index(drop=True)
-df['document_id'] = df.index
-
-if 'url' in st.session_state['raw_df'].columns:
-    df['source'] = df['url'].apply(lambda x: x.split('/')[2] if pd.notna(x) else None)
-else:
-    df['source'] = None
-
-
-# Preprocess the data if the language is French
-if language == "French":
-    df = preprocess_french_data(df)
-
-# Add a toggle button to split text by paragraphs
+min_chars = st.number_input("Minimum Characters", value=0, min_value=0, max_value=1000, key='min_chars')
 split_by_paragraph = st.checkbox("Split text by paragraphs", value=False, key="split_by_paragraph")
 
-
-
-# Split by paragraphs if selected
-if split_by_paragraph:
-    new_rows = []
-    for _, row in df.iterrows():
-        paragraphs = row['text'].split('\n\n')
-        for paragraph in paragraphs:
-            new_row = row.copy()
-            new_row['text'] = paragraph
-            new_row['source'] = row['source']
-            new_rows.append(new_row)
-    df = pd.DataFrame(new_rows)
-
-
-# Minimum characters input
-min_chars = st.number_input("Minimum Characters", value=0, min_value=0, max_value=1000, key='min_chars')
-if min_chars > 0: df = df[df['text'].str.len() >= min_chars]
-
-# Remove rows with empty text
-df = df[df['text'].str.strip() != ''].reset_index(drop=True)
+df = load_and_preprocess_data(selected_file, language, min_chars, split_by_paragraph)
 
 # Select timeframe
 min_date = df['timestamp'].min().date()
@@ -674,10 +672,8 @@ start_date, end_date = st.slider("Select Timeframe", min_value=min_date, max_val
 df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)].drop_duplicates(subset='text', keep='first')
 df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
 
-
 st.session_state['timefiltered_df'] = df_filtered
 st.write(f"Number of documents in selected timeframe: {len(st.session_state['timefiltered_df'])}")
-
 # Zero-shot topic definition
 zeroshot_topic_list = st.text_input("Enter zero-shot topics (separated by /)", value="")
 zeroshot_topic_list = [topic.strip() for topic in zeroshot_topic_list.split("/")]
@@ -993,14 +989,13 @@ if 'topic_models' in st.session_state:
             st.session_state.all_merge_histories_df = all_merge_histories_df
             st.session_state.all_new_topics_df = all_new_topics_df
 
-        st.dataframe(st.session_state.all_merge_histories_df, use_container_width=True)
         st.success("Model merging complete!")
 
 
     if "all_merge_histories_df" in st.session_state:
         # history = st.number_input("History (in days)", min_value=1, max_value=100, value=30, key='topic_size_history')
         with st.expander("Topic Size Evolution", expanded=True):
-            st.dataframe(st.session_state.all_merge_histories_df, use_container_width=True)
+            # st.dataframe(st.session_state.all_merge_histories_df, use_container_width=True)
             fig = go.Figure()
             topic_sizes = {}
 
@@ -1200,19 +1195,19 @@ if 'topic_models' in st.session_state:
 
             st.subheader(":grey[Noisy signals]")
             if not noise_topics_df.empty:
-                st.dataframe(noise_topics_df[columns])
+                st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
             else:
                 st.info(f"No noisy signals were detected at timestamp {window_end}.")
 
             st.subheader(":orange[Weak signals]")
             if not weak_signal_topics_df.empty:
-                st.dataframe(weak_signal_topics_df[columns])
+                st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
             else:
                 st.info(f"No weak signals were detected at timestamp {window_end}.")
 
             st.subheader(":green[Strong signals]")
             if not strong_signal_topics_df.empty:
-                st.dataframe(strong_signal_topics_df[columns])
+                st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
             else:
                 st.info(f"No strong signals were detected at timestamp {window_end}.")
 
@@ -1222,13 +1217,13 @@ if 'topic_models' in st.session_state:
             with col1:
                 if st.button("Take a closer look"):
                     # Check if the topic exists in noise_topics_df, weak_signal_topics_df, or strong_signal_topics_df
-                    if int(topic_number) in noise_topics_df['Topic'].values:
+                    if not(noise_topics_df.empty) and int(topic_number) in noise_topics_df['Topic'].values:
                         signal_type = "noisy"
                         topic_data = topic_sizes[int(topic_number)]
-                    elif int(topic_number) in weak_signal_topics_df['Topic'].values:
+                    elif not(weak_signal_topics_df.empty) and int(topic_number) in weak_signal_topics_df['Topic'].values:
                         signal_type = "weak"
                         topic_data = topic_sizes[int(topic_number)]
-                    elif int(topic_number) in strong_signal_topics_df['Topic'].values:
+                    elif not(strong_signal_topics_df.empty) and int(topic_number) in strong_signal_topics_df['Topic'].values:
                         signal_type = "strong"
                         topic_data = topic_sizes[int(topic_number)]
                     else:
@@ -1319,13 +1314,13 @@ if 'topic_models' in st.session_state:
             with col2:
                 if st.button("Take a closer look with ChatGPT"):
                     # Check if the topic exists in noise_topics_df, weak_signal_topics_df, or strong_signal_topics_df
-                    if int(topic_number) in noise_topics_df['Topic'].values:
+                    if not(noise_topics_df.empty) and int(topic_number) in noise_topics_df['Topic'].values:
                         signal_type = "noisy"
                         topic_data = topic_sizes[int(topic_number)]
-                    elif int(topic_number) in weak_signal_topics_df['Topic'].values:
+                    elif not(weak_signal_topics_df.empty) and int(topic_number) in weak_signal_topics_df['Topic'].values:
                         signal_type = "weak"
                         topic_data = topic_sizes[int(topic_number)]
-                    elif int(topic_number) in strong_signal_topics_df['Topic'].values:
+                    elif not(strong_signal_topics_df.empty) and int(topic_number) in strong_signal_topics_df['Topic'].values:
                         signal_type = "strong"
                         topic_data = topic_sizes[int(topic_number)]
                     else:
@@ -1366,8 +1361,9 @@ if 'topic_models' in st.session_state:
 
                     # When generating the summary using OpenAI ChatGPT
                     prompt = get_prompt(language, topic_number, content_summary)
+
                     completion = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
+                        model="gpt-3.5-turbo-0125",
                         messages=[
                             {"role": "system", "content": "You are a helpful assistant, skilled in summarizing topic evolution over time."},
                             {"role": "user", "content": prompt}
@@ -1375,6 +1371,7 @@ if 'topic_models' in st.session_state:
                     )
                     summary = completion.choices[0].message.content
                     st.markdown(summary)
+                        
 
 
 
