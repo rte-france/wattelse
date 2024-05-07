@@ -17,4 +17,4 @@ CONFIG_FILE="$SCRIPT_DIR/embedding_api.cfg"
 PORT=$(grep -Po '(?<!#)port=\K.*' "$CONFIG_FILE")
 CUDA_VISIBLE_DEVICES=$(grep -Po '(?<!#)cuda_visible_devices=\K.*' "$CONFIG_FILE")
 
-CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES uvicorn wattelse.api.embedding.fastapi_embedding:app --port=$PORT --reload
+CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES uvicorn wattelse.api.embedding.fastapi_embedding:app --port=$PORT --reload --host 0.0.0.0
