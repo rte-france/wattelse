@@ -56,7 +56,8 @@ def create_session(group_id: str) -> str:
     """When this is called, instantiates a RAG backend for a group."""
     if group_id not in RAG_SESSIONS.keys():
         RAG_SESSIONS[group_id] = RAGBackEnd(group_id)
-    logger.info(f"[Group: {group_id}] RAGBackend created")
+        logger.info(f"[Group: {group_id}] RAGBackend created")
+    logger.warning(f"[Group: {group_id}] RAGBackend already created")
     return group_id
 
 
