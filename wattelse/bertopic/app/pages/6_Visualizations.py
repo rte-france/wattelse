@@ -151,9 +151,8 @@ def create_treemap():
 def create_datamap():
     with st.spinner("Loading Data-map plot..."):
         # Calculate 2D embeddings
-        tsne = TSNE(n_components=2, random_state=42, metric="cosine")
-        reduced_embeddings = tsne.fit_transform(st.session_state["embeddings"])
-        # reduced_embeddings = UMAP(n_neighbors=10, n_components=2, min_dist=0, metric='cosine', verbose=True).fit_transform(st.session_state["embeddings"])
+        reduced_embeddings = UMAP(n_neighbors=10, n_components=2, min_dist=0.15, metric='cosine').fit_transform(st.session_state["embeddings"])
+
 
         # Create a dataframe that associates documents with their embeddings and the topics they belong to
         topic_nums = list(set(st.session_state['topics']))
@@ -171,7 +170,6 @@ def create_datamap():
 
         # Prepare the data for datamapplot (conversion to numpy arrays)
         embeddings_array = np.array(df['embedding'].tolist())
-        # df.loc[df['topic_num'] == -1, 'topic_representation'] = 'Unlabeled'
 
         # Convert the topic_representation column to a NumPy array
         topic_representations_array = df['topic_representation'].values
@@ -181,10 +179,12 @@ def create_datamap():
             topic_representations_array,
             hover_text=df['document'].tolist(),
             enable_search=True,
-            darkmode=True,
+            darkmode=False,
             noise_color="#aaaaaa44",
             logo='https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/RTE_logo.svg/1024px-RTE_logo.svg.png',
-            logo_width=80,
+            logo_width=100,
+            cluster_boundary_polygons=True,
+            cluster_boundary_line_width=6,
         )
 
         # Encode the HTML string using UTF-8

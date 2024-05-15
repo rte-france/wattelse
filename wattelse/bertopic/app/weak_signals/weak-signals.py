@@ -552,7 +552,7 @@ def calculate_coherence_scores(df, _vectorizer, metric="c_v"):
 
 # Sidebar menu for BERTopic hyperparameters
 st.sidebar.header("BERTopic Hyperparameters")
-language = st.sidebar.selectbox("Select Language", ["English", "French"], key='language')
+language = st.sidebar.selectbox("Select Language", ["French", "English"], key='language')
 
 if language == "English":
     stopwords_list = stopwords.words("english")
@@ -566,17 +566,17 @@ with st.sidebar.expander("UMAP Hyperparameters", expanded=True):
     umap_n_components = st.number_input("UMAP n_components", value=5, min_value=2, max_value=100, key='umap_n_components')
     umap_n_neighbors = st.number_input("UMAP n_neighbors", value=5, min_value=2, max_value=100, key='umap_n_neighbors')
 with st.sidebar.expander("HDBSCAN Hyperparameters", expanded=True):
-    hdbscan_min_cluster_size = st.number_input("HDBSCAN min_cluster_size", value=5, min_value=2, max_value=100, key='hdbscan_min_cluster_size')
+    hdbscan_min_cluster_size = st.number_input("HDBSCAN min_cluster_size", value=2, min_value=2, max_value=100, key='hdbscan_min_cluster_size')
     hdbscan_min_samples = st.number_input("HDBSCAN min_sample", value=2, min_value=1, max_value=100, key='hdbscan_min_samples')
-    hdbscan_cluster_selection_method = st.selectbox("Cluster Selection Method", ["leaf", "eom"], key='hdbscan_cluster_selection_method')
+    hdbscan_cluster_selection_method = st.selectbox("Cluster Selection Method", ["eom", "leaf"], key='hdbscan_cluster_selection_method')
 with st.sidebar.expander("Vectorizer Hyperparameters", expanded=True):
     top_n_words = st.number_input("Top N Words", value=10, min_value=1, max_value=50, key='top_n_words')
     vectorizer_ngram_range = st.selectbox("N-Gram range", [(1,2), (1,1), (2,2)], key='vectorizer_ngram_range')
     min_df = st.number_input("min_df", value=1, min_value=1, max_value=50, key='min_df')
 with st.sidebar.expander("Merging Hyperparameters", expanded=True):
-    min_similarity = st.slider("Minimum Similarity for Merging", 0.0, 1.0, 0.8, 0.01, key='min_similarity')
+    min_similarity = st.slider("Minimum Similarity for Merging", 0.0, 1.0, 0.75, 0.01, key='min_similarity')
 with st.sidebar.expander("Zero-shot Parameters", expanded=True):
-    zeroshot_min_similarity = st.slider("Zeroshot Minimum Similarity", 0.0, 1.0, 0.45, 0.01, key='zeroshot_min_similarity')
+    zeroshot_min_similarity = st.slider("Zeroshot Minimum Similarity", 0.0, 1.0, 0.4, 0.01, key='zeroshot_min_similarity')
 
 
 cwd_data = cwd+'/data/'
@@ -658,8 +658,8 @@ def group_by_days(df, day_granularity=1):
 
 file_list = [(os.path.basename(f), os.path.splitext(f)[-1][1:]) for f in csv_files + parquet_files + json_files + jsonl_files]
 selected_file = st.selectbox("Select a dataset", file_list)
-min_chars = st.number_input("Minimum Characters", value=0, min_value=0, max_value=1000, key='min_chars')
-split_by_paragraph = st.checkbox("Split text by paragraphs", value=False, key="split_by_paragraph")
+min_chars = st.number_input("Minimum Characters", value=100, min_value=0, max_value=1000, key='min_chars')
+split_by_paragraph = st.checkbox("Split text by paragraphs", value=True, key="split_by_paragraph")
 
 df = load_and_preprocess_data(selected_file, language, min_chars, split_by_paragraph)
 
@@ -887,8 +887,6 @@ if 'topic_models' in st.session_state:
             )
             window_start = window_end - window_size_timedelta
 
-            lambda_decay = 0.1  # Decay rate, adjust as needed
-
             for topic, weak_signal_trend in weak_signal_trends.items():
                 popularity = []
                 hovertext = []
@@ -905,7 +903,7 @@ if 'topic_models' in st.session_state:
                         if periods_since_last_update > 0:
                             degradation_factor = periods_since_last_update
                             current_popularity = popularity[-1] if popularity else 0
-                            current_popularity *= np.exp(-lambda_decay * degradation_factor)
+                            current_popularity *= np.exp(-degradation_factor)
 
                             # Reset the popularity to 0 if it falls below 0 due to degradation
                             if current_popularity < 0:
@@ -942,7 +940,7 @@ if 'topic_models' in st.session_state:
             # Determine the quantiles based on the logged popularity values
             if all_popularity_values:
                 q1 = np.percentile(all_popularity_values, 10)
-                q3 = np.percentile(all_popularity_values, 50)
+                q3 = np.percentile(all_popularity_values, 75)
             else:
                 q1, q3 = 0, 0  # Default values if no popularity values are within the window
 
@@ -1120,8 +1118,7 @@ if 'topic_models' in st.session_state:
                             current_popularity = data['Popularity'][-1]
 
                             # Apply exponential decay based on the number of periods since the last update
-                            degradation_factor = periods_since_last_update
-                            current_popularity *= np.exp(-degradation_factor)
+                            current_popularity *= np.exp(-0.1 * periods_since_last_update**2)
 
                             current_popularity = max(current_popularity, 0)
                             decay_timestamp = last_known_timestamp + periods_since_last_update * granularity_timedelta
@@ -1142,6 +1139,7 @@ if 'topic_models' in st.session_state:
                     line_shape='spline'
                 ))
 
+            
             # Log all popularity values within the selected window
             all_popularity_values = []
             for topic, data in topic_sizes.items():
@@ -1154,7 +1152,6 @@ if 'topic_models' in st.session_state:
                 q3 = np.percentile(all_popularity_values, 50)
             else:
                 q1, q3 = 0, 0  # Default values if no popularity values are within the window
-
 
             # Add Q1 and Q3 lines to the graph
             fig.add_shape(type="line", x0=window_start, y0=q1, x1=window_end, y1=q1, line=dict(color="red", width=2, dash="dash"))
@@ -1170,16 +1167,23 @@ if 'topic_models' in st.session_state:
 
             st.plotly_chart(fig, use_container_width=True)
 
-            # Classify topics based on their most recent popularity
+            # Classify topics based on their popularity behavior throughout the window
             noise_topics = []
             weak_signal_topics = []
             strong_signal_topics = []
 
             for topic, data in topic_sizes.items():
-                latest_popularity = data['Popularity'][-1]
-                if latest_popularity < q1:
+                window_popularities = [popularity for timestamp, popularity in zip(data['Timestamps'], data['Popularity']) if window_start <= timestamp <= window_end]
+                
+                # Count how many times the topic's popularity falls into each category
+                noise_count = sum(1 for popularity in window_popularities if popularity < q1)
+                weak_signal_count = sum(1 for popularity in window_popularities if q1 <= popularity <= q3)
+                strong_signal_count = sum(1 for popularity in window_popularities if popularity > q3)
+                
+                # Classify the topic based on the majority category
+                if noise_count > weak_signal_count and noise_count > strong_signal_count:
                     noise_topics.append(topic)
-                elif q1 <= latest_popularity <= q3:
+                elif weak_signal_count > noise_count and weak_signal_count > strong_signal_count:
                     weak_signal_topics.append(topic)
                 else:
                     strong_signal_topics.append(topic)
@@ -1262,6 +1266,12 @@ if 'topic_models' in st.session_state:
                 st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
             else:
                 st.info(f"No strong signals were detected at timestamp {window_end}.")
+
+
+
+
+
+
         
             # Create a text input field and a button for taking a closer look at a topic
             topic_number = st.text_input("Enter a topic number to take a closer look:")
