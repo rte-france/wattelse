@@ -37,8 +37,7 @@ class CurebotProvider(DataProvider):
             summary = entry["Contenu de la ressource"]
             published = dateparser.parse(entry["Date de trouvaille"]).replace(microsecond=0).strftime(
                 "%Y-%m-%d %H:%M:%S")
-            text = summary
-            title = entry["Titre de la ressource"]
+            text, title = self._get_text(url=url)
             if text is None or text == "":
                 return None
             logger.debug(f"----- Title: {title},\tDate: {published}")
