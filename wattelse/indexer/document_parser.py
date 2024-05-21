@@ -5,12 +5,12 @@
 
 import os
 import re
-from typing import List, Iterator, AsyncIterator
+from typing import List, Iterator
 
 import bs4
 import pandas as pd
-from langchain_community.document_loaders import PyMuPDFLoader, BSHTMLLoader, UnstructuredPowerPointLoader, \
-    UnstructuredWordDocumentLoader, UnstructuredExcelLoader, WebBaseLoader, TextLoader
+from langchain_community.document_loaders import PyMuPDFLoader, UnstructuredPowerPointLoader, \
+    UnstructuredWordDocumentLoader, WebBaseLoader, TextLoader
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from pathlib import Path
@@ -119,7 +119,7 @@ def _parse_csv(file: Path) -> List[Document]:
 
 
 def _parse_html(file: Path) -> List[Document]:
-    loader = BSHTMLLoader(file.absolute().as_posix())
+    loader = TextLoader(file.absolute().as_posix()) # NB. BSHTMLLoader removes html tags
     data = loader.load()
     # NB. return one document
     return data

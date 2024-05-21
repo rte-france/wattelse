@@ -29,7 +29,7 @@ class SentenceSplitter(TextSplitter):
 def split_file(file_extension: str, docs: List[Document], use_sentence_splitter: bool = True) -> List[Document]:
     """Split a file into smaller chunks - the chunking method depends on file type"""
     if file_extension == ".md":
-        text_splitter = MarkdownHeaderTextSplitter(return_each_line=True, headers_to_split_on=[
+        text_splitter = MarkdownHeaderTextSplitter(return_each_line=False, headers_to_split_on=[
             ("#", "Header 1"),
             ("##", "Header 2"),
             ("###", "Header 3"),
@@ -42,7 +42,7 @@ def split_file(file_extension: str, docs: List[Document], use_sentence_splitter:
             splits += new_docs
         return splits
     elif file_extension in [".htm", ".html"]:
-        text_splitter = HTMLHeaderTextSplitter(return_each_element=True, headers_to_split_on=[
+        text_splitter = HTMLHeaderTextSplitter(return_each_element=False, headers_to_split_on=[
             ("h1", "Header 1"),
             ("h2", "Header 2"),
             ("h3", "Header 3"),
