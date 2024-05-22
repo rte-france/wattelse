@@ -867,7 +867,7 @@ if 'topic_models' in st.session_state:
             oldest_timestamp = min(all_timestamps)
             newest_timestamp = max(all_timestamps)
 
-            window_size = st.number_input("Past Window Size (in days)", min_value=1, max_value=365, value=30, key='window_size_zeroshot')
+            window_size = st.number_input("Periode rétrospective (jours)", min_value=1, max_value=365, value=30, key='window_size_zeroshot')
             window_size_timedelta = pd.Timedelta(days=window_size)
 
             # Convert oldest_timestamp and newest_timestamp to datetime objects
@@ -1054,7 +1054,7 @@ if 'topic_models' in st.session_state:
             min_timestamp = st.session_state.all_merge_histories_df['Timestamp'].min()
             max_timestamp = st.session_state.all_merge_histories_df['Timestamp'].max()
 
-            window_size = st.number_input("Past Window Size (in days)", min_value=1, max_value=365, value=30, key='window_size')
+            window_size = st.number_input("Periode rétrospective (jours)", min_value=1, max_value=365, value=30, key='window_size')
             window_size_timedelta = pd.Timedelta(days=window_size)
 
             # Convert timestamps to datetime objects
@@ -1065,7 +1065,7 @@ if 'topic_models' in st.session_state:
 
             # Create a slider for the window end position
             window_end = st.slider(
-                "Select window end",
+                "Date actuelle",
                 min_value=min_datetime + window_size_timedelta,
                 max_value=max_datetime,
                 value=max_datetime,
@@ -1249,19 +1249,19 @@ if 'topic_models' in st.session_state:
             # Display the DataFrames
             columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest Popularity', 'Docs_Count', 'Paragraphs_Count', 'Merges_Count', 'Latest_Timestamp', 'Documents']
 
-            st.subheader(":grey[Noisy signals]")
+            st.subheader(":grey[Signaux Parasites (Bruit)]")
             if not noise_topics_df.empty:
                 st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
             else:
                 st.info(f"No noisy signals were detected at timestamp {window_end}.")
 
-            st.subheader(":orange[Weak signals]")
+            st.subheader(":orange[Signaux Faibles]")
             if not weak_signal_topics_df.empty:
-                st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
+                st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Latest Popularity'], ascending=True))
             else:
                 st.info(f"No weak signals were detected at timestamp {window_end}.")
 
-            st.subheader(":green[Strong signals]")
+            st.subheader(":green[Signaux Forts]")
             if not strong_signal_topics_df.empty:
                 st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
             else:
@@ -1275,158 +1275,158 @@ if 'topic_models' in st.session_state:
         
             # Create a text input field and a button for taking a closer look at a topic
             topic_number = st.text_input("Enter a topic number to take a closer look:")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Take a closer look"):
-                    # Check if the topic exists in noise_topics_df, weak_signal_topics_df, or strong_signal_topics_df
-                    if not(noise_topics_df.empty) and int(topic_number) in noise_topics_df['Topic'].values:
-                        signal_type = "noisy"
-                        topic_data = topic_sizes[int(topic_number)]
-                    elif not(weak_signal_topics_df.empty) and int(topic_number) in weak_signal_topics_df['Topic'].values:
-                        signal_type = "weak"
-                        topic_data = topic_sizes[int(topic_number)]
-                    elif not(strong_signal_topics_df.empty) and int(topic_number) in strong_signal_topics_df['Topic'].values:
-                        signal_type = "strong"
-                        topic_data = topic_sizes[int(topic_number)]
+            # col1, col2 = st.columns(2)
+            # with col1:
+            #     if st.button("Take a closer look"):
+            #         # Check if the topic exists in noise_topics_df, weak_signal_topics_df, or strong_signal_topics_df
+            #         if not(noise_topics_df.empty) and int(topic_number) in noise_topics_df['Topic'].values:
+            #             signal_type = "noisy"
+            #             topic_data = topic_sizes[int(topic_number)]
+            #         elif not(weak_signal_topics_df.empty) and int(topic_number) in weak_signal_topics_df['Topic'].values:
+            #             signal_type = "weak"
+            #             topic_data = topic_sizes[int(topic_number)]
+            #         elif not(strong_signal_topics_df.empty) and int(topic_number) in strong_signal_topics_df['Topic'].values:
+            #             signal_type = "strong"
+            #             topic_data = topic_sizes[int(topic_number)]
+            #         else:
+            #             st.warning(f"Topic {topic_number} wasn't found in any of the detected signals.")
+            #             topic_data = None
+
+            #         if topic_data:
+            #             # Print the signal type
+            #             if signal_type == "noisy":
+            #                 st.markdown(f"# <span style='color: grey'>Topic {topic_number} est potentiellement un signal parasite.</span>", unsafe_allow_html=True)
+            #             elif signal_type == "weak":
+            #                 st.markdown(f"# <span style='color: orange'>Topic {topic_number} est potentiellement un signal faible.</span>", unsafe_allow_html=True)
+            #             else:
+            #                 st.markdown(f"# <span style='color: green'>Topic {topic_number} est potentiellement un signal fort.</span>", unsafe_allow_html=True)
+
+            #             # Print the list of sources that covered the topic
+            #             topic_sources = set(source for source in topic_data['Sources'] if source is not None)
+            #             if topic_sources:
+            #                 st.write("Sources that covered Topic :")
+            #                 for i, src in enumerate(topic_sources):
+            #                     st.write(f"{src}")
+            #             else:
+            #                 st.write(f"No sources available for Topic {topic_number}")
+
+            #             # Plot the evolution of embedding similarity over time
+            #             topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
+            #             embeddings1 = topic_merge_rows['Embedding1'].tolist()
+            #             embeddings2 = topic_merge_rows['Embedding2'].tolist()
+            #             timestamps = topic_merge_rows['Timestamp'].tolist()
+
+            #             similarities = [cosine_similarity([embeddings1[i]], [embeddings2[i]])[0][0] for i in range(len(embeddings1))]
+
+            #             fig_embedding_similarity = go.Figure()
+            #             fig_embedding_similarity.add_trace(go.Scatter(
+            #                 x=timestamps,
+            #                 y=similarities,
+            #                 mode='lines+markers',
+            #                 name="Embedding Similarity"
+            #             ))
+            #             fig_embedding_similarity.update_layout(
+            #                 title=f"Evolution of Embedding Similarity for Topic {topic_number}",
+            #                 xaxis_title="Timestamp",
+            #                 yaxis_title="Cosine Similarity"
+            #             )
+            #             st.plotly_chart(fig_embedding_similarity, use_container_width=True)
+
+            #             # Print topic representations and content at different timestamps
+            #             for i, row in enumerate(topic_merge_rows.itertuples()):
+            #                 timestamp = row.Timestamp
+            #                 next_timestamp = timestamp + pd.Timedelta(days=granularity)
+            #                 representation1 = row.Representation1
+            #                 representation2 = row.Representation2
+            #                 documents1 = set(row.Documents1)
+            #                 documents2 = set(row.Documents2)
+            #                 urls1 = row.URLs1
+            #                 urls2 = row.URLs2
+
+            #                 timestamp_str = timestamp.strftime("%Y-%m-%d")
+            #                 next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
+
+            #                 if i == 0:
+            #                     st.markdown(f"### Topic representation at {timestamp_str}:")
+            #                     st.write(representation1)
+            #                     for doc, url in zip(documents1, urls1):
+            #                         st.write(f"- {doc}")
+            #                         st.write(f" SOURCE: {url}")
+
+            #                     st.markdown("""---""")
+
+            #                     st.markdown(f"### Topic representation at {next_timestamp_str}:")
+            #                     st.write(representation2)
+            #                     for doc, url in zip(documents2, urls2):
+            #                         st.write(f"- {doc}")
+            #                         st.write(f" SOURCE: {url}")
+
+            #                     st.markdown("""---""")
+
+            #                 else:
+            #                     st.markdown(f"### Topic representation at {next_timestamp_str}:")
+            #                     st.write(representation2)
+            #                     st.write("Topic content:")
+            #                     for doc, url in zip(documents2, urls2):
+            #                         st.write(f"- {doc}")
+            #                         st.write(f" SOURCE: {url}")
+
+            #                     st.markdown("""---""")
+
+
+            # with col2:
+            if st.button("Analyser le signal"):
+                # Check if the topic exists in noise_topics_df, weak_signal_topics_df, or strong_signal_topics_df
+                if not(noise_topics_df.empty) and int(topic_number) in noise_topics_df['Topic'].values:
+                    signal_type = "noisy"
+                    topic_data = topic_sizes[int(topic_number)]
+                elif not(weak_signal_topics_df.empty) and int(topic_number) in weak_signal_topics_df['Topic'].values:
+                    signal_type = "weak"
+                    topic_data = topic_sizes[int(topic_number)]
+                elif not(strong_signal_topics_df.empty) and int(topic_number) in strong_signal_topics_df['Topic'].values:
+                    signal_type = "strong"
+                    topic_data = topic_sizes[int(topic_number)]
+                else:
+                    st.warning(f"Topic {topic_number} wasn't found in any of the detected signals.")
+                    topic_data = None
+
+                if topic_data:
+                    # Print the signal type
+                    if signal_type == "noisy":
+                        st.markdown(f"# <span style='color: grey'>Topic {topic_number} est potentiellement un signal parasite.</span>", unsafe_allow_html=True)
+                    elif signal_type == "weak":
+                        st.markdown(f"# <span style='color: orange'>Topic {topic_number} est potentiellement un signal faible.</span>", unsafe_allow_html=True)
                     else:
-                        st.warning(f"Topic {topic_number} wasn't found in any of the detected signals.")
-                        topic_data = None
+                        st.markdown(f"# <span style='color: green'>Topic {topic_number} est potentiellement un signal fort.</span>", unsafe_allow_html=True)
 
-                    if topic_data:
-                        # Print the signal type
-                        if signal_type == "noisy":
-                            st.markdown(f"# <span style='color: grey'>Topic {topic_number} is potentially a noisy signal.</span>", unsafe_allow_html=True)
-                        elif signal_type == "weak":
-                            st.markdown(f"# <span style='color: orange'>Topic {topic_number} is potentially a weak signal.</span>", unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"# <span style='color: green'>Topic {topic_number} is potentially a strong signal.</span>", unsafe_allow_html=True)
+                    # Generate a summary using OpenAI ChatGPT
+                    topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
+                    content_summary = ""
+                    for i, row in enumerate(topic_merge_rows.itertuples()):
+                        timestamp = row.Timestamp
+                        next_timestamp = timestamp + granularity_timedelta
+                        representation1 = row.Representation1
+                        representation2 = row.Representation2
+                        documents1 = set(row.Documents1)
+                        documents2 = set(row.Documents2)
 
-                        # Print the list of sources that covered the topic
-                        topic_sources = set(source for source in topic_data['Sources'] if source is not None)
-                        if topic_sources:
-                            st.write("Sources that covered Topic :")
-                            for i, src in enumerate(topic_sources):
-                                st.write(f"{src}")
-                        else:
-                            st.write(f"No sources available for Topic {topic_number}")
+                        timestamp_str = timestamp.strftime("%Y-%m-%d")
+                        next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
 
-                        # Plot the evolution of embedding similarity over time
-                        topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
-                        embeddings1 = topic_merge_rows['Embedding1'].tolist()
-                        embeddings2 = topic_merge_rows['Embedding2'].tolist()
-                        timestamps = topic_merge_rows['Timestamp'].tolist()
-
-                        similarities = [cosine_similarity([embeddings1[i]], [embeddings2[i]])[0][0] for i in range(len(embeddings1))]
-
-                        fig_embedding_similarity = go.Figure()
-                        fig_embedding_similarity.add_trace(go.Scatter(
-                            x=timestamps,
-                            y=similarities,
-                            mode='lines+markers',
-                            name="Embedding Similarity"
-                        ))
-                        fig_embedding_similarity.update_layout(
-                            title=f"Evolution of Embedding Similarity for Topic {topic_number}",
-                            xaxis_title="Timestamp",
-                            yaxis_title="Cosine Similarity"
-                        )
-                        st.plotly_chart(fig_embedding_similarity, use_container_width=True)
-
-                        # Print topic representations and content at different timestamps
-                        for i, row in enumerate(topic_merge_rows.itertuples()):
-                            timestamp = row.Timestamp
-                            next_timestamp = timestamp + pd.Timedelta(days=granularity)
-                            representation1 = row.Representation1
-                            representation2 = row.Representation2
-                            documents1 = set(row.Documents1)
-                            documents2 = set(row.Documents2)
-                            urls1 = row.URLs1
-                            urls2 = row.URLs2
-
-                            timestamp_str = timestamp.strftime("%Y-%m-%d")
-                            next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
-
-                            if i == 0:
-                                st.markdown(f"### Topic representation at {timestamp_str}:")
-                                st.write(representation1)
-                                for doc, url in zip(documents1, urls1):
-                                    st.write(f"- {doc}")
-                                    st.write(f" SOURCE: {url}")
-
-                                st.markdown("""---""")
-
-                                st.markdown(f"### Topic representation at {next_timestamp_str}:")
-                                st.write(representation2)
-                                for doc, url in zip(documents2, urls2):
-                                    st.write(f"- {doc}")
-                                    st.write(f" SOURCE: {url}")
-
-                                st.markdown("""---""")
-
-                            else:
-                                st.markdown(f"### Topic representation at {next_timestamp_str}:")
-                                st.write(representation2)
-                                st.write("Topic content:")
-                                for doc, url in zip(documents2, urls2):
-                                    st.write(f"- {doc}")
-                                    st.write(f" SOURCE: {url}")
-
-                                st.markdown("""---""")
+                        content_summary += f"Timestamp: {timestamp_str}\nTopic representation: {representation1}\n"
+                        for doc in documents1:
+                            content_summary += f"- {doc}\n"
+                        content_summary += f"\nTimestamp: {next_timestamp_str}\nTopic representation: {representation2}\n"
+                        for doc in documents2:
+                            content_summary += f"- {doc}\n"
+                        content_summary += "\n"
 
 
-            with col2:
-                if st.button("Take a closer look with ChatGPT"):
-                    # Check if the topic exists in noise_topics_df, weak_signal_topics_df, or strong_signal_topics_df
-                    if not(noise_topics_df.empty) and int(topic_number) in noise_topics_df['Topic'].values:
-                        signal_type = "noisy"
-                        topic_data = topic_sizes[int(topic_number)]
-                    elif not(weak_signal_topics_df.empty) and int(topic_number) in weak_signal_topics_df['Topic'].values:
-                        signal_type = "weak"
-                        topic_data = topic_sizes[int(topic_number)]
-                    elif not(strong_signal_topics_df.empty) and int(topic_number) in strong_signal_topics_df['Topic'].values:
-                        signal_type = "strong"
-                        topic_data = topic_sizes[int(topic_number)]
-                    else:
-                        st.warning(f"Topic {topic_number} wasn't found in any of the detected signals.")
-                        topic_data = None
+                # When generating the summary using OpenAI ChatGPT
+                prompt = get_prompt(language, topic_number, content_summary)
 
-                    if topic_data:
-                        # Print the signal type
-                        if signal_type == "noisy":
-                            st.markdown(f"# <span style='color: grey'>Topic {topic_number} is potentially a noisy signal.</span>", unsafe_allow_html=True)
-                        elif signal_type == "weak":
-                            st.markdown(f"# <span style='color: orange'>Topic {topic_number} is potentially a weak signal.</span>", unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"# <span style='color: green'>Topic {topic_number} is potentially a strong signal.</span>", unsafe_allow_html=True)
-
-                        # Generate a summary using OpenAI ChatGPT
-                        topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
-                        content_summary = ""
-                        for i, row in enumerate(topic_merge_rows.itertuples()):
-                            timestamp = row.Timestamp
-                            next_timestamp = timestamp + granularity_timedelta
-                            representation1 = row.Representation1
-                            representation2 = row.Representation2
-                            documents1 = set(row.Documents1)
-                            documents2 = set(row.Documents2)
-
-                            timestamp_str = timestamp.strftime("%Y-%m-%d")
-                            next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
-
-                            content_summary += f"Timestamp: {timestamp_str}\nTopic representation: {representation1}\n"
-                            for doc in documents1:
-                                content_summary += f"- {doc}\n"
-                            content_summary += f"\nTimestamp: {next_timestamp_str}\nTopic representation: {representation2}\n"
-                            for doc in documents2:
-                                content_summary += f"- {doc}\n"
-                            content_summary += "\n"
-
-
-                    # When generating the summary using OpenAI ChatGPT
-                    prompt = get_prompt(language, topic_number, content_summary)
-
-                    # Replace the existing code for generating the summary using OpenAI ChatGPT with the following:
-
+                # Replace the existing code for generating the summary using OpenAI ChatGPT with the following:
+                with st.spinner("Génération du résumé...") : 
                     try:
                         completion = client.chat.completions.create(
                             model="gpt-3.5-turbo-0125",

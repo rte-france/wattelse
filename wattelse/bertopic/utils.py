@@ -64,6 +64,8 @@ def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
     elif ".jsonl.gz" in file_name or ".jsonlines.gz" in file_name:
         with gzip.open(data_path_str, 'rt') as f_in:  # Open as text for JSON parsing
             return pd.read_json(f_in, lines=True)
+    elif ".parquet" in file_name:
+        return pd.read_parquet(data_path_str)
 
 
 '''
