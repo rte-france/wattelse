@@ -42,6 +42,7 @@ def generate_newsletter(
     summary_mode: str = "document",
     prompt_language: str = "fr",
     improve_topic_description: bool = False,
+    openai_model_name: str = None,
 ) -> str:
     """Generates a newsletter based on a trained BERTopic model.
 
@@ -60,6 +61,7 @@ def generate_newsletter(
                                                     using OpenAI API
         prompt_language (str, optional): prompt language
         improve_topic_description (bool, optional): whether to use ChatGPT to transform topic keywords to a more readable description
+        openai_model_name (str, optional): OpenAI model called using OpenAI_API, used to improve topic description and when summary_mode=topic
 
     Returns:
         str: Newsletter in Markdown format
@@ -118,7 +120,8 @@ def generate_newsletter(
                 (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language=='fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
                     keywords=', '.join(topics_info['Representation'].iloc[i]),
                     article_list=article_list,
-                )
+                ),
+                model_name=openai_model_name,
             )
         else:
             logger.error(f'{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter')
@@ -132,7 +135,8 @@ def generate_newsletter(
                 openai_api.generate(
                     FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES.format(
                         title_list=(" ; ".join(summaries) if summary_mode=='document' else topic_summary),
-                    )
+                    ),
+                    model_name=openai_model_name,
                 )
                 .replace('"', "")
             )
