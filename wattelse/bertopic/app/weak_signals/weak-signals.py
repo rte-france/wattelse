@@ -24,9 +24,6 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel
 from sklearn.preprocessing import MinMaxScaler
 
-
-# from cuml.cluster import HDBSCAN
-# from cuml.manifold import UMAP
 from umap import UMAP
 from hdbscan import HDBSCAN
 
