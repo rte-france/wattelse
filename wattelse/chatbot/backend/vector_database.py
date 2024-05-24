@@ -3,6 +3,14 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
+# These 3 lines are used in case the default sqlite3 version of the system is too old for ChromaDB
+# It requires to install first 'pip install pysqlite3-binary'
+# these three lines swap the stdlib sqlite3 lib with the pysqlite3 package
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
+
 from typing import Optional, List, Dict
 
 import chromadb

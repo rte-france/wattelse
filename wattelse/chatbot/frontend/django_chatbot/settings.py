@@ -15,6 +15,12 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
+
+# these three lines swap the stdlib sqlite3 lib with the pysqlite3 package
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 from pathlib import Path
 from wattelse.chatbot.backend import BASE_DATA_DIR
 
@@ -33,7 +39,7 @@ SECRET_KEY = 'django-insecure-wsa9k4v_goql%t8rn@q4*5flo+xnnxa%8!^p2g(4g-=py==ur)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['10.135.73.152', '10.132.6.110']
+ALLOWED_HOSTS = ['10.135.73.152', '10.132.6.110', '10.132.6.55']
 
 
 # Application definition
