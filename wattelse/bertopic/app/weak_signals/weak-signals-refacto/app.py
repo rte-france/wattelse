@@ -409,7 +409,7 @@ def main():
             st.success("Model merging complete!")
         
         if "all_merge_histories_df" in st.session_state:
-            plot_topic_size_evolution(st.session_state.all_merge_histories_df, granularity)
+            window_start, window_end = plot_topic_size_evolution(st.session_state.all_merge_histories_df, granularity)
 
             # Create a text input field and a button for taking a closer look at a topic
             topic_number = st.text_input("Enter a topic number to take a closer look:")
@@ -417,20 +417,24 @@ def main():
             if st.button("Analyze signal"):
                 topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
                 
-                if not topic_merge_rows.empty:
+                # Filter the topic_merge_rows based on the window_start and window_end values
+                
+                topic_merge_rows_filtered = topic_merge_rows[(topic_merge_rows['Timestamp'] <= window_end)]
+                
+                if not topic_merge_rows_filtered.empty:
                     # Generate a summary using OpenAI ChatGPT
                     content_summary = ""
-                    for i, row in enumerate(topic_merge_rows.itertuples()):
+                    for i, row in enumerate(topic_merge_rows_filtered.itertuples()):
                         timestamp = row.Timestamp
                         next_timestamp = timestamp + pd.Timedelta(days=granularity)
                         representation1 = row.Representation1
                         representation2 = row.Representation2
                         documents1 = set(row.Documents1)
                         documents2 = set(row.Documents2)
-                        
+
                         timestamp_str = timestamp.strftime("%Y-%m-%d")
                         next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
-                        
+
                         content_summary += f"Timestamp: {timestamp_str}\nTopic representation: {representation1}\n"
                         for doc in documents1:
                             content_summary += f"- {doc}\n"
@@ -438,10 +442,9 @@ def main():
                         for doc in documents2:
                             content_summary += f"- {doc}\n"
                         content_summary += "\n"
-                    
+
                     # Generate the summary using OpenAI ChatGPT
                     prompt = get_prompt(language, topic_number, content_summary)
-                    
                     with st.spinner("Generating summary..."):
                         try:
                             completion = client.chat.completions.create(
@@ -456,7 +459,7 @@ def main():
                         except:
                             st.warning("Unable to generate a summary. Too many documents.")
                 else:
-                    st.warning(f"Topic {topic_number} not found in the merge histories.")    
+                    st.warning(f"Topic {topic_number} not found in the merge histories within the specified window.")
             # Create the Sankey Diagram
             create_sankey_diagram(st.session_state.all_merge_histories_df)
             
