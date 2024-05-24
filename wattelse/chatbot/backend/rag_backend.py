@@ -219,7 +219,7 @@ class RAGBackEnd:
         elif self.retrieval_method in [BM25, ENSEMBLE]:
             bm25_retriever = BM25Retriever.from_texts(self.get_text_list(document_filter))
             bm25_retriever.k = self.top_n_extracts
-            if self.similarity_threshold == BM25:
+            if self.retrieval_method == BM25:
                 retriever = bm25_retriever
             else:  # ENSEMBLE
                 dense_retriever = self.document_collection.collection.as_retriever(
