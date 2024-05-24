@@ -20,6 +20,7 @@ from wattelse.api.openai.client_openai_api import OpenAI_API
 from wattelse.api.prompts import (
     FR_USER_GENERATE_TOPIC_LABEL_TITLE,
     FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
+    EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
     FR_USER_SUMMARY_MULTIPLE_DOCS,
     EN_USER_SUMMARY_MULTIPLE_DOCS,
 )
@@ -133,7 +134,7 @@ def generate_newsletter(
 
             improved_topic_description_v2 = (
                 openai_api.generate(
-                    FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES.format(
+                    (FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES if prompt_language=='fr' else EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES).format(
                         title_list=(" ; ".join(summaries) if summary_mode=='document' else topic_summary),
                     ),
                     model_name=openai_model_name,

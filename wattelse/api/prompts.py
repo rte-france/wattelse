@@ -67,7 +67,7 @@ EN_USER_SUMMARY_MULTIPLE_DOCS = ("You are a highly qualified AI, trained in lang
 									   "Below are several press articles (Title and Content). "
 									   "All the articles belong to the same topic represented by the following keywords: {keywords}. "
 									   "Generate a summary of these articles, which must be related to the theme evoked by the keywords. "
-									   "The summary must be detailed and include the essential information from the articles.\n"
+									   "The summary must not exceed 3 sentences and should include the essential information from the articles.\n"
 									   "List of articles :\n"
 									   "```{article_list}```\n"
 									   "Summary :"
@@ -86,6 +86,11 @@ FR_USER_GENERATE_TOPIC_LABEL_TITLE = ("Vous êtes une IA hautement qualifiée, f
 
 FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES = ("Décrit en une courte expression le thème associé à l'ensemble des extraits "
 										  "suivants. Le thème doit être court et spécifique en 4 mots maximum. "
+										  "\n\"{title_list}\"")
+# title_list: list of documents extracts belonging to the topic
+
+EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES = ("Describe in a short sentence the topic associated with the following extracts. "
+										  "The topic description should be short and specific, no more than 4 words. "
 										  "\n\"{title_list}\"")
 # title_list: list of documents extracts belonging to the topic
 
