@@ -96,6 +96,7 @@ def preprocess_model(topic_model: BERTopic, docs: List[str], embeddings: np.ndar
 
     return topic_df
 
+
 def merge_models(df1: pd.DataFrame, df2: pd.DataFrame, min_similarity: float, timestamp: pd.Timestamp) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Merge two BERTopic models by comparing topic embeddings and combining similar topics.
@@ -132,20 +133,21 @@ def merge_models(df1: pd.DataFrame, df2: pd.DataFrame, min_similarity: float, ti
     new_topics = new_topics_data.copy()
 
     merge_topics_mask = ~new_topics_mask
-    for topic2, count2, doc_count2, representation2, documents2, embedding2, doc_embeddings2, source2, urls2 in df2[merge_topics_mask].itertuples(index=False):
+    for row in df2[merge_topics_mask].itertuples(index=False):
+        topic2, count2, doc_count2, representation2, documents2, embedding2, doc_embeddings2, source2, urls2 = row
         max_similar_topic = max_similar_topics[topic2]
-        similar_row = merged_df[merged_df['Topic'] == max_similar_topic].iloc[0]
+        similar_row = df1[df1['Topic'] == max_similar_topic].iloc[0]
         count1 = similar_row['Count']
         doc_count1 = similar_row['Document_Count']
         documents1 = similar_row['Documents']
         source1 = similar_row['Sources']
         urls1 = similar_row['URLs']
 
-        merged_count = count1 + count2
-        merged_doc_count = doc_count1 + doc_count2
-        merged_documents = documents1 + documents2
-        merged_source = source1 + source2
-        merged_urls = urls1 + urls2
+        merged_count = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'Count'].values[0] + count2
+        merged_doc_count = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'Document_Count'].values[0] + doc_count2
+        merged_documents = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'Documents'].values[0] + documents2
+        merged_source = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'Sources'].values[0] + source2
+        merged_urls = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'URLs'].values[0] + urls2
 
         index = merged_df[merged_df['Topic'] == max_similar_topic].index[0]
         merged_df.at[index, 'Count'] = merged_count
@@ -177,6 +179,7 @@ def merge_models(df1: pd.DataFrame, df2: pd.DataFrame, min_similarity: float, ti
         })
 
     return merged_df, pd.DataFrame(merge_history), new_topics
+
 
 def train_topic_models(grouped_data: Dict[pd.Timestamp, pd.DataFrame],
                        embedding_model: SentenceTransformer,

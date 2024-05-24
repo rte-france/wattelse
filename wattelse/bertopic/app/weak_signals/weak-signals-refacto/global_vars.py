@@ -3,27 +3,29 @@ import json
 import socket
 from pathlib import Path
 
-TEXT_COLUMN = "text"
-FILENAME_COLUMN = "filename"
-SEED = 666
-GPU_SERVERS = ["groesplu0", "GROESSLAO01"]
-GPU_DSVD = ["pf9sodsia001"]
+# TEXT_COLUMN = "text"
+# FILENAME_COLUMN = "filename"
+# SEED = 666
+# GPU_SERVERS = ["groesplu0", "GROESSLAO01"]
+# GPU_DSVD = ["pf9sodsia001"]
 
-BASE_DATA_DIR = (
-    Path("/data/weak_signals/data/bertopic/Big Datasets/")
-    if socket.gethostname() in GPU_SERVERS
-    else Path("/scratch/weak_signals/data/")
-    if socket.gethostname() in GPU_DSVD
-    else Path(__file__).parent.parent.parent / "data"
-)
+# BASE_DATA_DIR = (
+#     Path("/data/weak_signals/data/bertopic/Big Datasets/")
+#     if socket.gethostname() in GPU_SERVERS
+#     else Path("/scratch/weak_signals/data/")
+#     if socket.gethostname() in GPU_DSVD
+#     else Path(__file__).parent.parent.parent / "data"
+# )
 
-DATA_PATH = BASE_DATA_DIR.absolute().as_posix() +'/'
+# DATA_PATH = BASE_DATA_DIR.absolute().as_posix() +'/'
+# # Data directory
+# cwd_data = DATA_PATH
 
 # Working directory
 cwd = os.getcwd() + '/Weak-Signals-Investigations/'
+cwd_data = cwd+'/data/'
 
-# Data directory
-cwd_data = DATA_PATH
+
 
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
 COMMON_NGRAMS = [
