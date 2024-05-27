@@ -108,7 +108,7 @@ def insert_feedback(request, short: bool):
         # Try to find the matching Chat object based on user, message, and response
         try:
             chat_message = (Chat.objects.filter(user=user, message=user_message, response=bot_message)
-                            .order_by('-timestamp').first()) # in case multiple chat messages match, take the newest
+                            .order_by('-question_timestamp').first()) # in case multiple chat messages match, take the newest
             if short:
                 chat_message.short_feedback = feedback
             else:
