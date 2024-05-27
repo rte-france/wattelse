@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "Starting LLM service"
-screen -dmS llm bash -c 'bash `pwd`/wattelse/api/fastchat/start.sh; bash'
+screen -dmS llm bash -c 'bash `pwd`/wattelse/api/fastchat/start_vllm.sh; bash'
 sleep 3  # Waits 5 seconds.
 
 echo "Starting Embedding service..."
