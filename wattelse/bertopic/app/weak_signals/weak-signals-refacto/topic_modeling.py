@@ -49,8 +49,9 @@ def create_topic_model(docs: List[str],
         representation_model=mmr_model,
         top_n_words=top_n_words,
         zeroshot_topic_list=zeroshot_topic_list,
-        zeroshot_min_similarity=zeroshot_min_similarity
-    ).fit(docs, embeddings)
+        zeroshot_min_similarity=zeroshot_min_similarity,
+        nr_topics="auto"
+        ).fit(docs, embeddings)
 
     return topic_model
 
