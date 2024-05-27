@@ -25,18 +25,12 @@ MODEL_NAME=$(grep -Po '(?<!#)model_name=\K.*' "$CONFIG_FILE")
 CUDA_VISIBLE_DEVICES=$(grep -Po '(?<!#)cuda_visible_devices=\K.*' "$CONFIG_FILE")
 
 
-# launch controller
-python3 -m fastchat.serve.controller --host $HOST --port $PORT_CONTROLLER &
+CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES python -m vllm.entrypoints.openai.api_server \
+	--model $MODEL_NAME \
+	--port $PORT \
+	--host $HOST \
+	--device auto \
+	--worker-use-ray \
+	--tensor-parallel-size 2 \
+        --enforce-eager \
 
-# launch worker
-if [ -z "$1" ]; then
-  # no args provided
-  CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES python3 -m fastchat.serve.vllm_worker --host $HOST --port $PORT_WORKER --worker-address http://$HOST:$PORT_WORKER --controller-address http://$HOST:$PORT_CONTROLLER --model-path $MODEL_NAME --model-names $MODEL_NAME --num-gpus 2 --enforce-eager &
-else
-  # we assume any args means '--load-8-bit' (NB. it seems that if we do not change the num-gpus values, the parameter is not taken into account
-  echo "Starting service in 8-bit mode"
-  CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES python3 -m fastchat.serve.model_worker --host $HOST --port $PORT_WORKER --worker-address http://$HOST:$PORT_WORKER --controller-address http://$HOST:$PORT_CONTROLLER --model-path $MODEL_NAME --model-names $MODEL_NAME --num-gpus 1 --load-8bit&
-fi
-
-# launch API server
-python3 -m fastchat.serve.openai_api_server --host 0.0.0.0 --port $PORT --controller-address http://$HOST:$PORT_CONTROLLER &
