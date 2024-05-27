@@ -229,6 +229,8 @@ async function postUserMessageToRAG(userMessage) {
 
     let accumulatedData = "";
     let chunk;
+    let noExtract = false;
+
     do {
         // Handle too long response from backend
         if (Date.now() - startTime > timeout) {
@@ -262,6 +264,7 @@ async function postUserMessageToRAG(userMessage) {
                 updateRelevantExtracts(json_chunk.relevant_extracts);
                 if (json_chunk.relevant_extracts.length===0){
                     createWarningMessage(NO_EXTRACT_MSG);
+                    noExtract = true;
                 }
                 isFirstChunk = false;
             } else {
@@ -278,7 +281,9 @@ async function postUserMessageToRAG(userMessage) {
 
     // When streaming is done, show feedback section and save interaction
     botDiv.classList.remove("animate"); // remove generation animation
-    provideFeedback();
+    if (!noExtract){
+        provideFeedback();
+    }
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
     saveInteraction(conversationId, userMessage, botDiv.innerHTML, questionTimestampString);
