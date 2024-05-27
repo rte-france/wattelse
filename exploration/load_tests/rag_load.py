@@ -59,7 +59,7 @@ HISTORY = None
 
 # create session for tested group
 class RAGLoadTest(HttpUser):
-    wait_time = between(1, 3)  # make the simulated users wait between 1 and 3 seconds
+    wait_time = between(10, 30)  # make the simulated users wait between 1 and 3 seconds
 
 
     @task
@@ -82,4 +82,4 @@ class RAGLoadTest(HttpUser):
 
 
 # To run it: locust -f <file.py> and then connect to http://localhost:8089 and specify the URL of the server you want to test http://xxx:port
-# locust -f rag_load.py --host http://10.132.6.110:1978 -u 100 -t 2m -r 1
+# locust -f rag_load.py --host http://10.132.6.55:1978 -u 15 -t 15m -r 1
