@@ -50,6 +50,7 @@ def save_state():
         'embedding_model': st.session_state.get('embedding_model'),
         'umap_n_components': st.session_state.get('umap_n_components'),
         'umap_n_neighbors': st.session_state.get('umap_n_neighbors'),
+        'sample_size': st.session_state.get('sample_size'),
         'hdbscan_min_cluster_size': st.session_state.get('hdbscan_min_cluster_size'),
         'hdbscan_min_samples': st.session_state.get('hdbscan_min_samples'),
         'hdbscan_cluster_selection_method': st.session_state.get('hdbscan_cluster_selection_method'),
@@ -81,6 +82,7 @@ def restore_state():
         st.session_state['split_by_paragraph'] = state.get('split_by_paragraph')
         st.session_state['timeframe_slider'] = state.get('timeframe_slider')
         st.session_state['language'] = state.get('language')
+        st.session_state['sample_size'] = state.get('sample_size')
         st.session_state['embedding_model_name'] = state.get('embedding_model_name')
         st.session_state['embedding_model'] = state.get('embedding_model')
         st.session_state['umap_n_components'] = state.get('umap_n_components')
@@ -212,7 +214,7 @@ def main():
 
     if language == "English":
         stopwords_list = stopwords.words("english")
-        embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-MiniLM-L12-v2", "all-mpnet-base-v2"], key='embedding_model_name')
+        embedding_model_name = st.sidebar.selectbox("Embedding Model", ["BAAI/bge-base-en-v1.5", "all-MiniLM-L12-v2", "all-mpnet-base-v2"], key='embedding_model_name')
     elif language == "French":
         stopwords_list = stopwords.words("english") + FRENCH_STOPWORDS + STOP_WORDS_RTE + COMMON_NGRAMS
         embedding_model_name = st.sidebar.selectbox("Embedding Model", ["dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
@@ -227,7 +229,7 @@ def main():
     with st.sidebar.expander("Vectorizer Hyperparameters", expanded=True):
         top_n_words = st.number_input("Top N Words", value=10, min_value=1, max_value=50, key='top_n_words')
         vectorizer_ngram_range = st.selectbox("N-Gram range", [(1, 2), (1, 1), (2, 2)], key='vectorizer_ngram_range')
-        min_df = st.number_input("min_df", value=2, min_value=1, max_value=50, key='min_df')
+        min_df = st.number_input("min_df", value=1, min_value=1, max_value=50, key='min_df')
     with st.sidebar.expander("Merging Hyperparameters", expanded=True):
         min_similarity = st.slider("Minimum Similarity for Merging", 0.0, 1.0, 0.7, 0.01, key='min_similarity')
     with st.sidebar.expander("Zero-shot Parameters", expanded=True):
@@ -248,10 +250,16 @@ def main():
     max_date = df['timestamp'].max().date()
     start_date, end_date = st.slider("Select Timeframe", min_value=min_date, max_value=max_date, value=(min_date, max_date), key='timeframe_slider')
 
-
-
     # Filter the DataFrame based on the selected timeframe and deduplicate the split documents
     df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)].drop_duplicates(subset='text', keep='first')
+    df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
+
+    # Sample the filtered DataFrame
+    sample_size = st.number_input("Sample Size", value=1000, min_value=1, max_value=len(df_filtered), key='sample_size')
+    if sample_size < len(df_filtered):
+        df_filtered = df_filtered.sample(n=sample_size, random_state=42)
+
+    # Reset the index of the sampled DataFrame
     df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
 
     st.session_state['timefiltered_df'] = df_filtered
@@ -312,11 +320,12 @@ def main():
         umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, random_state=42, metric="cosine")
         hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean',
                                 cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
-        vectorizer_model = CountVectorizer(stop_words=stopwords_list, min_df=min_df, ngram_range=vectorizer_ngram_range)
+        vectorizer_model = CountVectorizer(stop_words=stopwords_list, min_df=1, max_df=1.0, ngram_range=vectorizer_ngram_range)
         mmr_model = MaximalMarginalRelevance(diversity=0.3)
 
         # Train Models
         if st.button("Train Models"):
+            grouped_data = group_by_days(st.session_state['timefiltered_df'], day_granularity=granularity)
             topic_models, doc_groups, emb_groups = train_topic_models(
                 grouped_data, st.session_state.embedding_model, st.session_state.embeddings,
                 umap_model, hdbscan_model, vectorizer_model, mmr_model,
