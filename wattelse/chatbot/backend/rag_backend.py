@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
 from langchain_community.chat_models import ChatOllama
 from langchain_community.retrievers import BM25Retriever
+from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
@@ -89,7 +90,7 @@ def preprocess_streaming_data(streaming_data):
 
 def filter_history(history, window_size):
     # window size = question + answser, we return the last ones
-    return history[-2*window_size:]
+    return history[-2 * window_size:]
 
 
 class RAGBackEnd:
@@ -171,9 +172,19 @@ class RAGBackEnd:
         else:
             return None
 
+    def get_doc_list(self, document_filter: Dict | None) -> Dict:
+        """Returns the list of documents in the collection, using the current document filter"""
+        data = self.document_collection.collection.get(include=["documents", "metadatas"],
+                                                       where={} if not document_filter else document_filter)
+        langchain_documents = []
+        for doc, meta in zip(data["documents"], data["metadatas"]):
+            langchain_doc = Document(page_content=doc, metadata=meta)
+            langchain_documents.append(langchain_doc)
+        return langchain_documents
+
     def get_text_list(self, document_filter: Dict | None) -> List[str]:
         """Returns the list of texts in the collection, using the current document filter"""
-        data = self.document_collection.collection.get(include=["documents"],
+        data = self.document_collection.collection.get(include=["documents", "metadatas"],
                                                        where={} if not document_filter else document_filter)
         return data["documents"]
 
@@ -217,7 +228,7 @@ class RAGBackEnd:
             retriever = dense_retriever
 
         elif self.retrieval_method in [BM25, ENSEMBLE]:
-            bm25_retriever = BM25Retriever.from_texts(self.get_text_list(document_filter))
+            bm25_retriever = BM25Retriever.from_documents(self.get_doc_list(document_filter))
             bm25_retriever.k = self.top_n_extracts
             if self.retrieval_method == BM25:
                 retriever = bm25_retriever
