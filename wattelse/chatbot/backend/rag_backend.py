@@ -314,7 +314,7 @@ class RAGBackEnd:
             history_as_text = ""
             for turn in history:
                 history_as_text += f"{turn['role']}: {turn['content']}\n"
-            contextualized_question = chain.invoke({"query": message, "history": history})
+            contextualized_question = chain.invoke({"query": message, "history": history_as_text})
             logger.debug(f"Contextualized question: {contextualized_question}")
             return contextualized_question
 
