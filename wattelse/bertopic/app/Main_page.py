@@ -12,6 +12,7 @@ from transformers import AutoTokenizer
 from sentence_transformers import SentenceTransformer
 import re
 import ast
+import torch
 
 from wattelse.bertopic.temporal_metrics_embedding import TempTopic
 

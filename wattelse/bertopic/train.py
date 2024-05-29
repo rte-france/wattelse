@@ -66,8 +66,8 @@ class EmbeddingModel(BaseEmbedder):
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        logger.info(f"Loading embedding model: {model_name} on device: {device}")
-        self.embedding_model = SentenceTransformer(model_name)
+        logger.info(f"Loading embedding model: {model_name} on device: {device}...")
+        self.embedding_model = SentenceTransformer(model_name, device=device, model_kwargs={"torch_dtype":torch.bfloat16})
 
         # Handle the particular scenario of when max seq length in original model is abnormal (not a power of 2)
         if self.embedding_model.max_seq_length == 514: self.embedding_model.max_seq_length = 512
@@ -83,8 +83,8 @@ class EmbeddingModel(BaseEmbedder):
 
 def convert_to_numpy(obj, type=None):
     if isinstance(obj, torch.Tensor):
-        if type=='token_id': return obj.numpy().astype(np.int64)
-        else : return obj.numpy().astype(np.float32)
+        if type=='token_id': return obj.numpy(force=True).astype(np.int64)
+        else : return obj.numpy(force=True).astype(np.float32)
         
     elif isinstance(obj, list):
         return [convert_to_numpy(item) for item in obj]
@@ -175,7 +175,7 @@ def train_BERTopic(
         
         embeddings = [item['sentence_embedding'].detach().cpu() for item in output]
         embeddings = torch.stack(embeddings)
-        embeddings = embeddings.numpy()
+        embeddings = embeddings.numpy(force=True)
         
         token_embeddings = [item['token_embeddings'].detach().cpu() for item in output]
         token_ids = [item['input_ids'].detach().cpu() for item in output]
