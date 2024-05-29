@@ -13,6 +13,7 @@ from loguru import logger
 from openai import OpenAI
 from bertopic import BERTopic
 from prompts import get_prompt
+import torch
 
 from data_loading import load_and_preprocess_data, group_by_days
 from topic_modeling import train_topic_models, merge_models, preprocess_model
@@ -241,7 +242,7 @@ def main():
     # Load and preprocess data
     selected_file = st.selectbox("Select a dataset", [(os.path.basename(f), os.path.splitext(f)[-1][1:]) for f in glob.glob(os.path.join(cwd_data, '*'))], key='selected_file')
     min_chars = st.number_input("Minimum Characters", value=100, min_value=0, max_value=1000, key='min_chars')
-    split_by_paragraph = st.checkbox("Split text by paragraphs", value=True, key="split_by_paragraph")
+    split_by_paragraph = st.checkbox("Split text by paragraphs", value=False, key="split_by_paragraph")
 
     df = load_and_preprocess_data(selected_file, language, min_chars, split_by_paragraph)
 
@@ -290,7 +291,7 @@ def main():
             st.session_state.embedding_model.max_seq_length = 512
 
             texts = st.session_state['timefiltered_df']['text'].tolist()
-            batch_size = 1000
+            batch_size = 5000
             num_batches = (len(texts) + batch_size - 1) // batch_size
 
             embeddings = []

@@ -153,6 +153,7 @@ def create_datamap():
         # Calculate 2D embeddings
         reduced_embeddings = UMAP(n_neighbors=10, n_components=2, min_dist=0.15, metric='cosine').fit_transform(st.session_state["embeddings"])
 
+        # st.plotly_chart(st.session_state['topic_model'].visualize_documents(st.session_state['timefiltered_df'][TEXT_COLUMN].tolist(), reduced_embeddings=reduced_embeddings),use_container_width=True)
 
         # Create a dataframe that associates documents with their embeddings and the topics they belong to
         topic_nums = list(set(st.session_state['topics']))
@@ -180,7 +181,6 @@ def create_datamap():
             hover_text=df['document'].tolist(),
             enable_search=True,
             darkmode=False,
-            noise_color="#aaaaaa44",
             logo='https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/RTE_logo.svg/1024px-RTE_logo.svg.png',
             logo_width=100,
             cluster_boundary_polygons=True,
@@ -224,11 +224,11 @@ restore_widget_state()
 ### TITLE ###
 st.title("Visualizations")
 
-# Overall results
-overall_results()
+# # Overall results
+# overall_results()
 
-# For treemap
-create_treemap()
+# # For treemap
+# create_treemap()
 
 # For datamap
 create_datamap()

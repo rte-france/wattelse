@@ -146,6 +146,6 @@ postman
 **/Main_page_copy.py
 **/wattelse.egg-info/
 **/saved_models/
-
+**/ablation_study/
 
 nyt-2019-2023.parquet
