@@ -6,10 +6,10 @@
 from typing import List
 
 from langchain_core.documents import Document
-from langchain_text_splitters import TextSplitter, MarkdownHeaderTextSplitter, HTMLHeaderTextSplitter, \
+from langchain_text_splitters import TextSplitter, MarkdownHeaderTextSplitter, HTMLSectionSplitter, \
     RecursiveCharacterTextSplitter
 from llama_index.core import node_parser
-
+import re
 
 class SentenceSplitter(TextSplitter):
     """This class extends langchain TextSplitter in order to split documents/texts by sentence."""
@@ -42,15 +42,16 @@ def split_file(file_extension: str, docs: List[Document], use_sentence_splitter:
             splits += new_docs
         return splits
     elif file_extension in [".htm", ".html"]:
-        text_splitter = HTMLHeaderTextSplitter(return_each_element=False, headers_to_split_on=[
+        text_splitter = HTMLSectionSplitter(return_each_element=False, headers_to_split_on=[
             ("h1", "Header 1"),
             ("h2", "Header 2"),
             ("h3", "Header 3"),
-        ])
+        ]) # NB. HTMLHeaderTextSplitter replaced with HTMLSectionSplitter
         splits = []
         for doc in docs:
             new_docs = text_splitter.split_text(doc.page_content)
             for d in new_docs:
+                d.page_content = re.sub(r'\s+', ' ', d.page_content) #NB. removes the extra space enforced by HTMLSectionSplitter
                 d.metadata = doc.metadata
             splits += new_docs
         return splits
