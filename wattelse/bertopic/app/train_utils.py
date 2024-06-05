@@ -13,6 +13,7 @@ from hdbscan import HDBSCAN
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
+from openTSNE import TSNE
 
 
 from wattelse.bertopic.train import train_BERTopic, STOP_WORDS_RTE
@@ -65,6 +66,8 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
         reduce_frequent_words=form_parameters["ctfidf_reduce_frequent_words"],
         bm25_weighting=form_parameters["ctfidf_bm25_weighting"]
     )
+
+    # umap_model = TSNE()
 
     return train_BERTopic(
         full_dataset=dataset,
