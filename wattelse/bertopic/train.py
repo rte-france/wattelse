@@ -1,5 +1,5 @@
 import pdb
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import pandas as pd
 import torch
@@ -19,6 +19,7 @@ import numpy as np
 import streamlit as st
 import numpy as np
 from tqdm import tqdm
+from openTSNE import TSNE
 
 
 from wattelse.bertopic.utils import (
@@ -67,7 +68,7 @@ class EmbeddingModel(BaseEmbedder):
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         logger.info(f"Loading embedding model: {model_name} on device: {device}...")
-        self.embedding_model = SentenceTransformer(model_name, device=device, model_kwargs={"torch_dtype":torch.bfloat16})
+        self.embedding_model = SentenceTransformer(model_name, device=device, model_kwargs={"torch_dtype":torch.float16})
 
         # Handle the particular scenario of when max seq length in original model is abnormal (not a power of 2)
         if self.embedding_model.max_seq_length == 514: self.embedding_model.max_seq_length = 512
@@ -83,8 +84,8 @@ class EmbeddingModel(BaseEmbedder):
 
 def convert_to_numpy(obj, type=None):
     if isinstance(obj, torch.Tensor):
-        if type=='token_id': return obj.numpy(force=True).astype(np.int64)
-        else : return obj.numpy(force=True).astype(np.float32)
+        if type=='token_id': return obj.numpy().astype(np.int64)
+        else : return obj.numpy().astype(np.float32)
         
     elif isinstance(obj, list):
         return [convert_to_numpy(item) for item in obj]
@@ -99,7 +100,7 @@ def train_BERTopic(
     indices: pd.Series = None,
     column: str = TEXT_COLUMN,
     embedding_model_name: str = DEFAULT_EMBEDDING_MODEL_NAME,
-    umap_model: UMAP = DEFAULT_UMAP_MODEL,
+    umap_model: Union[UMAP, TSNE] = DEFAULT_UMAP_MODEL,
     hdbscan_model: HDBSCAN = DEFAULT_HBSCAN_MODEL,
     vectorizer_model: CountVectorizer = DEFAULT_VECTORIZER_MODEL,
     ctfidf_model: ClassTfidfTransformer = DEFAULT_CTFIDF_MODEL,
@@ -175,7 +176,7 @@ def train_BERTopic(
         
         embeddings = [item['sentence_embedding'].detach().cpu() for item in output]
         embeddings = torch.stack(embeddings)
-        embeddings = embeddings.numpy(force=True)
+        embeddings = embeddings.numpy()
         
         token_embeddings = [item['token_embeddings'].detach().cpu() for item in output]
         token_ids = [item['input_ids'].detach().cpu() for item in output]

@@ -1,13 +1,14 @@
 import pandas as pd
 import plotly.graph_objects as go
-from typing import Dict 
+from typing import Dict, Tuple 
 from bertopic import BERTopic
 import streamlit as st
 import numpy as np
-from typing import Tuple
 from loguru import logger
-import pickle
-import os
+import pandas as pd
+from weak_signals import classify_signals, save_signal_evolution_data
+from plotly_resampler import FigureResampler, FigureWidgetResampler
+import time
 
 def plot_num_topics_and_outliers(topic_models: Dict[pd.Timestamp, BERTopic]) -> None:
     """
@@ -26,6 +27,9 @@ def plot_num_topics_and_outliers(topic_models: Dict[pd.Timestamp, BERTopic]) -> 
     fig_outlier_sizes.update_layout(title="Size of Outlier Topic", xaxis_title="Time Period", yaxis_title="Size of Outlier Topic")
     st.plotly_chart(fig_outlier_sizes, use_container_width=True)
 
+########################################################################################################################
+
+
 def prepare_source_topic_data(doc_info_df: pd.DataFrame) -> pd.DataFrame:
     """
     Prepare data for plotting topics per source by counting the number of unique documents for each source and topic combination.
@@ -42,6 +46,8 @@ def prepare_source_topic_data(doc_info_df: pd.DataFrame) -> pd.DataFrame:
     source_topic_counts = source_topic_counts.sort_values(['source', 'Count'], ascending=[True, False])
     return source_topic_counts
 
+########################################################################################################################
+
 def plot_topics_per_timestamp(topic_models: Dict[pd.Timestamp, BERTopic]) -> None:
     """
     Plot the topics discussed per source for each timestamp.
@@ -49,187 +55,91 @@ def plot_topics_per_timestamp(topic_models: Dict[pd.Timestamp, BERTopic]) -> Non
     Args:
         topic_models (Dict[pd.Timestamp, BERTopic]): A dictionary of BERTopic models, where the key is the timestamp and the value is the corresponding model.
     """
-    model_periods = list(topic_models.keys())
-    selected_model_period = st.select_slider("Select Model", options=model_periods, key='model_slider')
-    selected_model = topic_models[selected_model_period]
-    
-    source_topic_counts = prepare_source_topic_data(selected_model.doc_info_df)
-    
-    fig = go.Figure()
-    
-    for topic, topic_data in source_topic_counts.groupby('Topic'):
-        fig.add_trace(go.Bar(
-            x=topic_data['source'],
-            y=topic_data['Count'],
-            name=str(topic)+'_'+'_'.join(topic_data['Representation'].iloc[0][:5]),
-            hovertemplate='Source: %{x}<br>Topic: %{customdata}<br>Number of documents: %{y}<extra></extra>',
-            customdata= topic_data['Representation']
-        ))
-    
-    fig.update_layout(
-        title='Talked About Topics per Source',
-        xaxis_title='Source',
-        yaxis_title='Number of Paragraphs',
-        barmode='stack',
-        legend_title='Topics'
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
-    
-    st.dataframe(selected_model.doc_info_df[['Paragraph', 'document_id', 'Topic', 'Representation', 'source']], use_container_width=True)
-    st.dataframe(selected_model.topic_info_df, use_container_width=True)
+    with st.expander("Explore topic models") : 
+        model_periods = sorted(topic_models.keys())
+        selected_model_period = st.select_slider("Select Model", options=model_periods, key='model_slider')
+        selected_model = topic_models[selected_model_period]
+        
+        source_topic_counts = prepare_source_topic_data(selected_model.doc_info_df)
+        
+        fig = go.Figure()
+        
+        for topic, topic_data in source_topic_counts.groupby('Topic'):
+            fig.add_trace(go.Bar(
+                x=topic_data['source'],
+                y=topic_data['Count'],
+                name=str(topic)+'_'+'_'.join(topic_data['Representation'].iloc[0][:5]),
+                hovertemplate='Source: %{x}<br>Topic: %{customdata}<br>Number of documents: %{y}<extra></extra>',
+                customdata= topic_data['Representation']
+            ))
+        
+        fig.update_layout(
+            title='Talked About Topics per Source',
+            xaxis_title='Source',
+            yaxis_title='Number of Paragraphs',
+            barmode='stack',
+            legend_title='Topics'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.dataframe(selected_model.doc_info_df[['Paragraph', 'document_id', 'Topic', 'Representation', 'source']], use_container_width=True)
+        st.dataframe(selected_model.topic_info_df, use_container_width=True)
 
-def plot_topic_size_evolution(all_merge_histories_df: pd.DataFrame, granularity: int) -> Tuple[float, float]:
+########################################################################################################################
+
+@st.cache_data
+def create_topic_size_evolution_figure():
+    fig = FigureWidgetResampler(go.Figure())
+
+    topic_sizes = st.session_state.topic_sizes
+
+    # Sort the topics based on their topic ID
+    sorted_topics = sorted(topic_sizes.items(), key=lambda x: x[0])
+
+    # Create traces for each topic
+    for topic, data in sorted_topics:
+        fig.add_trace(go.Scattergl(
+            x=data['Timestamps'],
+            y=data['Popularity'],
+            mode='lines+markers',
+            name=f"Topic {topic} : {data['Representations'][-1].split(': ')[1].split('_')[:5]}",
+            hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
+            text=[f"Topic {topic}"] * len(data['Timestamps']),
+            customdata=[rep.split(': ')[1] for rep in data['Representations']],
+        ))
+
+    return fig
+
+
+def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_date, min_datetime, max_datetime) -> Tuple[float, float]:
     """
     Plot the evolution of topic sizes over time.
     
     Args:
-        all_merge_histories_df (pd.DataFrame): The DataFrame containing the merge histories of topics.
+        fig (FigureWidgetResampler): The cached figure to plot.
+        window_size (int): The retrospective window size in days.
         granularity (int): The granularity of the timestamps in days.
+        current_date (datetime): The current date selected by the user.
+        min_datetime (datetime): The minimum datetime value.
+        max_datetime (datetime): The maximum datetime value.
     
     Returns:
         Tuple[float, float]: The q1 and q3 values representing the 10th and 50th percentiles of popularity values.
     """
     with st.expander("Topic Popularity Evolution", expanded=True):
-        fig = go.Figure()
-        topic_sizes = {}
-        topic_last_popularity = {}
-        topic_last_update = {}
+        topic_sizes = st.session_state.topic_sizes
+        topic_last_popularity = st.session_state.topic_last_popularity
+        topic_last_update = st.session_state.topic_last_update
 
-        min_timestamp = all_merge_histories_df['Timestamp'].min()
-        max_timestamp = all_merge_histories_df['Timestamp'].max()
-
-        window_size = st.number_input("Retrospective Period (days)", min_value=1, max_value=365, value=10, key='window_size')
         window_size_timedelta = pd.Timedelta(days=window_size)
 
-        min_datetime = min_timestamp.to_pydatetime()
-        max_datetime = max_timestamp.to_pydatetime()
-
-        granularity_timedelta = pd.Timedelta(days=granularity)
-
-        window_end = st.slider(
-            "Current date",
-            min_value=min_datetime + window_size_timedelta,
-            max_value=max_datetime,
-            value=min_datetime + window_size_timedelta,
-            step=granularity_timedelta,
-            format="YYYY-MM-DD",
-        )
-        
+        window_end = pd.to_datetime(current_date)
         window_start = window_end - window_size_timedelta
 
-        # Iterate over each timestamp from the minimum to the maximum with the specified granularity
-        current_timestamp = min_datetime
-
-        # Keep Track of topics seen before to apply decay in case of no update
-        current_topics_seen = set()
-
-        while current_timestamp <= max_datetime:
-
-            # Filter the merge history DataFrame for the current timestamp
-            current_df = all_merge_histories_df[all_merge_histories_df['Timestamp'] == current_timestamp]
-            
-            # Iterate over each topic at the current timestamp
-            for _, row in current_df.iterrows():
-
-                current_topic = row['Topic1']
-
-                # CASE 1: NEVER SEEN BEFORE TOPIC
-                if current_topic not in topic_sizes:
-                    # Initialize the topic's data with the first point corresponding to Timestamp1 and popularity Document_Count1
-                    topic_sizes[current_topic] = {
-                        'Timestamps': [current_timestamp],
-                        'Popularity': [row['Document_Count1']],
-                        'Representations': [f"{current_timestamp}: {'_'.join(row['Representation1'])}"],
-                        'Documents': list(row['Documents1']),
-                        'Sources': list(row['Source1']),
-                        'Docs_Count': row['Document_Count1'],
-                        'Paragraphs_Count': row['Count1']
-                    }
-
-                    # Check if the topic at this timestamp got merged with multiple topics from the next timestamp
-                    next_timestamp = row['Timestamp'] + granularity_timedelta
-                    
-                    # Add second point
-                    topic_sizes[current_topic]['Timestamps'].append(next_timestamp)
-                    topic_sizes[current_topic]['Popularity'].append(row['Document_Count1'] + row['Document_Count2'])
-                    topic_sizes[current_topic]['Representations'].append(f"{next_timestamp}: {'_'.join(row['Representation2'])}")
-                    topic_sizes[current_topic]['Documents'].extend(row['Documents2'])
-                    topic_sizes[current_topic]['Sources'].extend(row['Source2'])
-                    topic_sizes[current_topic]['Docs_Count'] += row['Document_Count2']
-                    topic_sizes[current_topic]['Paragraphs_Count'] += row['Count2']
-
-                    # Update the topic's last popularity and last update timestamp
-                    topic_last_popularity[current_topic] = row['Document_Count1'] + row['Document_Count2']
-                    topic_last_update[current_topic] = next_timestamp
-
-                # CASE 2: TOPIC HAS BEEN LOGGED BEFORE
-                else:
-                    # Retrieve the last logged popularity value
-                    last_popularity = topic_last_popularity[current_topic]
-
-                    # Check if the topic at this timestamp got merged with multiple topics from Timestamp + granularity
-                    next_timestamp = row['Timestamp'] + granularity_timedelta
-                    
-                    # Update the topic's data with the new timestamp and aggregated popularity
-                    topic_sizes[current_topic]['Timestamps'].append(next_timestamp)
-                    topic_sizes[current_topic]['Popularity'].append(last_popularity + row['Document_Count2'])
-                    topic_sizes[current_topic]['Representations'].append(f"{next_timestamp}: {'_'.join(row['Representation2'])}")
-                    topic_sizes[current_topic]['Documents'].extend(row['Documents2'])
-                    topic_sizes[current_topic]['Sources'].extend(row['Source2'])
-                    topic_sizes[current_topic]['Docs_Count'] += row['Document_Count2']
-                    topic_sizes[current_topic]['Paragraphs_Count'] += row['Count2']
-
-                    # Update the topic's last popularity and last update timestamp
-                    topic_last_popularity[current_topic] = last_popularity + row['Document_Count2']
-                    topic_last_update[current_topic] = next_timestamp
-                
-                current_topics_seen.add(current_topic)
-
-            # For topics that haven't been seen in the current timestamp, add decay points
-            for topic in current_topics_seen:
-                if topic not in current_df['Topic1'].to_list():
-
-                    last_popularity = topic_last_popularity[topic]
-                    last_update = topic_last_update[topic]
-
-                    # Calculate the number of granularities since the last update
-                    time_diff = next_timestamp - last_update
-                    periods_since_last_update = time_diff // granularity_timedelta
-
-                    # Apply exponential decay to the last popularity based on the number of periods since the last update
-                    decayed_popularity = last_popularity * np.exp(-0.05 * (periods_since_last_update)**2)
-
-                    # Append the decayed popularity to the topic's data
-                    topic_sizes[topic]['Timestamps'].append(next_timestamp)
-                    topic_sizes[topic]['Popularity'].append(decayed_popularity)
-                    topic_sizes[topic]['Representations'].append(f"{next_timestamp}: {'_'.join(topic_sizes[topic]['Representations'][-1].split(': ')[1:])}")
-
-                    # Update the topic's last popularity
-                    topic_last_popularity[topic] = decayed_popularity
-
-            # Move to the next timestamp
-            current_timestamp += pd.Timedelta(days=granularity)
-
-        # Sort the topics based on their topic ID
-        sorted_topics = sorted(topic_sizes.items(), key=lambda x: x[0])
-
-        # Create a Plotly figure and add traces for each topic
-        for topic, data in sorted_topics:
-            fig.add_trace(go.Scatter(
-                x=data['Timestamps'],
-                y=data['Popularity'],
-                mode='lines+markers',
-                name=f"Topic {topic} : {data['Representations'][-1].split(': ')[1].split('_')[:5]}",
-                hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
-                text=[f"Topic {topic}"] * len(data['Timestamps']),
-                customdata=[rep.split(': ')[1] for rep in data['Representations']],
-                line_shape='spline'
-            ))
-
-        # Collect popularity values above 0.001 within the specified window
+        # Collect popularity values above 0.01 within the specified window
         all_popularity_values = [
-            popularity for topic, data in sorted_topics
+            popularity for topic, data in topic_sizes.items()
             for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
             if window_start <= timestamp <= window_end and popularity > 0.01
         ]
@@ -240,7 +150,6 @@ def plot_topic_size_evolution(all_merge_histories_df: pd.DataFrame, granularity:
             q3 = np.percentile(all_popularity_values, 50)
         else:
             q1, q3 = 0, 0
-
 
         st.write(f"Noise Threshold : {q1}")
         st.write(f"Strong Signal Threshold : {q3}")
@@ -261,87 +170,11 @@ def plot_topic_size_evolution(all_merge_histories_df: pd.DataFrame, granularity:
         # Display the plot using Streamlit
         st.plotly_chart(fig, use_container_width=True)
 
-        # Call the save_signal_evolution_data function to save the dataframes and metadata
-        save_signal_evolution_data(all_merge_histories_df, topic_sizes, topic_last_popularity, topic_last_update, 
-                                   min_datetime, max_datetime, window_size, granularity)
-
-    
         # Define the columns to display in the DataFrames
         columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest Popularity', 'Docs_Count', 'Paragraphs_Count', 'Latest_Timestamp', 'Documents']
 
         # Classify topics based on their popularity behavior at the final timestamp
-        noise_topics = []
-        weak_signal_topics = []
-        strong_signal_topics = []
-
-        for topic, data in sorted_topics:
-            window_popularities = [
-                (timestamp, popularity) for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
-                if window_start <= timestamp <= window_end and popularity > 0.01
-            ]
-            if window_popularities:
-                latest_timestamp, latest_popularity = window_popularities[-1]
-                if latest_popularity < q1:
-                    noise_topics.append((topic, latest_popularity, latest_timestamp))
-                elif q1 <= latest_popularity <= q3:
-                    weak_signal_topics.append((topic, latest_popularity, latest_timestamp))
-                else:
-                    strong_signal_topics.append((topic, latest_popularity, latest_timestamp))
-
-        # Create DataFrames for each category
-        noise_topics_data = []
-        weak_signal_topics_data = []
-        strong_signal_topics_data = []
-
-        for topic, latest_popularity, latest_timestamp in noise_topics:
-            topic_data = topic_sizes[topic]
-            noise_topics_data.append({
-                'Topic': topic,
-                'Representation': topic_data['Representations'][-1].split(': ')[1],
-                'Latest Popularity': latest_popularity,
-                'Docs_Count': topic_data['Docs_Count'],
-                'Paragraphs_Count': topic_data['Paragraphs_Count'],
-                'Latest_Timestamp': latest_timestamp,
-                'Representations': topic_data['Representations'],
-                'Documents': topic_data['Documents'],
-                'Sources': list(set(topic_data['Sources'])),
-                'Source_Diversity': len(set(topic_data['Sources']))
-            })
-
-        for topic, latest_popularity, latest_timestamp in weak_signal_topics:
-            topic_data = topic_sizes[topic]
-            weak_signal_topics_data.append({
-                'Topic': topic,
-                'Representation': topic_data['Representations'][-1].split(': ')[1],
-                'Latest Popularity': latest_popularity,
-                'Docs_Count': topic_data['Docs_Count'],
-                'Paragraphs_Count': topic_data['Paragraphs_Count'],
-                'Latest_Timestamp': latest_timestamp,
-                'Representations': topic_data['Representations'],
-                'Documents': topic_data['Documents'],
-                'Sources': list(set(topic_data['Sources'])),
-                'Source_Diversity': len(set(topic_data['Sources']))
-            })
-
-        for topic, latest_popularity, latest_timestamp in strong_signal_topics:
-            topic_data = topic_sizes[topic]
-            strong_signal_topics_data.append({
-                'Topic': topic,
-                'Representation': topic_data['Representations'][-1].split(': ')[1],
-                'Latest Popularity': latest_popularity,
-                'Docs_Count': topic_data['Docs_Count'],
-                'Paragraphs_Count': topic_data['Paragraphs_Count'],
-                'Latest_Timestamp': latest_timestamp,
-                'Representations': topic_data['Representations'],
-                'Documents': topic_data['Documents'],
-                'Sources': list(set(topic_data['Sources'])),
-                'Source_Diversity': len(set(topic_data['Sources']))
-            })
-
-        # Create DataFrames for each category
-        noise_topics_df = pd.DataFrame(noise_topics_data)
-        weak_signal_topics_df = pd.DataFrame(weak_signal_topics_data)
-        strong_signal_topics_df = pd.DataFrame(strong_signal_topics_data)
+        noise_topics_df, weak_signal_topics_df, strong_signal_topics_df = classify_signals(topic_sizes, window_start, window_end, q1, q3)
 
         # Display the DataFrames for each category
         st.subheader(":grey[Noise]")
@@ -361,165 +194,419 @@ def plot_topic_size_evolution(all_merge_histories_df: pd.DataFrame, granularity:
             st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
         else:
             st.info(f"No strong signals were detected at timestamp {window_end}.")
+
+        if st.button("Save Signal Evolution Data"):
+            save_signal_evolution_data(st.session_state.all_merge_histories_df, dict(topic_sizes), topic_last_popularity, topic_last_update, min_datetime, max_datetime, window_size, granularity)
+            st.success("Signal evolution data saved successfully!")
+
         return window_start, window_end
 
+########################################################################################################################
 
 
 
-
-def save_signal_evolution_data(all_merge_histories_df, topic_sizes, topic_last_popularity, topic_last_update, min_datetime, max_datetime, window_size, granularity):
-    """
-    Save the entire history of noise, weak, and strong signal dataframes from the beginning to the end.
+# def plot_topic_size_evolution(all_merge_histories_df: pd.DataFrame, granularity: int) -> Tuple[float, float]:
+#     """
+#     Plot the evolution of topic sizes over time.
     
-    Args:
-        all_merge_histories_df (pd.DataFrame): The DataFrame containing the merge histories of topics.
-        topic_sizes (dict): Dictionary storing topic sizes and related information.
-        topic_last_popularity (dict): Dictionary storing the last popularity of each topic.
-        topic_last_update (dict): Dictionary storing the last update timestamp of each topic.
-        min_datetime (datetime): The minimum timestamp to start from.
-        max_datetime (datetime): The maximum timestamp to end at.
-        window_size (int): The size of the retrospective window in days.
-        granularity (int): The granularity of the timestamps in days.
+#     Args:
+#         all_merge_histories_df (pd.DataFrame): The DataFrame containing the merge histories of topics.
+#         granularity (int): The granularity of the timestamps in days.
+    
+#     Returns:
+#         Tuple[float, float]: The q1 and q3 values representing the 10th and 50th percentiles of popularity values.
+#     """
+#     with st.expander("Topic Popularity Evolution", expanded=True):
+#         fig = go.Figure()
+#         topic_sizes = defaultdict(lambda: defaultdict(list))
+#         topic_last_popularity = {}
+#         topic_last_update = {}
 
-    """
-    window_size_timedelta = pd.Timedelta(days=window_size)
-    granularity_timedelta = pd.Timedelta(days=granularity)
+#         min_timestamp = all_merge_histories_df['Timestamp'].min()
+#         max_timestamp = all_merge_histories_df['Timestamp'].max()
 
-    current_timestamp = min_datetime + window_size_timedelta
-    end_timestamp = max_datetime
+#         window_size = st.number_input("Retrospective Period (days)", min_value=1, max_value=365, value=10, key='window_size')
+#         window_size_timedelta = pd.Timedelta(days=window_size)
 
-    noise_dfs_over_time = []
-    weak_signal_dfs_over_time = []
-    strong_signal_dfs_over_time = []
-    timestamps_over_time = []
-    q1_values = []
-    q3_values = []
+#         min_datetime = min_timestamp.to_pydatetime()
+#         max_datetime = max_timestamp.to_pydatetime()
 
-    while current_timestamp <= end_timestamp:
-        window_start = current_timestamp - window_size_timedelta
-        window_end = current_timestamp
+#         granularity_timedelta = pd.Timedelta(days=granularity)
 
-        # Collect popularity values above 0.001 within the specified window
-        all_popularity_values = [
-            popularity for topic, data in topic_sizes.items()
-            for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
-            if window_start <= timestamp <= window_end and popularity > 0.01
-        ]
+#         window_end = st.slider(
+#             "Current date",
+#             min_value=min_datetime + window_size_timedelta,
+#             max_value=max_datetime,
+#             value=min_datetime + window_size_timedelta,
+#             step=granularity_timedelta,
+#             format="YYYY-MM-DD",
+#         )
+        
+#         window_start = window_end - window_size_timedelta
 
-        # Calculate the 10th and 50th percentiles of popularity values
-        if all_popularity_values:
-            q1 = np.percentile(all_popularity_values, 10)
-            q3 = np.percentile(all_popularity_values, 50)
-        else:
-            q1, q3 = 0, 0
+#         # Create a range of timestamps from min_datetime to max_datetime with the specified granularity
+#         timestamps = pd.date_range(start=min_datetime, end=max_datetime, freq=granularity_timedelta)
 
-        q1_values.append(q1)
-        q3_values.append(q3)
+#         # Iterate over each timestamp
+#         for current_timestamp in timestamps:
+#             # Filter the merge history DataFrame for the current timestamp
+#             current_df = all_merge_histories_df[all_merge_histories_df['Timestamp'] == current_timestamp]
+            
+#             # Iterate over each topic at the current timestamp
+#             for _, row in current_df.iterrows():
+#                 current_topic = row['Topic1']
 
-        noise_topics = []
-        weak_signal_topics = []
-        strong_signal_topics = []
+#                 if current_topic not in topic_sizes:
+#                     # Initialize the topic's data with the first point corresponding to Timestamp1 and popularity Document_Count1
+#                     topic_sizes[current_topic]['Timestamps'].append(current_timestamp)
+#                     topic_sizes[current_topic]['Popularity'].append(row['Document_Count1'])
+#                     topic_sizes[current_topic]['Representations'].append(f"{current_timestamp}: {'_'.join(row['Representation1'])}")
+#                     topic_sizes[current_topic]['Documents'].extend(row['Documents1'])
+#                     topic_sizes[current_topic]['Sources'].extend(row['Source1'])
+#                     topic_sizes[current_topic]['Docs_Count'] = row['Document_Count1']
+#                     topic_sizes[current_topic]['Paragraphs_Count'] = row['Count1']
 
-        for topic, data in topic_sizes.items():
-            window_popularities = [
-                (timestamp, popularity) for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
-                if window_start <= timestamp <= window_end and popularity > 0.01
-            ]
-            if window_popularities:
-                latest_timestamp, latest_popularity = window_popularities[-1]
-                if latest_popularity < q1:
-                    noise_topics.append((topic, latest_popularity, latest_timestamp))
-                elif q1 <= latest_popularity <= q3:
-                    weak_signal_topics.append((topic, latest_popularity, latest_timestamp))
-                else:
-                    strong_signal_topics.append((topic, latest_popularity, latest_timestamp))
+#                     # Update the topic's last popularity and last update timestamp
+#                     topic_last_popularity[current_topic] = row['Document_Count1']
+#                     topic_last_update[current_topic] = current_timestamp
+#                 else:
+#                     # Retrieve the last logged popularity value
+#                     last_popularity = topic_last_popularity[current_topic]
+#                     last_update = topic_last_update[current_topic]
 
-        # Create DataFrames for each category
-        noise_topics_data = []
-        weak_signal_topics_data = []
-        strong_signal_topics_data = []
+#                     # Calculate the number of granularities since the last update
+#                     time_diff = current_timestamp - last_update
+#                     periods_since_last_update = time_diff // granularity_timedelta
 
-        for topic, latest_popularity, latest_timestamp in noise_topics:
-            topic_data = topic_sizes[topic]
-            noise_topics_data.append({
-                'Topic': topic,
-                'Representation': topic_data['Representations'][-1].split(': ')[1],
-                'Latest Popularity': latest_popularity,
-                'Docs_Count': topic_data['Docs_Count'],
-                'Paragraphs_Count': topic_data['Paragraphs_Count'],
-                'Latest_Timestamp': latest_timestamp,
-                'Representations': topic_data['Representations'],
-                'Documents': topic_data['Documents'],
-                'Sources': list(set(topic_data['Sources'])),
-                'Source_Diversity': len(set(topic_data['Sources']))
-            })
+#                     # Apply exponential decay to the last popularity based on the number of periods since the last update
+#                     decayed_popularity = last_popularity * np.exp(-0.01 * (periods_since_last_update)**2)
 
-        for topic, latest_popularity, latest_timestamp in weak_signal_topics:
-            topic_data = topic_sizes[topic]
-            weak_signal_topics_data.append({
-                'Topic': topic,
-                'Representation': topic_data['Representations'][-1].split(': ')[1],
-                'Latest Popularity': latest_popularity,
-                'Docs_Count': topic_data['Docs_Count'],
-                'Paragraphs_Count': topic_data['Paragraphs_Count'],
-                'Latest_Timestamp': latest_timestamp,
-                'Representations': topic_data['Representations'],
-                'Documents': topic_data['Documents'],
-                'Sources': list(set(topic_data['Sources'])),
-                'Source_Diversity': len(set(topic_data['Sources']))
-            })
+#                     # Append the decayed popularity to the topic's data
+#                     topic_sizes[current_topic]['Timestamps'].append(current_timestamp)
+#                     topic_sizes[current_topic]['Popularity'].append(decayed_popularity)
+#                     topic_sizes[current_topic]['Representations'].append(f"{current_timestamp}: {'_'.join(topic_sizes[current_topic]['Representations'][-1].split(': ')[1:])}")
 
-        for topic, latest_popularity, latest_timestamp in strong_signal_topics:
-            topic_data = topic_sizes[topic]
-            strong_signal_topics_data.append({
-                'Topic': topic,
-                'Representation': topic_data['Representations'][-1].split(': ')[1],
-                'Latest Popularity': latest_popularity,
-                'Docs_Count': topic_data['Docs_Count'],
-                'Paragraphs_Count': topic_data['Paragraphs_Count'],
-                'Latest_Timestamp': latest_timestamp,
-                'Representations': topic_data['Representations'],
-                'Documents': topic_data['Documents'],
-                'Sources': list(set(topic_data['Sources'])),
-                'Source_Diversity': len(set(topic_data['Sources']))
-            })
+#                     # Update the topic's last popularity
+#                     topic_last_popularity[current_topic] = decayed_popularity
 
-        # Create DataFrames for each category
-        noise_topics_df = pd.DataFrame(noise_topics_data)
-        weak_signal_topics_df = pd.DataFrame(weak_signal_topics_data)
-        strong_signal_topics_df = pd.DataFrame(strong_signal_topics_data)
+#             # Iterate over each topic at the current timestamp
+#             for _, row in current_df.iterrows():
+#                 current_topic = row['Topic1']
 
-        # Append the dataframes for each signal type to the respective lists
-        noise_dfs_over_time.append(noise_topics_df)
-        weak_signal_dfs_over_time.append(weak_signal_topics_df)
-        strong_signal_dfs_over_time.append(strong_signal_topics_df)
-        timestamps_over_time.append(current_timestamp)
+#                 # Check if the topic at this timestamp got merged with multiple topics from the next timestamp
+#                 next_timestamp = row['Timestamp'] + granularity_timedelta
+                
+#                 # Update the topic's data with the new timestamp and aggregated popularity
+#                 topic_sizes[current_topic]['Timestamps'].append(next_timestamp)
+#                 topic_sizes[current_topic]['Popularity'].append(topic_last_popularity[current_topic] + row['Document_Count2'])
+#                 topic_sizes[current_topic]['Representations'].append(f"{next_timestamp}: {'_'.join(row['Representation2'])}")
+#                 topic_sizes[current_topic]['Documents'].extend(row['Documents2'])
+#                 topic_sizes[current_topic]['Sources'].extend(row['Source2'])
+#                 topic_sizes[current_topic]['Docs_Count'] += row['Document_Count2']
+#                 topic_sizes[current_topic]['Paragraphs_Count'] += row['Count2']
 
-        # Move to the next timestamp
-        current_timestamp += granularity_timedelta
+#                 # Update the topic's last popularity and last update timestamp
+#                 topic_last_popularity[current_topic] = topic_last_popularity[current_topic] + row['Document_Count2']
+#                 topic_last_update[current_topic] = next_timestamp
 
-    # Save the retrieved dataframes and related information
-    save_path = "wattelse/bertopic/app/weak_signals/ablation_study/signal_evolution_data"
-    os.makedirs(save_path, exist_ok=True)
+#         # Sort the topics based on their topic ID
+#         sorted_topics = sorted(topic_sizes.items(), key=lambda x: x[0])
 
-    # Save the lists of dataframes for each signal type
-    with open(os.path.join(save_path, "noise_dfs_over_time.pkl"), "wb") as f:
-        pickle.dump(noise_dfs_over_time, f)
-    with open(os.path.join(save_path, "weak_signal_dfs_over_time.pkl"), "wb") as f:
-        pickle.dump(weak_signal_dfs_over_time, f)
-    with open(os.path.join(save_path, "strong_signal_dfs_over_time.pkl"), "wb") as f:
-        pickle.dump(strong_signal_dfs_over_time, f)
+#         # Create a Plotly figure and add traces for each topic
+#         for topic, data in sorted_topics:
+#             fig.add_trace(go.Scatter(
+#                 x=data['Timestamps'],
+#                 y=data['Popularity'],
+#                 mode='lines+markers',
+#                 name=f"Topic {topic} : {data['Representations'][-1].split(': ')[1].split('_')[:5]}",
+#                 hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
+#                 text=[f"Topic {topic}"] * len(data['Timestamps']),
+#                 customdata=[rep.split(': ')[1] for rep in data['Representations']],
+#                 line_shape='spline'
+#             ))
 
-    # Save the window size, granularity, timestamps, q1_values, and q3_values
-    with open(os.path.join(save_path, "metadata.pkl"), "wb") as f:
-        metadata = {
-            "window_size": window_size,
-            "granularity": granularity,
-            "timestamps": timestamps_over_time,
-            "q1_values": q1_values,
-            "q3_values": q3_values
-        }
-        pickle.dump(metadata, f)
+#         # Collect popularity values above 0.001 within the specified window
+#         all_popularity_values = [
+#             popularity for topic, data in sorted_topics
+#             for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
+#             if window_start <= timestamp <= window_end and popularity > 0.01
+#         ]
+
+#         # Calculate the 10th and 50th percentiles of popularity values
+#         if all_popularity_values:
+#             q1 = np.percentile(all_popularity_values, 10)
+#             q3 = np.percentile(all_popularity_values, 50)
+#         else:
+#             q1, q3 = 0, 0
+
+#         st.write(f"Noise Threshold : {q1}")
+#         st.write(f"Strong Signal Threshold : {q3}")
+
+#         # Add horizontal lines for the 10th and 50th percentiles
+#         fig.add_shape(type="line", x0=window_start, y0=q1, x1=window_end, y1=q1, line=dict(color="red", width=2, dash="dash"))
+#         fig.add_shape(type="line", x0=window_start, y0=q3, x1=window_end, y1=q3, line=dict(color="green", width=2, dash="dash"))
+
+#         # Update the figure layout to limit the display range to the window
+#         fig.update_layout(
+#             title='Popularity Evolution',
+#             xaxis_title='Timestamp',
+#             yaxis_title='Popularity',
+#             hovermode='closest',
+#             xaxis_range=[window_start, window_end]  # Set the range of the x-axis to the retrospective window
+#         )
+
+#         # Display the plot using Streamlit
+#         st.plotly_chart(fig, use_container_width=True)
+
+#         # # Call the save_signal_evolution_data function to save the dataframes and metadata
+#         save_signal_evolution_data(all_merge_histories_df, dict(topic_sizes), topic_last_popularity, topic_last_update, 
+#                                    min_datetime, max_datetime, window_size, granularity)
+
+#         # Define the columns to display in the DataFrames
+#         columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest Popularity', 'Docs_Count', 'Paragraphs_Count', 'Latest_Timestamp', 'Documents']
+
+#         # Classify topics based on their popularity behavior at the final timestamp
+#         noise_topics = []
+#         weak_signal_topics = []
+#         strong_signal_topics = []
+
+#         for topic, data in sorted_topics:
+#             window_popularities = [
+#                 (timestamp, popularity) for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
+#                 if window_start <= timestamp <= window_end and popularity > 0.0001
+#             ]
+#             if window_popularities:
+#                 latest_timestamp, latest_popularity = window_popularities[-1]
+#                 if latest_popularity < q1:
+#                     noise_topics.append((topic, latest_popularity, latest_timestamp))
+#                 elif q1 <= latest_popularity <= q3:
+#                     weak_signal_topics.append((topic, latest_popularity, latest_timestamp))
+#                 else:
+#                     strong_signal_topics.append((topic, latest_popularity, latest_timestamp))
+
+#         # Create DataFrames for each category using list comprehensions
+#         noise_topics_data = [{
+#             'Topic': topic,
+#             'Representation': topic_sizes[topic]['Representations'][-1].split(': ')[1],
+#             'Latest Popularity': latest_popularity,
+#             'Docs_Count': topic_sizes[topic]['Docs_Count'],
+#             'Paragraphs_Count': topic_sizes[topic]['Paragraphs_Count'],
+#             'Latest_Timestamp': latest_timestamp,
+#             'Representations': topic_sizes[topic]['Representations'],
+#             'Documents': topic_sizes[topic]['Documents'],
+#             'Sources': list(set(topic_sizes[topic]['Sources'])),
+#             'Source_Diversity': len(set(topic_sizes[topic]['Sources']))
+#         } for topic, latest_popularity, latest_timestamp in noise_topics]
+
+#         weak_signal_topics_data = [{
+#             'Topic': topic,
+#             'Representation': topic_sizes[topic]['Representations'][-1].split(': ')[1],
+#             'Latest Popularity': latest_popularity,
+#             'Docs_Count': topic_sizes[topic]['Docs_Count'],
+#             'Paragraphs_Count': topic_sizes[topic]['Paragraphs_Count'],
+#             'Latest_Timestamp': latest_timestamp,
+#             'Representations': topic_sizes[topic]['Representations'],
+#             'Documents': topic_sizes[topic]['Documents'],
+#             'Sources': list(set(topic_sizes[topic]['Sources'])),
+#             'Source_Diversity': len(set(topic_sizes[topic]['Sources']))
+#         } for topic, latest_popularity, latest_timestamp in weak_signal_topics]
+
+#         strong_signal_topics_data = [{
+#             'Topic': topic,
+#             'Representation': topic_sizes[topic]['Representations'][-1].split(': ')[1],
+#             'Latest Popularity': latest_popularity,
+#             'Docs_Count': topic_sizes[topic]['Docs_Count'],
+#             'Paragraphs_Count': topic_sizes[topic]['Paragraphs_Count'],
+#             'Latest_Timestamp': latest_timestamp,
+#             'Representations': topic_sizes[topic]['Representations'],
+#             'Documents': topic_sizes[topic]['Documents'],
+#             'Sources': list(set(topic_sizes[topic]['Sources'])),
+#             'Source_Diversity': len(set(topic_sizes[topic]['Sources']))
+#         } for topic, latest_popularity, latest_timestamp in strong_signal_topics]
+
+#         # Create DataFrames for each category
+#         noise_topics_df = pd.DataFrame(noise_topics_data)
+#         weak_signal_topics_df = pd.DataFrame(weak_signal_topics_data)
+#         strong_signal_topics_df = pd.DataFrame(strong_signal_topics_data)
+
+#         # Display the DataFrames for each category
+#         st.subheader(":grey[Noise]")
+#         if not noise_topics_df.empty:
+#             st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
+#         else:
+#             st.info(f"No noisy signals were detected at timestamp {window_end}.")
+
+#         st.subheader(":orange[Weak Signals]")
+#         if not weak_signal_topics_df.empty:
+#             st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Latest Popularity'], ascending=True))
+#         else:
+#             st.info(f"No weak signals were detected at timestamp {window_end}.")
+
+#         st.subheader(":green[Strong Signals]")
+#         if not strong_signal_topics_df.empty:
+#             st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
+#         else:
+#             st.info(f"No strong signals were detected at timestamp {window_end}.")
+
+#         return window_start, window_end
+
+
+
+
+
+# def save_signal_evolution_data(all_merge_histories_df, topic_sizes, topic_last_popularity, topic_last_update, min_datetime, max_datetime, window_size, granularity):
+#     """
+#     Save the entire history of noise, weak, and strong signal dataframes from the beginning to the end.
+    
+#     Args:
+#         all_merge_histories_df (pd.DataFrame): The DataFrame containing the merge histories of topics.
+#         topic_sizes (dict): Dictionary storing topic sizes and related information.
+#         topic_last_popularity (dict): Dictionary storing the last popularity of each topic.
+#         topic_last_update (dict): Dictionary storing the last update timestamp of each topic.
+#         min_datetime (datetime): The minimum timestamp to start from.
+#         max_datetime (datetime): The maximum timestamp to end at.
+#         window_size (int): The size of the retrospective window in days.
+#         granularity (int): The granularity of the timestamps in days.
+
+#     """
+#     window_size_timedelta = pd.Timedelta(days=window_size)
+#     granularity_timedelta = pd.Timedelta(days=granularity)
+
+#     current_timestamp = min_datetime + window_size_timedelta
+#     end_timestamp = max_datetime
+
+#     noise_dfs_over_time = []
+#     weak_signal_dfs_over_time = []
+#     strong_signal_dfs_over_time = []
+#     timestamps_over_time = []
+#     q1_values = []
+#     q3_values = []
+
+#     while current_timestamp <= end_timestamp:
+#         window_start = current_timestamp - window_size_timedelta
+#         window_end = current_timestamp
+
+#         # Collect popularity values above 0.001 within the specified window
+#         all_popularity_values = [
+#             popularity for topic, data in topic_sizes.items()
+#             for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
+#             if window_start <= timestamp <= window_end and popularity > 0.01
+#         ]
+
+#         # Calculate the 10th and 50th percentiles of popularity values
+#         if all_popularity_values:
+#             q1 = np.percentile(all_popularity_values, 10)
+#             q3 = np.percentile(all_popularity_values, 50)
+#         else:
+#             q1, q3 = 0, 0
+
+#         q1_values.append(q1)
+#         q3_values.append(q3)
+
+#         noise_topics = []
+#         weak_signal_topics = []
+#         strong_signal_topics = []
+
+#         for topic, data in topic_sizes.items():
+#             window_popularities = [
+#                 (timestamp, popularity) for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
+#                 if window_start <= timestamp <= window_end and popularity > 0.01
+#             ]
+#             if window_popularities:
+#                 latest_timestamp, latest_popularity = window_popularities[-1]
+#                 if latest_popularity < q1:
+#                     noise_topics.append((topic, latest_popularity, latest_timestamp))
+#                 elif q1 <= latest_popularity <= q3:
+#                     weak_signal_topics.append((topic, latest_popularity, latest_timestamp))
+#                 else:
+#                     strong_signal_topics.append((topic, latest_popularity, latest_timestamp))
+
+#         # Create DataFrames for each category
+#         noise_topics_data = []
+#         weak_signal_topics_data = []
+#         strong_signal_topics_data = []
+
+#         for topic, latest_popularity, latest_timestamp in noise_topics:
+#             topic_data = topic_sizes[topic]
+#             noise_topics_data.append({
+#                 'Topic': topic,
+#                 'Representation': topic_data['Representations'][-1].split(': ')[1],
+#                 'Latest Popularity': latest_popularity,
+#                 'Docs_Count': topic_data['Docs_Count'],
+#                 'Paragraphs_Count': topic_data['Paragraphs_Count'],
+#                 'Latest_Timestamp': latest_timestamp,
+#                 'Representations': topic_data['Representations'],
+#                 'Documents': topic_data['Documents'],
+#                 'Sources': list(set(topic_data['Sources'])),
+#                 'Source_Diversity': len(set(topic_data['Sources']))
+#             })
+
+#         for topic, latest_popularity, latest_timestamp in weak_signal_topics:
+#             topic_data = topic_sizes[topic]
+#             weak_signal_topics_data.append({
+#                 'Topic': topic,
+#                 'Representation': topic_data['Representations'][-1].split(': ')[1],
+#                 'Latest Popularity': latest_popularity,
+#                 'Docs_Count': topic_data['Docs_Count'],
+#                 'Paragraphs_Count': topic_data['Paragraphs_Count'],
+#                 'Latest_Timestamp': latest_timestamp,
+#                 'Representations': topic_data['Representations'],
+#                 'Documents': topic_data['Documents'],
+#                 'Sources': list(set(topic_data['Sources'])),
+#                 'Source_Diversity': len(set(topic_data['Sources']))
+#             })
+
+#         for topic, latest_popularity, latest_timestamp in strong_signal_topics:
+#             topic_data = topic_sizes[topic]
+#             strong_signal_topics_data.append({
+#                 'Topic': topic,
+#                 'Representation': topic_data['Representations'][-1].split(': ')[1],
+#                 'Latest Popularity': latest_popularity,
+#                 'Docs_Count': topic_data['Docs_Count'],
+#                 'Paragraphs_Count': topic_data['Paragraphs_Count'],
+#                 'Latest_Timestamp': latest_timestamp,
+#                 'Representations': topic_data['Representations'],
+#                 'Documents': topic_data['Documents'],
+#                 'Sources': list(set(topic_data['Sources'])),
+#                 'Source_Diversity': len(set(topic_data['Sources']))
+#             })
+
+#         # Create DataFrames for each category
+#         noise_topics_df = pd.DataFrame(noise_topics_data)
+#         weak_signal_topics_df = pd.DataFrame(weak_signal_topics_data)
+#         strong_signal_topics_df = pd.DataFrame(strong_signal_topics_data)
+
+#         # Append the dataframes for each signal type to the respective lists
+#         noise_dfs_over_time.append(noise_topics_df)
+#         weak_signal_dfs_over_time.append(weak_signal_topics_df)
+#         strong_signal_dfs_over_time.append(strong_signal_topics_df)
+#         timestamps_over_time.append(current_timestamp)
+
+#         # Move to the next timestamp
+#         current_timestamp += granularity_timedelta
+
+#     # Save the retrieved dataframes and related information
+#     save_path = "wattelse/bertopic/app/weak_signals/ablation_study/signal_evolution_data"
+#     os.makedirs(save_path, exist_ok=True)
+
+#     # Save the lists of dataframes for each signal type
+#     with open(os.path.join(save_path, "noise_dfs_over_time.pkl"), "wb") as f:
+#         pickle.dump(noise_dfs_over_time, f)
+#     with open(os.path.join(save_path, "weak_signal_dfs_over_time.pkl"), "wb") as f:
+#         pickle.dump(weak_signal_dfs_over_time, f)
+#     with open(os.path.join(save_path, "strong_signal_dfs_over_time.pkl"), "wb") as f:
+#         pickle.dump(strong_signal_dfs_over_time, f)
+
+#     # Save the window size, granularity, timestamps, q1_values, and q3_values
+#     with open(os.path.join(save_path, "metadata.pkl"), "wb") as f:
+#         metadata = {
+#             "window_size": window_size,
+#             "granularity": granularity,
+#             "timestamps": timestamps_over_time,
+#             "q1_values": q1_values,
+#             "q3_values": q3_values
+#         }
+#         pickle.dump(metadata, f)
 
 
 def plot_newly_emerged_topics(all_new_topics_df: pd.DataFrame) -> None:
@@ -563,7 +650,7 @@ def plot_newly_emerged_topics(all_new_topics_df: pd.DataFrame) -> None:
         st.dataframe(all_new_topics_df[['Topic', 'Count', 'Document_Count', 'Representation', 'Documents', 'Timestamp']].sort_values(by=['Timestamp', 'Document_Count'], ascending=[True, False]))
         st.plotly_chart(fig_new_topics, use_container_width=True)
 
-
+########################################################################################################################
 
 def transform_merge_histories_for_sankey(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -683,7 +770,7 @@ def transform_merge_histories_for_sankey(df: pd.DataFrame) -> pd.DataFrame:
 
     return transformed_df_new
 
-
+########################################################################################################################
 
 def create_sankey_diagram_plotly(all_merge_histories_df: pd.DataFrame, search_term: str =None, max_pairs: int = None):
     """
@@ -803,6 +890,7 @@ def create_sankey_diagram_plotly(all_merge_histories_df: pd.DataFrame, search_te
     
     return fig
 
+########################################################################################################################
 
 def create_sankey_diagram(all_merge_histories_df: pd.DataFrame) -> go.Figure:
     """

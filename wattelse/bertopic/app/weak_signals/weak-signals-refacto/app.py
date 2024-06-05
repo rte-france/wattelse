@@ -17,11 +17,11 @@ import torch
 
 from data_loading import load_and_preprocess_data, group_by_days
 from topic_modeling import train_topic_models, merge_models, preprocess_model
-from visualizations import plot_num_topics_and_outliers, plot_topics_per_timestamp, plot_topic_size_evolution, plot_newly_emerged_topics, prepare_source_topic_data, create_sankey_diagram
+from visualizations import plot_num_topics_and_outliers, plot_topics_per_timestamp, plot_topic_size_evolution, create_topic_size_evolution_figure, plot_newly_emerged_topics, prepare_source_topic_data, create_sankey_diagram
 from weak_signals import detect_weak_signals_zeroshot
 from global_vars import STOP_WORDS_RTE, COMMON_NGRAMS, FRENCH_STOPWORDS, cwd_data
 from nltk.corpus import stopwords
-
+from weak_signals import calculate_signal_popularity
 import plotly.graph_objects as go
 
 import numpy as np
@@ -215,18 +215,18 @@ def main():
 
     if language == "English":
         stopwords_list = stopwords.words("english")
-        embedding_model_name = st.sidebar.selectbox("Embedding Model", ["BAAI/bge-base-en-v1.5", "all-MiniLM-L12-v2", "all-mpnet-base-v2"], key='embedding_model_name')
+        embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-mpnet-base-v2","BAAI/bge-base-en-v1.5", "all-MiniLM-L12-v2"], key='embedding_model_name')
     elif language == "French":
         stopwords_list = stopwords.words("english") + FRENCH_STOPWORDS + STOP_WORDS_RTE + COMMON_NGRAMS
         embedding_model_name = st.sidebar.selectbox("Embedding Model", ["dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
 
     with st.sidebar.expander("UMAP Hyperparameters", expanded=True):
-        umap_n_components = st.number_input("UMAP n_components", value=5, min_value=5, max_value=100, key='umap_n_components')
-        umap_n_neighbors = st.number_input("UMAP n_neighbors", value=10, min_value=5, max_value=100, key='umap_n_neighbors')
+        umap_n_components = st.number_input("UMAP n_components", value=5, min_value=2, max_value=100, key='umap_n_components')
+        umap_n_neighbors = st.number_input("UMAP n_neighbors", value=5, min_value=2, max_value=100, key='umap_n_neighbors')
     with st.sidebar.expander("HDBSCAN Hyperparameters", expanded=True):
-        hdbscan_min_cluster_size = st.number_input("HDBSCAN min_cluster_size", value=5, min_value=2, max_value=100, key='hdbscan_min_cluster_size')
-        hdbscan_min_samples = st.number_input("HDBSCAN min_sample", value=10, min_value=2, max_value=100, key='hdbscan_min_samples')
-        hdbscan_cluster_selection_method = st.selectbox("Cluster Selection Method", ["eom", "leaf"], key='hdbscan_cluster_selection_method')
+        hdbscan_min_cluster_size = st.number_input("HDBSCAN min_cluster_size", value=2, min_value=2, max_value=100, key='hdbscan_min_cluster_size')
+        hdbscan_min_samples = st.number_input("HDBSCAN min_sample", value=1, min_value=1, max_value=100, key='hdbscan_min_samples')
+        hdbscan_cluster_selection_method = st.selectbox("Cluster Selection Method", ["leaf", "eom"], key='hdbscan_cluster_selection_method')
     with st.sidebar.expander("Vectorizer Hyperparameters", expanded=True):
         top_n_words = st.number_input("Top N Words", value=10, min_value=1, max_value=50, key='top_n_words')
         vectorizer_ngram_range = st.selectbox("N-Gram range", [(1, 2), (1, 1), (2, 2)], key='vectorizer_ngram_range')
@@ -287,7 +287,7 @@ def main():
     # Embed documents
     if st.button("Embed Documents"):
         with st.spinner("Embedding documents..."):
-            st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda")
+            st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda", model_kwargs={"torch_dtype":torch.float16})
             st.session_state.embedding_model.max_seq_length = 512
 
             texts = st.session_state['timefiltered_df']['text'].tolist()
@@ -318,7 +318,7 @@ def main():
         st.session_state['timefiltered_df']['text'] = st.session_state['timefiltered_df']['text'].astype(str)
 
         # Set up BERTopic components
-        umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, random_state=42, metric="cosine")
+        umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, min_dist=0.1, random_state=42, metric="cosine")
         hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean',
                                 cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
         vectorizer_model = CountVectorizer(stop_words=stopwords_list, min_df=1, max_df=1.0, ngram_range=vectorizer_ngram_range)
@@ -392,9 +392,9 @@ def main():
                                                                                                 timestamp=current_timestamp)
                     elif not df2.empty:
                         merged_df_without_outliers, merge_history, new_topics = merge_models(merged_df_without_outliers, 
-                                                                                             df2, 
-                                                                                             min_similarity=min_similarity, 
-                                                                                             timestamp=current_timestamp)
+                                                                                            df2, 
+                                                                                            min_similarity=min_similarity, 
+                                                                                            timestamp=current_timestamp)
                     else:
                         continue
                                     
@@ -416,67 +416,91 @@ def main():
                 st.session_state.all_merge_histories_df = all_merge_histories_df
                 st.session_state.all_new_topics_df = all_new_topics_df
 
+                # Calculate and store topic sizes, last popularity, and last update in session state
+                topic_sizes, topic_last_popularity, topic_last_update = calculate_signal_popularity(all_merge_histories_df, granularity)
+                st.session_state.topic_sizes = topic_sizes
+                st.session_state.topic_last_popularity = topic_last_popularity
+                st.session_state.topic_last_update = topic_last_update
+
+            # Create and cache the topic size evolution figure
+            fig = create_topic_size_evolution_figure()
+            st.session_state.topic_size_evolution_fig = fig
+
             st.success("Model merging complete!")
-        
+
+        # Plot topic size evolution
         if "all_merge_histories_df" in st.session_state:
-            window_start, window_end = plot_topic_size_evolution(st.session_state.all_merge_histories_df, granularity)
+            window_size = st.number_input("Retrospective Period (days)", min_value=1, max_value=365, value=10, key='window_size')
 
-            # Create a text input field and a button for taking a closer look at a topic
-            topic_number = st.text_input("Enter a topic number to take a closer look:")
+            min_datetime = st.session_state.all_merge_histories_df['Timestamp'].min().to_pydatetime()
+            max_datetime = st.session_state.all_merge_histories_df['Timestamp'].max().to_pydatetime()
 
-            if st.button("Analyze signal"):
-                topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
+            current_date = st.date_input(
+                "Current date",
+                value=min_datetime + pd.Timedelta(days=window_size),
+                min_value=min_datetime + pd.Timedelta(days=window_size),
+                max_value=max_datetime,
+            )
+
+            # Pass the cached figure to plot_topic_size_evolution
+            plot_topic_size_evolution(st.session_state.topic_size_evolution_fig, window_size, granularity, current_date, min_datetime, max_datetime)
+
+            # # Create a text input field and a button for taking a closer look at a topic
+            # topic_number = st.text_input("Enter a topic number to take a closer look:")
+
+            # if st.button("Analyze signal"):
+            #     topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
                 
-                # Filter the topic_merge_rows based on the window_start and window_end values
+            #     # Filter the topic_merge_rows based on the window_start and window_end values
                 
-                topic_merge_rows_filtered = topic_merge_rows[(topic_merge_rows['Timestamp'] <= window_end)]
+            #     topic_merge_rows_filtered = topic_merge_rows[(topic_merge_rows['Timestamp'] <= window_end)]
                 
-                if not topic_merge_rows_filtered.empty:
-                    # Generate a summary using OpenAI ChatGPT
-                    content_summary = ""
-                    for i, row in enumerate(topic_merge_rows_filtered.itertuples()):
-                        timestamp = row.Timestamp
-                        next_timestamp = timestamp + pd.Timedelta(days=granularity)
-                        representation1 = row.Representation1
-                        representation2 = row.Representation2
-                        documents1 = set(row.Documents1)
-                        documents2 = set(row.Documents2)
+            #     if not topic_merge_rows_filtered.empty:
+            #         # Generate a summary using OpenAI ChatGPT
+            #         content_summary = ""
+            #         for i, row in enumerate(topic_merge_rows_filtered.itertuples()):
+            #             timestamp = row.Timestamp
+            #             next_timestamp = timestamp + pd.Timedelta(days=granularity)
+            #             representation1 = row.Representation1
+            #             representation2 = row.Representation2
+            #             documents1 = set(row.Documents1)
+            #             documents2 = set(row.Documents2)
 
-                        timestamp_str = timestamp.strftime("%Y-%m-%d")
-                        next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
+            #             timestamp_str = timestamp.strftime("%Y-%m-%d")
+            #             next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
 
-                        content_summary += f"Timestamp: {timestamp_str}\nTopic representation: {representation1}\n"
-                        for doc in documents1:
-                            content_summary += f"- {doc}\n"
-                        content_summary += f"\nTimestamp: {next_timestamp_str}\nTopic representation: {representation2}\n"
-                        for doc in documents2:
-                            content_summary += f"- {doc}\n"
-                        content_summary += "\n"
+            #             content_summary += f"Timestamp: {timestamp_str}\nTopic representation: {representation1}\n"
+            #             for doc in documents1:
+            #                 content_summary += f"- {doc}\n"
+            #             content_summary += f"\nTimestamp: {next_timestamp_str}\nTopic representation: {representation2}\n"
+            #             for doc in documents2:
+            #                 content_summary += f"- {doc}\n"
+            #             content_summary += "\n"
 
-                    # Generate the summary using OpenAI ChatGPT
-                    prompt = get_prompt(language, topic_number, content_summary)
-                    with st.spinner("Generating summary..."):
-                        try:
-                            completion = client.chat.completions.create(
-                                model="gpt-3.5-turbo-0125",
-                                messages=[
-                                    {"role": "system", "content": "You are a helpful assistant, skilled in summarizing topic evolution over time."},
-                                    {"role": "user", "content": prompt}
-                                ]
-                            )
-                            summary = completion.choices[0].message.content
-                            st.markdown(summary)
-                        except:
-                            st.warning("Unable to generate a summary. Too many documents.")
-                else:
-                    st.warning(f"Topic {topic_number} not found in the merge histories within the specified window.")
+            #         # Generate the summary using OpenAI ChatGPT
+            #         prompt = get_prompt(language, topic_number, content_summary)
+            #         with st.spinner("Generating summary..."):
+            #             try:
+            #                 completion = client.chat.completions.create(
+            #                     model="gpt-3.5-turbo-0125",
+            #                     messages=[
+            #                         {"role": "system", "content": "You are a helpful assistant, skilled in summarizing topic evolution over time."},
+            #                         {"role": "user", "content": prompt}
+            #                     ]
+            #                 )
+            #                 summary = completion.choices[0].message.content
+            #                 st.markdown(summary)
+            #             except:
+            #                 st.warning("Unable to generate a summary. Too many documents.")
+            #     else:
+            #         st.warning(f"Topic {topic_number} not found in the merge histories within the specified window.")
             # Create the Sankey Diagram
-            create_sankey_diagram(st.session_state.all_merge_histories_df)
+            # create_sankey_diagram(st.session_state.all_merge_histories_df)
             
             
         
-        if "all_new_topics_df" in st.session_state and not st.session_state.all_new_topics_df.empty:
-            plot_newly_emerged_topics(st.session_state.all_new_topics_df)
+        # if "all_new_topics_df" in st.session_state and not st.session_state.all_new_topics_df.empty:
+        #     plot_newly_emerged_topics(st.session_state.all_new_topics_df)
 
 
 if __name__ == "__main__":
