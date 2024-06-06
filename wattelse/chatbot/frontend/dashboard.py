@@ -120,10 +120,12 @@ def display_indicators():
     avg_nb_conversations = len(
         st.session_state["full_data"].conversation_id.unique()
     ) // len(st.session_state["full_data"].username.unique())
+    nb_short_feedback = (st.session_state["filtered_data"].short_feedback != "").sum()
+    nb_long_feedback = (st.session_state["filtered_data"].long_feedback != "").sum()
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric(
-        "Number of questions/responses",
+        "Questions/Answers",
         nb_questions,
         (
             f"{(nb_questions - avg_nb_questions) / avg_nb_questions * 100:.1f}%"
@@ -132,7 +134,7 @@ def display_indicators():
         ),
     )
     col2.metric(
-        "Number of distinct conversations",
+        "Conversations",
         nb_conversations,
         (
             f"{(nb_conversations - avg_nb_conversations) / avg_nb_conversations * 100:.1f}%"
@@ -144,7 +146,7 @@ def display_indicators():
         ratio = nb_questions / nb_conversations
         avg_ratio = avg_nb_questions / avg_nb_conversations
         col3.metric(
-            "Average number of questions per conversation",
+            "Questions per conversation",
             f"{ratio:.1f}",
             (
                 f"{(ratio - avg_ratio) / avg_ratio * 100:.1f}%"
@@ -152,6 +154,17 @@ def display_indicators():
                 else ""
             ),
         )
+
+    col4.metric(
+        "Long feedback",
+        f"{nb_long_feedback}",
+    )
+
+
+    col5.metric(
+        "Short feedback percentage",
+        f"{nb_short_feedback/nb_questions*100:.2f}%",
+    )
 
 
 def display_questions_over_time():
@@ -183,7 +196,7 @@ def display_feedback_charts():
     filtered_df = df[df["short_feedback"].isin(FEEDBACK_COLORS.keys())]
 
     # Count occurrences of each short_feedback value in the filtered data
-    short_feedback_counts = filtered_df["short_feedback"].value_counts()
+    short_feedback_counts = filtered_df["short_feedback"].value_counts().reindex(FEEDBACK_COLORS.keys())
 
     # Create a bar chart for total counts with custom colors
     fig_short_feedback_total = bar(
@@ -244,23 +257,16 @@ def display_feedback_charts_over_time():
 
 def display_feedback_rates():
     filtered_df = st.session_state["filtered_data"]
-    nb_questions = len(filtered_df.message)
-    nb_long_feedbacks = len(filtered_df.replace("", np.nan).long_feedback.dropna())
     short_feedback_counts = filtered_df["short_feedback"].value_counts()
-    cols = st.columns(5)
-
-    cols[0].metric(
-        "Ratio of long feedback", f"{nb_long_feedbacks/nb_questions*100:.1f}%", ""
-    )
-    idx = 0
-    for k in short_feedback_counts.index:
-        if k in FEEDBACK_COLORS.keys():
-            idx += 1
-            cols[idx].metric(
-                f":{FEEDBACK_COLORS[k]}[Ratio of feedback '{k}']",
-                f"{short_feedback_counts[k]/nb_questions*100:.1f}%",
+    total_short_feedback = (st.session_state["filtered_data"].short_feedback != "").sum()
+    cols = st.columns(4)
+    for i, feedback_type in enumerate(FEEDBACK_COLORS.keys()):
+        cols[i].metric(
+                f":{FEEDBACK_COLORS[feedback_type]}[Ratio of feedback '{feedback_type}']",
+                f"{short_feedback_counts[feedback_type]/total_short_feedback*100:.1f}%",
                 "",
             )
+            
 
 
 def main():
