@@ -90,7 +90,7 @@ def side_bar():
         )
 
         parameters_sidebar_clicked = st.form_submit_button(
-            "Save", type="primary", on_click=filter_data
+            "Update", type="primary", on_click=filter_data
         )
     return parameters_sidebar_clicked
 
