@@ -6,6 +6,8 @@ import os
 import pickle
 from collections import defaultdict
 import streamlit as st
+from loguru import logger
+from pprint import pprint
 
 def detect_weak_signals_zeroshot(topic_models: Dict[pd.Timestamp, BERTopic], zeroshot_topic_list: List[str]) -> Dict[str, Dict[pd.Timestamp, Dict[str, any]]]:
     """
@@ -85,11 +87,13 @@ def calculate_signal_popularity(all_merge_histories_df: pd.DataFrame, granularit
                 # Initialize the topic's data with the first point corresponding to Timestamp1 and popularity Document_Count1
                 topic_sizes[current_topic]['Timestamps'].append(current_timestamp)
                 topic_sizes[current_topic]['Popularity'].append(row['Document_Count1'])
-                topic_sizes[current_topic]['Representations'].append(f"{current_timestamp}: {'_'.join(row['Representation1'])}")
-                topic_sizes[current_topic]['Documents'].extend(row['Documents1'])
-                topic_sizes[current_topic]['Sources'].extend(row['Source1'])
-                topic_sizes[current_topic]['Docs_Count'] = row['Document_Count1']
-                topic_sizes[current_topic]['Paragraphs_Count'] = row['Count1']
+                topic_sizes[current_topic]['Representation'] = '_'.join(row['Representation1'])
+                topic_sizes[current_topic]['Documents'].append((current_timestamp, row['Documents1']))
+                topic_sizes[current_topic]['Sources'].append((current_timestamp, row['Source1']))
+                topic_sizes[current_topic]['Docs_Count'].append(row['Document_Count1'])
+                topic_sizes[current_topic]['Paragraphs_Count'].append(row['Count1'])
+                topic_sizes[current_topic]['Source_Diversity'].append(len(set(row['Source1'])))
+                topic_sizes[current_topic]['Representations'].append(topic_sizes[current_topic]['Representation'])
 
                 # Update the topic's last popularity and last update timestamp
                 topic_last_popularity[current_topic] = row['Document_Count1']
@@ -100,11 +104,15 @@ def calculate_signal_popularity(all_merge_histories_df: pd.DataFrame, granularit
             
             topic_sizes[current_topic]['Timestamps'].append(next_timestamp)
             topic_sizes[current_topic]['Popularity'].append(topic_last_popularity[current_topic] + row['Document_Count2'])
-            topic_sizes[current_topic]['Representations'].append(f"{next_timestamp}: {'_'.join(row['Representation2'])}")
-            topic_sizes[current_topic]['Documents'].extend(row['Documents2'])
-            topic_sizes[current_topic]['Sources'].extend(row['Source2'])
-            topic_sizes[current_topic]['Docs_Count'] += row['Document_Count2']
-            topic_sizes[current_topic]['Paragraphs_Count'] += row['Count2']
+            topic_sizes[current_topic]['Representation'] = '_'.join(row['Representation2'])
+            topic_sizes[current_topic]['Documents'].append((next_timestamp, row['Documents2']))
+            topic_sizes[current_topic]['Sources'].append((next_timestamp, row['Source2']))
+            topic_sizes[current_topic]['Docs_Count'].append(topic_sizes[current_topic]['Docs_Count'][-1] + row['Document_Count2'])
+            topic_sizes[current_topic]['Paragraphs_Count'].append(topic_sizes[current_topic]['Paragraphs_Count'][-1] + row['Count2'])
+            topic_sizes[current_topic]['Representations'].append(topic_sizes[current_topic]['Representation'])
+            all_sources = [source for timestamp, sources in topic_sizes[current_topic]['Sources'] for source in sources]
+            all_sources.extend(row['Source2'])
+            topic_sizes[current_topic]['Source_Diversity'].append(len(set(all_sources)))
 
             # Update the topic's last popularity and last update timestamp
             topic_last_popularity[current_topic] = topic_last_popularity[current_topic] + row['Document_Count2']
@@ -125,8 +133,11 @@ def calculate_signal_popularity(all_merge_histories_df: pd.DataFrame, granularit
             
             topic_sizes[topic]['Timestamps'].append(current_timestamp)
             topic_sizes[topic]['Popularity'].append(decayed_popularity)
-            topic_sizes[topic]['Representations'].append(f"{current_timestamp}: {'_'.join(topic_sizes[topic]['Representations'][-1].split(': ')[1:])}")
-            
+            topic_sizes[topic]['Docs_Count'].append(topic_sizes[topic]['Docs_Count'][-1])
+            topic_sizes[topic]['Paragraphs_Count'].append(topic_sizes[topic]['Paragraphs_Count'][-1])
+            topic_sizes[topic]['Source_Diversity'].append(topic_sizes[topic]['Source_Diversity'][-1])
+            topic_sizes[topic]['Representations'].append(topic_sizes[topic]['Representation'])
+
             topic_last_popularity[topic] = decayed_popularity
 
     return topic_sizes, topic_last_popularity, topic_last_update
@@ -135,7 +146,7 @@ def calculate_signal_popularity(all_merge_histories_df: pd.DataFrame, granularit
 ########################################################################################################################
 
 @st.cache_data
-def classify_signals(topic_sizes: Dict[int, Dict[str, Any]], window_start: pd.Timestamp, window_end: pd.Timestamp, q1: float, q3: float) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def classify_signals(topic_sizes: Dict[int, Dict[str, Any]], window_start: pd.Timestamp, window_end: pd.Timestamp, q1: float, q3: float, rising_popularity_only: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Classify signals into weak signal and strong signal dataframes.
     
@@ -160,58 +171,97 @@ def classify_signals(topic_sizes: Dict[int, Dict[str, Any]], window_start: pd.Ti
     sorted_topics = sorted(topic_sizes.items(), key=lambda x: x[0])
 
     for topic, data in sorted_topics:
+        # Filter the data based on the window_end (current date)
+        filtered_data = {
+            'Timestamps': [ts for ts in data['Timestamps'] if ts <= window_end],
+            'Popularity': [pop for ts, pop in zip(data['Timestamps'], data['Popularity']) if ts <= window_end],
+            'Representation': [rep for ts, rep in zip(data['Timestamps'], data['Representations']) if ts <= window_end],
+            'Documents': [docs for ts, docs in data['Documents'] if ts <= window_end],
+            'Sources': [sources for ts, sources in data['Sources'] if ts <= window_end],
+            'Docs_Count': [count for ts, count in zip(data['Timestamps'], data['Docs_Count']) if ts <= window_end],
+            'Paragraphs_Count': [count for ts, count in zip(data['Timestamps'], data['Paragraphs_Count']) if ts <= window_end],
+            'Source_Diversity': [div for ts, div in zip(data['Timestamps'], data['Source_Diversity']) if ts <= window_end]
+        }
+
+        # Check if the filtered data is empty
+        if not filtered_data['Timestamps']:
+            continue
+
         window_popularities = [
-            (timestamp, popularity) for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
-            if window_start <= timestamp <= window_end and popularity > 0.001
+            (timestamp, popularity) for timestamp, popularity in zip(filtered_data['Timestamps'], filtered_data['Popularity'])
+            if window_start <= timestamp <= window_end
         ]
+        
         if window_popularities:
             latest_timestamp, latest_popularity = window_popularities[-1]
+            docs_count = filtered_data['Docs_Count'][-1] if filtered_data['Docs_Count'] else 0
+            paragraphs_count = filtered_data['Paragraphs_Count'][-1] if filtered_data['Paragraphs_Count'] else 0
+            source_diversity = filtered_data['Source_Diversity'][-1] if filtered_data['Source_Diversity'] else 0
+            
             if latest_popularity < q1:
-                noise_topics.append((topic, latest_popularity, latest_timestamp))
+                noise_topics.append((topic, latest_popularity, latest_timestamp, docs_count, paragraphs_count, source_diversity, filtered_data))
             elif q1 <= latest_popularity <= q3:
-                weak_signal_topics.append((topic, latest_popularity, latest_timestamp))
+                if rising_popularity_only:
+                    retrospective_start = latest_timestamp - pd.Timedelta(days=7)
+                    retrospective_popularities = [
+                        (timestamp, popularity) for timestamp, popularity in zip(filtered_data['Timestamps'], filtered_data['Popularity'])
+                        if retrospective_start <= timestamp <= latest_timestamp
+                    ]
+                    if len(retrospective_popularities) > 1:
+                        popularity_diffs = [
+                            curr_popularity - prev_popularity
+                            for (_, prev_popularity), (_, curr_popularity) in zip(retrospective_popularities[:-1], retrospective_popularities[1:])
+                        ]
+                        decreasing_count = sum(diff < 0 for diff in popularity_diffs)
+                        increasing_count = sum(diff >= 0 for diff in popularity_diffs)
+                        if increasing_count > decreasing_count:
+                            weak_signal_topics.append((topic, latest_popularity, latest_timestamp, docs_count, paragraphs_count, source_diversity, filtered_data))
+                        else:
+                            noise_topics.append((topic, latest_popularity, latest_timestamp, docs_count, paragraphs_count, source_diversity, filtered_data))
+                    else:
+                        weak_signal_topics.append((topic, latest_popularity, latest_timestamp, docs_count, paragraphs_count, source_diversity, filtered_data))
+                else:
+                    weak_signal_topics.append((topic, latest_popularity, latest_timestamp, docs_count, paragraphs_count, source_diversity, filtered_data))
             else:
-                strong_signal_topics.append((topic, latest_popularity, latest_timestamp))
+                strong_signal_topics.append((topic, latest_popularity, latest_timestamp, docs_count, paragraphs_count, source_diversity, filtered_data))
 
     # Create DataFrames for each category using list comprehensions
     noise_topics_data = [{
         'Topic': topic,
-        'Representation': topic_sizes[topic]['Representations'][-1].split(': ')[1],
+        'Representation': filtered_data['Representation'][-1],
         'Latest Popularity': latest_popularity,
-        'Docs_Count': topic_sizes[topic]['Docs_Count'],
-        'Paragraphs_Count': topic_sizes[topic]['Paragraphs_Count'],
+        'Docs_Count': docs_count,
+        'Paragraphs_Count': paragraphs_count,
         'Latest_Timestamp': latest_timestamp,
-        'Representations': topic_sizes[topic]['Representations'],
-        'Documents': topic_sizes[topic]['Documents'],
-        'Sources': list(set(topic_sizes[topic]['Sources'])),
-        'Source_Diversity': len(set(topic_sizes[topic]['Sources']))
-    } for topic, latest_popularity, latest_timestamp in noise_topics]
+        'Documents': filtered_data['Documents'],
+        'Sources': list(set([source for sources in filtered_data['Sources'] for source in sources])),
+        'Source_Diversity': source_diversity
+    } for topic, latest_popularity, latest_timestamp, docs_count, paragraphs_count, source_diversity, filtered_data in noise_topics]
 
     weak_signal_topics_data = [{
         'Topic': topic,
-        'Representation': topic_sizes[topic]['Representations'][-1].split(': ')[1],
+        'Representation': filtered_data['Representation'][-1],
         'Latest Popularity': latest_popularity,
-        'Docs_Count': topic_sizes[topic]['Docs_Count'],
-        'Paragraphs_Count': topic_sizes[topic]['Paragraphs_Count'],
+        'Docs_Count': docs_count,
+        'Paragraphs_Count': paragraphs_count,
         'Latest_Timestamp': latest_timestamp,
-        'Representations': topic_sizes[topic]['Representations'],
-        'Documents': topic_sizes[topic]['Documents'],
-        'Sources': list(set(topic_sizes[topic]['Sources'])),
-        'Source_Diversity': len(set(topic_sizes[topic]['Sources']))
-    } for topic, latest_popularity, latest_timestamp in weak_signal_topics]
+        'Documents': filtered_data['Documents'],
+        'Sources': list(set([source for sources in filtered_data['Sources'] for source in sources])),
+        'Source_Diversity': source_diversity
+    } for topic, latest_popularity, latest_timestamp, docs_count, paragraphs_count, source_diversity, filtered_data in weak_signal_topics]
 
     strong_signal_topics_data = [{
         'Topic': topic,
-        'Representation': topic_sizes[topic]['Representations'][-1].split(': ')[1],
+        'Representation': filtered_data['Representation'][-1],
         'Latest Popularity': latest_popularity,
-        'Docs_Count': topic_sizes[topic]['Docs_Count'],
-        'Paragraphs_Count': topic_sizes[topic]['Paragraphs_Count'],
+        'Docs_Count': docs_count,
+        'Paragraphs_Count': paragraphs_count,
         'Latest_Timestamp': latest_timestamp,
-        'Representations': topic_sizes[topic]['Representations'],
-        'Documents': topic_sizes[topic]['Documents'],
-        'Sources': list(set(topic_sizes[topic]['Sources'])),
-        'Source_Diversity': len(set(topic_sizes[topic]['Sources']))
-    } for topic, latest_popularity, latest_timestamp in strong_signal_topics]
+        'Documents': filtered_data['Documents'],
+        'Sources': list(set([source for sources in filtered_data['Sources'] for source in sources])),
+        'Source_Diversity': source_diversity
+    } for topic, latest_popularity, latest_timestamp, docs_count, paragraphs_count, source_diversity, filtered_data in strong_signal_topics]
+
 
     # Create DataFrames for each category
     noise_topics_df = pd.DataFrame(noise_topics_data)
@@ -219,6 +269,108 @@ def classify_signals(topic_sizes: Dict[int, Dict[str, Any]], window_start: pd.Ti
     strong_signal_topics_df = pd.DataFrame(strong_signal_topics_data)
 
     return noise_topics_df, weak_signal_topics_df, strong_signal_topics_df
+
+
+# @st.cache_data
+# def classify_signals(topic_sizes: Dict[int, Dict[str, Any]], window_start: pd.Timestamp, window_end: pd.Timestamp, q1: float, q3: float) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+#     """
+#     Classify signals into weak signal and strong signal dataframes.
+    
+#     Args:
+#         topic_sizes (Dict[int, Dict[str, Any]]): Dictionary storing topic sizes and related information.
+#         window_start (pd.Timestamp): The start timestamp of the window.
+#         window_end (pd.Timestamp): The end timestamp of the window.
+#         q1 (float): The 10th percentile of popularity values.
+#         q3 (float): The 50th percentile of popularity values.
+    
+#     Returns:
+#         Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+#             - noise_topics_df: DataFrame containing noise topics.
+#             - weak_signal_topics_df: DataFrame containing weak signal topics.
+#             - strong_signal_topics_df: DataFrame containing strong signal topics.
+#     """
+#     noise_topics = []
+#     weak_signal_topics = []
+#     strong_signal_topics = []
+
+#     # Sort the topics based on their topic ID
+#     sorted_topics = sorted(topic_sizes.items(), key=lambda x: x[0])
+
+
+   
+
+
+    # for topic, data in sorted_topics:
+    #     # Filter the data based on the window_end (current date)
+    #     filtered_data = {
+    #         'Timestamps': [ts for ts in data['Timestamps'] if ts <= window_end],
+    #         'Popularity': [pop for ts, pop in zip(data['Timestamps'], data['Popularity']) if ts <= window_end],
+    #         'Representations': [rep for ts, rep in zip(data['Timestamps'], data['Representations']) if ts <= window_end],
+    #         'Documents': [doc for ts, doc in zip(data['Timestamps'], data['Documents']) if ts <= window_end],
+    #         'Sources': [src for ts, src in zip(data['Timestamps'], data['Sources']) if ts <= window_end],
+    #         'Docs_Count': sum(1 for ts in data['Timestamps'] if ts <= window_end),
+    #         'Paragraphs_Count': sum(1 for ts in data['Timestamps'] if ts <= window_end)
+    #     }
+
+    #     window_popularities = [
+    #         (timestamp, popularity) for timestamp, popularity in zip(filtered_data['Timestamps'], filtered_data['Popularity'])
+    #         if window_start <= timestamp <= window_end and popularity > 0.001
+    #     ]
+    #     if window_popularities:
+    #         latest_timestamp, latest_popularity = window_popularities[-1]
+    #         if latest_popularity < q1:
+    #             noise_topics.append((topic, latest_popularity, latest_timestamp))
+    #         elif q1 <= latest_popularity <= q3:
+    #             weak_signal_topics.append((topic, latest_popularity, latest_timestamp))
+    #         else:
+    #             strong_signal_topics.append((topic, latest_popularity, latest_timestamp))
+
+    # # Create DataFrames for each category using list comprehensions
+    # noise_topics_data = [{
+    #     'Topic': topic,
+    #     'Representation': filtered_data['Representations'][-1].split(': ')[1],
+    #     'Latest Popularity': latest_popularity,
+    #     'Docs_Count': filtered_data['Docs_Count'],
+    #     'Paragraphs_Count': filtered_data['Paragraphs_Count'],
+    #     'Latest_Timestamp': latest_timestamp,
+    #     'Representations': filtered_data['Representations'],
+    #     'Documents': filtered_data['Documents'],
+    #     'Sources': list(set(filtered_data['Sources'])),
+    #     'Source_Diversity': len(set(filtered_data['Sources']))
+    # } for topic, latest_popularity, latest_timestamp in noise_topics]
+
+    # weak_signal_topics_data = [{
+    #     'Topic': topic,
+    #     'Representation': filtered_data['Representations'][-1].split(': ')[1],
+    #     'Latest Popularity': latest_popularity,
+    #     'Docs_Count': filtered_data['Docs_Count'],
+    #     'Paragraphs_Count': filtered_data['Paragraphs_Count'],
+    #     'Latest_Timestamp': latest_timestamp,
+    #     'Representations': filtered_data['Representations'],
+    #     'Documents': filtered_data['Documents'],
+    #     'Sources': list(set(filtered_data['Sources'])),
+    #     'Source_Diversity': len(set(filtered_data['Sources']))
+    # } for topic, latest_popularity, latest_timestamp in weak_signal_topics]
+
+    # strong_signal_topics_data = [{
+    #     'Topic': topic,
+    #     'Representation': filtered_data['Representations'][-1].split(': ')[1],
+    #     'Latest Popularity': latest_popularity,
+    #     'Docs_Count': filtered_data['Docs_Count'],
+    #     'Paragraphs_Count': filtered_data['Paragraphs_Count'],
+    #     'Latest_Timestamp': latest_timestamp,
+    #     'Representations': filtered_data['Representations'],
+    #     'Documents': filtered_data['Documents'],
+    #     'Sources': list(set(filtered_data['Sources'])),
+    #     'Source_Diversity': len(set(filtered_data['Sources']))
+    # } for topic, latest_popularity, latest_timestamp in strong_signal_topics]
+
+    # # Create DataFrames for each category
+    # noise_topics_df = pd.DataFrame(noise_topics_data)
+    # weak_signal_topics_df = pd.DataFrame(weak_signal_topics_data)
+    # strong_signal_topics_df = pd.DataFrame(strong_signal_topics_data)
+
+    # return noise_topics_df, weak_signal_topics_df, strong_signal_topics_df
 
 
 ########################################################################################################################

@@ -10,7 +10,7 @@ GPU_SERVERS = ["groesplu0", "GROESSLAO01"]
 GPU_DSVD = ["pf9sodsia001"]
 
 BASE_DATA_DIR = (
-    Path("/data/weak_signals/data/bertopic/Big Datasets/")
+    Path("/data/weak_signals/data/bertopic/")#Big Datasets/")
     if socket.gethostname() in GPU_SERVERS
     else Path("/scratch/weak_signals/data/")
     if socket.gethostname() in GPU_DSVD

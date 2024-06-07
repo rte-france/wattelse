@@ -103,10 +103,10 @@ def create_topic_size_evolution_figure():
             x=data['Timestamps'],
             y=data['Popularity'],
             mode='lines+markers',
-            name=f"Topic {topic} : {data['Representations'][-1].split(': ')[1].split('_')[:5]}",
+            name=f"Topic {topic} : {data['Representations'][-1].split('_')[:5]}",
             hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
             text=[f"Topic {topic}"] * len(data['Timestamps']),
-            customdata=[rep.split(': ')[1] for rep in data['Representations']],
+            customdata=[rep for rep in data['Representations']],
         ))
 
     return fig
@@ -154,9 +154,9 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         st.write(f"Noise Threshold : {q1}")
         st.write(f"Strong Signal Threshold : {q3}")
 
-        # Add horizontal lines for the 10th and 50th percentiles
-        fig.add_shape(type="line", x0=window_start, y0=q1, x1=window_end, y1=q1, line=dict(color="red", width=2, dash="dash"))
-        fig.add_shape(type="line", x0=window_start, y0=q3, x1=window_end, y1=q3, line=dict(color="green", width=2, dash="dash"))
+        # # Add horizontal lines for the 10th and 50th percentiles
+        # fig.add_shape(type="line", x0=window_start, y0=q1, x1=window_end, y1=q1, line=dict(color="red", width=2, dash="dash"))
+        # fig.add_shape(type="line", x0=window_start, y0=q3, x1=window_end, y1=q3, line=dict(color="green", width=2, dash="dash"))
 
         # Update the figure layout to limit the display range to the window
         fig.update_layout(
