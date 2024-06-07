@@ -70,10 +70,8 @@ class EmbeddingModel(BaseEmbedder):
     def __init__(self, model_name):
         super().__init__()
 
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-        logger.info(f"Loading embedding model: {model_name} on device: {device}...")
-        self.embedding_model = SentenceTransformer(model_name, device=device, model_kwargs={"torch_dtype":torch.float16})
+        logger.info(f"Loading embedding model: {model_name}...")
+        self.embedding_model = SentenceTransformer(model_name)
 
         # Handle the particular scenario of when max seq length in original model is abnormal (not a power of 2)
         if self.embedding_model.max_seq_length == 514: self.embedding_model.max_seq_length = 512

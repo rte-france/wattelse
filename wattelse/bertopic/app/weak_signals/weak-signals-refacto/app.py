@@ -31,11 +31,9 @@ import os
 def save_state():
     cache_dir = "cache"
     
-    # Delete the existing cache_dir
     if os.path.exists(cache_dir):
         shutil.rmtree(cache_dir)
 
-    # Recreate an empty cache_dir
     os.makedirs(cache_dir, exist_ok=True)
 
     state_file = os.path.join(cache_dir, "app_state.pkl")
@@ -49,17 +47,10 @@ def save_state():
         'language': st.session_state.get('language'),
         'embedding_model_name': st.session_state.get('embedding_model_name'),
         'embedding_model': st.session_state.get('embedding_model'),
-        'umap_n_components': st.session_state.get('umap_n_components'),
-        'umap_n_neighbors': st.session_state.get('umap_n_neighbors'),
         'sample_size': st.session_state.get('sample_size'),
-        'hdbscan_min_cluster_size': st.session_state.get('hdbscan_min_cluster_size'),
-        'hdbscan_min_samples': st.session_state.get('hdbscan_min_samples'),
-        'hdbscan_cluster_selection_method': st.session_state.get('hdbscan_cluster_selection_method'),
-        'top_n_words': st.session_state.get('top_n_words'),
-        'vectorizer_ngram_range': st.session_state.get('vectorizer_ngram_range'),
-        'min_df': st.session_state.get('min_df'),
         'min_similarity': st.session_state.get('min_similarity'),
-        'zeroshot_min_similarity': st.session_state.get('zeroshot_min_similarity')
+        'zeroshot_min_similarity': st.session_state.get('zeroshot_min_similarity'),
+        'embedding_dtype': st.session_state.get('embedding_dtype')
     }
 
     with open(state_file, 'wb') as f:
@@ -86,16 +77,9 @@ def restore_state():
         st.session_state['sample_size'] = state.get('sample_size')
         st.session_state['embedding_model_name'] = state.get('embedding_model_name')
         st.session_state['embedding_model'] = state.get('embedding_model')
-        st.session_state['umap_n_components'] = state.get('umap_n_components')
-        st.session_state['umap_n_neighbors'] = state.get('umap_n_neighbors')
-        st.session_state['hdbscan_min_cluster_size'] = state.get('hdbscan_min_cluster_size')
-        st.session_state['hdbscan_min_samples'] = state.get('hdbscan_min_samples')
-        st.session_state['hdbscan_cluster_selection_method'] = state.get('hdbscan_cluster_selection_method')
-        st.session_state['top_n_words'] = state.get('top_n_words')
-        st.session_state['vectorizer_ngram_range'] = state.get('vectorizer_ngram_range')
-        st.session_state['min_df'] = state.get('min_df')
         st.session_state['min_similarity'] = state.get('min_similarity')
         st.session_state['zeroshot_min_similarity'] = state.get('zeroshot_min_similarity')
+        st.session_state['embedding_dtype'] = state.get('embedding_dtype')
 
         st.session_state.embeddings = np.load(embeddings_file)
 
@@ -107,11 +91,9 @@ def save_models():
     cache_dir = "cache"
     models_dir = os.path.join(cache_dir, "models")
     
-    # Delete the existing models_dir
     if os.path.exists(models_dir):
         shutil.rmtree(models_dir)
 
-    # Recreate an empty models_dir
     os.makedirs(models_dir, exist_ok=True)
 
     for period, topic_model in st.session_state.topic_models.items():
@@ -119,13 +101,11 @@ def save_models():
         os.makedirs(model_dir, exist_ok=True)
         topic_model.save(model_dir, serialization="safetensors", save_ctfidf=True, save_embedding_model=st.session_state.embedding_model)
 
-        # Save doc_info_df and topic_info_df as separate files
         doc_info_df_file = os.path.join(model_dir, "doc_info_df.pkl")
         topic_info_df_file = os.path.join(model_dir, "topic_info_df.pkl")
         topic_model.doc_info_df.to_pickle(doc_info_df_file)
         topic_model.topic_info_df.to_pickle(topic_info_df_file)
 
-    # Save doc_groups and emb_groups
     doc_groups_file = os.path.join(cache_dir, "doc_groups.pkl")
     emb_groups_file = os.path.join(cache_dir, "emb_groups.pkl")
     with open(doc_groups_file, 'wb') as f:
@@ -133,10 +113,24 @@ def save_models():
     with open(emb_groups_file, 'wb') as f:
         pickle.dump(st.session_state.emb_groups, f)
 
-    # Save granularity_select value
     granularity_file = os.path.join(cache_dir, "granularity.pkl")
     with open(granularity_file, 'wb') as f:
         pickle.dump(st.session_state.granularity_select, f)
+
+    hyperparams = {
+        'umap_n_components': st.session_state.get('umap_n_components'),
+        'umap_n_neighbors': st.session_state.get('umap_n_neighbors'),
+        'hdbscan_min_cluster_size': st.session_state.get('hdbscan_min_cluster_size'),
+        'hdbscan_min_samples': st.session_state.get('hdbscan_min_samples'),
+        'hdbscan_cluster_selection_method': st.session_state.get('hdbscan_cluster_selection_method'),
+        'top_n_words': st.session_state.get('top_n_words'),
+        'vectorizer_ngram_range': st.session_state.get('vectorizer_ngram_range'),
+        'min_df': st.session_state.get('min_df')
+    }
+
+    hyperparams_file = os.path.join(cache_dir, "hyperparams.pkl")
+    with open(hyperparams_file, 'wb') as f:
+        pickle.dump(hyperparams, f)
 
     st.success(f"Models saved.")
 
@@ -151,7 +145,6 @@ def restore_models():
             if os.path.isdir(model_dir):
                 topic_model = BERTopic.load(model_dir)
 
-                # Load doc_info_df and topic_info_df
                 doc_info_df_file = os.path.join(model_dir, "doc_info_df.pkl")
                 topic_info_df_file = os.path.join(model_dir, "topic_info_df.pkl")
                 if os.path.exists(doc_info_df_file) and os.path.exists(topic_info_df_file):
@@ -165,7 +158,6 @@ def restore_models():
 
         st.session_state.topic_models = topic_models
 
-        # Restore doc_groups and emb_groups
         doc_groups_file = os.path.join(cache_dir, "doc_groups.pkl")
         emb_groups_file = os.path.join(cache_dir, "emb_groups.pkl")
         if os.path.exists(doc_groups_file) and os.path.exists(emb_groups_file):
@@ -176,13 +168,27 @@ def restore_models():
         else:
             logger.warning("doc_groups or emb_groups not found.")
 
-        # Restore granularity_select value
         granularity_file = os.path.join(cache_dir, "granularity.pkl")
         if os.path.exists(granularity_file):
             with open(granularity_file, 'rb') as f:
                 st.session_state.granularity_select = pickle.load(f)
         else:
             logger.warning("Granularity value not found.")
+
+        hyperparams_file = os.path.join(cache_dir, "hyperparams.pkl")
+        if os.path.exists(hyperparams_file):
+            with open(hyperparams_file, 'rb') as f:
+                hyperparams = pickle.load(f)
+                st.session_state['umap_n_components'] = hyperparams.get('umap_n_components')
+                st.session_state['umap_n_neighbors'] = hyperparams.get('umap_n_neighbors')
+                st.session_state['hdbscan_min_cluster_size'] = hyperparams.get('hdbscan_min_cluster_size')
+                st.session_state['hdbscan_min_samples'] = hyperparams.get('hdbscan_min_samples')
+                st.session_state['hdbscan_cluster_selection_method'] = hyperparams.get('hdbscan_cluster_selection_method')
+                st.session_state['top_n_words'] = hyperparams.get('top_n_words')
+                st.session_state['vectorizer_ngram_range'] = hyperparams.get('vectorizer_ngram_range')
+                st.session_state['min_df'] = hyperparams.get('min_df')
+        else:
+            logger.warning("Hyperparameters file not found.")
 
         st.success(f"Models restored.")
     else:
@@ -211,14 +217,15 @@ def main():
 
     # Sidebar menu for BERTopic hyperparameters
     st.sidebar.header("BERTopic Hyperparameters")
-    language = st.sidebar.selectbox("Select Language", ["English", "French"], key='language')
-
-    if language == "English":
-        stopwords_list = stopwords.words("english")
-        embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-mpnet-base-v2","BAAI/bge-base-en-v1.5", "all-MiniLM-L12-v2"], key='embedding_model_name')
-    elif language == "French":
-        stopwords_list = stopwords.words("english") + FRENCH_STOPWORDS + STOP_WORDS_RTE + COMMON_NGRAMS
-        embedding_model_name = st.sidebar.selectbox("Embedding Model", ["dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
+    with st.sidebar.expander("Embedding Model Settings", expanded=True):
+        language = st.sidebar.selectbox("Select Language", ["English", "French"], key='language')
+        embedding_dtype = st.selectbox("Embedding Dtype", ["Default (float)", "float16", "bfloat16"], key='embedding_dtype')
+        if language == "English":
+            stopwords_list = stopwords.words("english")
+            embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-mpnet-base-v2","BAAI/bge-base-en-v1.5", "all-MiniLM-L12-v2"], key='embedding_model_name')
+        elif language == "French":
+            stopwords_list = stopwords.words("english") + FRENCH_STOPWORDS + STOP_WORDS_RTE + COMMON_NGRAMS
+            embedding_model_name = st.sidebar.selectbox("Embedding Model", ["dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
 
     with st.sidebar.expander("UMAP Hyperparameters", expanded=True):
         umap_n_components = st.number_input("UMAP n_components", value=5, min_value=2, max_value=100, key='umap_n_components')
@@ -287,7 +294,12 @@ def main():
     # Embed documents
     if st.button("Embed Documents"):
         with st.spinner("Embedding documents..."):
-            st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda", model_kwargs={"torch_dtype":torch.float16})
+            if embedding_dtype == "Default (float)":
+                st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda")
+            elif embedding_dtype == "float16":
+                st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda", model_kwargs={"torch_dtype":torch.float16})
+            elif embedding_dtype == "bfloat16":
+                st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda", model_kwargs={"torch_dtype":torch.bfloat16})     
             st.session_state.embedding_model.max_seq_length = 512
 
             texts = st.session_state['timefiltered_df']['text'].tolist()
@@ -435,65 +447,74 @@ def main():
             min_datetime = st.session_state.all_merge_histories_df['Timestamp'].min().to_pydatetime()
             max_datetime = st.session_state.all_merge_histories_df['Timestamp'].max().to_pydatetime()
 
-            current_date = st.date_input(
+            # current_date = st.date_input(
+            #     "Current date",
+            #     value=min_datetime + pd.Timedelta(days=window_size),
+            #     min_value=min_datetime + pd.Timedelta(days=window_size),
+            #     max_value=max_datetime,
+            # )
+
+            current_date = st.slider(
                 "Current date",
-                value=min_datetime + pd.Timedelta(days=window_size),
-                min_value=min_datetime + pd.Timedelta(days=window_size),
-                max_value=max_datetime,
+                min_value = min_datetime +  pd.Timedelta(days=window_size),
+                max_value = max_datetime,
+                value = min_datetime +  pd.Timedelta(days=window_size),
+                format = "YYYY-MM-DD",
             )
 
             # Pass the cached figure to plot_topic_size_evolution
             plot_topic_size_evolution(st.session_state.topic_size_evolution_fig, window_size, granularity, current_date, min_datetime, max_datetime)
 
-            # # Create a text input field and a button for taking a closer look at a topic
-            # topic_number = st.text_input("Enter a topic number to take a closer look:")
+            # Create a text input field and a button for taking a closer look at a topic
+            topic_number = st.text_input("Enter a topic number to take a closer look:")
 
-            # if st.button("Analyze signal"):
-            #     topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
+            if st.button("Analyze signal"):
+                topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
                 
-            #     # Filter the topic_merge_rows based on the window_start and window_end values
+                # Filter the topic_merge_rows based on the window_start and window_end values
                 
-            #     topic_merge_rows_filtered = topic_merge_rows[(topic_merge_rows['Timestamp'] <= window_end)]
+                topic_merge_rows_filtered = topic_merge_rows[(topic_merge_rows['Timestamp'] <= current_date)]
                 
-            #     if not topic_merge_rows_filtered.empty:
-            #         # Generate a summary using OpenAI ChatGPT
-            #         content_summary = ""
-            #         for i, row in enumerate(topic_merge_rows_filtered.itertuples()):
-            #             timestamp = row.Timestamp
-            #             next_timestamp = timestamp + pd.Timedelta(days=granularity)
-            #             representation1 = row.Representation1
-            #             representation2 = row.Representation2
-            #             documents1 = set(row.Documents1)
-            #             documents2 = set(row.Documents2)
+                if not topic_merge_rows_filtered.empty:
+                    # Generate a summary using OpenAI ChatGPT
+                    content_summary = ""
+                    for i, row in enumerate(topic_merge_rows_filtered.itertuples()):
+                        timestamp = row.Timestamp
+                        next_timestamp = timestamp + pd.Timedelta(days=granularity)
+                        representation1 = row.Representation1
+                        representation2 = row.Representation2
+                        documents1 = set(row.Documents1)
+                        documents2 = set(row.Documents2)
 
-            #             timestamp_str = timestamp.strftime("%Y-%m-%d")
-            #             next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
+                        timestamp_str = timestamp.strftime("%Y-%m-%d")
+                        next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
 
-            #             content_summary += f"Timestamp: {timestamp_str}\nTopic representation: {representation1}\n"
-            #             for doc in documents1:
-            #                 content_summary += f"- {doc}\n"
-            #             content_summary += f"\nTimestamp: {next_timestamp_str}\nTopic representation: {representation2}\n"
-            #             for doc in documents2:
-            #                 content_summary += f"- {doc}\n"
-            #             content_summary += "\n"
+                        content_summary += f"Timestamp: {timestamp_str}\nTopic representation: {representation1}\n"
+                        for doc in documents1:
+                            content_summary += f"- {doc}\n"
+                        content_summary += f"\nTimestamp: {next_timestamp_str}\nTopic representation: {representation2}\n"
+                        for doc in documents2:
+                            content_summary += f"- {doc}\n"
+                        content_summary += "\n"
 
-            #         # Generate the summary using OpenAI ChatGPT
-            #         prompt = get_prompt(language, topic_number, content_summary)
-            #         with st.spinner("Generating summary..."):
-            #             try:
-            #                 completion = client.chat.completions.create(
-            #                     model="gpt-3.5-turbo-0125",
-            #                     messages=[
-            #                         {"role": "system", "content": "You are a helpful assistant, skilled in summarizing topic evolution over time."},
-            #                         {"role": "user", "content": prompt}
-            #                     ]
-            #                 )
-            #                 summary = completion.choices[0].message.content
-            #                 st.markdown(summary)
-            #             except:
-            #                 st.warning("Unable to generate a summary. Too many documents.")
-            #     else:
-            #         st.warning(f"Topic {topic_number} not found in the merge histories within the specified window.")
+                    # Generate the summary using OpenAI ChatGPT
+                    prompt = get_prompt(language, topic_number, content_summary)
+                    with st.spinner("Generating summary..."):
+                        try:
+                            completion = client.chat.completions.create(
+                                model="gpt-4o",
+                                messages=[
+                                    {"role": "system", "content": "You are a helpful assistant, skilled in summarizing topic evolution over time."},
+                                    {"role": "user", "content": prompt}
+                                ]
+                            )
+                            summary = completion.choices[0].message.content
+                            st.markdown(summary)
+                        except Exception as e:
+                            st.error(e)
+                            # st.warning("Unable to generate a summary. Too many documents.")
+                else:
+                    st.warning(f"Topic {topic_number} not found in the merge histories within the specified window.")
             # Create the Sankey Diagram
             # create_sankey_diagram(st.session_state.all_merge_histories_df)
             
