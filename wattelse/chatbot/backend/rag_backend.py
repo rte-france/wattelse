@@ -269,7 +269,7 @@ class RAGBackEnd:
         # TODO: implement reranking (optional)
 
         # Handle conversation history
-        contextualized_question = self.contextualize_question(message, history)
+        contextualized_question = "query:" + self.contextualize_question(message, history)
         logger.debug(f"Calling RAG chain for question : \"{contextualized_question}\"...")
 
         # Handle answer
