@@ -51,7 +51,7 @@ def split_file(file_extension: str, docs: List[Document], use_sentence_splitter:
         for doc in docs:
             new_docs = text_splitter.split_text(doc.page_content)
             for d in new_docs:
-                d.page_content = re.sub(r'\s+', ' ', d.page_content) #NB. removes the extra space enforced by HTMLSectionSplitter
+                d.page_content = re.sub(r'[^\S\n]{2,}', ' ', d.page_content)  # removes extra spaces that are not line returns
                 d.metadata = doc.metadata
             splits += new_docs
         return splits
