@@ -105,7 +105,7 @@ def _parse_xslx(file: Path) -> List[Document]:
 
 
 def _parse_md(file: Path) -> List[Document]:
-    loader = UnstructuredMarkdownLoader(file.absolute().as_posix())
+    loader = TextLoader(file.absolute().as_posix()) #NB. UnstructuredMarkdownLoader removes markdown structure tags
     data = loader.load()
     # NB. return one document
     return data
