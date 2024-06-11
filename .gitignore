@@ -145,6 +145,10 @@ postman
 **/saved_models/
 **/signal_evolution_data/
 **/Figures/
+**/Figures_nyt/
+**/signal_evolution_data*/
+**/cache*/
+
 
 
 nyt-2019-2023.parquet

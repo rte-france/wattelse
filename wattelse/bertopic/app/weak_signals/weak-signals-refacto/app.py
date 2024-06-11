@@ -3,7 +3,7 @@ import pandas as pd
 from umap import UMAP
 from hdbscan import HDBSCAN
 from sklearn.feature_extraction.text import CountVectorizer
-from bertopic.representation import MaximalMarginalRelevance
+from bertopic.representation import MaximalMarginalRelevance, KeyBERTInspired
 from sentence_transformers import SentenceTransformer
 import os
 import glob
@@ -17,7 +17,7 @@ import torch
 
 from data_loading import load_and_preprocess_data, group_by_days
 from topic_modeling import train_topic_models, merge_models, preprocess_model
-from visualizations import plot_num_topics_and_outliers, plot_topics_per_timestamp, plot_topic_size_evolution, create_topic_size_evolution_figure, plot_newly_emerged_topics, prepare_source_topic_data, create_sankey_diagram
+from visualizations import plot_num_topics_and_outliers, plot_topics_per_timestamp, plot_topic_size_evolution, create_topic_size_evolution_figure, create_topic_size_evolution_figure_labeled, plot_newly_emerged_topics, prepare_source_topic_data, create_sankey_diagram
 from weak_signals import detect_weak_signals_zeroshot
 from global_vars import STOP_WORDS_RTE, COMMON_NGRAMS, FRENCH_STOPWORDS, cwd_data
 from nltk.corpus import stopwords
@@ -153,7 +153,9 @@ def restore_models():
                 else:
                     logger.warning(f"doc_info_df or topic_info_df not found for period {period_dir}")
 
-                period = pd.Timestamp(period_dir)
+                # Replace underscores with colons in the period_dir string
+                corrected_period_dir = period_dir.replace('_', ':')
+                period = pd.Timestamp(corrected_period_dir)
                 topic_models[period] = topic_model
 
         st.session_state.topic_models = topic_models
@@ -194,6 +196,7 @@ def restore_models():
     else:
         st.warning(f"No saved models found.")
 
+
 def purge_cache():
     cache_dir = "cache"
     if os.path.exists(cache_dir):
@@ -222,10 +225,10 @@ def main():
         embedding_dtype = st.selectbox("Embedding Dtype", ["Default (float)", "float16", "bfloat16"], key='embedding_dtype')
         if language == "English":
             stopwords_list = stopwords.words("english")
-            embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-mpnet-base-v2","BAAI/bge-base-en-v1.5", "all-MiniLM-L12-v2"], key='embedding_model_name')
+            embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-mpnet-base-v2","Alibaba-NLP/gte-base-en-v1.5", "all-MiniLM-L12-v2"], key='embedding_model_name')
         elif language == "French":
             stopwords_list = stopwords.words("english") + FRENCH_STOPWORDS + STOP_WORDS_RTE + COMMON_NGRAMS
-            embedding_model_name = st.sidebar.selectbox("Embedding Model", ["dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
+            embedding_model_name = st.sidebar.selectbox("Embedding Model", ["OrdalieTech/Solon-embeddings-base-0.1","dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
 
     with st.sidebar.expander("UMAP Hyperparameters", expanded=True):
         umap_n_components = st.number_input("UMAP n_components", value=5, min_value=2, max_value=100, key='umap_n_components')
@@ -295,11 +298,11 @@ def main():
     if st.button("Embed Documents"):
         with st.spinner("Embedding documents..."):
             if embedding_dtype == "Default (float)":
-                st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda")
+                st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda", trust_remote_code=True)
             elif embedding_dtype == "float16":
-                st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda", model_kwargs={"torch_dtype":torch.float16})
+                st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda", trust_remote_code=True, model_kwargs={"torch_dtype":torch.float16})
             elif embedding_dtype == "bfloat16":
-                st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda", model_kwargs={"torch_dtype":torch.bfloat16})     
+                st.session_state.embedding_model = SentenceTransformer(embedding_model_name, device="cuda", trust_remote_code=True,  model_kwargs={"torch_dtype":torch.bfloat16})     
             st.session_state.embedding_model.max_seq_length = 512
 
             texts = st.session_state['timefiltered_df']['text'].tolist()
@@ -330,18 +333,21 @@ def main():
         st.session_state['timefiltered_df']['text'] = st.session_state['timefiltered_df']['text'].astype(str)
 
         # Set up BERTopic components
-        umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, min_dist=0.1, random_state=42, metric="cosine")
+        umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, min_dist=0.0, random_state=42, metric="cosine")
         hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean',
                                 cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
-        vectorizer_model = CountVectorizer(stop_words=stopwords_list, min_df=1, max_df=1.0, ngram_range=vectorizer_ngram_range)
-        mmr_model = MaximalMarginalRelevance(diversity=0.3)
+        vectorizer_model = CountVectorizer(stop_words=stopwords_list, min_df=1, ngram_range=vectorizer_ngram_range)
+
+        representation_model = [KeyBERTInspired(nr_repr_docs=5, nr_candidate_words=40, top_n_words=20), 
+                                MaximalMarginalRelevance(diversity=0.2, top_n_words=10)]
+
 
         # Train Models
         if st.button("Train Models"):
             grouped_data = group_by_days(st.session_state['timefiltered_df'], day_granularity=granularity)
             topic_models, doc_groups, emb_groups = train_topic_models(
                 grouped_data, st.session_state.embedding_model, st.session_state.embeddings,
-                umap_model, hdbscan_model, vectorizer_model, mmr_model,
+                umap_model, hdbscan_model, vectorizer_model, representation_model,
                 top_n_words, zeroshot_topic_list, zeroshot_min_similarity
             )
             st.session_state.topic_models = topic_models
@@ -395,6 +401,7 @@ def main():
 
                     df2 = topic_dfs[next_timestamp]
                     df2 = df2[df2['Topic'] != -1]
+
 
                     if merged_df_without_outliers is None:
                         if not (df1.empty or df2.empty):
@@ -459,11 +466,32 @@ def main():
                 min_value = min_datetime +  pd.Timedelta(days=window_size),
                 max_value = max_datetime,
                 value = min_datetime +  pd.Timedelta(days=window_size),
+                step=pd.Timedelta(days=granularity),
                 format = "YYYY-MM-DD",
             )
 
             # Pass the cached figure to plot_topic_size_evolution
             plot_topic_size_evolution(st.session_state.topic_size_evolution_fig, window_size, granularity, current_date, min_datetime, max_datetime)
+
+            # Inspect Signal Evolution
+            if "all_merge_histories_df" in st.session_state:
+                # temp = st.session_state.all_merge_histories_df[['Timestamp', 'Topic1', 'Topic2', 'Representation1', 'Representation2', 'Documents1', 'Documents2']]
+                # temp = temp[temp['Topic1'] == 3563]
+                # temp.to_csv('temp.csv')
+                st.subheader("Inspect Signal Evolution")
+                topic_labels_input = st.text_input("Enter topic labels (e.g., 123w, 546s):")
+
+                if st.button("Inspect Signal Evolution"):
+                    topic_labels = topic_labels_input.split(' ')
+                    topic_labels = [label.strip() for label in topic_labels]
+
+                    if topic_labels:
+                        fig = create_topic_size_evolution_figure_labeled(topic_labels)
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.warning("Please enter valid topic labels.")
+
+
 
             # Create a text input field and a button for taking a closer look at a topic
             topic_number = st.text_input("Enter a topic number to take a closer look:")
@@ -472,9 +500,8 @@ def main():
                 topic_merge_rows = st.session_state.all_merge_histories_df[st.session_state.all_merge_histories_df['Topic1'] == int(topic_number)].sort_values('Timestamp')
                 
                 # Filter the topic_merge_rows based on the window_start and window_end values
-                
                 topic_merge_rows_filtered = topic_merge_rows[(topic_merge_rows['Timestamp'] <= current_date)]
-                
+
                 if not topic_merge_rows_filtered.empty:
                     # Generate a summary using OpenAI ChatGPT
                     content_summary = ""
@@ -483,8 +510,10 @@ def main():
                         next_timestamp = timestamp + pd.Timedelta(days=granularity)
                         representation1 = row.Representation1
                         representation2 = row.Representation2
-                        documents1 = set(row.Documents1)
-                        documents2 = set(row.Documents2)
+                        
+                        # Extract documents for the current timestamp
+                        documents1 = [doc for doc in row.Documents1 if isinstance(doc, str)]
+                        documents2 = [doc for doc in row.Documents2 if isinstance(doc, str)]
 
                         timestamp_str = timestamp.strftime("%Y-%m-%d")
                         next_timestamp_str = next_timestamp.strftime("%Y-%m-%d")
@@ -499,14 +528,16 @@ def main():
 
                     # Generate the summary using OpenAI ChatGPT
                     prompt = get_prompt(language, topic_number, content_summary)
+                    # print(prompt)
                     with st.spinner("Generating summary..."):
                         try:
                             completion = client.chat.completions.create(
-                                model="gpt-4o",
+                                model="gpt-3.5-turbo",
                                 messages=[
-                                    {"role": "system", "content": "You are a helpful assistant, skilled in summarizing topic evolution over time."},
+                                    {"role": "system", "content": "You are a helpful assistant, skilled in detailing topic evolution over time for the detection of emerging trends and signals."},
                                     {"role": "user", "content": prompt}
-                                ]
+                                ],
+                                temperature=0,
                             )
                             summary = completion.choices[0].message.content
                             st.markdown(summary)

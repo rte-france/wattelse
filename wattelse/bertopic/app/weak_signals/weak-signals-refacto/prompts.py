@@ -13,32 +13,26 @@ def get_prompt(language, topic_number, content_summary):
     Format the output as follows:
     
     ## Title: [Generated title based on topic representation and documents]
-    ### Timestamp: [Timestamp]
-    ### Summary
-    - [Bullet point 1]
-    - [Bullet point 2]
-    - ...
+    ### Date: [Timestamp]
+    ### Summary : Paragraph summarizing the documents
     ---
     ## Title: [Generated title based on topic representation and documents]
-    ### Timestamp: [Timestamp]
-    ### Summary
-    - [Bullet point 1]
-    - [Bullet point 2]
-    - ...
+    ### Date: [Timestamp]
+    ### Summary : Paragraph summarizing the documents
     ### What's New?
     [Paragraph describing the changes and new information compared to 1st timestamp]
     ---
     ## Title: [Generated title based on topic representation and documents]
-    ### Timestamp: [Timestamp]
-    ### Summary
-    - [Bullet point 1]
-    - [Bullet point 2]
-    - ...
+    ### Date: [Timestamp]
+    ### Summary : Paragraph summarizing the documents
     ### What's New?
     [Paragraph describing the changes and new information compared to 2nd timestamp]
     ---
     ...
     """
+
+
+
 
     fr_prompt = f"""
     Veuillez fournir un résumé de l'évolution du Sujet {topic_number} au fil du temps en vous basant sur les informations suivantes:
