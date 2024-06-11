@@ -52,7 +52,7 @@ def load_data_wrapper(data_name: Path):
 def embedding_model_options():
     return {
         "embedding_model_name": st.selectbox("Name",
-                                             ["dangvantuan/sentence-camembert-large", "paraphrase-multilingual-MiniLM-L12-v2",
+                                             ["OrdalieTech/Solon-embeddings-base-0.1","dangvantuan/sentence-camembert-large", "paraphrase-multilingual-MiniLM-L12-v2",
                                               "sentence-transformers/all-mpnet-base-v2", "antoinelouis/biencoder-camembert-base-mmarcoFR",
                                               "all-MiniLM-L12-v2", "all-mpnet-base-v2"], key="embedding_model_name"),
         "use_cached_embeddings": st.toggle("Put embeddings in cache", key="use_cached_embeddings")

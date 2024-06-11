@@ -13,7 +13,6 @@ from hdbscan import HDBSCAN
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
-from openTSNE import TSNE
 
 
 from wattelse.bertopic.train import train_BERTopic, STOP_WORDS_RTE

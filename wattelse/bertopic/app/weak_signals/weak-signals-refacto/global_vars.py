@@ -24,6 +24,8 @@ cwd = os.getcwd() + '/Weak-Signals-Investigations/'
 
 # Data directory
 cwd_data = DATA_PATH
+cwd_data = cwd + 'data/'
+
 
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
 COMMON_NGRAMS = [

@@ -9,6 +9,10 @@ import pandas as pd
 from weak_signals import classify_signals, save_signal_evolution_data
 from plotly_resampler import FigureResampler, FigureWidgetResampler
 import time
+from plotly_resampler import register_plotly_resampler
+
+from multiprocessing import Process
+import streamlit.components.v1 as components
 
 def plot_num_topics_and_outliers(topic_models: Dict[pd.Timestamp, BERTopic]) -> None:
     """
@@ -89,25 +93,85 @@ def plot_topics_per_timestamp(topic_models: Dict[pd.Timestamp, BERTopic]) -> Non
 ########################################################################################################################
 
 @st.cache_data
-def create_topic_size_evolution_figure():
-    fig = FigureWidgetResampler(go.Figure())
+def create_topic_size_evolution_figure(topic_ids=None):
+    fig = go.Figure()
 
     topic_sizes = st.session_state.topic_sizes
 
-    # Sort the topics based on their topic ID
-    sorted_topics = sorted(topic_sizes.items(), key=lambda x: x[0])
+    if topic_ids is None:
+        # If topic_ids is not provided, include all topics
+        sorted_topics = sorted(topic_sizes.items(), key=lambda x: x[0])
+    else:
+        # If topic_ids is provided, filter the topics based on the specified IDs
+        sorted_topics = [(topic_id, topic_sizes[topic_id]) for topic_id in topic_ids if topic_id in topic_sizes]
 
-    # Create traces for each topic
+    # Create traces for each selected topic
     for topic, data in sorted_topics:
         fig.add_trace(go.Scattergl(
             x=data['Timestamps'],
             y=data['Popularity'],
             mode='lines+markers',
-            name=f"Topic {topic} : {data['Representations'][-1].split('_')[:5]}",
+            name=f"Topic {topic} : {data['Representations'][0].split('_')[:5]}",
             hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
             text=[f"Topic {topic}"] * len(data['Timestamps']),
             customdata=[rep for rep in data['Representations']],
         ))
+
+    fig.update_layout(
+        title="Signal Evolution",
+        xaxis_title="Timestamp",
+        yaxis_title="Popularity",
+        hovermode="closest"
+    )
+
+    return fig
+
+
+def create_topic_size_evolution_figure_labeled(topic_labels):
+    fig = go.Figure()
+
+    topic_sizes = st.session_state.topic_sizes
+
+    weak_signal_color = 'rgba(255, 0, 0, 0.8)'  # Intense red color for weak signals
+    strong_signal_color = 'rgba(0, 255, 0, 0.3)'  # Light green color for strong signals
+
+    for topic_label in topic_labels:
+        topic_id = int(topic_label[:-1])
+        label = topic_label[-1].lower()
+
+        if topic_id in topic_sizes:
+            data = topic_sizes[topic_id]
+            timestamps = data['Timestamps']
+            popularity = data['Popularity']
+            representations = data['Representations']
+
+            if label == 'w':
+                trace_color = weak_signal_color
+                trace_name = f"Weak Signal - Topic {topic_id}"
+            elif label == 's':
+                trace_color = strong_signal_color
+                trace_name = f"Strong Signal - Topic {topic_id}"
+            else:
+                continue
+
+            fig.add_trace(go.Scattergl(
+                x=timestamps,
+                y=popularity,
+                mode='lines+markers',
+                name=f"Topic {topic_id} : {data['Representations'][0].split('_')[:5]}",
+                hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
+                text=[f"Topic {topic_id}"] * len(timestamps),
+                customdata=[rep for rep in representations],
+                line=dict(color=trace_color),
+                marker=dict(color=trace_color)
+            ))
+
+    fig.update_layout(
+        title="Signal Evolution",
+        xaxis_title="Timestamp",
+        yaxis_title="Popularity",
+        hovermode="closest"
+    )
 
     return fig
 
@@ -147,16 +211,13 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         # Calculate the 10th and 50th percentiles of popularity values
         if all_popularity_values:
             q1 = np.percentile(all_popularity_values, 10)
-            q3 = np.percentile(all_popularity_values, 50)
+            q3 = np.percentile(all_popularity_values, 80)
         else:
             q1, q3 = 0, 0
 
+        # st.write(window_end)
         st.write(f"Noise Threshold : {q1}")
         st.write(f"Strong Signal Threshold : {q3}")
-
-        # # Add horizontal lines for the 10th and 50th percentiles
-        # fig.add_shape(type="line", x0=window_start, y0=q1, x1=window_end, y1=q1, line=dict(color="red", width=2, dash="dash"))
-        # fig.add_shape(type="line", x0=window_start, y0=q3, x1=window_end, y1=q3, line=dict(color="green", width=2, dash="dash"))
 
         # Update the figure layout to limit the display range to the window
         fig.update_layout(
@@ -167,11 +228,8 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
             xaxis_range=[window_start, window_end]  # Set the range of the x-axis to the retrospective window
         )
 
-        # Display the plot using Streamlit
-        st.plotly_chart(fig, use_container_width=True)
-
         # Define the columns to display in the DataFrames
-        columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest Popularity', 'Docs_Count', 'Paragraphs_Count', 'Latest_Timestamp', 'Documents']
+        columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest_Popularity', 'Docs_Count', 'Paragraphs_Count', 'Latest_Timestamp', 'Documents']
 
         # Classify topics based on their popularity behavior at the final timestamp
         noise_topics_df, weak_signal_topics_df, strong_signal_topics_df = classify_signals(topic_sizes, window_start, window_end, q1, q3)
@@ -179,24 +237,27 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         # Display the DataFrames for each category
         st.subheader(":grey[Noise]")
         if not noise_topics_df.empty:
-            st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
+            st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
         else:
             st.info(f"No noisy signals were detected at timestamp {window_end}.")
 
         st.subheader(":orange[Weak Signals]")
         if not weak_signal_topics_df.empty:
-            st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Latest Popularity'], ascending=True))
+            st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Latest_Popularity'], ascending=True))
         else:
             st.info(f"No weak signals were detected at timestamp {window_end}.")
 
         st.subheader(":green[Strong Signals]")
         if not strong_signal_topics_df.empty:
-            st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
+            st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
         else:
             st.info(f"No strong signals were detected at timestamp {window_end}.")
 
+        # Add date range picker for saving signal evolution data
+        start_date, end_date = st.date_input("Select date range for saving signal evolution data:", value=(min_datetime.date(), max_datetime.date()), min_value=min_datetime.date(), max_value=max_datetime.date())
+
         if st.button("Save Signal Evolution Data"):
-            save_signal_evolution_data(st.session_state.all_merge_histories_df, dict(topic_sizes), topic_last_popularity, topic_last_update, min_datetime, max_datetime, window_size, granularity)
+            save_signal_evolution_data(st.session_state.all_merge_histories_df, dict(topic_sizes), topic_last_popularity, topic_last_update, min_datetime, max_datetime, window_size, granularity, pd.Timestamp(start_date), pd.Timestamp(end_date))
             st.success("Signal evolution data saved successfully!")
 
         return window_start, window_end
@@ -363,7 +424,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
 #                                    min_datetime, max_datetime, window_size, granularity)
 
 #         # Define the columns to display in the DataFrames
-#         columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest Popularity', 'Docs_Count', 'Paragraphs_Count', 'Latest_Timestamp', 'Documents']
+#         columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest_Popularity', 'Docs_Count', 'Paragraphs_Count', 'Latest_Timestamp', 'Documents']
 
 #         # Classify topics based on their popularity behavior at the final timestamp
 #         noise_topics = []
@@ -388,7 +449,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
 #         noise_topics_data = [{
 #             'Topic': topic,
 #             'Representation': topic_sizes[topic]['Representations'][-1].split(': ')[1],
-#             'Latest Popularity': latest_popularity,
+#             'Latest_Popularity': latest_popularity,
 #             'Docs_Count': topic_sizes[topic]['Docs_Count'],
 #             'Paragraphs_Count': topic_sizes[topic]['Paragraphs_Count'],
 #             'Latest_Timestamp': latest_timestamp,
@@ -401,7 +462,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
 #         weak_signal_topics_data = [{
 #             'Topic': topic,
 #             'Representation': topic_sizes[topic]['Representations'][-1].split(': ')[1],
-#             'Latest Popularity': latest_popularity,
+#             'Latest_Popularity': latest_popularity,
 #             'Docs_Count': topic_sizes[topic]['Docs_Count'],
 #             'Paragraphs_Count': topic_sizes[topic]['Paragraphs_Count'],
 #             'Latest_Timestamp': latest_timestamp,
@@ -414,7 +475,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
 #         strong_signal_topics_data = [{
 #             'Topic': topic,
 #             'Representation': topic_sizes[topic]['Representations'][-1].split(': ')[1],
-#             'Latest Popularity': latest_popularity,
+#             'Latest_Popularity': latest_popularity,
 #             'Docs_Count': topic_sizes[topic]['Docs_Count'],
 #             'Paragraphs_Count': topic_sizes[topic]['Paragraphs_Count'],
 #             'Latest_Timestamp': latest_timestamp,
@@ -432,19 +493,19 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
 #         # Display the DataFrames for each category
 #         st.subheader(":grey[Noise]")
 #         if not noise_topics_df.empty:
-#             st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
+#             st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
 #         else:
 #             st.info(f"No noisy signals were detected at timestamp {window_end}.")
 
 #         st.subheader(":orange[Weak Signals]")
 #         if not weak_signal_topics_df.empty:
-#             st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Latest Popularity'], ascending=True))
+#             st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Latest_Popularity'], ascending=True))
 #         else:
 #             st.info(f"No weak signals were detected at timestamp {window_end}.")
 
 #         st.subheader(":green[Strong Signals]")
 #         if not strong_signal_topics_df.empty:
-#             st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
+#             st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
 #         else:
 #             st.info(f"No strong signals were detected at timestamp {window_end}.")
 
@@ -531,7 +592,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
 #             noise_topics_data.append({
 #                 'Topic': topic,
 #                 'Representation': topic_data['Representations'][-1].split(': ')[1],
-#                 'Latest Popularity': latest_popularity,
+#                 'Latest_Popularity': latest_popularity,
 #                 'Docs_Count': topic_data['Docs_Count'],
 #                 'Paragraphs_Count': topic_data['Paragraphs_Count'],
 #                 'Latest_Timestamp': latest_timestamp,
@@ -546,7 +607,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
 #             weak_signal_topics_data.append({
 #                 'Topic': topic,
 #                 'Representation': topic_data['Representations'][-1].split(': ')[1],
-#                 'Latest Popularity': latest_popularity,
+#                 'Latest_Popularity': latest_popularity,
 #                 'Docs_Count': topic_data['Docs_Count'],
 #                 'Paragraphs_Count': topic_data['Paragraphs_Count'],
 #                 'Latest_Timestamp': latest_timestamp,
@@ -561,7 +622,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
 #             strong_signal_topics_data.append({
 #                 'Topic': topic,
 #                 'Representation': topic_data['Representations'][-1].split(': ')[1],
-#                 'Latest Popularity': latest_popularity,
+#                 'Latest_Popularity': latest_popularity,
 #                 'Docs_Count': topic_data['Docs_Count'],
 #                 'Paragraphs_Count': topic_data['Paragraphs_Count'],
 #                 'Latest_Timestamp': latest_timestamp,
