@@ -11,34 +11,125 @@ from pprint import pprint
 from tqdm import tqdm  # Import the tqdm library
 import scipy
 
-def detect_weak_signals_zeroshot(topic_models: Dict[pd.Timestamp, BERTopic], zeroshot_topic_list: List[str]) -> Dict[str, Dict[pd.Timestamp, Dict[str, any]]]:
+# def detect_weak_signals_zeroshot(topic_models: Dict[pd.Timestamp, BERTopic], zeroshot_topic_list: List[str]) -> Dict[str, Dict[pd.Timestamp, Dict[str, any]]]:
+#     """
+#     Detect weak signals based on the zero-shot list of topics to monitor.
+
+#     Args:
+#         topic_models (Dict[pd.Timestamp, BERTopic]): Dictionary of BERTopic models for each timestamp.
+#         zeroshot_topic_list (List[str]): List of topics to monitor for weak signals.
+
+#     Returns:
+#         Dict[str, Dict[pd.Timestamp, Dict[str, any]]]: Dictionary of weak signal trends for each monitored topic.
+#     """
+#     weak_signal_trends = {}
+
+#     for topic in zeroshot_topic_list:
+#         weak_signal_trends[topic] = {}
+
+#         for timestamp, topic_model in topic_models.items():
+#             topic_info = topic_model.topic_info_df
+
+#             for _, row in topic_info.iterrows():
+#                 if row['Name'] == topic:
+#                     weak_signal_trends[topic][timestamp] = {
+#                         'Representation': row['Representation'],
+#                         'Representative_Docs': row['Representative_Docs'],
+#                         'Count': row['Count'],
+#                         'Document_Count': row['Document_Count']
+#                     }
+#                     break
+
+#     return weak_signal_trends
+
+def detect_weak_signals_zeroshot(topic_models: Dict[pd.Timestamp, BERTopic], zeroshot_topic_list: List[str], granularity: int, decay_factor: float = 0.01, decay_power: float = 2) -> Dict[str, Dict[pd.Timestamp, Dict[str, any]]]:
     """
     Detect weak signals based on the zero-shot list of topics to monitor.
 
     Args:
         topic_models (Dict[pd.Timestamp, BERTopic]): Dictionary of BERTopic models for each timestamp.
         zeroshot_topic_list (List[str]): List of topics to monitor for weak signals.
+        granularity (int): The granularity of the timestamps in days.
+        decay_factor (float): The decay factor for exponential decay.
+        decay_power (float): The decay power for exponential decay.
 
     Returns:
         Dict[str, Dict[pd.Timestamp, Dict[str, any]]]: Dictionary of weak signal trends for each monitored topic.
     """
     weak_signal_trends = {}
 
+    min_timestamp = min(topic_models.keys())
+    max_timestamp = max(topic_models.keys())
+    timestamps = pd.date_range(start=min_timestamp, end=max_timestamp, freq=pd.Timedelta(days=granularity))
+
     for topic in zeroshot_topic_list:
         weak_signal_trends[topic] = {}
+        topic_last_popularity = {}
+        topic_last_update = {}
 
-        for timestamp, topic_model in topic_models.items():
-            topic_info = topic_model.topic_info_df
+        for timestamp in timestamps:
+            if timestamp in topic_models:
+                topic_info = topic_models[timestamp].topic_info_df
 
-            for _, row in topic_info.iterrows():
-                if row['Name'] == topic:
+                topic_data = topic_info[topic_info['Name'] == topic]
+
+                if not topic_data.empty:
+                    representation = topic_data['Representation'].values[0]
+                    representative_docs = topic_data['Representative_Docs'].values[0]
+                    count = topic_data['Count'].values[0]
+                    document_count = topic_data['Document_Count'].values[0]
+
+                    if topic not in topic_last_popularity:
+                        topic_last_popularity[topic] = document_count
+                        topic_last_update[topic] = timestamp
+
+                        weak_signal_trends[topic][timestamp] = {
+                            'Representation': representation,
+                            'Representative_Docs': representative_docs,
+                            'Count': count,
+                            'Document_Count': document_count
+                        }
+                    else:
+                        weak_signal_trends[topic][timestamp] = {
+                            'Representation': representation,
+                            'Representative_Docs': representative_docs,
+                            'Count': count,
+                            'Document_Count': topic_last_popularity[topic] + document_count
+                        }
+                        topic_last_popularity[topic] = topic_last_popularity[topic] + document_count
+                        topic_last_update[topic] = timestamp
+                else:
+                    last_popularity = topic_last_popularity.get(topic, 0)
+                    last_update = topic_last_update.get(topic, timestamp)
+
+                    time_diff = timestamp - last_update
+                    periods_since_last_update = time_diff // pd.Timedelta(days=granularity)
+
+                    decayed_popularity = last_popularity * np.exp(-decay_factor * (periods_since_last_update ** decay_power))
+
                     weak_signal_trends[topic][timestamp] = {
-                        'Representation': row['Representation'],
-                        'Representative_Docs': row['Representative_Docs'],
-                        'Count': row['Count'],
-                        'Document_Count': row['Document_Count']
+                        'Representation': None,
+                        'Representative_Docs': None,
+                        'Count': 0,
+                        'Document_Count': decayed_popularity
                     }
-                    break
+                    topic_last_popularity[topic] = decayed_popularity
+            else:
+                last_popularity = topic_last_popularity.get(topic, 0)
+                last_update = topic_last_update.get(topic, timestamp)
+
+                time_diff = timestamp - last_update
+                periods_since_last_update = time_diff // pd.Timedelta(days=granularity)
+
+                decayed_popularity = last_popularity * np.exp(-decay_factor * (periods_since_last_update ** decay_power))
+
+                weak_signal_trends[topic][timestamp] = {
+                    'Representation': None,
+                    'Representative_Docs': None,
+                    'Count': 0,
+                    'Document_Count': decayed_popularity
+                }
+                topic_last_popularity[topic] = decayed_popularity
 
     return weak_signal_trends
 
@@ -147,7 +238,6 @@ def calculate_signal_popularity(all_merge_histories_df: pd.DataFrame, granularit
 
 ########################################################################################################################
 
-@st.cache_data
 def classify_signals(topic_sizes: Dict[int, Dict[str, Any]], window_start: pd.Timestamp, window_end: pd.Timestamp, q1: float, q3: float, rising_popularity_only: bool = True, keep_documents: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Classify signals into weak signal and strong signal dataframes.
@@ -304,7 +394,7 @@ def save_signal_evolution_data(all_merge_histories_df: pd.DataFrame, topic_sizes
     # Determine the number of iterations for tqdm
     total_iterations = (end_timestamp - start_timestamp) // granularity_timedelta + 1
 
-    save_path = "wattelse/bertopic/app/weak_signals/ablation_study/signal_evolution_data"
+    save_path = "wattelse/bertopic/app/weak_signals/ablation_study/signal_evolution_data_arxiv"
     os.makedirs(save_path, exist_ok=True)
 
     q1_values = []
@@ -327,7 +417,7 @@ def save_signal_evolution_data(all_merge_histories_df: pd.DataFrame, topic_sizes
         # Calculate the 10th and 50th percentiles of popularity values
         if all_popularity_values:
             q1 = np.percentile(all_popularity_values, 10)
-            q3 = np.percentile(all_popularity_values, 50)
+            q3 = np.percentile(all_popularity_values, 90)
         else:
             q1, q3 = 0, 0
 
