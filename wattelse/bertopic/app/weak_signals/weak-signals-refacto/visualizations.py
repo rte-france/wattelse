@@ -211,7 +211,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         # Calculate the 10th and 50th percentiles of popularity values
         if all_popularity_values:
             q1 = np.percentile(all_popularity_values, 10)
-            q3 = np.percentile(all_popularity_values, 80)
+            q3 = np.percentile(all_popularity_values, 90)
         else:
             q1, q3 = 0, 0
 

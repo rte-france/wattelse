@@ -28,6 +28,8 @@ import numpy as np
 from tqdm import tqdm
 import os
 
+import json
+
 def save_state():
     cache_dir = "cache"
     
@@ -359,22 +361,47 @@ def main():
         # Display Results
         if 'topic_models' in st.session_state:
             topic_models = st.session_state.topic_models
-            
+
             plot_num_topics_and_outliers(topic_models)
             plot_topics_per_timestamp(topic_models)
-            
+
             # Display weak signal trend
-            if zeroshot_topic_list is not None:
-                weak_signal_trends = detect_weak_signals_zeroshot(topic_models, zeroshot_topic_list)
+            if zeroshot_topic_list:
+                weak_signal_trends = detect_weak_signals_zeroshot(topic_models, zeroshot_topic_list, granularity)
                 with st.expander("Zero-shot Weak Signal Trends", expanded=True):
                     fig_trend = go.Figure()
                     for topic, weak_signal_trend in weak_signal_trends.items():
                         timestamps = list(weak_signal_trend.keys())
                         popularity = [weak_signal_trend[timestamp]['Document_Count'] for timestamp in timestamps]
-                        hovertext = [f"Topic: {topic}<br>Timestamp: {timestamp}<br>Popularity: {weak_signal_trend[timestamp]['Document_Count']}" for timestamp in timestamps]
+                        hovertext = [
+                            f"Topic: {topic}<br>Timestamp: {timestamp}<br>Popularity: {weak_signal_trend[timestamp]['Document_Count']}<br>Representation: {weak_signal_trend[timestamp]['Representation']}"
+                            for timestamp in timestamps
+                        ]
                         fig_trend.add_trace(go.Scatter(x=timestamps, y=popularity, mode='lines+markers', name=topic, hovertext=hovertext, hoverinfo='text'))
                     fig_trend.update_layout(title="Popularity of Zero-Shot Topics", xaxis_title="Timestamp", yaxis_title="Popularity")
                     st.plotly_chart(fig_trend, use_container_width=True)
+
+                    # Display the dataframe with zeroshot topics information
+                    zeroshot_topics_data = []
+                    for topic, weak_signal_trend in weak_signal_trends.items():
+                        for timestamp, data in weak_signal_trend.items():
+                            zeroshot_topics_data.append({
+                                'Topic': topic,
+                                'Timestamp': timestamp,
+                                'Representation': data['Representation'],
+                                'Representative_Docs': data['Representative_Docs'],
+                                'Count': data['Count'],
+                                'Document_Count': data['Document_Count']
+                            })
+                    zeroshot_topics_df = pd.DataFrame(zeroshot_topics_data)
+                    st.dataframe(zeroshot_topics_df, use_container_width=True)
+
+                    # Save the zeroshot topics data to a CSV file
+                    save_path = "wattelse/bertopic/app/weak_signals/ablation_study/zeroshot_topics_data"
+                    os.makedirs(save_path, exist_ok=True)
+                    json_file_path = os.path.join(save_path, "zeroshot_topics_data_arxiv.json")
+                    zeroshot_topics_df.to_json(json_file_path, index=False)
+                    st.success(f"Zeroshot topics data saved to {json_file_path}")
         
         # Merge models button
         if st.button("Merge Models"):
@@ -392,6 +419,8 @@ def main():
                 
                 progress_bar = st.progress(0)
                 
+                merge_df_size_over_time = []
+
                 for i in range(len(timestamps) - 1):
                     current_timestamp = timestamps[i]
                     next_timestamp = timestamps[i+1]
@@ -419,6 +448,8 @@ def main():
                                     
                     all_merge_histories.append(merge_history)  # Store the merge history at each timestep
                     all_new_topics.append(new_topics)  # Store the newly added topics at each timestep
+
+                    merge_df_size_over_time.append((current_timestamp, merged_df_without_outliers['Topic'].max() + 1))
                     
                     # Update progress bar
                     progress = (i + 1) / len(timestamps)
@@ -444,12 +475,12 @@ def main():
             # Create and cache the topic size evolution figure
             fig = create_topic_size_evolution_figure()
             st.session_state.topic_size_evolution_fig = fig
-
+            st.session_state.merge_df_size_over_time = merge_df_size_over_time
             st.success("Model merging complete!")
 
         # Plot topic size evolution
         if "all_merge_histories_df" in st.session_state:
-            window_size = st.number_input("Retrospective Period (days)", min_value=1, max_value=365, value=10, key='window_size')
+            window_size = st.number_input("Retrospective Period (days)", min_value=1, max_value=365, value=28, key='window_size')
 
             min_datetime = st.session_state.all_merge_histories_df['Timestamp'].min().to_pydatetime()
             max_datetime = st.session_state.all_merge_histories_df['Timestamp'].max().to_pydatetime()
@@ -475,9 +506,6 @@ def main():
 
             # Inspect Signal Evolution
             if "all_merge_histories_df" in st.session_state:
-                # temp = st.session_state.all_merge_histories_df[['Timestamp', 'Topic1', 'Topic2', 'Representation1', 'Representation2', 'Documents1', 'Documents2']]
-                # temp = temp[temp['Topic1'] == 3563]
-                # temp.to_csv('temp.csv')
                 st.subheader("Inspect Signal Evolution")
                 topic_labels_input = st.text_input("Enter topic labels (e.g., 123w, 546s):")
 
@@ -553,6 +581,36 @@ def main():
         
         # if "all_new_topics_df" in st.session_state and not st.session_state.all_new_topics_df.empty:
         #     plot_newly_emerged_topics(st.session_state.all_new_topics_df)
+
+        
+        if st.button("Retrieve Topic Counts"):
+            topic_counts = []
+
+            # Collect topic counts and timestamps
+            for timestamp in st.session_state.topic_models.keys():
+                topic_model = st.session_state.topic_models[timestamp]
+                num_topics = topic_model.topic_info_df['Topic'].max() + 1
+                topic_counts.append((timestamp, num_topics))
+
+            # Create a DataFrame from the collected data
+            df = pd.DataFrame(topic_counts, columns=['timestamp', 'num_topics'])
+            df2 = pd.DataFrame(st.session_state.merge_df_size_over_time, columns=['timestamp', 'num_topics'])
+
+            # Convert DataFrame to JSON format
+            json_data = df.to_json(orient='records', date_format='iso', indent=4)
+            json_data_2 = df2.to_json(orient='records', date_format='iso', indent=4)
+
+            # Save JSON data to a file
+            json_file_path = "wattelse/bertopic/app/weak_signals/ablation_study/signal_evolution_data_arxiv/topic_signal_counts.json"
+            with open(json_file_path, 'w') as f:
+                f.write(json_data)
+
+            json_file_path_2 = "wattelse/bertopic/app/weak_signals/ablation_study/signal_evolution_data_arxiv/topic_signal_counts_2.json"
+            with open(json_file_path_2, 'w') as f:
+                f.write(json_data_2)
+
+            st.success(f"Topic and signal counts saved to {json_file_path}")
+
 
 
 if __name__ == "__main__":

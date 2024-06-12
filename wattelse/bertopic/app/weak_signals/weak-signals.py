@@ -1196,7 +1196,7 @@ if 'topic_models' in st.session_state:
                 noise_topics_data.append({
                     'Topic': topic,
                     'Representation': topic_data['Representations'][-1].split(': ')[1],
-                    'Latest Popularity': topic_data['Popularity'][-1],
+                    'Latest_Popularity': topic_data['Popularity'][-1],
                     'Docs_Count': topic_data['Docs_Count'],
                     'Paragraphs_Count': topic_data['Paragraphs_Count'],
                     'Merges_Count': topic_data['Updates'],
@@ -1212,7 +1212,7 @@ if 'topic_models' in st.session_state:
                 weak_signal_topics_data.append({
                     'Topic': topic,
                     'Representation': topic_data['Representations'][-1].split(': ')[1],
-                    'Latest Popularity': topic_data['Popularity'][-1],
+                    'Latest_Popularity': topic_data['Popularity'][-1],
                     'Docs_Count': topic_data['Docs_Count'],
                     'Paragraphs_Count': topic_data['Paragraphs_Count'],
                     'Merges_Count': topic_data['Updates'],
@@ -1228,7 +1228,7 @@ if 'topic_models' in st.session_state:
                 strong_signal_topics_data.append({
                     'Topic': topic,
                     'Representation': topic_data['Representations'][-1].split(': ')[1],
-                    'Latest Popularity': topic_data['Popularity'][-1],
+                    'Latest_Popularity': topic_data['Popularity'][-1],
                     'Docs_Count': topic_data['Docs_Count'],
                     'Paragraphs_Count': topic_data['Paragraphs_Count'],
                     'Merges_Count': topic_data['Updates'],
@@ -1244,23 +1244,23 @@ if 'topic_models' in st.session_state:
             strong_signal_topics_df = pd.DataFrame(strong_signal_topics_data)
 
             # Display the DataFrames
-            columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest Popularity', 'Docs_Count', 'Paragraphs_Count', 'Merges_Count', 'Latest_Timestamp', 'Documents']
+            columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest_Popularity', 'Docs_Count', 'Paragraphs_Count', 'Merges_Count', 'Latest_Timestamp', 'Documents']
 
             st.subheader(":grey[Signaux Parasites (Bruit)]")
             if not noise_topics_df.empty:
-                st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
+                st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
             else:
                 st.info(f"No noisy signals were detected at timestamp {window_end}.")
 
             st.subheader(":orange[Signaux Faibles]")
             if not weak_signal_topics_df.empty:
-                st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Latest Popularity'], ascending=True))
+                st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Latest_Popularity'], ascending=True))
             else:
                 st.info(f"No weak signals were detected at timestamp {window_end}.")
 
             st.subheader(":green[Signaux Forts]")
             if not strong_signal_topics_df.empty:
-                st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest Popularity'], ascending=[False, False]))
+                st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
             else:
                 st.info(f"No strong signals were detected at timestamp {window_end}.")
 
