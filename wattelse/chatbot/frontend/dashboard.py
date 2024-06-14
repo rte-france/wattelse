@@ -261,11 +261,12 @@ def display_feedback_rates():
     total_short_feedback = (st.session_state["filtered_data"].short_feedback != "").sum()
     cols = st.columns(4)
     for i, feedback_type in enumerate(FEEDBACK_COLORS.keys()):
-        cols[i].metric(
-                f":{FEEDBACK_COLORS[feedback_type]}[Ratio of feedback '{feedback_type}']",
-                f"{short_feedback_counts[feedback_type]/total_short_feedback*100:.1f}%",
-                "",
-            )
+        if feedback_type in short_feedback_counts.keys():
+            cols[i].metric(
+                    f":{FEEDBACK_COLORS[feedback_type]}[Ratio of feedback '{feedback_type}']",
+                    f"{short_feedback_counts[feedback_type]/total_short_feedback*100:.1f}%",
+                    "",
+                )
             
 
 
