@@ -709,7 +709,7 @@ function provideFeedback() {
           <span class="emoji-rating"><span class="rating-ok" title="Réponse acceptable"><i class="fa-solid fa-circle-half-stroke fa-xl"></i></span></span>
           <span class="emoji-rating"><span class="rating-missing" title="Réponse incomplète"><i class="fa-solid fa-circle-minus fa-xl"></i></span></span>
           <span class="emoji-rating"><span class="rating-wrong" title="Réponse fausse"><i class="fa-solid fa-circle-exclamation fa-xl"></i></span></span>
-          <button id="open-text-feedback">Text Feedback</button> 
+          <button id="open-text-feedback">Réponse attendue</button> 
         `;
 
     chatHistory.appendChild(feedbackSection);
