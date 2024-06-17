@@ -38,7 +38,7 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
     # Get column names from the table
     cur = con.cursor()
     cur.execute(
-        f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, "
+        f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, answer_delay,"
         f"short_feedback, long_feedback "
         f"FROM {DATA_TABLE}, {USER_TABLE} "
         f"WHERE {DATA_TABLE}.user_id = {USER_TABLE}.id"
@@ -122,8 +122,9 @@ def display_indicators():
     ) // len(st.session_state["full_data"].username.unique())
     nb_short_feedback = (st.session_state["filtered_data"].short_feedback != "").sum()
     nb_long_feedback = (st.session_state["filtered_data"].long_feedback != "").sum()
+    median_answer_delay = st.session_state["filtered_data"].answer_delay.median()/1e6
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric(
         "Questions/Answers",
         nb_questions,
@@ -164,6 +165,11 @@ def display_indicators():
     col5.metric(
         "Short feedback percentage",
         f"{nb_short_feedback/nb_questions*100:.2f}%",
+    )
+
+    col6.metric(
+        "Median answer delay",
+        f"{median_answer_delay:.2f}s",
     )
 
 
