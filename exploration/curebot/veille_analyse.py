@@ -7,11 +7,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from typing import List
 
+import inspect
 import pandas as pd
 import streamlit as st
+from loguru import logger
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-from wattelse.bertopic.newsletter_features import generate_newsletter
+from wattelse.bertopic.newsletter_features import generate_newsletter, md2html
 from wattelse.bertopic.train import train_BERTopic
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN, clean_dataset, split_df_by_paragraphs, load_data
 from wattelse.data_provider.curebot_provider import CurebotProvider
@@ -20,7 +22,15 @@ from wattelse.summary import GPTSummarizer
 COLUMN_URL = "url"
 MIN_TEXT_LENGTH = 150
 EMBEDDING_MODEL_NAME = "dangvantuan/sentence-camembert-large"
+#EMBEDDING_MODEL_NAME = "antoinelouis/biencoder-camembert-base-mmarcoFR"
 
+css_style = Path(inspect.getfile(generate_newsletter)).parent / "newsletter.css"
+
+st.session_state.topic_detection_disabled = False
+st.session_state.newsletter_disabled = False
+
+
+@st.cache_data
 def parse_data(files: List[UploadedFile]) -> pd.DataFrame:
     """Read a list of excel files and return a single dataframe containing the data"""
     dataframes = []
@@ -30,18 +40,22 @@ def parse_data(files: List[UploadedFile]) -> pd.DataFrame:
         for f in files:
             with NamedTemporaryFile(mode="wb") as tmp_file:
                 # Copy data from BytesIO to the temporary file
+                with open("/tmp/jp", "wb") as fjp:
+                    fjp.write(f.getvalue())
                 tmp_file.write(f.getvalue())
+                print(tmp_file.name)
                 if tmp_file is not None:
-                    st.info(f"Analyse des articles de: {f.name}")
-                    provider = CurebotProvider(Path(tmp_file.name))
-                    articles = provider.get_articles()
-                    #articles_path = Path(tmpdir) / (f.name + ".jsonl")
-                    articles_path = Path("/tmp") / (f.name + ".jsonl")
-                    provider.store_articles(articles, articles_path)
-                    df = load_data(articles_path.absolute().as_posix()).sort_values(by=TIMESTAMP_COLUMN,
-                                                                                 ascending=False).reset_index(
-                        drop=True).reset_index()
-                    dataframes.append(df)
+                    with st.spinner(f"Analyse des articles de: {f.name}"):
+                        #provider = CurebotProvider(Path(tmp_file.name))
+                        provider = CurebotProvider(Path(fjp.name))
+                        articles = provider.get_articles()
+                        #articles_path = Path(tmpdir) / (f.name + ".jsonl")
+                        articles_path = Path("/tmp") / (f.name + ".jsonl")
+                        provider.store_articles(articles, articles_path)
+                        df = load_data(articles_path.absolute().as_posix()).sort_values(by=TIMESTAMP_COLUMN,
+                                                                                        ascending=False).reset_index(
+                            drop=True).reset_index()
+                        dataframes.append(df)
 
         # Concat all dataframes
         df_concat = pd.concat(dataframes, ignore_index=True)
@@ -63,7 +77,7 @@ def split_data():
 
     # Clean dataset using min_text_length
     st.session_state["df_split"] = clean_dataset(
-        st.session_state["df"],
+        st.session_state["df_split"],
         MIN_TEXT_LENGTH,
     )
 
@@ -75,25 +89,28 @@ def train_model():
         embedding_model_name=EMBEDDING_MODEL_NAME,
         use_cache=False,
     )
-    st.success("Création de topics... OK")
 
 
 def create_newsletter():
-    st.session_state["newsletter"] = generate_newsletter(
-        topic_model=st.session_state["topic_model"],
-        df=st.session_state["df"],
-        topics=st.session_state["topics"],
-        top_n_topics=st.session_state["newsletter_nb_topics"],
-        top_n_docs=st.session_state["newsletter_nb_docs"],
-        improve_topic_description=st.session_state["newsletter_improve_description"],
-        summarizer_class=GPTSummarizer,
-        summary_mode='topic',
-    )
-    st.success("Création de newsletter... OK")
+    with st.spinner("Création de la newsletter..."):
+        st.session_state["newsletter"], _, _ = generate_newsletter(
+            topic_model=st.session_state["topic_model"],
+            df=st.session_state["df"],
+            df_split=st.session_state["df_split"],
+            topics=st.session_state["topics"],
+            top_n_topics=st.session_state["newsletter_nb_topics"],
+            top_n_docs=st.session_state["newsletter_nb_docs"],
+            improve_topic_description=True,
+            summarizer_class=GPTSummarizer,
+            summary_mode='topic',
+            openai_model_name=st.session_state["openai_model_name"]
+        )
 
 
-def download_newsletter():
-    pass
+@st.experimental_dialog("Newsletter preview", width="large")
+def preview_newsletter():
+    content = md2html(st.session_state["final_newsletter"], css_style=css_style)
+    st.html(content)
 
 
 def main_page():
@@ -101,13 +118,14 @@ def main_page():
     # title
     st.title('Wattelse topic')
 
+    st.write("Import des données de Curebot")
     # uploader
-    uploaded_files = st.file_uploader("Fichiers Excel (format Curebot)", accept_multiple_files=True)
+    st.text_input("URL du flux RSS ou ATOM", value="", key="curebot_rss_url", help="Saisir le l'URL complète du flux Curebot à importer")
+    uploaded_files = st.file_uploader("Fichiers Excel (format Curebot .xlsx)", accept_multiple_files=True, help="Glisser/déposer dans cette zone les exports Curebot au format Excel")
 
     # check content
     if uploaded_files:
         st.session_state["df"] = parse_data(uploaded_files)
-        st.success("Transformation des données... OK")
 
         # Affichage du contenu du fichier Excel
         with st.expander("Contenu des données", expanded=False):
@@ -115,37 +133,58 @@ def main_page():
 
         # split and clean data
         split_data()
+        logger.info(f"Size of dataset: {len(st.session_state['df_split'])}")
 
         # Buttons for functionalities
         # Topic detection
-        st.button("Détection des topics", on_click=train_model, key="topic_detection")
+        st.button("Détection des topics", on_click=train_model, key="topic_detection", type="primary",
+                  disabled=st.session_state.topic_detection_disabled)
 
         # Newsletter creation
         if "topic_model" in st.session_state.keys():
-            st.button("Génération de newsletter", on_click=create_newsletter)
+            #st.session_state.topic_detection_disabled = True
+            st.button("Génération de newsletter", on_click=create_newsletter, type="primary",
+                      disabled=st.session_state.newsletter_disabled)
 
-            # Newsletter download
-            st.button("Téléchargement newsletter", on_click=download_newsletter)
+            # Edit manually newsletter
+            if "newsletter" in st.session_state.keys():
+                st.text_area("Contenu de la newsletter (faire CTRL+ENTREE pour prendre en compte les modifications)",
+                                value=st.session_state["newsletter"] if "final_newsletter" not in st.session_state
+                                                            else st.session_state["final_newsletter"],
+                                height=400, key="final_newsletter")
+
+                if "final_newsletter" in st.session_state:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.button("Preview", on_click=preview_newsletter)
+                    with col2:
+                        # Newsletter download
+                        st.download_button("Téléchargement", file_name="newsletter.html",
+                                           data=md2html(st.session_state["final_newsletter"], css_style=css_style), type="primary")
+
 
 
 def options():
     with st.sidebar.form("parameters_sidebar"):
         st.title("Réglages")
 
-        st.slider("Nombre de topics", min_value=1, max_value=10, value=5, key="newsletter_nb_topics")
+        st.slider("Nombre max de topics", min_value=1, max_value=10, value=5, key="newsletter_nb_topics")
 
-        st.slider("Nombre d'articles par topics", min_value=1, max_value=10, value=5, key="newsletter_nb_docs")
+        st.slider("Nombre max d'articles par topics", min_value=1, max_value=10, value=5, key="newsletter_nb_docs")
 
         st.slider("Longueur des synthèses (# mots)", min_value=10, max_value=200, value=100, key="nb_words")
 
+        st.selectbox("Moteur de résumé", ("gpt-3.5-turbo", "gpt-4o"), key="openai_model_name")
+
+
         parameters_sidebar_clicked = st.form_submit_button(
-            "OK", type="primary",  # on_click=save_widget_state
+            "OK", type="primary",
         )
 
 
 def main():
-    options()
-    main_page()
+     options()
+     main_page()
 
 
 # Main

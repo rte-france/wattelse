@@ -6,7 +6,7 @@
 from pathlib import Path
 import os
 import locale
-from typing import List
+from typing import List, Tuple, Any
 
 # from md2pdf.core import md2pdf
 import markdown
@@ -44,7 +44,7 @@ def generate_newsletter(
     prompt_language: str = "fr",
     improve_topic_description: bool = False,
     openai_model_name: str = None,
-) -> str:
+) -> Tuple[str, Any, Any]:
     """Generates a newsletter based on a trained BERTopic model.
 
     Args:
