@@ -21,8 +21,8 @@ from wattelse.summary import GPTSummarizer
 
 COLUMN_URL = "url"
 MIN_TEXT_LENGTH = 150
-EMBEDDING_MODEL_NAME = "dangvantuan/sentence-camembert-large"
-#EMBEDDING_MODEL_NAME = "antoinelouis/biencoder-camembert-base-mmarcoFR"
+#EMBEDDING_MODEL_NAME = "dangvantuan/sentence-camembert-large"
+EMBEDDING_MODEL_NAME = "antoinelouis/biencoder-camembert-base-mmarcoFR"
 
 css_style = Path(inspect.getfile(generate_newsletter)).parent / "newsletter.css"
 
@@ -36,7 +36,7 @@ if "st.session_state.topic_expanded" not in st.session_state:
     st.session_state.topic_expanded = True
 
 @st.cache_data
-def parse_data(files: List[UploadedFile]) -> pd.DataFrame:
+def parse_data_from_files(files: List[UploadedFile]) -> pd.DataFrame:
     """Read a list of excel files and return a single dataframe containing the data"""
     dataframes = []
 
@@ -49,7 +49,7 @@ def parse_data(files: List[UploadedFile]) -> pd.DataFrame:
 
             if tmp_file is not None:
                     with st.spinner(f"Analyse des articles de: {f.name}"):
-                        provider = CurebotProvider(Path(tmp_file.name))
+                        provider = CurebotProvider(curebot_export_file=Path(tmp_file.name))
                         articles = provider.get_articles()
                         articles_path = Path(tmpdir) / (f.name + ".jsonl")
                         provider.store_articles(articles, articles_path)
@@ -62,6 +62,19 @@ def parse_data(files: List[UploadedFile]) -> pd.DataFrame:
         df_concat = pd.concat(dataframes, ignore_index=True)
         df_concat = df_concat.drop_duplicates(subset=COLUMN_URL, keep="first")
         return df_concat
+
+
+@st.cache_data
+def parse_data_from_feed() -> pd.DataFrame:
+    """Return a single dataframe containing the data obtained from the feed"""
+    with TemporaryDirectory() as tmpdir:
+        with st.spinner(f"Analyse des articles de: {st.session_state.curebot_rss_url}"):
+            provider = CurebotProvider(feed_url=st.session_state.curebot_rss_url)
+            articles = provider.get_articles()
+            articles_path = Path(tmpdir) / "feed.jsonl"
+            provider.store_articles(articles, articles_path)
+            return load_data(articles_path.absolute().as_posix()).sort_values(by=TIMESTAMP_COLUMN,
+                                                                    ascending=False).reset_index(drop=True).reset_index()
 
 
 def split_data():
@@ -117,16 +130,20 @@ def preview_newsletter():
 def import_data():
     with st.expander("**Import des données de Curebot**", expanded=st.session_state.import_expanded):
         # uploader
-        st.text_input("URL du flux RSS ou ATOM", value="", key="curebot_rss_url", help="Saisir le l'URL complète du flux Curebot à importer")
+        st.text_input("URL du flux ATOM", value="", key="curebot_rss_url", help="Saisir le l'URL complète du flux Curebot à importer (par ex. https://api-a1.beta.curebot.io/v1/atom-feed/smartfolder/a5b14e159caa4cb5967f94e84640f602)")
         uploaded_files = st.file_uploader("Fichiers Excel (format Curebot .xlsx)", accept_multiple_files=True, help="Glisser/déposer dans cette zone les exports Curebot au format Excel")
 
     # check content
-    if uploaded_files:
-        st.session_state["df"] = parse_data(uploaded_files)
+    if uploaded_files or "curebot_rss_url" in st.session_state:
+        if uploaded_files:
+            st.session_state["df"] = parse_data_from_files(uploaded_files)
+        elif st.session_state["curebot_rss_url"]:
+            st.session_state["df"] = parse_data_from_feed()
 
         # split and clean data
-        split_data()
-        logger.info(f"Size of dataset: {len(st.session_state['df_split'])}")
+        if "df" in st.session_state:
+            split_data()
+            logger.info(f"Size of dataset: {len(st.session_state['df_split'])}")
 
 def display_data():
     if "df" in st.session_state:

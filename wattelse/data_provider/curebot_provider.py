@@ -2,6 +2,7 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -10,23 +11,58 @@ import pandas as pd
 from loguru import logger
 
 from wattelse.data_provider.data_provider import DataProvider
+import feedparser
 
 
 class CurebotProvider(DataProvider):
     """Class used to process exports from Curebot tool"""
 
-    def __init__(self, curebot_export_file: Path):
+    def __init__(self, curebot_export_file: Path = None, feed_url: str = None):
         super().__init__()
         self.data_file = curebot_export_file
-        self.df_dict = pd.read_excel(self.data_file, sheet_name=None, dtype=str)
+        if self.data_file:
+            self.df_dict = pd.read_excel(self.data_file, sheet_name=None, dtype=str)
+        self.feed_url = feed_url
 
     def get_articles(self, query: str = None, after: str = None, before: str = None, max_results: int = None,
                      language: str = "fr") -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
+        if self.feed_url:
+            return self.parse_ATOM_feed()
+
         entries = []
         for k in self.df_dict.keys():
             entries += self.df_dict[k].to_dict(orient='records')
         return [self._parse_entry(res) for res in entries]
+
+    def parse_ATOM_feed(self) -> List[Dict]:
+        feed = feedparser.parse(self.feed_url)
+        # Initialize an empty list to store the entries
+        entries = []
+        # Extract information for each entry
+        for entry in feed.entries:
+            #title = entry.get('title', '')
+            link = entry.get('link', '')
+            summary = entry.get('summary', '')
+            published = entry.get('published', '')
+            date_obj = datetime.fromisoformat(published)
+            formatted_date = date_obj.strftime("%Y-%m-%d %H:%M:%S")
+            text, title = self._get_text(url=link)
+            if text is None or text == "":
+                continue
+            # Store the extracted information in a dictionary
+            entry_info = {
+                "title": title,
+                "link": link,
+                "url": link,
+                "summary": summary,
+                "text": text,
+                "timestamp": formatted_date
+            }
+            # Add the dictionary to the list
+            entries.append(entry_info)
+
+        return entries
 
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a Curebot news entry"""
