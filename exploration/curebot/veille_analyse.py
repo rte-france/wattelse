@@ -2,7 +2,6 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from typing import List
@@ -19,6 +18,7 @@ from wattelse.bertopic.utils import TIMESTAMP_COLUMN, clean_dataset, split_df_by
 from wattelse.data_provider.curebot_provider import CurebotProvider
 from wattelse.summary import GPTSummarizer
 
+
 COLUMN_URL = "url"
 MIN_TEXT_LENGTH = 150
 EMBEDDING_MODEL_NAME = "dangvantuan/sentence-camembert-large"
@@ -26,9 +26,14 @@ EMBEDDING_MODEL_NAME = "dangvantuan/sentence-camembert-large"
 
 css_style = Path(inspect.getfile(generate_newsletter)).parent / "newsletter.css"
 
-st.session_state.topic_detection_disabled = False
-st.session_state.newsletter_disabled = False
-
+if "topic_detection_disabled" not in st.session_state:
+    st.session_state.topic_detection_disabled = False
+if "newsletter_disabled" not in st.session_state:
+    st.session_state.newsletter_disabled = False
+if "import_expanded" not in st.session_state:
+    st.session_state.import_expanded = True
+if "st.session_state.topic_expanded" not in st.session_state:
+    st.session_state.topic_expanded = True
 
 @st.cache_data
 def parse_data(files: List[UploadedFile]) -> pd.DataFrame:
@@ -38,19 +43,15 @@ def parse_data(files: List[UploadedFile]) -> pd.DataFrame:
     with TemporaryDirectory() as tmpdir:
 
         for f in files:
-            with NamedTemporaryFile(mode="wb") as tmp_file:
-                # Copy data from BytesIO to the temporary file
-                with open("/tmp/jp", "wb") as fjp:
-                    fjp.write(f.getvalue())
+            with open(tmpdir+"/"+f.name, "wb") as tmp_file:
                 tmp_file.write(f.getvalue())
                 print(tmp_file.name)
-                if tmp_file is not None:
+
+            if tmp_file is not None:
                     with st.spinner(f"Analyse des articles de: {f.name}"):
-                        #provider = CurebotProvider(Path(tmp_file.name))
-                        provider = CurebotProvider(Path(fjp.name))
+                        provider = CurebotProvider(Path(tmp_file.name))
                         articles = provider.get_articles()
-                        #articles_path = Path(tmpdir) / (f.name + ".jsonl")
-                        articles_path = Path("/tmp") / (f.name + ".jsonl")
+                        articles_path = Path(tmpdir) / (f.name + ".jsonl")
                         provider.store_articles(articles, articles_path)
                         df = load_data(articles_path.absolute().as_posix()).sort_values(by=TIMESTAMP_COLUMN,
                                                                                         ascending=False).reset_index(
@@ -103,7 +104,8 @@ def create_newsletter():
             improve_topic_description=True,
             summarizer_class=GPTSummarizer,
             summary_mode='topic',
-            openai_model_name=st.session_state["openai_model_name"]
+            openai_model_name=st.session_state["openai_model_name"],
+            nb_sentences=st.session_state["nb_sentences"]
         )
 
 
@@ -112,46 +114,58 @@ def preview_newsletter():
     content = md2html(st.session_state["final_newsletter"], css_style=css_style)
     st.html(content)
 
-
-def main_page():
-    """Main page rendering"""
-    # title
-    st.title('Wattelse topic')
-
-    st.write("Import des données de Curebot")
-    # uploader
-    st.text_input("URL du flux RSS ou ATOM", value="", key="curebot_rss_url", help="Saisir le l'URL complète du flux Curebot à importer")
-    uploaded_files = st.file_uploader("Fichiers Excel (format Curebot .xlsx)", accept_multiple_files=True, help="Glisser/déposer dans cette zone les exports Curebot au format Excel")
+def import_data():
+    with st.expander("**Import des données de Curebot**", expanded=st.session_state.import_expanded):
+        # uploader
+        st.text_input("URL du flux RSS ou ATOM", value="", key="curebot_rss_url", help="Saisir le l'URL complète du flux Curebot à importer")
+        uploaded_files = st.file_uploader("Fichiers Excel (format Curebot .xlsx)", accept_multiple_files=True, help="Glisser/déposer dans cette zone les exports Curebot au format Excel")
 
     # check content
     if uploaded_files:
         st.session_state["df"] = parse_data(uploaded_files)
 
-        # Affichage du contenu du fichier Excel
-        with st.expander("Contenu des données", expanded=False):
-            st.dataframe(st.session_state["df"])
-
         # split and clean data
         split_data()
         logger.info(f"Size of dataset: {len(st.session_state['df_split'])}")
 
-        # Buttons for functionalities
-        # Topic detection
-        st.button("Détection des topics", on_click=train_model, key="topic_detection", type="primary",
-                  disabled=st.session_state.topic_detection_disabled)
+def display_data():
+    if "df" in st.session_state:
+        st.session_state.import_expanded = False
+        # Affichage du contenu du fichier Excel
+        with st.expander("**Contenu des données**", expanded=False):
+            st.dataframe(st.session_state["df"])
 
-        # Newsletter creation
-        if "topic_model" in st.session_state.keys():
-            #st.session_state.topic_detection_disabled = True
+def detect_topics():
+    if "df_split" in st.session_state:
+        st.session_state.import_expanded = False
+        with st.expander("**Détection de topics**", expanded=st.session_state.topic_expanded):
+            # Topic detection
+            col1, col2 = st.columns(2)
+            with col1:
+                st.button("Détection des topics", on_click=train_model, key="topic_detection", type="primary",
+                          disabled=st.session_state.topic_detection_disabled)
+            with col2:
+                if "topic_model" in st.session_state:
+                    st.info(f"Nombre de topics: {len(st.session_state['topic_model'].get_topic_info())-1}")
+
+
+
+def newsletter_creation():
+    # Newsletter creation
+    if "topic_model" in st.session_state.keys():
+        st.session_state.topic_expanded = False
+        with st.expander("**Création de la newsletter**", expanded=True):
+            # st.session_state.topic_detection_disabled = True
             st.button("Génération de newsletter", on_click=create_newsletter, type="primary",
                       disabled=st.session_state.newsletter_disabled)
 
             # Edit manually newsletter
             if "newsletter" in st.session_state.keys():
-                st.text_area("Contenu de la newsletter (faire CTRL+ENTREE pour prendre en compte les modifications)",
-                                value=st.session_state["newsletter"] if "final_newsletter" not in st.session_state
-                                                            else st.session_state["final_newsletter"],
-                                height=400, key="final_newsletter")
+                st.text_area(
+                    "Contenu éditable de la newsletter (faire CTRL+ENTREE pour prendre en compte les modifications)",
+                    value=st.session_state["newsletter"] if "final_newsletter" not in st.session_state
+                    else st.session_state["final_newsletter"],
+                    height=400, key="final_newsletter")
 
                 if "final_newsletter" in st.session_state:
                     col1, col2 = st.columns(2)
@@ -160,8 +174,18 @@ def main_page():
                     with col2:
                         # Newsletter download
                         st.download_button("Téléchargement", file_name="newsletter.html",
-                                           data=md2html(st.session_state["final_newsletter"], css_style=css_style), type="primary")
+                                           data=md2html(st.session_state["final_newsletter"], css_style=css_style),
+                                           type="primary")
 
+
+def main_page():
+    """Main page rendering"""
+    # title
+    st.title('Wattelse Veille & Analyse')
+    import_data()
+    display_data()
+    detect_topics()
+    newsletter_creation()
 
 
 def options():
@@ -172,9 +196,9 @@ def options():
 
         st.slider("Nombre max d'articles par topics", min_value=1, max_value=10, value=5, key="newsletter_nb_docs")
 
-        st.slider("Longueur des synthèses (# mots)", min_value=10, max_value=200, value=100, key="nb_words")
+        st.slider("Longueur des synthèses (# phrases)", min_value=1, max_value=10, value=4, key="nb_sentences")
 
-        st.selectbox("Moteur de résumé", ("gpt-3.5-turbo", "gpt-4o"), key="openai_model_name")
+        st.selectbox("Moteur de résumé", ("gpt-4o","gpt-3.5-turbo"), key="openai_model_name")
 
 
         parameters_sidebar_clicked = st.form_submit_button(

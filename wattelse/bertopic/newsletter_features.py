@@ -44,6 +44,7 @@ def generate_newsletter(
     prompt_language: str = "fr",
     improve_topic_description: bool = False,
     openai_model_name: str = None,
+    nb_sentences: int = 3,
 ) -> Tuple[str, Any, Any]:
     """Generates a newsletter based on a trained BERTopic model.
 
@@ -63,6 +64,7 @@ def generate_newsletter(
         prompt_language (str, optional): prompt language
         improve_topic_description (bool, optional): whether to use ChatGPT to transform topic keywords to a more readable description
         openai_model_name (str, optional): OpenAI model called using OpenAI_API, used to improve topic description and when summary_mode=topic
+        nb_sentences (int, optional): Number of sentences used for topic description
 
     Returns:
         str: Newsletter in Markdown format
@@ -121,6 +123,7 @@ def generate_newsletter(
                 (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language=='fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
                     keywords=', '.join(topics_info['Representation'].iloc[i]),
                     article_list=article_list,
+                    nb_sentences=nb_sentences,
                 ),
                 model_name=openai_model_name,
             )
