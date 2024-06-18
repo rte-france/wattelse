@@ -33,7 +33,9 @@ class CurebotProvider(DataProvider):
         entries = []
         for k in self.df_dict.keys():
             entries += self.df_dict[k].to_dict(orient='records')
-        return [self._parse_entry(res) for res in entries]
+        results = [self._parse_entry(res) for res in entries]
+        return [res for res in results if res is not None] # sanity check to remove errors
+
 
     def parse_ATOM_feed(self) -> List[Dict]:
         feed = feedparser.parse(self.feed_url)
