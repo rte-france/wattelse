@@ -2,11 +2,9 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 
-import dateparser
 import pandas as pd
 from loguru import logger
 
@@ -43,12 +41,10 @@ class CurebotProvider(DataProvider):
         entries = []
         # Extract information for each entry
         for entry in feed.entries:
-            #title = entry.get('title', '')
             link = entry.get('link', '')
             summary = entry.get('summary', '')
             published = entry.get('published', '')
-            date_obj = datetime.fromisoformat(published)
-            formatted_date = date_obj.strftime("%Y-%m-%d %H:%M:%S")
+            formatted_date = self.parse_date(published)
             text, title = self._get_text(url=link)
             if text is None or text == "":
                 continue
@@ -73,8 +69,7 @@ class CurebotProvider(DataProvider):
             link = entry["URL de la ressource"]
             url = link
             summary = entry["Contenu de la ressource"]
-            published = dateparser.parse(entry["Date de trouvaille"]).replace(microsecond=0).strftime(
-                "%Y-%m-%d %H:%M:%S")
+            published = self.parse_date(entry["Date de trouvaille"])
             text, title = self._get_text(url=url)
             if text is None or text == "":
                 return None
