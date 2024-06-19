@@ -18,7 +18,6 @@ from wattelse.bertopic.utils import TIMESTAMP_COLUMN, clean_dataset, split_df_by
 from wattelse.data_provider.curebot_provider import CurebotProvider
 from wattelse.summary import GPTSummarizer
 
-
 COLUMN_URL = "url"
 MIN_TEXT_LENGTH = 150
 EMBEDDING_MODEL_NAME = "dangvantuan/sentence-camembert-large"
@@ -35,6 +34,7 @@ if "import_expanded" not in st.session_state:
 if "st.session_state.topic_expanded" not in st.session_state:
     st.session_state.topic_expanded = True
 
+
 @st.cache_data
 def parse_data_from_files(files: List[UploadedFile]) -> pd.DataFrame:
     """Read a list of excel files and return a single dataframe containing the data"""
@@ -43,20 +43,20 @@ def parse_data_from_files(files: List[UploadedFile]) -> pd.DataFrame:
     with TemporaryDirectory() as tmpdir:
 
         for f in files:
-            with open(tmpdir+"/"+f.name, "wb") as tmp_file:
+            with open(tmpdir + "/" + f.name, "wb") as tmp_file:
                 tmp_file.write(f.getvalue())
                 print(tmp_file.name)
 
             if tmp_file is not None:
-                    with st.spinner(f"Analyse des articles de: {f.name}"):
-                        provider = CurebotProvider(curebot_export_file=Path(tmp_file.name))
-                        articles = provider.get_articles()
-                        articles_path = Path(tmpdir) / (f.name + ".jsonl")
-                        provider.store_articles(articles, articles_path)
-                        df = load_data(articles_path.absolute().as_posix()).sort_values(by=TIMESTAMP_COLUMN,
-                                                                                        ascending=False).reset_index(
-                            drop=True).reset_index()
-                        dataframes.append(df)
+                with st.spinner(f"Analyse des articles de: {f.name}"):
+                    provider = CurebotProvider(curebot_export_file=Path(tmp_file.name))
+                    articles = provider.get_articles()
+                    articles_path = Path(tmpdir) / (f.name + ".jsonl")
+                    provider.store_articles(articles, articles_path)
+                    df = load_data(articles_path.absolute().as_posix()).sort_values(by=TIMESTAMP_COLUMN,
+                                                                                    ascending=False).reset_index(
+                        drop=True).reset_index()
+                    dataframes.append(df)
 
         # Concat all dataframes
         df_concat = pd.concat(dataframes, ignore_index=True)
@@ -74,7 +74,8 @@ def parse_data_from_feed(feed_url):
             articles_path = Path(tmpdir) / "feed.jsonl"
             provider.store_articles(articles, articles_path)
             return load_data(articles_path.absolute().as_posix()).sort_values(by=TIMESTAMP_COLUMN,
-                                                                    ascending=False).reset_index(drop=True).reset_index()
+                                                                              ascending=False).reset_index(
+                drop=True).reset_index()
 
 
 def split_data():
@@ -127,11 +128,16 @@ def preview_newsletter():
     content = md2html(st.session_state["final_newsletter"], css_style=css_style)
     st.html(content)
 
+
 def import_data():
     with st.expander("**Import des données de Curebot**", expanded=st.session_state.import_expanded):
         # uploader
-        st.text_input("URL du flux ATOM / RSS", value="", key="curebot_rss_url", help="Saisir le l'URL complète du flux Curebot à importer (par ex. https://api-a1.beta.curebot.io/v1/atom-feed/smartfolder/a5b14e159caa4cb5967f94e84640f602)")
-        uploaded_files = st.file_uploader("Fichiers Excel (format Curebot .xlsx)", accept_multiple_files=True, help="Glisser/déposer dans cette zone les exports Curebot au format Excel")
+        st.text_input("URL du flux ATOM / RSS",
+                      value=st.session_state["curebot_rss_url"] if "curebot_rss_url" in st.session_state else "",
+                      key="curebot_rss_url",
+                      help="Saisir le l'URL complète du flux Curebot à importer (par ex. https://api-a1.beta.curebot.io/v1/atom-feed/smartfolder/a5b14e159caa4cb5967f94e84640f602)")
+        uploaded_files = st.file_uploader("Fichiers Excel (format Curebot .xlsx)", accept_multiple_files=True,
+                                          help="Glisser/déposer dans cette zone les exports Curebot au format Excel")
 
     # check content
     if uploaded_files or "curebot_rss_url" in st.session_state:
@@ -145,12 +151,14 @@ def import_data():
             split_data()
             logger.info(f"Size of dataset: {len(st.session_state['df_split'])}")
 
+
 def display_data():
     if "df" in st.session_state:
         st.session_state.import_expanded = False
         # Affichage du contenu du fichier Excel
         with st.expander("**Contenu des données**", expanded=False):
             st.dataframe(st.session_state["df"])
+
 
 def detect_topics():
     if "df_split" in st.session_state:
@@ -163,8 +171,7 @@ def detect_topics():
                           disabled=st.session_state.topic_detection_disabled)
             with col2:
                 if "topic_model" in st.session_state:
-                    st.info(f"Nombre de topics: {len(st.session_state['topic_model'].get_topic_info())-1}")
-
+                    st.info(f"Nombre de topics: {len(st.session_state['topic_model'].get_topic_info()) - 1}")
 
 
 def newsletter_creation():
@@ -174,13 +181,14 @@ def newsletter_creation():
         with st.expander("**Création de la newsletter**", expanded=True):
             # st.session_state.topic_detection_disabled = True
             generation_button = st.button("Génération de newsletter", on_click=create_newsletter, type="primary",
-                      disabled=st.session_state.newsletter_disabled)
+                                          disabled=st.session_state.newsletter_disabled)
 
             # Edit manually newsletter
             if "newsletter" in st.session_state.keys():
                 st.text_area(
                     "Contenu éditable de la newsletter (faire CTRL+ENTREE pour prendre en compte les modifications)",
-                    value=st.session_state["newsletter"] if ("final_newsletter" not in st.session_state or generation_button)
+                    value=st.session_state["newsletter"] if (
+                                "final_newsletter" not in st.session_state or generation_button)
                     else st.session_state["final_newsletter"],
                     height=400, key="final_newsletter")
 
@@ -215,12 +223,12 @@ def options():
 
         st.slider("Longueur des synthèses (# phrases)", min_value=1, max_value=10, value=4, key="nb_sentences")
 
-        st.selectbox("Moteur de résumé", ("gpt-4o","gpt-3.5-turbo"), key="openai_model_name")
+        st.selectbox("Moteur de résumé", ("gpt-4o", "gpt-3.5-turbo"), key="openai_model_name")
 
 
 def main():
-     options()
-     main_page()
+    options()
+    main_page()
 
 
 # Main
