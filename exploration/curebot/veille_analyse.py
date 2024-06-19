@@ -206,7 +206,7 @@ def main_page():
 
 
 def options():
-    with st.sidebar.form("parameters_sidebar"):
+    with st.sidebar:
         st.title("Réglages")
 
         st.slider("Nombre max de topics", min_value=1, max_value=10, value=5, key="newsletter_nb_topics")
@@ -216,11 +216,6 @@ def options():
         st.slider("Longueur des synthèses (# phrases)", min_value=1, max_value=10, value=4, key="nb_sentences")
 
         st.selectbox("Moteur de résumé", ("gpt-4o","gpt-3.5-turbo"), key="openai_model_name")
-
-
-        parameters_sidebar_clicked = st.form_submit_button(
-            "OK", type="primary",
-        )
 
 
 def main():
