@@ -65,11 +65,11 @@ def parse_data_from_files(files: List[UploadedFile]) -> pd.DataFrame:
 
 
 @st.cache_data
-def parse_data_from_feed() -> pd.DataFrame:
+def parse_data_from_feed(feed_url):
     """Return a single dataframe containing the data obtained from the feed"""
     with TemporaryDirectory() as tmpdir:
-        with st.spinner(f"Analyse des articles de: {st.session_state.curebot_rss_url}"):
-            provider = CurebotProvider(feed_url=st.session_state.curebot_rss_url)
+        with st.spinner(f"Analyse des articles de: {feed_url}"):
+            provider = CurebotProvider(feed_url=feed_url)
             articles = provider.get_articles()
             articles_path = Path(tmpdir) / "feed.jsonl"
             provider.store_articles(articles, articles_path)
@@ -130,7 +130,7 @@ def preview_newsletter():
 def import_data():
     with st.expander("**Import des données de Curebot**", expanded=st.session_state.import_expanded):
         # uploader
-        st.text_input("URL du flux ATOM", value="", key="curebot_rss_url", help="Saisir le l'URL complète du flux Curebot à importer (par ex. https://api-a1.beta.curebot.io/v1/atom-feed/smartfolder/a5b14e159caa4cb5967f94e84640f602)")
+        st.text_input("URL du flux ATOM / RSS", value="", key="curebot_rss_url", help="Saisir le l'URL complète du flux Curebot à importer (par ex. https://api-a1.beta.curebot.io/v1/atom-feed/smartfolder/a5b14e159caa4cb5967f94e84640f602)")
         uploaded_files = st.file_uploader("Fichiers Excel (format Curebot .xlsx)", accept_multiple_files=True, help="Glisser/déposer dans cette zone les exports Curebot au format Excel")
 
     # check content
@@ -138,7 +138,7 @@ def import_data():
         if uploaded_files:
             st.session_state["df"] = parse_data_from_files(uploaded_files)
         elif st.session_state["curebot_rss_url"]:
-            st.session_state["df"] = parse_data_from_feed()
+            st.session_state["df"] = parse_data_from_feed(st.session_state["curebot_rss_url"])
 
         # split and clean data
         if "df" in st.session_state:
