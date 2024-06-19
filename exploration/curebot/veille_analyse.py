@@ -173,14 +173,14 @@ def newsletter_creation():
         st.session_state.topic_expanded = False
         with st.expander("**Création de la newsletter**", expanded=True):
             # st.session_state.topic_detection_disabled = True
-            st.button("Génération de newsletter", on_click=create_newsletter, type="primary",
+            generation_button = st.button("Génération de newsletter", on_click=create_newsletter, type="primary",
                       disabled=st.session_state.newsletter_disabled)
 
             # Edit manually newsletter
             if "newsletter" in st.session_state.keys():
                 st.text_area(
                     "Contenu éditable de la newsletter (faire CTRL+ENTREE pour prendre en compte les modifications)",
-                    value=st.session_state["newsletter"] if "final_newsletter" not in st.session_state
+                    value=st.session_state["newsletter"] if ("final_newsletter" not in st.session_state or generation_button)
                     else st.session_state["final_newsletter"],
                     height=400, key="final_newsletter")
 
