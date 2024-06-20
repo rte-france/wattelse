@@ -101,7 +101,6 @@ h3 {
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1.5em;
-  padding-bottom: 15px;
   position: relative;
 
 }
@@ -121,6 +120,7 @@ a:hover { background: #c50000; color: #eee; text-decoration: none; }
   font-family: "Raleway", sans-serif;
   display: flex;
   align-items: stretch;
+  padding-bottom: 15px;
 }
 
 .date_range{
