@@ -21,6 +21,7 @@ from wattelse.summary import GPTSummarizer
 COLUMN_URL = "url"
 MIN_TEXT_LENGTH = 150
 EMBEDDING_MODEL_NAME = "dangvantuan/sentence-camembert-large"
+TOP_N_WORDS = 5
 #EMBEDDING_MODEL_NAME = "antoinelouis/biencoder-camembert-base-mmarcoFR"
 
 css_style = Path(inspect.getfile(generate_newsletter)).parent / "newsletter.css"
@@ -103,6 +104,7 @@ def train_model():
         indices=None,
         embedding_model_name=EMBEDDING_MODEL_NAME,
         use_cache=False,
+        top_n_words=TOP_N_WORDS,
     )
 
 
