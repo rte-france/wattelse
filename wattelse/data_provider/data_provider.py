@@ -11,6 +11,7 @@ from typing import List, Dict, Tuple, Optional
 import jsonlines
 import langdetect
 import pandas as pd
+from dateutil import parser
 from goose3 import Goose
 from joblib import delayed, Parallel
 from loguru import logger
@@ -46,7 +47,7 @@ class DataProvider(ABC):
 
     @abstractmethod
     def get_articles(
-        self, query: str, after: str, before: str, max_results: int, language: str = None
+            self, query: str, after: str, before: str, max_results: int, language: str = None
     ) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines.
 
@@ -71,14 +72,15 @@ class DataProvider(ABC):
         pass
 
     def get_articles_batch(
-        self, queries_batch: List[List], max_results: int, language: str = None
+            self, queries_batch: List[List], max_results: int, language: str = None
     ) -> List[Dict]:
         """Requests the news data provider for a list of queries, collects a set of URLs to be parsed,
         return results as json lines"""
         articles = []
         for entry in queries_batch:
             logger.info(f"Processing query: {entry}")
-            articles += self.get_articles(query=entry[0], after=entry[1], before=entry[2], max_results=max_results, language=language)
+            articles += self.get_articles(query=entry[0], after=entry[1], before=entry[2], max_results=max_results,
+                                          language=language)
         # remove duplicates
         articles = [dict(t) for t in {tuple(d.items()) for d in articles}]
         logger.info(f"Collected {len(articles)} articles")
@@ -132,25 +134,23 @@ class DataProvider(ABC):
 
     def _filter_out_bad_text(self, text):
         if (
-            "[if" in text
-            or "javascript" in text
-            or "cookie" in text
-            or "pour lire la suite, rejoignez notre communauté d'abonnés" in text
+                "[if" in text
+                or "javascript" in text
+                or "cookie" in text
+                or "pour lire la suite, rejoignez notre communauté d'abonnés" in text
         ):
             logger.warning(f"Bad text: {text}")
             return None
         return text
-
 
     @abstractmethod
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a NewsCatcher news entry"""
         pass
 
-
     def process_entries(self, entries: List, lang_filter: str = None):
         # Number of parallel jobs you want to run (adjust as needed)
-        num_jobs = -1 # all available cpus
+        num_jobs = -1  # all available cpus
 
         # Parallelize the loop using joblib
         results = Parallel(n_jobs=num_jobs)(
@@ -162,3 +162,13 @@ class DataProvider(ABC):
 
         logger.info(f"Returned: {len(results)} entries")
         return results
+
+    @classmethod
+    def parse_date(cls, date_string: str) -> str:
+        """Parse a date in any format and returns a string formatted in a standard way"""
+        try:
+            parsed_date = parser.parse(date_string)
+            return parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            logger.warning(f"Cannot parse date: {date_string}")
+            return ""

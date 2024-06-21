@@ -34,12 +34,12 @@ from wattelse.common.cache_utils import load_embeddings, save_embeddings, get_ha
 DEFAULT_EMBEDDING_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_TOP_N_WORDS = 10
 DEFAULT_NR_TOPICS = 10
-DEFAULT_NGRAM_RANGE = (1, 1)
+DEFAULT_NGRAM_RANGE = (1, 2)
 DEFAULT_MIN_DF = 2
 
 DEFAULT_UMAP_MODEL = UMAP(n_neighbors=15, n_components=5, min_dist=0.0, metric="cosine")
 DEFAULT_HBSCAN_MODEL = HDBSCAN(
-    min_cluster_size=15,
+    min_cluster_size=10,
     metric="euclidean",
     cluster_selection_method="eom",
     prediction_data=True,

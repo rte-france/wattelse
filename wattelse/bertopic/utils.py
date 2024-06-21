@@ -42,7 +42,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def load_data(full_data_name: Path):
+def load_data(full_data_name: str):
     logger.info(f"Loading data from: {full_data_name}")
     df = file_to_pd(full_data_name)
     # convert timestamp column
@@ -54,7 +54,7 @@ def load_data(full_data_name: Path):
 
 def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
     """Read data in various format and convert in to a DataFrame"""
-    data_path = base_dir / file_name if base_dir else file_name
+    data_path = base_dir / file_name if base_dir else Path(file_name)
     if ".csv" in file_name:
         return pd.read_csv(data_path)
     elif ".jsonl" in file_name or ".jsonlines" in file_name:
