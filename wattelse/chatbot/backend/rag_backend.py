@@ -26,7 +26,8 @@ from wattelse.chatbot.backend import DATA_DIR
 from wattelse.chatbot.backend.vector_database import format_docs, \
     load_document_collection
 
-from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION, FR_SYSTEM_RAG_LLAMA3, FR_USER_RAG_LLAMA3
+from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION, FR_SYSTEM_RAG_LLAMA3, FR_USER_RAG_LLAMA3, \
+    FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3, FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
     LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
 from wattelse.indexer.document_splitter import split_file
@@ -119,6 +120,8 @@ class RAGBackEnd:
         # Prompts
         self.system_prompt = FR_SYSTEM_RAG_LLAMA3
         self.user_prompt = FR_USER_RAG_LLAMA3
+        self.system_prompt_query_contextualization = FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3
+        self.user_prompt_query_contextualization = FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
 
     def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
@@ -310,10 +313,16 @@ class RAGBackEnd:
 
             logger.debug("Contextualizing prompt with history...")
             prompt = ChatPromptTemplate(input_variables=["history", "query"],
-                                        messages=[HumanMessagePromptTemplate(
+                                        messages=[
+                                            SystemMessagePromptTemplate(
                                             prompt=PromptTemplate(
-                                                input_variables=["history", "query"],
-                                                template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
+                                                input_variables=[],
+                                                template=self.system_prompt_query_contextualization)
+                                        ),
+                                            HumanMessagePromptTemplate(
+                                                prompt=PromptTemplate(
+                                                    input_variables=["history", "query"],
+                                                    template=self.user_prompt_query_contextualization)
                                         )])
 
             chain = (prompt
