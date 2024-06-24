@@ -253,7 +253,7 @@ class RAGBackEnd:
 
         # Definition of RAG chain
         # - prompt
-        prompt = ChatPromptTemplate(input_variables=['context', 'query'],
+        prompt = ChatPromptTemplate(input_variables=['context', "history", 'query'],
                                     messages=[
                                         SystemMessagePromptTemplate(
                                             prompt=PromptTemplate(
@@ -262,7 +262,7 @@ class RAGBackEnd:
                                         ),
                                         HumanMessagePromptTemplate(
                                             prompt=PromptTemplate(
-                                                input_variables=['context', 'query'],
+                                                input_variables=['context', "history",'query'],
                                                 template=self.user_prompt)
                                     )])
 
@@ -275,8 +275,11 @@ class RAGBackEnd:
         )
         # returns both answer and sources
         rag_chain = RunnableParallel(
-            {"context": retriever if not self.multi_query_mode else multi_query_retriever,
-             "expected_answer_size": self.get_detail_level, "query": RunnablePassthrough()}
+            {
+                "context": retriever if not self.multi_query_mode else multi_query_retriever,
+                "history": (lambda x: history_as_text(history)),
+                "query": RunnablePassthrough(),
+             }
         ).assign(answer=rag_chain_from_docs)
 
         # TODO: implement reranking (optional)
@@ -330,9 +333,7 @@ class RAGBackEnd:
                      | StrOutputParser())
 
             # Format messages into a single string
-            history_as_text = ""
-            for turn in history:
-                history_as_text += f"{turn['role']}: {turn['content']}\n"
+            history_as_text = history_as_text(history)
             contextualized_question = chain.invoke({"query": message, "history": history_as_text})
             logger.debug(f"Contextualized question: {contextualized_question}")
             return contextualized_question
@@ -348,3 +349,10 @@ def streamer(stream):
             yield ""
         else:
             yield json.dumps(chunk) + "\n"
+
+def history_as_text(history: List[dict[str, str]]) -> str:
+    """Format conversation history as a text string"""
+    history_as_text = ""
+    for turn in history:
+        history_as_text += f"{turn['role']}: {turn['content']}\n"
+    return history_as_text
