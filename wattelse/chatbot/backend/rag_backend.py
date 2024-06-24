@@ -353,6 +353,7 @@ def streamer(stream):
 def history_as_text(history: List[dict[str, str]]) -> str:
     """Format conversation history as a text string"""
     history_as_text = ""
-    for turn in history:
-        history_as_text += f"{turn['role']}: {turn['content']}\n"
+    if history is not None:
+        for turn in history:
+            history_as_text += f"{turn['role']}: {turn['content']}\n"
     return history_as_text
