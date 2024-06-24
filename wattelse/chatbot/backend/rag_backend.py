@@ -277,7 +277,7 @@ class RAGBackEnd:
         rag_chain = RunnableParallel(
             {
                 "context": retriever if not self.multi_query_mode else multi_query_retriever,
-                "history": (lambda x: history_as_text(history)),
+                "history": (lambda x: get_history_as_text(history)),
                 "query": RunnablePassthrough(),
              }
         ).assign(answer=rag_chain_from_docs)
@@ -350,7 +350,7 @@ def streamer(stream):
         else:
             yield json.dumps(chunk) + "\n"
 
-def history_as_text(history: List[dict[str, str]]) -> str:
+def get_history_as_text(history: List[dict[str, str]]) -> str:
     """Format conversation history as a text string"""
     history_as_text = ""
     if history is not None:
