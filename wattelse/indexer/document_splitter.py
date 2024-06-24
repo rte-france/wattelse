@@ -9,6 +9,7 @@ from langchain_core.documents import Document
 from langchain_text_splitters import TextSplitter, MarkdownHeaderTextSplitter, HTMLSectionSplitter, \
     RecursiveCharacterTextSplitter
 from llama_index.core import node_parser
+from wattelse.indexer.structured_document_header_hierarchy import get_html_hierarchy, get_markdown_hierarchy
 import re
 
 class SentenceSplitter(TextSplitter):
@@ -37,6 +38,7 @@ def split_file(file_extension: str, docs: List[Document], use_sentence_splitter:
         splits = []
         for doc in docs:
             new_docs = text_splitter.split_text(doc.page_content)
+            new_docs = get_markdown_hierarchy(new_docs) # concatenates parent-headers to the beginning of each subsection
             for d in new_docs:
                 d.metadata = doc.metadata
             splits += new_docs
@@ -50,6 +52,7 @@ def split_file(file_extension: str, docs: List[Document], use_sentence_splitter:
         splits = []
         for doc in docs:
             new_docs = text_splitter.split_text(doc.page_content)
+            new_docs = get_html_hierarchy(new_docs) # concatenates parent-headers to the beginning of each subsection
             for d in new_docs:
                 d.page_content = re.sub(r'[^\S\n]{2,}', ' ', d.page_content)  # removes extra spaces that are not line returns
                 d.metadata = doc.metadata
