@@ -17,7 +17,7 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate ,PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_openai import ChatOpenAI
 from loguru import logger
@@ -26,7 +26,7 @@ from wattelse.chatbot.backend import DATA_DIR
 from wattelse.chatbot.backend.vector_database import format_docs, \
     load_document_collection
 
-from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
+from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION, FR_SYSTEM_RAG_LLAMA3, FR_USER_RAG_LLAMA3
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
     LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
 from wattelse.indexer.document_splitter import split_file
@@ -115,6 +115,10 @@ class RAGBackEnd:
 
         # Generate llm config for langchain
         self.llm = get_chat_model(self.llm_api_name)
+
+        # Prompts
+        self.system_prompt = FR_SYSTEM_RAG_LLAMA3
+        self.user_prompt = FR_USER_RAG_LLAMA3
 
     def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
@@ -246,11 +250,17 @@ class RAGBackEnd:
 
         # Definition of RAG chain
         # - prompt
-        prompt = ChatPromptTemplate(input_variables=['context', 'expected_answer_size', 'query'],
-                                    messages=[HumanMessagePromptTemplate(
-                                        prompt=PromptTemplate(
-                                            input_variables=['context', 'expected_answer_size', 'query'],
-                                            template=self.custom_prompt)
+        prompt = ChatPromptTemplate(input_variables=['context', 'query'],
+                                    messages=[
+                                        SystemMessagePromptTemplate(
+                                            prompt=PromptTemplate(
+                                                input_variables=[],
+                                                template=self.system_prompt)
+                                        ),
+                                        HumanMessagePromptTemplate(
+                                            prompt=PromptTemplate(
+                                                input_variables=['context', 'query'],
+                                                template=self.user_prompt)
                                     )])
 
         # - RAG chain
