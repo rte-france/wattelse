@@ -214,5 +214,4 @@ FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 = ("Historique de conversation :\n"
 										  "```\n"
 										  "{history}\n"
 										  "```\n\n"
-						 				  "Question finale de l'utilisateur: {query}\n"
-										  "Question finale de l'utilisateur reformulée :")
+						 				  "Question finale de l'utilisateur: {query}\n")

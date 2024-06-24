@@ -253,7 +253,7 @@ class RAGBackEnd:
 
         # Definition of RAG chain
         # - prompt
-        prompt = ChatPromptTemplate(input_variables=['context', "history", 'query'],
+        prompt = ChatPromptTemplate(input_variables=["context", "history", "query"],
                                     messages=[
                                         SystemMessagePromptTemplate(
                                             prompt=PromptTemplate(
@@ -277,8 +277,9 @@ class RAGBackEnd:
         rag_chain = RunnableParallel(
             {
                 "context": retriever if not self.multi_query_mode else multi_query_retriever,
-                "history": (lambda x: get_history_as_text(history)),
-                "query": RunnablePassthrough(),
+                "history": (lambda _: get_history_as_text(history)),
+                "query": (lambda _: message),
+                "contextualized_query": RunnablePassthrough(),
              }
         ).assign(answer=rag_chain_from_docs)
 
@@ -286,7 +287,7 @@ class RAGBackEnd:
 
         # Handle conversation history
         contextualized_question = "query : " + self.contextualize_question(message, history)
-        logger.debug(f"Calling RAG chain for question : \"{contextualized_question}\"...")
+        logger.debug(f"Calling RAG chain for question : \"{message}\"...")
 
         # Handle answer
         if stream:
