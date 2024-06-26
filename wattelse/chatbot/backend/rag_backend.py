@@ -26,7 +26,7 @@ from wattelse.chatbot.backend import DATA_DIR
 from wattelse.chatbot.backend.vector_database import format_docs, \
     load_document_collection
 
-from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION, FR_SYSTEM_RAG_LLAMA3, FR_USER_RAG_LLAMA3, \
+from wattelse.api.prompts import FR_SYSTEM_RAG_LLAMA3, FR_USER_RAG_LLAMA3, \
     FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3, FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
     LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
@@ -111,7 +111,6 @@ class RAGBackEnd:
         self.llm_api_name = generator_config["llm_api_name"]
         self.expected_answer_size = generator_config["expected_answer_size"]
         self.remember_recent_messages = generator_config["remember_recent_messages"]
-        self.custom_prompt = generator_config["custom_prompt"]
         self.temperature = generator_config["temperature"]
 
         # Generate llm config for langchain
