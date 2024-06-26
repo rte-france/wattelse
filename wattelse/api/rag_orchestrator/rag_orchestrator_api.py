@@ -3,9 +3,7 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-import configparser
 import json
-from pathlib import Path
 
 from loguru import logger
 from typing import List, Dict
@@ -16,20 +14,17 @@ from starlette.responses import FileResponse, StreamingResponse
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, \
     ENDPOINT_QUERY_RAG, ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, \
-    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD
+    ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
 SESSION_TIMEOUT = 30  # in minutes
-
-API_CONFIG_FILE_PATH = Path(__file__).parent / "rag_orchestrator_api.cfg"
-config = configparser.ConfigParser()
-config.read(API_CONFIG_FILE_PATH)
 
 # Initialize API
 app = FastAPI()
 
 # management of sessions
 RAG_SESSIONS: Dict[str, RAGBackEnd] = {}  # used to link a backend to a group
+
 
 class RAGOrchestratorAPIError(Exception):
     """Generic exception for RAG orchestrator API"""
@@ -42,7 +37,6 @@ class RAGQuery(BaseModel):
     history: List[Dict[str, str]] | None
     selected_files: List[str] | None
     stream: bool = False
-    
 
 
 @app.get(ENDPOINT_CHECK_SERVICE)
@@ -104,6 +98,7 @@ def list_available_docs(group_id: str) -> str:
     file_names = RAG_SESSIONS[group_id].get_available_docs()
     return json.dumps(file_names)
 
+
 def data_streamer(stream_data):
     """Generator to stream response from RAGBackend to RAG client.
     Encodes received chunks in a binary format and streams them.
@@ -118,15 +113,16 @@ async def query_rag(rag_query: RAGQuery) -> StreamingResponse:
     check_if_session_exists(rag_query.group_id)
     logger.debug(f"[Group: {rag_query.group_id}] Received query: {rag_query.message}")
     response = RAG_SESSIONS[rag_query.group_id].query_rag(
-            rag_query.message,
-            history=rag_query.history,
-            selected_files=rag_query.selected_files,
-            stream=rag_query.stream,
-            )
+        rag_query.message,
+        history=rag_query.history,
+        selected_files=rag_query.selected_files,
+        stream=rag_query.stream,
+    )
     if rag_query.stream:
         return StreamingResponse(data_streamer(response), media_type='text/event-stream')
     else:
         return json.dumps(response)
+
 
 @app.post(ENDPOINT_CLEAN_SESSIONS + "/{group_id}")
 def clean_sessions(group_id: str | None = None):
@@ -147,6 +143,7 @@ def check_if_session_exists(group_id: str):
     """Check if the session_id exists, if not throw an exception"""
     if group_id not in RAG_SESSIONS:
         raise RAGOrchestratorAPIError(f"Session {group_id} does not exist, please reconnect")
+
 
 @app.get(ENDPOINT_DOWNLOAD + "/{group_id}/{file_name}")
 def download_file(group_id: str, file_name: str):
