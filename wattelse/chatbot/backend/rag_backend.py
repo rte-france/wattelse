@@ -56,7 +56,7 @@ def get_chat_model(llm_api_name) -> BaseChatModel:
                       }
         return ChatOpenAI(**llm_config)
     elif llm_api_name == CHATGPT_LLM:
-        llm_config = {"openai_api_key": api_config["openai_api_key"],
+        llm_config = {"openai_api_key": os.getenv("OPENAI_API_KEY"),
                       "model_name": api_config["model_name"],
                       "temperature": api_config["temperature"],
                       }
