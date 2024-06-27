@@ -104,6 +104,11 @@
     font-size: 20px; /* Adjust font size as needed */
     margin-right: 1rem;
     color: var(--main-color); /* Set icon color */
+    display: inline;
+}
+
+.bot-message p {
+  display: inline;
 }
 
 .bot-message.animate::before { /* Animation while generation in progress */
