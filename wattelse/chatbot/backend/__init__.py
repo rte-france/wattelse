@@ -7,7 +7,6 @@ import configparser
 import os
 
 from pathlib import Path
-from pydoc import locate
 
 from wattelse.common import BASE_DATA_DIR, BASE_CACHE_PATH
 from wattelse.common.config_utils import parse_literal
@@ -44,6 +43,4 @@ config.read(Path(__file__).parent / "rag_config.cfg")
 retriever_config =  parse_literal(dict(config["retriever"]))
 
 generator_config = parse_literal(dict(config["generator"]))
-# resolve variable value
-generator_config["custom_prompt"] = locate(generator_config["custom_prompt"])
 

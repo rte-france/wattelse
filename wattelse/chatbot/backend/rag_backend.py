@@ -17,7 +17,7 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate ,PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_openai import ChatOpenAI
 from loguru import logger
@@ -26,7 +26,8 @@ from wattelse.chatbot.backend import DATA_DIR
 from wattelse.chatbot.backend.vector_database import format_docs, \
     load_document_collection
 
-from wattelse.api.prompts import FR_USER_MULTITURN_QUESTION_SPECIFICATION
+from wattelse.api.prompts import FR_SYSTEM_RAG_LLAMA3, FR_USER_RAG_LLAMA3, \
+    FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3, FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
     LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
 from wattelse.indexer.document_splitter import split_file
@@ -110,11 +111,16 @@ class RAGBackEnd:
         self.llm_api_name = generator_config["llm_api_name"]
         self.expected_answer_size = generator_config["expected_answer_size"]
         self.remember_recent_messages = generator_config["remember_recent_messages"]
-        self.custom_prompt = generator_config["custom_prompt"]
         self.temperature = generator_config["temperature"]
 
         # Generate llm config for langchain
         self.llm = get_chat_model(self.llm_api_name)
+
+        # Prompts
+        self.system_prompt = FR_SYSTEM_RAG_LLAMA3
+        self.user_prompt = FR_USER_RAG_LLAMA3
+        self.system_prompt_query_contextualization = FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3
+        self.user_prompt_query_contextualization = FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
 
     def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
@@ -246,11 +252,17 @@ class RAGBackEnd:
 
         # Definition of RAG chain
         # - prompt
-        prompt = ChatPromptTemplate(input_variables=['context', 'expected_answer_size', 'query'],
-                                    messages=[HumanMessagePromptTemplate(
-                                        prompt=PromptTemplate(
-                                            input_variables=['context', 'expected_answer_size', 'query'],
-                                            template=self.custom_prompt)
+        prompt = ChatPromptTemplate(input_variables=["context", "history", "query"],
+                                    messages=[
+                                        SystemMessagePromptTemplate(
+                                            prompt=PromptTemplate(
+                                                input_variables=[],
+                                                template=self.system_prompt)
+                                        ),
+                                        HumanMessagePromptTemplate(
+                                            prompt=PromptTemplate(
+                                                input_variables=['context', "history",'query'],
+                                                template=self.user_prompt)
                                     )])
 
         # - RAG chain
@@ -262,15 +274,19 @@ class RAGBackEnd:
         )
         # returns both answer and sources
         rag_chain = RunnableParallel(
-            {"context": retriever if not self.multi_query_mode else multi_query_retriever,
-             "expected_answer_size": self.get_detail_level, "query": RunnablePassthrough()}
+            {
+                "context": retriever if not self.multi_query_mode else multi_query_retriever,
+                "history": (lambda _: get_history_as_text(history)),
+                "query": (lambda _: message),
+                "contextualized_query": RunnablePassthrough(),
+             }
         ).assign(answer=rag_chain_from_docs)
 
         # TODO: implement reranking (optional)
 
         # Handle conversation history
-        contextualized_question = self.contextualize_question(message, history)
-        logger.debug(f"Calling RAG chain for question : \"{contextualized_question}\"...")
+        contextualized_question = "query : " + self.contextualize_question(message, history)
+        logger.debug(f"Calling RAG chain for question : \"{message}\"...")
 
         # Handle answer
         if stream:
@@ -300,10 +316,16 @@ class RAGBackEnd:
 
             logger.debug("Contextualizing prompt with history...")
             prompt = ChatPromptTemplate(input_variables=["history", "query"],
-                                        messages=[HumanMessagePromptTemplate(
+                                        messages=[
+                                            SystemMessagePromptTemplate(
                                             prompt=PromptTemplate(
-                                                input_variables=["history", "query"],
-                                                template=FR_USER_MULTITURN_QUESTION_SPECIFICATION)
+                                                input_variables=[],
+                                                template=self.system_prompt_query_contextualization)
+                                        ),
+                                            HumanMessagePromptTemplate(
+                                                prompt=PromptTemplate(
+                                                    input_variables=["history", "query"],
+                                                    template=self.user_prompt_query_contextualization)
                                         )])
 
             chain = (prompt
@@ -311,9 +333,7 @@ class RAGBackEnd:
                      | StrOutputParser())
 
             # Format messages into a single string
-            history_as_text = ""
-            for turn in history:
-                history_as_text += f"{turn['role']}: {turn['content']}\n"
+            history_as_text = get_history_as_text(history)
             contextualized_question = chain.invoke({"query": message, "history": history_as_text})
             logger.debug(f"Contextualized question: {contextualized_question}")
             return contextualized_question
@@ -329,3 +349,11 @@ def streamer(stream):
             yield ""
         else:
             yield json.dumps(chunk) + "\n"
+
+def get_history_as_text(history: List[dict[str, str]]) -> str:
+    """Format conversation history as a text string"""
+    history_as_text = ""
+    if history is not None:
+        for turn in history:
+            history_as_text += f"{turn['role']}: {turn['content']}\n"
+    return history_as_text

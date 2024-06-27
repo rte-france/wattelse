@@ -230,6 +230,7 @@ async function postUserMessageToRAG(userMessage) {
     let accumulatedData = "";
     let chunk;
     let noExtract = false;
+    let streamResponse = "";
 
     do {
         // Handle too long response from backend
@@ -273,7 +274,8 @@ async function postUserMessageToRAG(userMessage) {
                     botDiv.innerHTML = "";
                     botDiv.classList.remove("waiting-div");
                 }
-                botDiv.innerHTML += json_chunk.answer;
+                streamResponse += json_chunk.answer;
+                botDiv.innerHTML = marked.parse(streamResponse);
             }
         });
 
