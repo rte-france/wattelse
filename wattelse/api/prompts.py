@@ -187,20 +187,19 @@ FR_USER_BASE_MULTITURN_QUERY = ("À partir de l'historique de la conversation, r
 
 FR_SYSTEM_RAG_LLAMA3 = ("You are an helpfull assistant developed by RTE (Réseau de Transport d'Électricité). "
 						"You help users answer questions based on internal RTE documents. "
-						"Based on the documents provided and the history of the conversation, "
-						"answer the user query. Your answer must be factual and to the point. "
+						"Based on the documents provided and the conversation history, answer the user query. "
 						"Don't start your answer with sentences like \"According to documents...\", "
-						"answer the query directly. Your answer must be in french. ")
+						"answer the query directly. Your answer must be in french.")
 
-FR_USER_RAG_LLAMA3 = ("Extraits de documents :\n"
+FR_USER_RAG_LLAMA3 = ("Documents:\n"
 					  "```\n"
 					  "{context}\n"
 					  "```\n\n"
-					  "Historique de la conversation :\n"
+					  "Conversation history:\n"
 					  "```\n"
 					  "{history}\n"
 					  "```\n\n"
-					  "Question de l'utilisateur : {query}")
+					  "User query: {query}")
 
 FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 = ("You are an helpfull assistant that helps for query contextualization task. "
 											"Based on the conversation history and user last query, "
@@ -212,8 +211,8 @@ FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 = ("You are an helpfull assistant that 
 											"answer with the rephrased query directly. "
 											"The rephrased query must be in french.")
 
-FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 = ("Historique de conversation :\n"
+FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 = ("Conversation history:\n"
 										  "```\n"
 										  "{history}\n"
 										  "```\n\n"
-						 				  "Question finale de l'utilisateur: {query}\n")
+						 				  "User last query: {query}")
