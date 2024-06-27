@@ -185,7 +185,7 @@ FR_USER_BASE_MULTITURN_QUERY = ("À partir de l'historique de la conversation, r
 
 ### LLAMA 3 ###
 
-FR_SYSTEM_RAG_LLAMA3 = ("You are an helpfull assistant developed by RTE (Réseau de Transport d'Électricité). "
+FR_SYSTEM_RAG_LLAMA3 = ("You are an helpful assistant developed by RTE (Réseau de Transport d'Électricité). "
 						"You help users answer questions based on internal RTE documents. "
 						"Based on the documents provided and the conversation history, answer the user query. "
 						"Don't start your answer with sentences like \"According to documents...\", "
@@ -201,7 +201,7 @@ FR_USER_RAG_LLAMA3 = ("Documents:\n"
 					  "```\n\n"
 					  "User query: {query}")
 
-FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 = ("You are an helpfull assistant that helps for query contextualization task. "
+FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 = ("You are an helpful assistant that helps for query contextualization task. "
 											"Based on the conversation history and user last query, "
 											"which may refer to the conversation history, rephrase user last query "
 											"to make it understandable without the conversation history. "
