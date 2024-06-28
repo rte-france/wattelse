@@ -150,6 +150,20 @@ class RAGBackEnd:
 
         # Store and embed documents in the vector database
         self.document_collection.add_documents(splits)
+        
+    # A little note:
+    # There is a reason why I had to create a unique id inside metadata field for each document, 
+    # even after changing the _results_to_docs function of chroma class and including the document id
+    # (which is generated automatically by Chroma and which is also unique for each document) into metadata.
+    # As you can see better on custom chroma script, the custom_results_to_docs and custom_results_to_docs_and_scores
+    # functions are only called when performing the similarity searches. Therefore, this insertion of
+    # document id into metadata field only takes place after the retrieval step.
+    # Yet, I needed to have a unique id for each document before the retrieval step, so that I can
+    # filter the database only to get the relevant extracts that were used in the generation of the wrong answer
+    # and make the search only on those top_n_extacts. This is why I had to create a unique id for each document
+    # inside the metadata field (as_retriever search kwargs allows only for filtering by metadata), 
+    # at the moment of adding the document to the collection.
+    # So we end up having two unique ids, inside the metadata :/
 
     def remove_docs(self, doc_file_names: List[str]):
         """Remove a list of documents from the document collection"""
