@@ -216,3 +216,16 @@ FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 = ("Conversation history:\n"
 										  "{history}\n"
 										  "```\n\n"
 						 				  "User last query: {query}")
+
+
+EXTRACT_UPDATE_PROMPT = ("You are an AI expert to help with document updates. "
+					"Below you can see the document with missing or outdated information. "
+					"Using the updated information provided by a human expert, "
+     				"your job is to rewrite the document with the new information. "
+					"Only change the parts of the document that need to be updated and "
+     				"keep the rest of the document as it is. "
+					"Make as few changes as possible to keep the document consistent. "
+					"---\nDocument:\n"
+					'"""\n{document}\n"""\n---\n'
+					'---\nThe updated information provided by human expert:\n'
+					'"""\n{correct_answer}\n"""\n---\n')

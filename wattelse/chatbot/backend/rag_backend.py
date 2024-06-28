@@ -9,6 +9,7 @@ import logging
 import os
 import typing
 from typing import List, Dict, BinaryIO
+import uuid
 
 from fastapi.responses import StreamingResponse
 from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
@@ -27,7 +28,7 @@ from wattelse.chatbot.backend.vector_database import format_docs, \
     load_document_collection
 
 from wattelse.api.prompts import FR_SYSTEM_RAG_LLAMA3, FR_USER_RAG_LLAMA3, \
-    FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3, FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
+    FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3, FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3, EXTRACT_UPDATE_PROMPT
 from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
     LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
 from wattelse.indexer.document_splitter import split_file
@@ -140,6 +141,12 @@ class RAGBackEnd:
         logger.debug(f"Chunking: {path}")
         splits = split_file(path.suffix, docs)
         logger.info(f"Number of chunks for file {file_name}: {len(splits)}")
+        
+        #add a unique id to each document's metadata to be able to update the document later
+        for split in splits:
+            unique_id = str(uuid.uuid4())  # Convert UUID to string
+             # Add the unique identifier to the document's metadata
+            split.metadata["unique_id"] = unique_id
 
         # Store and embed documents in the vector database
         self.document_collection.add_documents(splits)
@@ -297,6 +304,10 @@ class RAGBackEnd:
             sources = resp.get("context")
             # Transform sources
             relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
+            
+            # save answer and relevant extracts to be used also for user feedback and update 
+            self.answer=answer
+            self.relevant_extracts = relevant_extracts
 
             # Return answer and sources
             return {"answer": answer, "relevant_extracts": relevant_extracts}
@@ -341,6 +352,103 @@ class RAGBackEnd:
     def get_detail_level(self, question: str):
         """Returns the level of detail we wish in the answer. Values are in this range: {"courte", "détaillée"}"""
         return "courte" if self.expected_answer_size == "short" else "détaillée"
+    
+    
+    ### This section below contains the RAGchain and functions I built to be able to update the extract
+    
+    def get_document_by_uuid(self, document_ids: List[str]):
+        """Create a filter on the document collection based on a list of their unique ids"""
+        if not document_ids:
+            return None
+        elif len(document_ids) == 1:
+            return {"unique_id": document_ids[0]}
+        else:
+            return {"$or": [{"unique_id": f} for f in document_ids]}
+        
+    
+    def handle_user_feedback(self):
+        feedback = input("Do you think the answer was correct ? (yes/no)")
+        if feedback == "yes":
+            print("Thank you for your feedback")
+        else: 
+            # when the answer is wrong, we ask the user to provide the correct answer
+            self.wrong_answer = self.answer
+            self.uuids = [doc.get("metadata")["unique_id"] for doc in self.relevant_extracts]
+            
+            print("Please provide the correct answer")
+            self.correct_answer = input()
+            print("Thank you for your feedback")
+            
+            
+    def update_extract_with_wrong_info(self):
+        wrong_answer = self.wrong_answer
+        
+        #Get document filter, only the extracts that were used in the generation of wrong answer
+        document_filter = self.get_document_by_uuid(self.uuids)
+
+        # Configure retriever
+        search_kwargs = {
+            "k": 1,  # we only want the top most similar extract to the wrong answer
+           "filter": {} if not document_filter else document_filter,
+        }
+      
+        retrieval_method = "similarity"
+        retriever = self.document_collection.collection.as_retriever(
+                search_type=retrieval_method,
+                search_kwargs=search_kwargs
+            )
+       
+        
+        # Definition of RAG chain
+        # - prompt
+        prompt = ChatPromptTemplate(input_variables=['document', 'correct_answer'],
+                                    messages=[HumanMessagePromptTemplate(
+                                        prompt=PromptTemplate(
+                                            input_variables=['document', 'correct_answer'],
+                                            template=EXTRACT_UPDATE_PROMPT)
+                                    )])
+
+        # - RAG chain
+        rag_chain_from_docs = (
+                RunnablePassthrough.assign(document=(lambda x: format_docs(x["document"])))
+                | prompt
+                | self.llm
+                | StrOutputParser()
+        )
+        
+        rag_chain = RunnableParallel(
+            {"document": retriever,
+             "correct_answer": self.get_right_answer}
+        ).assign(modified_extract=rag_chain_from_docs)
+        
+        
+        # Handle Update
+        resp = rag_chain.invoke(wrong_answer)
+        modified_extract = resp.get("modified_extract") # the new extact generated by LLM
+       # print("The document to update is: ",  resp.get("document"), "\n\n")
+       # print("The uuids of relevant extracts are: ", self.uuids, "\n\n")
+        
+        source_to_update = resp.get("document")[0]
+        update_id = source_to_update.metadata["document_id"] # this will go into document_update method
+        
+        # we want to preserve the metadata of the original extract as it is
+        metadata= self.document_collection.collection.get(update_id).get("metadatas")[0]
+        new_document = Document(
+            page_content=modified_extract,
+            metadata=metadata)
+        
+        ## These two prints are for checking how much the extract has changed, can be removed later:
+        print("The previous extract was: \n", source_to_update.page_content, "\n\n")
+        print("The updated extract is: \n", new_document.page_content)
+              
+        # Update the extract in the database
+        self.document_collection.collection.update_document(update_id, new_document)
+        print("The extract has been updated")
+        
+    # callable for right answer to pass into RAG chain as it expects either a callable or runnable
+    def get_right_answer(self, wrong_answer : str):
+        #Returns the right answer provided by user 
+        return self.correct_answer
 
 
 def streamer(stream):
@@ -357,3 +465,6 @@ def get_history_as_text(history: List[dict[str, str]]) -> str:
         for turn in history:
             history_as_text += f"{turn['role']}: {turn['content']}\n"
     return history_as_text
+
+
+
