@@ -138,3 +138,6 @@ postman
 
 ## DVC
 .dvc/
+
+# Streamlit password
+**/.streamlit/
