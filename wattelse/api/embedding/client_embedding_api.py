@@ -22,7 +22,8 @@ class EmbeddingAPI(Embeddings):
         config = configparser.ConfigParser()
         config.read(Path(__file__).parent / "embedding_api.cfg")
         self.port = config.get("EMBEDDING_API_CONFIG", "port")
-        self.url = f'http://localhost:{self.port}'
+        self.host = config.get("EMBEDDING_API_CONFIG", "host")
+        self.url = f'http://{self.host}:{self.port}'
         self.model_name = config.get("EMBEDDING_API_CONFIG", "model_name")
 
     def get_api_model_name(self) -> str:
