@@ -1,0 +1,7 @@
+"Informations principales":
+  - name: "Type de raccordement"
+    prompt: "Quel est le type de raccordement pour la solution envisagée ? Répond uniquement par \"Antenne\", \"Piquage\" ou \"Coupure\"."
+
+  - name: "Poste/Liaison"
+    prompt: "Quel est le poste ou la liaison de raccordement concerné par la solution envisagée ? Répond uniquement par le nom du poste ou de la liaison."
+
