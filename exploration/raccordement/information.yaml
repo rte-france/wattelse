@@ -5,3 +5,36 @@
   - name: "Poste/Liaison"
     prompt: "Quel est le poste ou la liaison de raccordement concerné par la solution envisagée ? Répond uniquement par le nom du poste ou de la liaison."
 
+"Description de la solution de raccordement":
+  - name: "Domaine de tension de raccordement de référence"
+
+  - name: "Tension de raccordement "
+
+  - name: "Stratégie de raccordement retenue"
+
+  - name: "Stratégies écratées"
+
+  - name: "S3REnR"
+
+  - name: "Nécessité d'un transfert de capacité dans le cadre du S3REnR"
+
+  - name: "Consistance des travaux"
+
+  - name: "Coût du Raccordement"
+
+  - name: "Notas relatives au coût"
+
+  - name: "Délai de raccordement"
+
+  - name: "Notas relatives au délai"
+
+  - name: "Installation soumise à des limitations temporaires"
+
+"Si stockage":
+  - name: "Offre de raccordement"
+
+  - name: "Conclusion de l’étude de contraintes de transit"
+
+  - name: "Travaux à la charge de RTE"
+  
+  - name: "Limitations"
