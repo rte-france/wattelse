@@ -22,7 +22,7 @@
   <!-- Register form -->
   <form method="post">
     {% csrf_token %}
-    <label class="login-label" for="username">Nom d'utilisateur :</label>
+    <label class="login-label" for="username">Nom d'utilisateur (sans espace) :</label>
     <input class="login-input" type="text" id="username" name="username" required>
 
     <label class="login-label" for="password1">Mot de passe :</label>
