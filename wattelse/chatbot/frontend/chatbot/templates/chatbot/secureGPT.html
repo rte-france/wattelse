@@ -33,25 +33,28 @@
             {% csrf_token %}
             <div class="chat-input">
                 <input type="text" class="input-field"
-                    placeholder="Entrez votre question en lien avec les documents fournis..." />
+                    placeholder="Entrez votre question..." />
                 <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
                 <button class="new-conversation-button" onclick="newConversation()"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
             </div>
             <div class="disclaimer">
-                WattElse peut afficher des informations inexactes. Vérifiez ses réponses.
+                LLM : {{ llm_name }}
             </div>
         </div>
     </div>
 
     <!-- Panel container -->
     <div class="panel-container">
+        <div class="welcome-container">
+            <div class="welcome-message">En construction...</div>
+        </div>
     </div>
 </div>
 
 <!-- Load script for chatbot page -->
 {% load static %}
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="{% static 'chatbot/llm_functions.js' %}"></script>
+<script src="{% static 'chatbot/secureGPT_functions.js' %}"></script>
 
 {% endblock %}
 

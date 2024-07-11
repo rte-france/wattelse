@@ -14,9 +14,6 @@ const sendButton = document.querySelector('.send-button');
 const userName =  JSON.parse(document.getElementById('user_name').textContent);
 const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-// separator used for streaming
-const SPECIAL_SEPARATOR = '¤¤¤¤¤';
-
 // initialize layout
 initializeLayout();
 
@@ -43,23 +40,27 @@ function initializeLayout(){
     createWelcomeMessage();
 }
 
-function getChatHistory(userMessage) {
+function getChatHistory() {
+    // Get the current chat history
+    // Returns an array of messages in the format:
+    // [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}, ...]
     let history = [];
-    chatHistory.childNodes.forEach(element => {
+    chatHistory.querySelectorAll(':scope > div').forEach(element => {
         if (element.classList.contains("user-message")) {
-            const role = "user";
+            history.push({
+                "role": "user",
+                "content": element.innerText.trim()
+            });
         }
         else if (element.classList.contains("bot-message")) {
-            const role = "bot";
+            history.push({
+                "role": "assistant",
+                "content": element.innerText.trim()
+            });
         }
-        else {
-            return;
-        }
-        history.push({
-            "role": role,
-            "content": element.innerText
-        });
     });
+
+    return history;
 }
 
 function handleUserMessage(userMessage) {
@@ -70,23 +71,15 @@ function handleUserMessage(userMessage) {
     createUserMessage(userMessage);
 
     // Post Message to RAG
-    postUserMessageToRAG(userMessage);
+    const history = getChatHistory();
+    postUserMessageToRAG(history);
 
+    // Clean user input field
     userInput.value = '';
 }
 
-// Helper function to check if the buffer contains a complete JSON object
-function isCompleteJSON(buffer) {
-  try {
-    JSON.parse(buffer);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
 
-
-async function postUserMessageToRAG(userMessage) {
+async function postUserMessageToRAG(history) {
     // Create bot waiting div
     const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
     botDiv.classList.add("waiting-div", "animate");
@@ -95,11 +88,11 @@ async function postUserMessageToRAG(userMessage) {
     // Fetch response
     const response = await fetch('', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            'csrfmiddlewaretoken': csrfmiddlewaretoken,
-            'message': userMessage,
-        })
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+        body: JSON.stringify(history)
     });
 
     const decoder = new TextDecoder();
@@ -144,7 +137,7 @@ function createBotMessage(message, nextTab="extracts") {
 function createWelcomeMessage() {
     chatHistory.innerHTML = `
     <div class="welcome-container">
-        <div class="welcome-message">Bonjour <span class="username">${userName}</span> !<br>Posez une question sur les documents.</div>
+        <div class="welcome-message">Bonjour <span class="username">${userName}</span> !</div>
     </div>
     `;
 }
