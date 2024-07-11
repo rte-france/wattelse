@@ -4,18 +4,18 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import configparser
-
-from django.http import JsonResponse
-from django.shortcuts import render, redirect
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-from langchain_openai import ChatOpenAI
 from loguru import logger
+
+from django.http import JsonResponse, StreamingHttpResponse
+from django.shortcuts import render, redirect
+
+from openai import OpenAI
 
 from wattelse.chatbot.backend import LLM_CONFIGS, FASTCHAT_LLM
 from wattelse.chatbot.backend.rag_backend import RAGError
 from wattelse.common.config_utils import parse_literal
+
+from .utils import streaming_generator_llm
 
 llm_config_file = LLM_CONFIGS.get(FASTCHAT_LLM, None)
 if llm_config_file is None:
@@ -23,12 +23,10 @@ if llm_config_file is None:
 config = configparser.ConfigParser(converters={"literal": parse_literal})
 config.read(llm_config_file)
 api_config = config["API_CONFIG"]
-llm_config = {"openai_api_key": api_config["openai_api_key"],
-              "openai_api_base": api_config["openai_url"],
-              "model_name": api_config["model_name"],
-              "temperature": api_config["temperature"],
+llm_config = {"api_key": api_config["openai_api_key"],
+              "base_url": api_config["openai_url"],
               }
-llm = ChatOpenAI(**llm_config)
+llm = OpenAI(**llm_config)
 
 
 def basic_chat(request):
@@ -50,16 +48,19 @@ def basic_chat(request):
         logger.info(f"[User: {request.user.username}] Query: {message}")
 
         # Query LLM
-        template = """Veuillez répondre à la question suivante: {question}
-        """
-        prompt = PromptTemplate.from_template(template)
-        chain = ({"question": RunnablePassthrough()}
-                 | prompt
-                 | llm
-                 | StrOutputParser())
         try:
-            answer = chain.invoke([message])
-            return JsonResponse({"message": message, "answer": answer}, status=200)
+            response = llm.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": message,
+                }
+            ],
+            model=api_config["model_name"],
+            stream=True,
+            )
+            logger.info("OK")
+            return StreamingHttpResponse(streaming_generator_llm(response), status=200, content_type='text/event-stream')
 
         except Exception as e:
             logger.error(f"[User: {request.user.username}] {e}")

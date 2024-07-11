@@ -89,6 +89,13 @@ def streaming_generator(data_stream):
             # frontend can receive multiple chunks in one pass, so we need to split them.
             yield chunk.decode("utf-8") + SPECIAL_SEPARATOR
 
+def streaming_generator_llm(data_stream):
+    """Generator to decode the chunks received from RAGOrchestratorClient"""
+    for chunk in data_stream:
+        token = chunk.choices[0].delta.content
+        if token is not None:
+            yield token
+
 def insert_feedback(request, short: bool):
     """
     Function that collects feedback sent from the user interface about the last
