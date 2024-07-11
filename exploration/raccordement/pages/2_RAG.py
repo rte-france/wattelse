@@ -5,9 +5,9 @@ import yaml
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
 
-RAG = RAGOrchestratorClient()
+RAG_CLIENT = RAGOrchestratorClient()
 SESSION_NAME = "test_raccordement"
-RAG.create_session(SESSION_NAME)
+RAG_CLIENT.create_session(SESSION_NAME)
 
 with open("information.yaml", 'r') as f:
 	INFO_DICT = yaml.safe_load(f)
@@ -28,15 +28,17 @@ else:
 		with open(temp_file_path, 'wb') as temp_file:
 			temp_file.write(uploaded_file.getbuffer())
 		print(temp_file_path)
-		RAG.upload_files(SESSION_NAME, [temp_file_path])
+		RAG_CLIENT.upload_files(SESSION_NAME, [temp_file_path])
 
 # Function
 def unit_RAG(label: str, prompt: str = None):
 	with st.expander(label):
-		st.text_area("prompt", value=prompt, key="prompt_"+label)
+		st.text_area("Prompt", value=prompt, key="prompt_"+label)
 		if st.button("Lancer", key="button_"+label):
-			answer = RAG.query_rag(SESSION_NAME, st.session_state["prompt_"+label], selected_files=[uploaded_file.name])
-			st.write(answer["answer"])
+			response = RAG_CLIENT.query_rag(SESSION_NAME, st.session_state["prompt_"+label], selected_files=[uploaded_file.name])
+			st.write("Réponse :")
+			st.write("**"+response["answer"]+"**")
+			st.session_state["answer_"+label] = response["answer"]
 
 
 # Main connection solution
