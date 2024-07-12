@@ -284,7 +284,7 @@ async function postUserMessageToRAG(userMessage) {
     // When streaming is done, show feedback section and save interaction
     botDiv.classList.remove("animate"); // remove generation animation
     if (!noExtract){
-        provideFeedback();
+        provideFeedback(userMessage, streamResponse);
     }
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
@@ -702,7 +702,7 @@ function newConversation() {
 }
 
 // Functions to collect user feedback
-function provideFeedback() {
+function provideFeedback(userMessage, botMessage) {
     const feedbackSection = document.createElement('div');
     feedbackSection.classList.add('feedback-section');
 
@@ -718,13 +718,13 @@ function provideFeedback() {
 
     // Add click event listeners to each emoji rating element
     const emojiRatings = document.querySelectorAll('.emoji-rating');
-    emojiRatings.forEach(emojiRating => emojiRating.addEventListener('click', handleEmojiRatingClick));
+    emojiRatings.forEach(emojiRating => emojiRating.addEventListener('click', (event) => handleEmojiRatingClick(event, userMessage, botMessage)));
 
     const textFeedbackButton = document.getElementById('open-text-feedback');
-    textFeedbackButton.addEventListener('click', handleTextFeedbackClick);
+    textFeedbackButton.addEventListener('click', (event) => handleTextFeedbackClick(event, userMessage, botMessage));
 }
 
-function handleEmojiRatingClick(event) {
+function handleEmojiRatingClick(event, userMessage, botMessage) {
   // Get the parent element (emoji-rating) of the clicked element
   const ratingElement = event.currentTarget;
 
@@ -739,61 +739,24 @@ function handleEmojiRatingClick(event) {
       }
   }
 
-  let previousElement =  ratingElement.parentElement.previousSibling;
-  while (previousElement && !previousElement.classList.contains('bot-message')) {
-    previousElement = previousElement.previousSibling;
-  }
-  let bot_answer = "";
-  if (previousElement) {
-      bot_answer = previousElement.textContent;
-  }
-
-  previousElement =  ratingElement.parentElement.previousSibling;
-  while (previousElement && !previousElement.classList.contains('user-message')) {
-    previousElement = previousElement.previousSibling;
-  }
-  let user_question = "";
-  if (previousElement) {
-      user_question = previousElement.textContent;
-  }
-
   // send feedback for processing
   if (feedbackName) {
-    sendFeedback("send_short_feedback/", feedbackName, user_question, bot_answer);
+    sendFeedback("send_short_feedback/", feedbackName, userMessage, botMessage);
   }
 }
 
 // Function to handle click on the text feedback button (optional)
-function handleTextFeedbackClick(event) {
-  const feedbackButton = event.currentTarget;
-  feedbackButton.classList.add('selected');
+function handleTextFeedbackClick(event, userMessage, botMessage) {
+    const feedbackButton = event.currentTarget;
+    feedbackButton.classList.add('selected');
 
-  // Implement your logic for opening a text feedback form or modal here
-  let feedback = prompt("Veuillez saisir la réponse attendue. \nVotre réponse sera ajoutée à la FAQ du groupe.", "");
+    // Implement your logic for opening a text feedback form or modal here
+    let feedback = prompt("Veuillez saisir la réponse attendue. \nVotre réponse sera ajoutée à la FAQ du groupe.", "");
 
-  // Search for related messages (bot and user)
-  let previousElement =  feedbackButton.parentElement.previousSibling;
-  while (previousElement && !previousElement.classList.contains('bot-message')) {
-    previousElement = previousElement.previousSibling;
-  }
-  let bot_answer = "";
-  if (previousElement) {
-      bot_answer = previousElement.textContent;
-  }
-
-  previousElement =  feedbackButton.parentElement.previousSibling;
-  while (previousElement && !previousElement.classList.contains('user-message')) {
-    previousElement = previousElement.previousSibling;
-  }
-  let user_question = "";
-  if (previousElement) {
-      user_question = previousElement.textContent;
-  }
-
-  // send back answer
-  if (feedback){
-      sendFeedback("send_long_feedback/", feedback, user_question, bot_answer);
-  }
+    // send back answer
+    if (feedback){
+        sendFeedback("send_long_feedback/", feedback, userMessage, botMessage);
+    }
 }
 
 
