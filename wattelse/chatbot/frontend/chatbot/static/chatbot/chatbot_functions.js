@@ -288,7 +288,7 @@ async function postUserMessageToRAG(userMessage) {
     }
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
-    saveInteraction(conversationId, userMessage, botDiv.innerHTML, questionTimestampString);
+    saveInteraction(conversationId, userMessage, streamResponse, questionTimestampString);
 }
 
 function saveInteraction(conversationId, userMessage, botResponse, questionTimestampString) {
