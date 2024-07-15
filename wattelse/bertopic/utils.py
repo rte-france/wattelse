@@ -44,6 +44,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
+
 def load_data(full_data_name: Path):
     logger.info(f"Loading data from: {full_data_name}")
     # Convert the Path object to a string before passing to file_to_pd
@@ -66,7 +67,6 @@ def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
             return pd.read_json(f_in, lines=True)
     elif ".parquet" in file_name:
         return pd.read_parquet(data_path_str)
-
 
 
 def clean_dataset(dataset: pd.DataFrame, length_criteria: int):

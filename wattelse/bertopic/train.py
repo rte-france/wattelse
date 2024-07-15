@@ -24,7 +24,9 @@ import numpy as np
 import streamlit as st
 import numpy as np
 from tqdm import tqdm
-from openTSNE import TSNE
+from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance, OpenAI
+import openai
+import os
 
 
 from wattelse.bertopic.utils import (
@@ -61,6 +63,15 @@ DEFAULT_VECTORIZER_MODEL = CountVectorizer(
 DEFAULT_CTFIDF_MODEL = ClassTfidfTransformer(reduce_frequent_words=True)
 
 DEFAULT_REPRESENTATION_MODEL = MaximalMarginalRelevance(diversity=0.3)
+
+# Add this constant for the French prompt
+FRENCH_CHAT_PROMPT = """
+J'ai un topic qui contient les documents suivants :
+[DOCUMENTS]
+Le topic est décrit par les mots-clés suivants : [KEYWORDS]
+Sur la base des informations ci-dessus, extraire une courte étiquette de topic dans le format suivant :
+Topic : <étiquette du sujet>
+"""
 
 class EmbeddingModel(BaseEmbedder):
     """
@@ -103,38 +114,57 @@ def train_BERTopic(
     indices: pd.Series = None,
     column: str = TEXT_COLUMN,
     embedding_model_name: str = DEFAULT_EMBEDDING_MODEL_NAME,
-    umap_model: Union[UMAP, TSNE] = DEFAULT_UMAP_MODEL,
+    umap_model: UMAP = DEFAULT_UMAP_MODEL,
     hdbscan_model: HDBSCAN = DEFAULT_HBSCAN_MODEL,
     vectorizer_model: CountVectorizer = DEFAULT_VECTORIZER_MODEL,
     ctfidf_model: ClassTfidfTransformer = DEFAULT_CTFIDF_MODEL,
-    representation_model: MaximalMarginalRelevance = DEFAULT_REPRESENTATION_MODEL,
+    representation_models: List[str] = ["MaximalMarginalRelevance"],
     top_n_words: int = DEFAULT_TOP_N_WORDS,
     nr_topics: (str | int) = DEFAULT_NR_TOPICS,
     use_cache: bool = True,
     cache_base_name: str = None,
-) -> Tuple[BERTopic, List[int], ndarray]:
+    **kwargs
+) -> Tuple[BERTopic, List[int], ndarray, ndarray, List[ndarray], List[List[str]]]:
     """
-    Train a BERTopic model
+    Train a BERTopic model with customizable representation models.
 
-    Parameters
+    Parameters:
     ----------
     full_dataset: pd.Dataframe
         The full dataset to train
     indices:  pd.Series
         Indices of the full_dataset to be used for partial training (ex. selection of date range of the full dataset)
         If set to None, use all indices
-    embedding_model: EmbeddingModel
-        Embedding model to be used in BERTopic
-    umap_model: UMAP
-        UMAP model to be used in BERTopic
+    column: str
+        Column name containing the text data
+    embedding_model_name: str
+        Name of the embedding model to use
+    umap_model: UMAP or TSNE
+        UMAP or TSNE model to be used in BERTopic
     hdbscan_model: HDBSCAN
         HDBSCAN model to be used in BERTopic
     vectorizer_model: CountVectorizer
         CountVectorizer model to be used in BERTopic
     ctfidf_model:  ClassTfidfTransformer
         ClassTfidfTransformer model to be used in BERTopic
-    representation_model: MaximalMarginalRelevance
-        Representation model to be used in BERTopic
+    representation_models: List[str]
+        List of representation models to use
+    keybert_nr_repr_docs: int
+        Number of representative documents for KeyBERTInspired
+    keybert_nr_candidate_words: int
+        Number of candidate words for KeyBERTInspired
+    keybert_top_n_words: int
+        Top N words for KeyBERTInspired
+    mmr_diversity: float
+        Diversity parameter for MaximalMarginalRelevance
+    mmr_top_n_words: int
+        Top N words for MaximalMarginalRelevance
+    openai_model: str
+        OpenAI model to use
+    openai_nr_docs: int
+        Number of documents for OpenAI
+    data_language: str
+        Language of the data (default is "Français")
     top_n_words: int
         Number of descriptive words per topic
     nr_topics: int
@@ -144,12 +174,15 @@ def train_BERTopic(
     cache_base_name: str
         Base name of the cache (for easier identification). If not name is provided, one will be created based on the full_dataset text
 
-    Returns
+    Returns:
     -------
-    A tuple made of:
+    A tuple containing:
         - a topic model
         - a list of topics
         - an array of probabilities
+        - the document embeddings
+        - the token embeddings
+        - the token strings
     """
 
     if use_cache and cache_base_name is None:
@@ -189,22 +222,40 @@ def train_BERTopic(
         
         tokenizer = embedding_model.embedding_model._first_module().tokenizer
 
-        # logger.debug("Document and token_ids before grouping:")
-        # for i in range(len(filtered_dataset[column])):
-        #     logger.debug(f"Document: {filtered_dataset[column][i]} LENGTH : {len(filtered_dataset[column][i])}")
-
-
-        # logger.debug(f"BEFORE grouping: {len(token_embeddings)}")
         token_strings, token_embeddings = group_tokens(tokenizer, token_ids, token_embeddings, language="french")
-        # logger.debug(f"AFTER grouping: {len(token_embeddings)}")
 
         if use_cache:
             save_embeddings(embeddings, cache_path)
             logger.info(f"Embeddings stored to cache file: {cache_path}")
 
-
-    if nr_topics == 0: nr_topics = "auto"
+    if nr_topics == 0: nr_topics = None
     
+    # Prepare representation models
+    rep_models = []
+    for model in representation_models:
+        if model == "KeyBERTInspired":
+            rep_models.append(KeyBERTInspired(
+                nr_repr_docs=kwargs.get(f"{model}_nr_repr_docs", 5),
+                nr_candidate_words=kwargs.get(f"{model}_nr_candidate_words", 40),
+                top_n_words=kwargs.get(f"{model}_top_n_words", 20)
+            ))
+        elif model == "MaximalMarginalRelevance":
+            rep_models.append(MaximalMarginalRelevance(
+                diversity=kwargs.get(f"{model}_diversity", 0.2),
+                top_n_words=kwargs.get(f"{model}_top_n_words", 10)
+            ))
+        elif model == "OpenAI":
+            client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+            prompt = FRENCH_CHAT_PROMPT if kwargs.get(f"{model}_language", "Français") == "Français" else None
+            rep_models.append(OpenAI(
+                client=client,
+                model=kwargs.get(f"{model}_model", "gpt-3.5-turbo"),
+                nr_docs=kwargs.get(f"{model}_nr_docs", 5),
+                prompt=prompt
+            ))
+
+    representation_model = rep_models[0] if len(rep_models) == 1 else rep_models
+
     # Build BERTopic model
     topic_model = BERTopic(
         embedding_model=embedding_model.embedding_model,
@@ -221,8 +272,6 @@ def train_BERTopic(
 
     logger.info("Fitting BERTopic...")
     
-    if indices is None:
-            indices = full_dataset.index
     topics, probs = topic_model.fit_transform(
         filtered_dataset[column],
         embeddings
@@ -233,26 +282,27 @@ def train_BERTopic(
 
 
 def group_tokens(tokenizer, token_ids, token_embeddings, language="english"):
+    if language not in ["english", "french"]:
+        raise ValueError("Invalid language. Supported languages: 'english', 'french'")
+    
+    special_tokens = {
+        "english": ["[CLS]", "[SEP]", "[PAD]"],
+        "french": ["<s>", "</s>", "<pad>"]
+    }
+    
     grouped_token_lists = []
     grouped_embedding_lists = []
+    
     for token_id, token_embedding in tqdm(zip(token_ids, token_embeddings), desc="Processing documents"):
-        # print(tokenizer.convert_ids_to_tokens(token_id))
-        if language == "english":
-            tokens, embeddings = remove_special_tokens_english(tokenizer, token_id, token_embedding)
-            grouped_tokens, grouped_embeddings = group_subword_tokens_english(tokens, embeddings)
-
-        elif language == "french":
-            tokens, embeddings = remove_special_tokens_french(tokenizer, token_id, token_embedding)
-            grouped_tokens, grouped_embeddings = group_subword_tokens_french(tokens, embeddings)
-        else:
-            raise ValueError("Invalid language. Supported languages: 'english', 'french'")
+        tokens, embeddings = remove_special_tokens(tokenizer, token_id, token_embedding, special_tokens[language])
+        grouped_tokens, grouped_embeddings = group_subword_tokens(tokens, embeddings, language)
         
         grouped_token_lists.append(grouped_tokens)
         grouped_embedding_lists.append(np.stack(grouped_embeddings))  # Stack to form numpy arrays
+    
     return grouped_token_lists, grouped_embedding_lists
 
-def remove_special_tokens_english(tokenizer, token_id, token_embedding):
-    special_tokens = ["[CLS]", "[SEP]", "[PAD]"]
+def remove_special_tokens(tokenizer, token_id, token_embedding, special_tokens):
     tokens = tokenizer.convert_ids_to_tokens(token_id)
     
     filtered_tokens = []
@@ -264,66 +314,41 @@ def remove_special_tokens_english(tokenizer, token_id, token_embedding):
     
     return filtered_tokens, filtered_embeddings
 
-def remove_special_tokens_french(tokenizer, token_id, token_embedding):
-    special_tokens = ["<s>", "</s>", "<pad>"]
-    tokens = tokenizer.convert_ids_to_tokens(token_id)
-    
-    filtered_tokens = []
-    filtered_embeddings = []
-    for token, embedding in zip(tokens, token_embedding):
-        if token not in special_tokens:
-            filtered_tokens.append(token)
-            filtered_embeddings.append(embedding)
-    
-    return filtered_tokens, filtered_embeddings
-
-def group_subword_tokens_english(tokens, embeddings):
+def group_subword_tokens(tokens, embeddings, language):
     grouped_tokens = []
     grouped_embeddings = []
     current_token = []
     current_embedding_sum = np.zeros_like(embeddings[0])
     num_subtokens = 0
+    
     for token, embedding in zip(tokens, embeddings):
-        if token.startswith("##"):
-            current_token.append(token[2:])
-            current_embedding_sum += embedding  # Use numpy addition
-            num_subtokens += 1
+        if (language == "english" and token.startswith("##")) or (language == "french" and token.startswith("▁")):
+            if language == "english":
+                current_token.append(token[2:])
+            else:  # French
+                if current_token:
+                    grouped_tokens.append("".join(current_token))
+                    grouped_embeddings.append(current_embedding_sum / num_subtokens)
+                current_token = [token[1:]]  # Remove the '▁' character
+                current_embedding_sum = embedding
+                num_subtokens = 1
+                continue
         else:
             if current_token:
                 grouped_tokens.append("".join(current_token))
-                grouped_embeddings.append(current_embedding_sum / num_subtokens)  # Use numpy division for average
+                grouped_embeddings.append(current_embedding_sum / num_subtokens)
             current_token = []
-            current_embedding_sum = np.zeros_like(embedding)  # Reset with numpy zeros
+            current_embedding_sum = np.zeros_like(embedding)
             num_subtokens = 0
-            current_token.append(token)
-            current_embedding_sum += embedding
-            num_subtokens += 1
+        
+        current_token.append(token)
+        current_embedding_sum += embedding
+        num_subtokens += 1
+    
     if current_token:
         grouped_tokens.append("".join(current_token))
-        grouped_embeddings.append(current_embedding_sum / num_subtokens)  # Final averaging
-    return grouped_tokens, grouped_embeddings
-
-def group_subword_tokens_french(tokens, embeddings):
-    grouped_tokens = []
-    grouped_embeddings = []
-    current_token = []
-    current_embedding_sum = np.zeros_like(embeddings[0])
-    num_subtokens = 0
-    for token, embedding in zip(tokens, embeddings):
-        if token.startswith("▁"):
-            if current_token:
-                grouped_tokens.append("".join(current_token))
-                grouped_embeddings.append(current_embedding_sum / num_subtokens)  # Use numpy division for average
-            current_token = [token[1:]]  # Remove the '▁' character
-            current_embedding_sum = embedding
-            num_subtokens = 1
-        else:
-            current_token.append(token)
-            current_embedding_sum += embedding  # Use numpy addition
-            num_subtokens += 1
-    if current_token:
-        grouped_tokens.append("".join(current_token))
-        grouped_embeddings.append(current_embedding_sum / num_subtokens)  # Final averaging
+        grouped_embeddings.append(current_embedding_sum / num_subtokens)
+    
     return grouped_tokens, grouped_embeddings
 
 

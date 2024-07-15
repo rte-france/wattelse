@@ -2,7 +2,7 @@ import os
 import json
 import socket
 from pathlib import Path
-
+import streamlit as st
 TEXT_COLUMN = "text"
 FILENAME_COLUMN = "filename"
 SEED = 666
@@ -10,7 +10,7 @@ GPU_SERVERS = ["groesplu0", "GROESSLAO01"]
 GPU_DSVD = ["pf9sodsia001"]
 
 BASE_DATA_DIR = (
-    Path("/data/weak_signals/data/bertopic/")#Big Datasets/")
+    Path("/data/weak_signals/data/bertopic/Big Datasets/")
     if socket.gethostname() in GPU_SERVERS
     else Path("/scratch/weak_signals/data/")
     if socket.gethostname() in GPU_DSVD
@@ -20,11 +20,13 @@ BASE_DATA_DIR = (
 DATA_PATH = BASE_DATA_DIR.absolute().as_posix() +'/'
 
 # Working directory
-cwd = os.getcwd() + '/Weak-Signals-Investigations/'
+cwd = os.getcwd()
 
 # Data directory
-cwd_data = DATA_PATH
-cwd_data = cwd + 'data/'
+# cwd_data = DATA_PATH 
+
+cwd_data = cwd + '/data/bertopic/'
+st.write(cwd_data)
 
 
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
@@ -53,7 +55,7 @@ COMMON_NGRAMS = [
 ]
 
 # Define the path to your JSON file
-stopwords_fr_file = cwd + 'stopwords-fr.json'
+stopwords_fr_file = cwd + '/Weak-Signals-Investigations/stopwords-fr.json'
 
 # Read the JSON data from the file and directly assign it to the list
 with open(stopwords_fr_file, 'r', encoding='utf-8') as file:

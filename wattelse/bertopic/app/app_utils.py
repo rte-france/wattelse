@@ -16,10 +16,10 @@ from wattelse.common import BASE_CACHE_PATH
 from wattelse.common.cache_utils import load_embeddings
 
 DEFAULT_PARAMETERS = {
-    "embedding_model_name": "dangvantuan/sentence-camembert-large",
+    "embedding_model_name": "OrdalieTech/Solon-embeddings-base-0.1",
     "use_cached_embeddings": False,
     "bertopic_nr_topics": 0,
-    "bertopic_top_n_words": 5,
+    "bertopic_top_n_words": 10,
     "umap_n_neighbors": 15,
     "umap_n_components": 5,
     "umap_min_dist": 0.0,
@@ -34,7 +34,16 @@ DEFAULT_PARAMETERS = {
     "countvectorizer_stop_words": "french",
     "countvectorizer_ngram_range": (1, 2),
     "ctfidf_reduce_frequent_words": True,
-    "ctfidf_bm25_weighting":False
+    "ctfidf_bm25_weighting": False,
+    "representation_models": ["MaximalMarginalRelevance"],
+    "keybert_nr_repr_docs": 5,
+    "keybert_nr_candidate_words": 40,
+    "keybert_top_n_words": 20,
+    "mmr_diversity": 0.2,
+    "mmr_top_n_words": 10,
+    "openai_model": "gpt-3.5-turbo",
+    "openai_nr_docs": 5,
+    "data_language": "English",
 }
 
 def initialize_default_parameters_keys():
@@ -52,55 +61,110 @@ def load_data_wrapper(data_name: Path):
 def embedding_model_options():
     return {
         "embedding_model_name": st.selectbox("Name",
-                                             ["OrdalieTech/Solon-embeddings-base-0.1","dangvantuan/sentence-camembert-large", "paraphrase-multilingual-MiniLM-L12-v2",
+                                             ["OrdalieTech/Solon-embeddings-large-0.1","OrdalieTech/Solon-embeddings-base-0.1","dangvantuan/sentence-camembert-large", "paraphrase-multilingual-MiniLM-L12-v2",
                                               "sentence-transformers/all-mpnet-base-v2", "antoinelouis/biencoder-camembert-base-mmarcoFR",
                                               "all-MiniLM-L12-v2", "all-mpnet-base-v2"], key="embedding_model_name"),
         "use_cached_embeddings": st.toggle("Put embeddings in cache", key="use_cached_embeddings")
     }
 
-
 def bertopic_options():
     return {
-        "bertopic_nr_topics": st.number_input("nr_topics", min_value=0, key="bertopic_nr_topics"),
-        "bertopic_top_n_words": st.number_input("top_n_words", min_value=1, key="bertopic_top_n_words"),
+        "bertopic_nr_topics": st.number_input("nr_topics", min_value=0, value=DEFAULT_PARAMETERS["bertopic_nr_topics"], key="bertopic_nr_topics"),
+        "bertopic_top_n_words": st.number_input("top_n_words", min_value=1, value=DEFAULT_PARAMETERS["bertopic_top_n_words"], key="bertopic_top_n_words"),
     }
-
 
 def umap_options():
     return {
-        "umap_n_neighbors": st.number_input("n_neighbors", min_value=1, key="umap_n_neighbors"),
-        "umap_n_components": st.number_input("n_components", min_value=1, key="umap_n_components"),
-        "umap_min_dist": st.number_input("min_dist", min_value=0.0, key="umap_min_dist", max_value=1.0),
+        "umap_n_neighbors": st.number_input("n_neighbors", min_value=1, value=DEFAULT_PARAMETERS["umap_n_neighbors"], key="umap_n_neighbors"),
+        "umap_n_components": st.number_input("n_components", min_value=1, value=DEFAULT_PARAMETERS["umap_n_components"], key="umap_n_components"),
+        "umap_min_dist": st.number_input("min_dist", min_value=0.0, value=DEFAULT_PARAMETERS["umap_min_dist"], max_value=1.0, key="umap_min_dist"),
         "umap_metric": st.selectbox("metric", ["cosine"], key="umap_metric"),
     }
 
 def hdbscan_options():
     return {
-        "hdbscan_min_cluster_size": st.number_input("min_cluster_size", min_value=1, key="hdbscan_min_cluster_size"),
-        "hdbscan_min_samples": st.number_input("min_samples", min_value=1, key="hdbscan_min_samples"),
+        "hdbscan_min_cluster_size": st.number_input("min_cluster_size", min_value=1, value=DEFAULT_PARAMETERS["hdbscan_min_cluster_size"], key="hdbscan_min_cluster_size"),
+        "hdbscan_min_samples": st.number_input("min_samples", min_value=1, value=DEFAULT_PARAMETERS["hdbscan_min_samples"], key="hdbscan_min_samples"),
         "hdbscan_metric": st.selectbox("metric", ["euclidean"], key="hdbscan_metric"),
-        "hdbscan_cluster_selection_method": st.selectbox("cluster_selectinumber_inputon_method", ["eom"], key="hdbscan_cluster_selection_method"),
-        "hdbscan_cluster_selection_epsilon": st.number_input("cluster_selection_epsilon", min_value=0.0, key="hdbscan_cluster_selection_epsilon", format="%.2f", step=0.01), ######## NEW ########
-        "hdbscan_max_cluster_size": st.number_input("max_cluster_size", min_value=0, key="hdbscan_max_cluster_size"), ######## NEW ########
-        "hdbscan_allow_single_cluster": st.toggle("allow_single_cluster", key="hdbscan_allow_single_cluster") ######## NEW ########
+        "hdbscan_cluster_selection_method": st.selectbox("cluster_selection_method", ["eom"], key="hdbscan_cluster_selection_method"),
+        "hdbscan_cluster_selection_epsilon": st.number_input("cluster_selection_epsilon", min_value=0.0, value=DEFAULT_PARAMETERS["hdbscan_cluster_selection_epsilon"], format="%.2f", step=0.01, key="hdbscan_cluster_selection_epsilon"),
+        "hdbscan_max_cluster_size": st.number_input("max_cluster_size", min_value=0, value=DEFAULT_PARAMETERS["hdbscan_max_cluster_size"], key="hdbscan_max_cluster_size"),
+        "hdbscan_allow_single_cluster": st.toggle("allow_single_cluster", value=DEFAULT_PARAMETERS["hdbscan_allow_single_cluster"], key="hdbscan_allow_single_cluster")
     }
-
 
 def countvectorizer_options():
     return {
         "countvectorizer_stop_words": st.selectbox("stop_words", ["french", "english", None], key="countvectorizer_stop_words"),
         "countvectorizer_ngram_range": st.selectbox(
-            "ngram_range", [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)], key="countvectorizer_ngram_range"
+            "ngram_range", [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)], index=1, key="countvectorizer_ngram_range"
         ),
         "countvectorizer_min_df": st.number_input("min_df", min_value=1, value=2, key="countvectorizer_min_df"),
     }
 
-
 def ctfidf_options():
     return {
-        "ctfidf_reduce_frequent_words": st.toggle("reduce_frequent_words", key="ctfidf_reduce_frequent_words"),
-        "ctfidf_bm25_weighting" : st.toggle("bm25_weighting", key="ctfidf_bm25_weighting"), ######## NEW ########
+        "ctfidf_reduce_frequent_words": st.toggle("reduce_frequent_words", value=DEFAULT_PARAMETERS["ctfidf_reduce_frequent_words"], key="ctfidf_reduce_frequent_words"),
+        "ctfidf_bm25_weighting": st.toggle("bm25_weighting", value=DEFAULT_PARAMETERS["ctfidf_bm25_weighting"], key="ctfidf_bm25_weighting"),
     }
+
+def update_model_selection(model):
+    if model in st.session_state.representation_models:
+        st.session_state.representation_models.remove(model)
+    else:
+        st.session_state.representation_models.append(model)
+
+def move_model(model, direction):
+    index = st.session_state.representation_models.index(model)
+    if direction == "up" and index > 0:
+        st.session_state.representation_models[index-1], st.session_state.representation_models[index] = st.session_state.representation_models[index], st.session_state.representation_models[index-1]
+    elif direction == "down" and index < len(st.session_state.representation_models) - 1:
+        st.session_state.representation_models[index], st.session_state.representation_models[index+1] = st.session_state.representation_models[index+1], st.session_state.representation_models[index]
+
+def representation_model_options():
+    if "representation_models" not in st.session_state:
+        st.session_state.representation_models = ["MaximalMarginalRelevance"]
+    
+    options = {}
+    
+    available_models = ["KeyBERTInspired", "MaximalMarginalRelevance", "OpenAI"]
+    
+    for model in available_models:
+        if st.checkbox(model, model in st.session_state.representation_models, key=f"checkbox_{model}"):
+            if model not in st.session_state.representation_models:
+                st.session_state.representation_models.append(model)
+        else:
+            if model in st.session_state.representation_models:
+                st.session_state.representation_models.remove(model)
+
+    st.write("Current order of representation models:")
+    for i, model in enumerate(st.session_state.representation_models):
+        st.write(f"{i+1}. {model}")
+
+    # Reordering options
+    if len(st.session_state.representation_models) > 1:
+        model_to_move = st.selectbox("Select model to move:", st.session_state.representation_models, key="model_to_move")
+        new_position = st.number_input("Move to position:", min_value=1, max_value=len(st.session_state.representation_models), value=st.session_state.representation_models.index(model_to_move)+1, key="new_position")
+        if st.button("Move"):
+            current_position = st.session_state.representation_models.index(model_to_move)
+            st.session_state.representation_models.insert(new_position-1, st.session_state.representation_models.pop(current_position))
+
+    # Model-specific parameters
+    for model in st.session_state.representation_models:
+        st.write(f"### {model} Parameters")
+        if model == "KeyBERTInspired":
+            options[f"{model}_nr_repr_docs"] = st.number_input(f"{model}: Number of representative documents", min_value=1, value=5, key=f"{model}_nr_repr_docs")
+            options[f"{model}_nr_candidate_words"] = st.number_input(f"{model}: Number of candidate words", min_value=1, value=40, key=f"{model}_nr_candidate_words")
+            options[f"{model}_top_n_words"] = st.number_input(f"{model}: Top N words", min_value=1, value=20, key=f"{model}_top_n_words")
+        elif model == "MaximalMarginalRelevance":
+            options[f"{model}_diversity"] = st.slider(f"{model}: Diversity", min_value=0.0, max_value=1.0, value=0.2, step=0.1, key=f"{model}_diversity")
+            options[f"{model}_top_n_words"] = st.number_input(f"{model}: Top N words", min_value=1, value=10, key=f"{model}_top_n_words")
+        elif model == "OpenAI":
+            options[f"{model}_model"] = st.selectbox(f"{model}: Model", options=["gpt-3.5-turbo", "gpt-4-turbo", "gpt-4"], key=f"{model}_model")
+            options[f"{model}_nr_docs"] = st.number_input(f"{model}: Number of documents", min_value=1, value=5, key=f"{model}_nr_docs")
+            options[f"{model}_language"] = st.selectbox(f"{model}: Data Language", options=["Français", "English"], key=f"{model}_language")
+
+    options["representation_models"] = st.session_state.representation_models
+    return options
 
 
 @st.cache_data
@@ -166,15 +230,19 @@ def print_docs_for_specific_topic(df, topics, topic_number):
         st.write(f"[{doc.title}]({doc.url})")
 
 @st.cache_data
-def transform_new_data(_topic_model, df, data_name, embedding_model_name, form_parameters=None, split_by_paragraphs=False):
-    # Get DF embeddings
-    if split_by_paragraphs:
-        cache_path = BASE_CACHE_PATH / f"{embedding_model_name}_{data_name}_split_by_paragraphs.pkl"
-    else:
-        cache_path = BASE_CACHE_PATH / f"{embedding_model_name}_{data_name}.pkl"
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    embeddings = load_embeddings(cache_path)
-    return _topic_model.transform(df[TEXT_COLUMN], embeddings=embeddings[df["index"]])
+def transform_new_data(_topic_model, df, embeddings):
+    """
+    Transform new data using the existing topic model and embeddings.
+    
+    Args:
+    _topic_model: The trained BERTopic model
+    df: DataFrame containing the new data
+    embeddings: Pre-computed embeddings for the new data
+    
+    Returns:
+    Tuple of (topics, probabilities)
+    """
+    return _topic_model.transform(df[TEXT_COLUMN], embeddings=embeddings)
     
 def plot_docs_reparition_over_time(df, freq):
     count = df.groupby(pd.Grouper(key="timestamp", freq=freq), as_index=False).size()
@@ -208,4 +276,4 @@ def plot_remaining_docs_repartition_over_time(df_base, df_remaining, freq):
         "Remaining" : "orange",
     }
         )
-    st.write(fig)
+    st.plotly_chart(fig, use_container_width=True)
