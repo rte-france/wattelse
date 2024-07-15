@@ -20,9 +20,9 @@ class OpenAI_API:
     Important note: the API key and the ENDPOINT must be set using environment variables OPENAI_API_KEY and
     OPENAI_ENDPOINT respectively. (The endpoint shall only be set for Azure or local deployment)
     """
-    def __init__(self):
+    def __init__(self, config_path=Path(__file__).parent / "default_openai.cfg"):
         config = configparser.ConfigParser()
-        config.read(Path(__file__).parent / "openai.cfg")
+        config.read(config_path)
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             logger.error(
