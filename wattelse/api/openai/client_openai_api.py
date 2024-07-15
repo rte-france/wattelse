@@ -20,10 +20,12 @@ class OpenAI_Client:
     Important note: the API key and the ENDPOINT must be set using environment variables OPENAI_API_KEY and
     OPENAI_ENDPOINT respectively. (The endpoint shall only be set for Azure or local deployment)
     """
-    def __init__(self, config_path=Path(__file__).parent / "default_openai.cfg"):
+
+    def __init__(self, api_key: str = None, endpoint: str = None, config_path=Path(__file__).parent / "default_openai.cfg"):
         config = configparser.ConfigParser()
         config.read(config_path)
-        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             logger.error(
                 "WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services.")
@@ -37,10 +39,10 @@ class OpenAI_Client:
             "max_retries": MAX_ATTEMPTS,
         }
         openai_params = {
-            "base_url": os.getenv("OPENAI_ENDPOINT", None),
+            "base_url": endpoint if endpoint else os.getenv("OPENAI_ENDPOINT", None),
         }
         azure_params = {
-            "azure_endpoint": os.getenv("OPENAI_ENDPOINT", None),
+            "azure_endpoint": endpoint if endpoint else os.getenv("OPENAI_ENDPOINT", None),
             "api_version": config.get("API_CONFIG", "api_version")
         }
 
@@ -103,4 +105,3 @@ class OpenAI_Client:
             msg = f"OpenAI API fatal error: {e}"
             logger.error(msg)
             return msg
-
