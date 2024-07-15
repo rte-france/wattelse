@@ -31,7 +31,7 @@ FASTCHAT_LLM = "Fastchat LLM"
 OLLAMA_LLM = "Ollama LLM"
 CHATGPT_LLM = "ChatGPT"
 LLM_CONFIGS = {
-    CHATGPT_LLM: Path(__file__).parent.parent.parent / "api" / "openai" / "openai.cfg",
+    CHATGPT_LLM: Path(__file__).parent.parent.parent / "api" / "openai" / "default_openai.cfg",
     FASTCHAT_LLM: Path(__file__).parent.parent.parent / "api" / "fastchat" / "fastchat_api.cfg",
     OLLAMA_LLM: Path(__file__).parent.parent.parent / "api" / "ollama" / "ollama_api.cfg"
 }

@@ -8,7 +8,7 @@ from typing import List
 import tiktoken
 from loguru import logger
 
-from wattelse.api.openai.client_openai_api import OpenAI_API
+from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.api.prompts import FR_SYSTEM_SUMMARY_WORDS, EN_SYSTEM_SUMMARY_WORDS
 from wattelse.summary.summarizer import (
     DEFAULT_MAX_SENTENCES,
@@ -23,7 +23,7 @@ class GPTSummarizer(Summarizer):
 
     def __init__(self):
         # retrieve chat GPT config
-        self.api = OpenAI_API()
+        self.api = OpenAI_Client()
         self.encoding = tiktoken.encoding_for_model(self.api.model_name)
         logger.debug("GPTSummarizer initialized")
 

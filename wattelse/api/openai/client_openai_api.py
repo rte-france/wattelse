@@ -15,7 +15,7 @@ MAX_ATTEMPTS = 3
 TIMEOUT = 60.0
 
 
-class OpenAI_API:
+class OpenAI_Client:
     """Generic client for Open AI API (either direct API or via Azure).
     Important note: the API key and the ENDPOINT must be set using environment variables OPENAI_API_KEY and
     OPENAI_ENDPOINT respectively. (The endpoint shall only be set for Azure or local deployment)
