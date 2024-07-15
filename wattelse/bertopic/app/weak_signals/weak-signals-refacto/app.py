@@ -230,7 +230,7 @@ def main():
             embedding_model_name = st.sidebar.selectbox("Embedding Model", ["all-mpnet-base-v2","Alibaba-NLP/gte-base-en-v1.5", "all-MiniLM-L12-v2"], key='embedding_model_name')
         elif language == "French":
             stopwords_list = stopwords.words("english") + FRENCH_STOPWORDS + STOP_WORDS_RTE + COMMON_NGRAMS
-            embedding_model_name = st.sidebar.selectbox("Embedding Model", ["OrdalieTech/Solon-embeddings-base-0.1","dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
+            embedding_model_name = st.sidebar.selectbox("Embedding Model", ["OrdalieTech/Solon-embeddings-large-0.1","OrdalieTech/Solon-embeddings-base-0.1","dangvantuan/sentence-camembert-large", "antoinelouis/biencoder-distilcamembert-mmarcoFR"], key='embedding_model_name')
 
     with st.sidebar.expander("UMAP Hyperparameters", expanded=True):
         umap_n_components = st.number_input("UMAP n_components", value=5, min_value=2, max_value=100, key='umap_n_components')
@@ -268,7 +268,7 @@ def main():
     df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
 
     # Sample the filtered DataFrame
-    sample_size = st.number_input("Sample Size", value=1000, min_value=1, max_value=len(df_filtered), key='sample_size')
+    sample_size = st.number_input("Sample Size", value=100, min_value=1, max_value=len(df_filtered), key='sample_size')
     if sample_size < len(df_filtered):
         df_filtered = df_filtered.sample(n=sample_size, random_state=42)
 
@@ -475,7 +475,10 @@ def main():
             # Create and cache the topic size evolution figure
             fig = create_topic_size_evolution_figure()
             st.session_state.topic_size_evolution_fig = fig
+<<<<<<< HEAD
+=======
             st.session_state.merge_df_size_over_time = merge_df_size_over_time
+>>>>>>> eab58a5b48dfa34263d0bb3b67e01f197b9077b5
             st.success("Model merging complete!")
 
         # Plot topic size evolution
@@ -560,7 +563,7 @@ def main():
                     with st.spinner("Generating summary..."):
                         try:
                             completion = client.chat.completions.create(
-                                model="gpt-3.5-turbo",
+                                model="gpt-4o",
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant, skilled in detailing topic evolution over time for the detection of emerging trends and signals."},
                                     {"role": "user", "content": prompt}
@@ -615,5 +618,5 @@ def main():
 
 if __name__ == "__main__":
 
-    client = OpenAI(api_key="sk-proj-ouL9Jgzzb59Z0wCSt5khT3BlbkFJDb9WDt0Lu4aZqi8M1YxH")    
+    client = OpenAI(api_key="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")    
     main()
