@@ -2,6 +2,7 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
+from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from typing import List
@@ -14,7 +15,8 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from wattelse.bertopic.newsletter_features import generate_newsletter, md2html
 from wattelse.bertopic.train import train_BERTopic
-from wattelse.bertopic.utils import TIMESTAMP_COLUMN, clean_dataset, split_df_by_paragraphs
+from wattelse.bertopic.utils import TIMESTAMP_COLUMN, clean_dataset, split_df_by_paragraphs, TEXT_COLUMN, TITLE_COLUMN, \
+    URL_COLUMN
 from wattelse.indexer.document_parser import parse_file
 from wattelse.indexer.document_splitter import split_file
 from wattelse.summary import GPTSummarizer
@@ -60,7 +62,11 @@ def parse_data_from_files(files: List[UploadedFile]) -> pd.DataFrame:
                     logger.info(f"Number of chunks for file {f.name}: {len(splits)}")
 
                     # construct input data for bertopic
-                    df = pd.DataFrame([s.page_content for s in splits], columns=["text"])
+                    df = pd.DataFrame([s.page_content for s in splits], columns=[TEXT_COLUMN])
+                    df[TIMESTAMP_COLUMN] = datetime.now()
+                    df[TITLE_COLUMN] = ""
+                    df[URL_COLUMN] = ""
+
                     dataframes.append(df)
 
         # Concat all dataframes
@@ -213,7 +219,7 @@ def options():
 
         st.slider("Longueur des synthèses (# phrases)", min_value=1, max_value=10, value=4, key="nb_sentences")
 
-        st.selectbox("Moteur de résumé", ("gpt-3.5-turbo", "gpt-4o"), key="openai_model_name")
+        st.selectbox("Moteur de résumé", ["wattelse-gpt35"], key="openai_model_name")
         #st.selectbox("OpenAI endpoint", ("gpt-3.5-turbo", "gpt-4o"), key="openai_model_name")
 
 
