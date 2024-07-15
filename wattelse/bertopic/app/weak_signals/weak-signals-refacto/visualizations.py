@@ -219,6 +219,9 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         st.write(f"Noise Threshold : {q1}")
         st.write(f"Strong Signal Threshold : {q3}")
 
+        st.plotly_chart(fig, use_container_width=True)
+
+
         # Update the figure layout to limit the display range to the window
         fig.update_layout(
             title='Popularity Evolution',
@@ -252,6 +255,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
             st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
         else:
             st.info(f"No strong signals were detected at timestamp {window_end}.")
+
 
         # Add date range picker for saving signal evolution data
         start_date, end_date = st.date_input("Select date range for saving signal evolution data:", value=(min_datetime.date(), max_datetime.date()), min_value=min_datetime.date(), max_value=max_datetime.date())
