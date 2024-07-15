@@ -242,8 +242,9 @@ def get_most_representative_docs(
             .size()
             .reset_index(name="counts")
             .sort_values("counts", ascending=False)
-            .iloc[0:top_n_docs]
         )
+        if top_n_docs > 0:
+            sub_df = sub_df.iloc[0:top_n_docs]
         return df[df["title"].isin(sub_df["title"])]
 
     # If no df_split is None, use mode to determine how to return most representative docs :
@@ -251,12 +252,15 @@ def get_most_representative_docs(
         docs_prob = topic_model.get_document_info(df["text"])["Probability"]
         df = df.assign(Probability=docs_prob)
         sub_df = df.loc[pd.Series(topics) == topic_number]
-        sub_df = sub_df.sort_values("Probability", ascending=False).iloc[0:top_n_docs]
+        sub_df = sub_df.sort_values("Probability", ascending=False)
+        if top_n_docs > 0:
+            sub_df = sub_df.iloc[0:top_n_docs]
         return sub_df
 
     elif mode == "ctfidf_representation":
-        # TODO : "get_representative_docs" currently returns maximum 3 docs as implemtented in BERTopic
-        # We should modify the function to return more if needed
+        # Get all documents for the topic
         docs = topic_model.get_representative_docs(topic=topic_number)
-        sub_df = df[df["text"].isin(docs)].iloc[0:top_n_docs]
+        sub_df = df[df["text"].isin(docs)]
+        if top_n_docs > 0:
+            sub_df = sub_df.iloc[0:top_n_docs]
         return sub_df

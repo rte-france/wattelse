@@ -61,8 +61,6 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
         bm25_weighting=form_parameters["ctfidf_bm25_weighting"]
     )
 
-    # umap_model = TSNE()
-
     return train_BERTopic(
         full_dataset=dataset,
         indices=indices,
@@ -71,12 +69,19 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
         ctfidf_model=ctfidf_model,
-        top_n_words=form_parameters["bertopic_top_n_words"],
-        nr_topics=form_parameters["bertopic_nr_topics"]
-        if form_parameters["bertopic_nr_topics"] > 0
-        else None,
+        representation_models=form_parameters.get("representation_models", ["MaximalMarginalRelevance"]),
+        keybert_nr_repr_docs=form_parameters.get("keybert_nr_repr_docs", 5),
+        keybert_nr_candidate_words=form_parameters.get("keybert_nr_candidate_words", 40),
+        keybert_top_n_words=form_parameters.get("keybert_top_n_words", 20),
+        mmr_diversity=form_parameters.get("mmr_diversity", 0.2),
+        mmr_top_n_words=form_parameters.get("mmr_top_n_words", 10),
+        openai_model=form_parameters.get("openai_model", "gpt-3.5-turbo"),
+        openai_nr_docs=form_parameters.get("openai_nr_docs", 5),
+        data_language=form_parameters.get("data_language", "Français"),
+        # top_n_words=form_parameters["bertopic_top_n_words"],
+        nr_topics=form_parameters["bertopic_nr_topics"] if form_parameters["bertopic_nr_topics"] > 0 else None,
         use_cache=form_parameters["use_cached_embeddings"],
-        cache_base_name = cache_base_name
+        cache_base_name=cache_base_name
     )
     
     

@@ -38,6 +38,7 @@ from wattelse.bertopic.app.app_utils import (
     hdbscan_options,
     countvectorizer_options,
     ctfidf_options,
+    representation_model_options,
     plot_2d_topics,
     plot_topics_over_time,
     compute_topics_over_time,
@@ -47,25 +48,46 @@ from wattelse.bertopic.app.app_utils import (
 
 
 
-def preprocess_text(text):
+def preprocess_text(text: str) -> str:
+    """
+    Preprocess French text by replacing hyphens and similar characters with spaces,
+    removing specific prefixes, removing punctuations (excluding apostrophes, hyphens, and newlines),
+    replacing special characters with a space (preserving accented characters, common Latin extensions, and newlines),
+    normalizing superscripts and subscripts,
+    splitting words containing capitals in the middle (while avoiding splitting fully capitalized words), 
+    and replacing multiple spaces with a single space.
+    
+    Args:
+        text (str): The input French text to preprocess.
+    
+    Returns:
+        str: The preprocessed French text.
+    """
     # Replace hyphens and similar characters with spaces
     text = re.sub(r'\b(-|/|;|:)', ' ', text)
-
-    # Remove specific prefixes like "l'", "d'", "l’", and "d’" from words
-    text = re.sub(r"\b(l'|L'|D'|d'|l’|L’|D’|d’)", '', text)
-
-    # Remove punctuations, excluding apostrophes, hyphens, and importantly, newlines
-    # Here, we modify the expression to keep newlines by adding them to the set of allowed characters
-    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', '', text)
-
-    # Replace special characters with a space, preserving accented characters, common Latin extensions, and newlines
-    # Again, ensure newlines are not removed by including them in the allowed set
+    
+    # Remove specific prefixes
+    text = re.sub(r"\b(l'|L'|D'|d'|l’|L’|D’|d’)", ' ', text)
+    
+    # Remove punctuations (excluding apostrophes, hyphens, and newlines)
+    # text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
+    
+    # Replace special characters with a space (preserving accented characters, common Latin extensions, and newlines)
     text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
+    
+    # Normalize superscripts and subscripts
+    # Replace all superscripts and subscripts with their corresponding regular characters
+    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+    text = text.translate(superscript_map)
+    text = text.translate(subscript_map)
 
-    # Replace multiple spaces with a single space, but do not touch newlines
-    # Here, we're careful not to collapse newlines into spaces, so this operation targets spaces only
+    # Split words that contain capitals in the middle but avoid splitting fully capitalized words
+    text = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', text)
+    
+    # Replace multiple spaces with a single space
     text = re.sub(r'[ \t]+', ' ', text)
-
+    
     return text
 
 
@@ -126,7 +148,7 @@ def save_model_interface():
 
 
 ################################################
-## MAIN PAGE
+################## MAIN PAGE ###################
 ################################################
 
 
@@ -152,9 +174,8 @@ if 'model_trained' not in st.session_state: st.session_state['model_trained'] = 
 if 'model_saved' not in st.session_state: st.session_state['model_saved'] = False
 
 
-### SIDEBAR OPTIONS ###
+# In the sidebar form
 with st.sidebar.form("parameters_sidebar"):
-
     st.title("Parameters")
 
     with st.expander("Embedding model"):
@@ -174,7 +195,9 @@ with st.sidebar.form("parameters_sidebar"):
 
     with st.expander("c-TF-IDF"):
         ctfidf_options = ctfidf_options()
-
+    
+    with st.expander("Representation Models"):
+        representation_model_options = representation_model_options()
 
     # Merge parameters in a dict and change type to str to make it hashable
     st.session_state["parameters"] = str(
@@ -185,18 +208,19 @@ with st.sidebar.form("parameters_sidebar"):
             **hdbscan_options,
             **countvectorizer_options,
             **ctfidf_options,
+            **representation_model_options,
         }
     )
 
     parameters_sidebar_clicked = st.form_submit_button(
         "Train model", type="primary", on_click=save_widget_state
-    )    
+    )
 
 def select_data():
     st.write("## Data selection")
 
     choose_data(DATA_DIR, ["*.csv", "*.jsonl*"])
-
+    
     ########## Adjusting to handle multiple files selection ##########
     if st.session_state["selected_files"]:
         loaded_dfs = []
@@ -213,48 +237,53 @@ def select_data():
     ########## Remove duplicates from raw_df ##########
     st.session_state["raw_df"] = st.session_state["raw_df"].drop_duplicates(subset=TEXT_COLUMN, keep='first')
     st.session_state["raw_df"].sort_values(by=[TIMESTAMP_COLUMN], ascending=True, inplace=True)
+    st.session_state["initial_df"] = st.session_state["raw_df"].copy()
     
 
-    # Select time range
-    min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
-    register_widget("timestamp_range")
-    if "timestamp_range" not in st.session_state:
-        st.session_state["timestamp_range"] = (
-            min_max["min"].to_pydatetime(),
-            min_max["max"].to_pydatetime(),
+    st.divider()
+
+    with st.container(border=True):
+        # Select time range
+        min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
+        register_widget("timestamp_range")
+        if "timestamp_range" not in st.session_state:
+            st.session_state["timestamp_range"] = (
+                min_max["min"].to_pydatetime(),
+                min_max["max"].to_pydatetime(),
+            )
+
+        timestamp_range = st.slider(
+            "Select the range of timestamps you want to use for training",
+            min_value=min_max["min"].to_pydatetime(),
+            max_value=min_max["max"].to_pydatetime(),
+            key="timestamp_range",
+            on_change=save_widget_state,
         )
 
-    timestamp_range = st.slider(
-        "Select the range of timestamps you want to use for training",
-        min_value=min_max["min"].to_pydatetime(),
-        max_value=min_max["max"].to_pydatetime(),
-        key="timestamp_range",
-        on_change=save_widget_state,
-    )
+        # Filter text length parameter
+        register_widget("min_text_length")
+        st.number_input(
+            "Select the minimum number of characters each document should contain",
+            min_value=0,
+            value=100,
+            key="min_text_length",
+            on_change=save_widget_state,
+        )
 
-    # Filter text length parameter
-    register_widget("min_text_length")
-    st.number_input(
-        "Select the minimum number of characters each document should contain",
-        min_value=0,
-        key="min_text_length",
-        on_change=save_widget_state,
-    )
-
-    # Split DF by paragraphs parameter
-    register_widget("split_option")
-    split_options = ["No split", "Default split", "Enhanced split"]
-    split_option = st.radio(
-        "Select the split option",
-        split_options,
-        key="split_option",
-        on_change=save_widget_state,
-        help="""
-        - No split: No splitting on the documents.
-        - Default split: Split by paragraph (Warning: might produce paragraphs longer than embedding model's maximum supported input length).
-        - Enhanced split: Split by paragraph. If a paragraph is longer than the embedding model's maximum input length, then split by sentence.
-        """
-    )
+        # Split DF by paragraphs parameter
+        register_widget("split_option")
+        split_options = ["No split", "Default split", "Enhanced split"]
+        split_option = st.radio(
+            "Select the split option",
+            split_options,
+            key="split_option",
+            on_change=save_widget_state,
+            help="""
+            - No split: No splitting on the documents.
+            - Default split: Split by paragraph (Warning: might produce paragraphs longer than embedding model's maximum supported input length).
+            - Enhanced split: Split by paragraph. If a paragraph is longer than the embedding model's maximum input length, then split by sentence.
+            """
+        )
     
 
     if ("split_method" not in st.session_state or st.session_state["split_method"] != split_option or
@@ -299,20 +328,16 @@ def select_data():
         st.error("Not enough remaining data after cleaning", icon="🚨")
         st.stop()
     else:
-        st.write(f"Found {len(st.session_state['timefiltered_df'])} documents after final cleaning.")
-        st.dataframe(st.session_state['timefiltered_df'][['index','text', 'timestamp']], use_container_width=True)
-
+        st.info(f"Found {len(st.session_state['timefiltered_df'])} documents after final cleaning.")
+        st.divider()
 
 def train_model():
-    ### TRAIN MODEL ###
     if parameters_sidebar_clicked:
         if "timefiltered_df" in st.session_state and not st.session_state["timefiltered_df"].empty:
             
-            full_dataset = st.session_state["split_df"]
-            indices = st.session_state["timefiltered_df"]["index"].tolist()
-            full_dataset = full_dataset.loc[indices]
+            full_dataset = st.session_state["timefiltered_df"]
+            indices = full_dataset.index.tolist()
 
-            
             (   st.session_state["topic_model"],
                 st.session_state["topics"],
                 _,
@@ -335,22 +360,23 @@ def train_model():
                 temp[temp['Topic'] != -1]
             )  # exclude -1 topic from topic list
 
-            # Computes coherence value
-            coherence_score_type = "c_npmi"
-            coherence = get_coherence_value(
-                st.session_state["topic_model"],
-                st.session_state["topics"],
-                st.session_state["timefiltered_df"][TEXT_COLUMN],
-                coherence_score_type
-            )
-            diversity_score_type = "puw"
-            diversity = get_diversity_value(st.session_state["topic_model"],
-                                            st.session_state["topics"],
-                                            st.session_state["timefiltered_df"][TEXT_COLUMN],
-                                            diversity_score_type="puw")
+            # Optional : Not really useful here and takes time to calculate, uncomment if you want to calculate them
+            # # Computes coherence value
+            # coherence_score_type = "c_npmi"
+            # coherence = get_coherence_value(
+            #     st.session_state["topic_model"],
+            #     st.session_state["topics"],
+            #     st.session_state["timefiltered_df"][TEXT_COLUMN],
+            #     coherence_score_type
+            # )
+            # diversity_score_type = "puw"
+            # diversity = get_diversity_value(st.session_state["topic_model"],
+            #                                 st.session_state["topics"],
+            #                                 st.session_state["timefiltered_df"][TEXT_COLUMN],
+            #                                 diversity_score_type="puw")
             
-            logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
-            logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
+            # logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
+            # logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
             
             st.session_state['model_trained'] = True
             if not st.session_state['model_saved']: st.warning('Don\'t forget to save your model!', icon="⚠️")

@@ -68,30 +68,6 @@ def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
         return pd.read_parquet(data_path_str)
 
 
-'''
-def load_data(full_data_name: Path):
-    # Convert the Path object to a string if necessary
-    logger.info(f"Loading data from: {str(full_data_name)}")
-    df = file_to_pd(full_data_name)  # Ensure file_to_pd can handle a Path object, or convert it to a string
-    
-    # convert timestamp column
-    df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
-    return df.drop_duplicates(
-                subset=["title"], keep="first", inplace=False
-            )
-
-def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
-    """Read data in various format and convert in to a DataFrame"""
-    data_path = base_dir / file_name if base_dir else file_name
-    if ".csv" in file_name:
-        return pd.read_csv(data_path)
-    elif ".jsonl" in file_name or ".jsonlines" in file_name:
-        return pd.read_json(data_path, lines=True)
-    elif ".jsonl.gz" in file_name or ".jsonlines.gz" in file_name:
-        with gzip.open(file_name) as f_in:
-            return pd.read_json(f_in, lines=True)
-'''
-
 def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
     """Clean dataset. So far, only removes short text."""
     cleaned_dataset = dataset.loc[
@@ -161,3 +137,5 @@ def split_df_by_paragraphs_v2(dataset: pd.DataFrame, tokenizer: AutoTokenizer, m
 
     new_df = pd.DataFrame(new_rows)
     return new_df
+
+

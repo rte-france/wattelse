@@ -4,14 +4,19 @@ import glob
 import re
 import json
 from typing import Dict
-from global_vars import cwd_data
 import streamlit as st
+from typing import Tuple
+from global_vars import cwd_data
+
+import re
 
 def preprocess_french_text(text: str) -> str:
     """
     Preprocess French text by replacing hyphens and similar characters with spaces,
     removing specific prefixes, removing punctuations (excluding apostrophes, hyphens, and newlines),
     replacing special characters with a space (preserving accented characters, common Latin extensions, and newlines),
+    normalizing superscripts and subscripts,
+    splitting words containing capitals in the middle, 
     and replacing multiple spaces with a single space.
     
     Args:
@@ -20,12 +25,33 @@ def preprocess_french_text(text: str) -> str:
     Returns:
         str: The preprocessed French text.
     """
+    # Replace hyphens and similar characters with spaces
     text = re.sub(r'\b(-|/|;|:)', ' ', text)
+    
+    # Remove specific prefixes
     text = re.sub(r"\b(l'|L'|D'|d'|l'|L'|D'|d')", '', text)
+    
+    # Remove punctuations (excluding apostrophes, hyphens, and newlines)
     text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', '', text)
+    
+    # Replace special characters with a space (preserving accented characters, common Latin extensions, and newlines)
     text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
+    
+    # Normalize superscripts and subscripts
+    # Replace all superscripts and subscripts with their corresponding regular characters
+    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+    text = text.translate(superscript_map)
+    text = text.translate(subscript_map)
+    
+    # Split words that contain capitals in the middle
+    text = re.sub(r'(?<!^)(?=[A-Z])', ' ', text)
+    
+    # Replace multiple spaces with a single space
     text = re.sub(r'[ \t]+', ' ', text)
+    
     return text
+
 
 def preprocess_french_data(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -43,7 +69,7 @@ def preprocess_french_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @st.cache_data
-def load_and_preprocess_data(selected_file: tuple, language: str, min_chars: int, split_by_paragraph: bool) -> pd.DataFrame:
+def load_and_preprocess_data(selected_file: Tuple[str, str], language: str, min_chars: int, split_by_paragraph: bool) -> pd.DataFrame:
     """
     Load and preprocess data from a selected file.
     
@@ -82,7 +108,10 @@ def load_and_preprocess_data(selected_file: tuple, language: str, min_chars: int
     if split_by_paragraph:
         new_rows = []
         for _, row in df.iterrows():
-            paragraphs = row['text'].split('\n\n')
+            # Attempt splitting by \n\n first
+            paragraphs = re.split(r'\n\n', row['text'])
+            if len(paragraphs) == 1:  # If no split occurred, attempt splitting by \n
+                paragraphs = re.split(r'\n', row['text'])
             for paragraph in paragraphs:
                 new_row = row.copy()
                 new_row['text'] = paragraph

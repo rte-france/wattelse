@@ -10,22 +10,28 @@ from wattelse.bertopic.app.state_utils import register_widget, save_widget_state
 
 
 def data_overview(df: pd.DataFrame):
-    with st.expander("Data overview"):
+
+    with st.container(border=True):
+        col1, col2 = st.columns([0.4, 0.6])
         freq = st.select_slider(
-            "Time aggregation",
-            options=(
-                "1D",
-                "2D",
-                "1W",
-                "2W",
-                "1M",
-                "2M",
-                "1Y",
-                "2Y",
-            ),
-            value="1M",
-        )
-        plot_docs_reparition_over_time(df, freq)
+                        "Time aggregation",
+                        options=(
+                            "1D",
+                            "2D",
+                            "1W",
+                            "2W",
+                            "1M",
+                            "2M",
+                            "1Y",
+                            "2Y",
+                        ),
+                        value="1M",
+                    )
+        with col1:
+            plot_docs_reparition_over_time(df, freq)
+        with col2: 
+            st.dataframe(st.session_state['timefiltered_df'][['index', 'text', 'timestamp']], use_container_width=True)
+
 
 
 
@@ -62,15 +68,13 @@ def choose_data(base_dir: Path, filters: List[str]):
     if "selected_files" not in st.session_state:
         st.session_state["selected_files"] = []
 
-    col1, col2 = st.columns([0.4, 0.6])
-    with col1:
-        folder_options = [folder.name for folder in data_folders]
-        selected_folder_index = st.selectbox("Base folder", index=0, options=folder_options)
-        selected_folder = data_folders[folder_options.index(selected_folder_index)]
-        st.session_state["data_folder"] = selected_folder
 
-    with col2:
-        st.write("Select data to continue")
+    folder_options = [folder.name for folder in data_folders]
+    selected_folder_index = st.selectbox("Base folder", index=0, options=folder_options)
+    selected_folder = data_folders[folder_options.index(selected_folder_index)]
+    st.session_state["data_folder"] = selected_folder
+
+    with st.container(border=True, height=300):
         data_files = sorted(
             itertools.chain.from_iterable(
                 [list(selected_folder.glob(f"{filter}")) for filter in filters]
