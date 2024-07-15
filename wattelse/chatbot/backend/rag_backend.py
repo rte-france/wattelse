@@ -9,7 +9,12 @@ import os
 import shutil
 from typing import BinaryIO, List, Dict, Union
 
-from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
+from langchain.retrievers import (
+    EnsembleRetriever,
+    MultiQueryRetriever,
+    ContextualCompressionRetriever,
+)
+from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
@@ -109,6 +114,16 @@ def filter_history(history, window_size):
     return history[-2 * window_size :]
 
 
+def get_document_filter(file_names: List[str]):
+    """Create a filter on the document collection based on a list of file names"""
+    if not file_names:
+        return None
+    elif len(file_names) == 1:
+        return {"file_name": file_names[0]}
+    else:
+        return {"$or": [{"file_name": f} for f in file_names]}
+
+
 class RAGBackEnd:
     def __init__(self, group_id: str):
         logger.info(f"[Group: {group_id}] Initialization of chatbot backend")
@@ -121,6 +136,7 @@ class RAGBackEnd:
         self.retrieval_method = retriever_config["retrieval_method"]
         self.similarity_threshold = retriever_config["similarity_threshold"]
         self.multi_query_mode = retriever_config["multi_query_mode"]
+        self.use_context_compression = retriever_config["use_context_compression"]
 
         # Generator parameters
         self.expected_answer_size = generator_config["expected_answer_size"]
@@ -246,15 +262,6 @@ class RAGBackEnd:
         )
         return data["documents"]
 
-    def get_document_filter(self, file_names: List[str]):
-        """Create a filter on the document collection based on a list of file names"""
-        if not file_names:
-            return None
-        elif len(file_names) == 1:
-            return {"file_name": file_names[0]}
-        else:
-            return {"$or": [{"file_name": f} for f in file_names]}
-
     def select_by_keywords(self, keywords: List[str]):
         """Create a filter on the document collection based on a list of keywords"""
         # TODO: to be implemented
@@ -273,7 +280,7 @@ class RAGBackEnd:
             raise RAGError("No active document collection!")
 
         # Get document filter
-        document_filter = self.get_document_filter(selected_files)
+        document_filter = get_document_filter(selected_files)
 
         # Configure retriever
         search_kwargs = {
@@ -304,9 +311,20 @@ class RAGBackEnd:
                     retrievers=[bm25_retriever, dense_retriever]
                 )
 
+        selected_retriever = retriever
+
+        # Retriever for multi-query mode
         if self.multi_query_mode:
-            multi_query_retriever = MultiQueryRetriever.from_llm(
+            selected_retriever = MultiQueryRetriever.from_llm(
                 retriever=retriever, llm=self.llm
+            )
+
+        # Retriever for context compression
+        if self.use_context_compression:
+            # contextual compression
+            compressor = LLMChainExtractor.from_llm(self.llm)
+            selected_retriever = ContextualCompressionRetriever(
+                base_compressor=compressor, base_retriever=retriever
             )
 
         # Definition of RAG chain
@@ -335,19 +353,16 @@ class RAGBackEnd:
             | self.llm
             | StrOutputParser()
         )
+
         # returns both answer and sources
         rag_chain = RunnableParallel(
             {
-                "context": retriever
-                if not self.multi_query_mode
-                else multi_query_retriever,
+                "context": selected_retriever,
                 "history": (lambda _: get_history_as_text(history)),
                 "query": (lambda _: message),
                 "contextualized_query": RunnablePassthrough(),
             }
         ).assign(answer=rag_chain_from_docs)
-
-        # TODO: implement reranking (optional)
 
         # Handle conversation history
         contextualized_question = "query : " + self.contextualize_question(
