@@ -31,7 +31,9 @@ class OpenAI_Client:
                 "WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services.")
             raise EnvironmentError(f"OPENAI_API_KEY environment variable not found.")
 
-        run_on_azure = config.getboolean("API_CONFIG", "run_on_azure")
+        endpoint = endpoint if endpoint else os.getenv("OPENAI_ENDPOINT", None)
+
+        run_on_azure = "azure.com" in endpoint if endpoint else False
 
         common_params = {
             "api_key": api_key,
@@ -39,10 +41,10 @@ class OpenAI_Client:
             "max_retries": MAX_ATTEMPTS,
         }
         openai_params = {
-            "base_url": endpoint if endpoint else os.getenv("OPENAI_ENDPOINT", None),
+            "base_url": endpoint,
         }
         azure_params = {
-            "azure_endpoint": endpoint if endpoint else os.getenv("OPENAI_ENDPOINT", None),
+            "azure_endpoint": endpoint,
             "api_version": config.get("API_CONFIG", "api_version")
         }
 
