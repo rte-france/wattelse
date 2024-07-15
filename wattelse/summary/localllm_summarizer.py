@@ -2,12 +2,10 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-
+from pathlib import Path
 from typing import List
 
-from transformers import AutoTokenizer
-
-from wattelse.api.fastchat.client_fastchat_api import FastchatAPI
+from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.summary.summarizer import (
     Summarizer,
     DEFAULT_MAX_SENTENCES,
@@ -16,19 +14,11 @@ from wattelse.summary.summarizer import (
 )
 from wattelse.api.prompts import FR_USER_SUMMARY_WORDS, EN_USER_SUMMARY_WORDS
 
-TOKENIZER = AutoTokenizer.from_pretrained(
-    "bofenghuang/vigogne-2-7b-chat",
-    revision="v2.0",
-    padding_side="right",
-    use_fast=False,
-)
-
-
-class FastchatLLMSummarizer(Summarizer):
+class LocalLLMSummarizer(Summarizer):
     """Class that uses Fastchat LLM service to provide a sumary of a text"""
 
     def __init__(self):
-        self.api = FastchatAPI()
+        self.api = OpenAI_Client(config_path=Path(__file__).parent.parent / "api" / "openai" / "local_openai.cfg")
 
     def generate_summary(
         self,

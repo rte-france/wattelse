@@ -16,7 +16,7 @@ from wattelse.summary import (
     GPTSummarizer,
     AbstractiveSummarizer,
     ExtractiveSummarizer,
-    FastchatLLMSummarizer,
+    LocalLLMSummarizer,
 )
 
 restore_widget_state()
@@ -24,7 +24,7 @@ restore_widget_state()
 SUMMARIZER_OPTIONS_MAPPER = {
     "AbstractiveSummarizer": AbstractiveSummarizer,
     "GPTSummarizer": GPTSummarizer,
-    "FastchatLLMSummarizer": FastchatLLMSummarizer,
+    "LocalLLMSummarizer": LocalLLMSummarizer,
     "ExtractiveSummarizer": ExtractiveSummarizer,
 }
 
