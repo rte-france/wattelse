@@ -340,7 +340,7 @@ def main():
 
     if side_bar():
         with st.expander("Raw data"):
-            st.write(st.session_state["filtered_data"])
+            st.write(st.session_state["filtered_data"].sort_values(by="answer_timestamp", ascending=False))
 
         # High level indicators per user / group depending on the selection
         with st.expander("High level indicators", expanded=True):
