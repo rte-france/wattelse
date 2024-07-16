@@ -1,77 +1,19 @@
 import streamlit as st
 import pandas as pd
 import locale
-from loguru import logger
-
-
-
-from typing import List
-import numpy as np
-from sklearn.manifold import TSNE
-import plotly.express as px
-# from langchain_openai import ChatOpenAI
-# from langchain_core.messages import HumanMessage, SystemMessage
-
-
-
-
-from wattelse.bertopic.temporal_metrics_embedding import TempTopic
-
-
-import plotly.graph_objects as go
 
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
 from app_utils import plot_topics_over_time
 from state_utils import restore_widget_state, register_widget, save_widget_state
 
 from wattelse.bertopic.app.app_utils import (
-    plot_2d_topics,
     plot_topics_over_time,
     compute_topics_over_time,
 )
-
-
-
-
-from sklearn.preprocessing import normalize
-from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
-from typing import List, Union, Tuple, Dict
-from tqdm import tqdm
-from bertopic import BERTopic
-import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer
-from scipy.sparse import lil_matrix
-import itertools
-import plotly.graph_objects as go
-import plotly.express as px
-import torch
-import umap
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.manifold import TSNE
-from loguru import logger
 
-import plotly.express as px
-import numpy as np
-import plotly.graph_objs as go
+from wattelse.bertopic.temporal_metrics_embedding import TempTopic
 
-
-# chat = ChatOpenAI(model="gpt-3.5-turbo-1106", temperature=0, openai_api_key="")
-
-
-
-def display_documents_on_click(clicked_point):
-    if clicked_point:
-        point = clicked_point['points'][0]
-        topic_id = int(point['customdata'][0])
-        timestamp = pd.to_datetime(point['customdata'][1], unit='D')  # Convert to datetime
-
-        topic_data = temptopic.final_df[(temptopic.final_df['Topic'] == topic_id) & (temptopic.final_df['Timestamp'] == timestamp)]
-        documents = topic_data['Document'].tolist()
-
-        with st.expander(f"Documents for Topic {topic_id} at Timestamp {timestamp}"):
-            for doc in documents:
-                st.write(doc)
 
 
 # Set locale to get French date names
@@ -88,38 +30,33 @@ if "topic_model" not in st.session_state.keys():
 # Restore widget state
 restore_widget_state()
 
-
-
-# SIDEBAR Menu
+# In the sidebar
 with st.sidebar:
     st.header("TEMPTopic Parameters")
+    
     register_widget("window_size")
     window_size = st.number_input("Window Size", min_value=2, value=2, step=1, key="window_size", on_change=save_widget_state)
 
     register_widget("k")
     k = st.number_input("Number of Nearest Embeddings (k)", min_value=1, value=1, step=1, key="k", on_change=save_widget_state)
 
+    register_widget("alpha")
+    alpha = st.number_input("Alpha (Topic vs Representation Stability Weight)", min_value=0.0, max_value=1.0, value=0.5, step=0.1, key="alpha", on_change=save_widget_state)
+
     register_widget("double_agg")
-    double_agg = st.checkbox("Double Aggregation", value=True, key="double_agg", on_change=save_widget_state)
-
-    register_widget("evolution_tuning")
-    evolution_tuning = st.checkbox("Evolution Tuning", value=True, key="evolution_tuning", on_change=save_widget_state)
-
-    register_widget("global_tuning")
-    global_tuning = st.checkbox("Global Tuning", value=False, key="global_tuning", on_change=save_widget_state)
+    double_agg = st.checkbox("Use Double Aggregation", value=True, key="double_agg", on_change=save_widget_state)
 
     register_widget("doc_agg")
-    doc_agg_options = ["mean", "max", "min"]
-    doc_agg = st.selectbox("Document-level Aggregation", options=doc_agg_options, index=0, key="doc_agg", on_change=save_widget_state)
+    doc_agg = st.selectbox("Document Aggregation Method", ["mean", "max"], key="doc_agg", on_change=save_widget_state)
 
     register_widget("global_agg")
-    global_agg_options = ["mean", "max", "min"]
-    global_agg = st.selectbox("Global Aggregation", options=global_agg_options, index=1, key="global_agg", on_change=save_widget_state)
+    global_agg = st.selectbox("Global Aggregation Method", ["max", "mean"], key="global_agg", on_change=save_widget_state)
 
-    register_widget("alpha")
-    alpha = st.number_input("alpha", min_value=0.0, max_value=1.0, value=0.5, step=0.1, key="alpha", on_change=save_widget_state)
+    register_widget("evolution_tuning")
+    evolution_tuning = st.checkbox("Use Evolution Tuning", value=True, key="evolution_tuning", on_change=save_widget_state)
 
-
+    register_widget("global_tuning")
+    global_tuning = st.checkbox("Use Global Tuning", value=False, key="global_tuning", on_change=save_widget_state)
 
 
 
@@ -140,50 +77,38 @@ if time_diff >= pd.Timedelta(days=365):
 register_widget("granularity")
 time_granularity = st.selectbox("Select time granularity", [""] + available_granularities, key="granularity", on_change=save_widget_state)
 
+def parameters_changed():
+    params_to_check = [
+        'window_size', 'k', 'alpha', 'double_agg', 'doc_agg', 'global_agg',
+        'evolution_tuning', 'global_tuning', 'granularity'
+    ]
+    return any(st.session_state.get(f'prev_{param}') != st.session_state.get(param) for param in params_to_check)
 
 
-# TEMPTopic fitting
-if time_granularity != "":
-    # If any of these parameters changes between two consecutive interactions, re-fit TEMPtopic
-    if "prev_granularity" not in st.session_state or st.session_state.prev_granularity != time_granularity \
-    or st.session_state.prev_k != k  or st.session_state.prev_window_size != window_size or st.session_state.prev_double_agg != double_agg \
-    or st.session_state.prev_doc_agg != doc_agg or st.session_state.prev_global_agg != global_agg or st.session_state.prev_alpha != alpha \
-    or st.session_state.prev_evolution_tuning != evolution_tuning or st.session_state.prev_global_tuning != global_tuning:
-        
-        # Aggregate dataframe based on selected time granularity
-        df = st.session_state['timefiltered_df'].copy()  # Create a copy to avoid modifying the original dataframe
+if time_granularity != "" and (parameters_changed() or 'temptopic' not in st.session_state):
+    # Aggregate dataframe based on selected time granularity
+    df = st.session_state['timefiltered_df'].copy()
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-        # Convert 'timestamp' column to datetime if it's not already
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+    if time_granularity == "Day":
+        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d')
+    elif time_granularity == "Week":
+        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%W')
+    elif time_granularity == "Month":
+        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m')
+    elif time_granularity == 'Year':
+        df['timestamp'] = df['timestamp'].dt.strftime('%Y')
 
-        if time_granularity == "Day":
-            df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d')
-        elif time_granularity == "Week":
-            df['timestamp'] = df['timestamp'].dt.strftime('%Y-%W')
-        elif time_granularity == "Month":
-            df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m')
-        elif time_granularity == 'Year':
-            df['timestamp'] = df['timestamp'].dt.strftime('%Y')
+    aggregated_df = df.groupby('timestamp').agg({TEXT_COLUMN: list, 'index': list}).reset_index()
 
-        # Group by timestamp and aggregate the text and index as lists
-        aggregated_df = df.groupby('timestamp').agg({TEXT_COLUMN: list, 'index': list}).reset_index()
+    indices = st.session_state["timefiltered_df"]["index"]
+    docs = [st.session_state["split_df"][TEXT_COLUMN][i] for i in indices]
 
-        # Extract indices from st.session_state["timefiltered_df"]["index"]
-        indices = st.session_state["timefiltered_df"]["index"]
-
-        # Extract docs using the indices
-        docs = [st.session_state["split_df"][TEXT_COLUMN][i] for i in indices]
-
-        # Create a dictionary mapping the original index to the aggregated timestamp
-        index_to_timestamp = {}
-        for timestamp, idx_sublist in zip(aggregated_df['timestamp'], aggregated_df['index']):
-            for idx in idx_sublist:
-                index_to_timestamp[idx] = timestamp
-
-        # Extract the corresponding timestamps for each doc using the index_to_timestamp dictionary
-        timestamps_repeated = [index_to_timestamp[idx] for idx in indices]
-        
-        # Update TempTopic with the new docs and timestamps
+    index_to_timestamp = {idx: timestamp for timestamp, idx_sublist in zip(aggregated_df['timestamp'], aggregated_df['index']) for idx in idx_sublist}
+    timestamps_repeated = [index_to_timestamp[idx] for idx in indices]
+    
+    # Initialize and fit TempTopic
+    with st.spinner("Fitting TempTopic..."):
         temptopic = TempTopic(
             st.session_state['topic_model'],
             docs,
@@ -191,135 +116,94 @@ if time_granularity != "":
             st.session_state['token_embeddings'],
             st.session_state['token_strings'],
             timestamps_repeated,
-            evolution_tuning=evolution_tuning,
-            global_tuning=global_tuning
+            evolution_tuning=st.session_state.evolution_tuning,
+            global_tuning=st.session_state.global_tuning
+        )
+        temptopic.fit(
+            window_size=st.session_state.window_size,
+            k=st.session_state.k,
+            double_agg=st.session_state.double_agg,
+            doc_agg=st.session_state.doc_agg,
+            global_agg=st.session_state.global_agg
         )
 
-        # Display a spinner while fitting TempTopic
-        with st.spinner("Fitting TempTopic..."):
-            temptopic._topics_over_time()
+    # Store the fitted TempTopic object and current parameter values
+    st.session_state.temptopic = temptopic
+    st.session_state.aggregated_df = aggregated_df
+    for param in ['window_size', 'k', 'alpha', 'double_agg', 'doc_agg', 'global_agg', 'evolution_tuning', 'global_tuning', 'granularity']:
+        st.session_state[f'prev_{param}'] = st.session_state.get(param)
 
-        # Store the fitted TempTopic object and its parameters in the session state
-        st.session_state.temptopic = temptopic
-        st.session_state.aggregated_df = aggregated_df
-        st.session_state.prev_window_size = window_size
-        st.session_state.prev_k = k
-        st.session_state.prev_double_agg = double_agg
-        st.session_state.prev_evolution_tuning = evolution_tuning
-        st.session_state.prev_global_tuning = global_tuning
-        st.session_state.prev_doc_agg = doc_agg
-        st.session_state.prev_global_agg = global_agg
-        st.session_state.prev_granularity = time_granularity
-        st.session_state.prev_alpha = alpha
-
-    else:
-        # Use the previously fitted TEMPTopic and its parameters
-        alpha = st.session_state.prev_alpha
-        time_granularity = st.session_state.prev_granularity
-        global_agg = st.session_state.prev_global_agg
-        doc_agg = st.session_state.prev_doc_agg
-        global_tuning = st.session_state.prev_global_tuning
-        evolution_tuning = st.session_state.prev_evolution_tuning
-        double_agg = st.session_state.prev_double_agg
-        k = st.session_state.prev_k
-        window_size = st.session_state.prev_window_size
-        aggregated_df = st.session_state.aggregated_df
-        temptopic = st.session_state.temptopic
-
-
-
-
-
+else:
+    temptopic = st.session_state.temptopic 
+    aggregated_df = st.session_state.aggregated_df
 
 
 
 # TEMPTopic Results
-if time_granularity != "":
-    # Display the dataframes and visualizations using the saved TempTopic object
+with st.expander("Topic Evolution Dataframe"):
+    # Replace the line causing the error with this:
+    columns_to_display = ["Topic", "Words", "Frequency", "Timestamp"]
+    columns_present = [col for col in columns_to_display if col in temptopic.final_df.columns]
 
-    with st.expander("Topic Evolution Dataframe"):
-        st.dataframe(temptopic.final_df[["Topic", "Words", "Document", "Frequency", "Timestamp"]].sort_values(by=['Topic', 'Timestamp'], ascending=[True, True]),
-                    use_container_width=True)
-        temptopic.final_df[["Topic", "Words", "Document", "Frequency", "Timestamp"]].sort_values(by=['Topic', 'Timestamp'], ascending=[True, True]).to_json('final_df_test.json')
+    st.dataframe(temptopic.final_df[columns_present].sort_values(by=['Topic', 'Timestamp'], ascending=[True, True]), use_container_width=True)
 
-    with st.expander("Topic Info Dataframe"):
-        st.dataframe(temptopic.topic_model.get_topic_info(), use_container_width=True)
+with st.expander("Topic Info Dataframe"):
+    st.dataframe(temptopic.topic_model.get_topic_info(), use_container_width=True)
 
-    with st.expander("Documents per Date Dataframe"):
-        st.dataframe(aggregated_df, use_container_width=True)
+with st.expander("Documents per Date Dataframe"):
+    st.dataframe(aggregated_df, use_container_width=True)
 
-    with st.expander("TempTopic Visualizations"):
-        topics_to_show = st.multiselect("Topics to Show", options=list(temptopic.final_df["Topic"].unique()), default=None)
+with st.expander("TempTopic Visualizations"):
+    topics_to_show = st.multiselect("Topics to Show", options=list(temptopic.final_df["Topic"].unique()), default=None)
 
-        st.header("Temporal Stability Metrics")
-        smoothing_factor = st.slider("Smoothing Factor", min_value=0.0, max_value=1.0, value=0.2, step=0.1)
+    st.header("Topic Evolution in Time and Semantic Space")
+    n_neighbors = st.slider("UMAP n_neighbors", min_value=2, max_value=100, value=15, step=1)
+    min_dist = st.slider("UMAP min_dist", min_value=0.0, max_value=0.99, value=0.1, step=0.01)
+    metric = st.selectbox("UMAP Metric", ["cosine", "euclidean", "manhattan"])
+    color_palette = st.selectbox("Color Palette", ["Plotly", "D3", "Alphabet"])
+    
+    fig_topic_evolution = temptopic.plot_topic_evolution(
+        granularity=time_granularity, 
+        topics_to_show=topics_to_show,
+        n_neighbors=n_neighbors,
+        min_dist=min_dist,
+        metric=metric,
+        color_palette=color_palette
+    )
+    st.plotly_chart(fig_topic_evolution, use_container_width=True)
+    
+    st.divider()
 
-        temptopic.calculate_overall_topic_stability(window_size=window_size, k=k, double_agg=double_agg, doc_agg=doc_agg,
-                                                    global_agg=global_agg,alpha=alpha)
+    st.header("Overall Topic Stability")
+    normalize_overall_stability = st.checkbox("Normalize", value=False)
+    overall_stability_df = temptopic.calculate_overall_topic_stability(window_size=window_size, k=k, alpha=alpha)
+    fig_overall_stability = temptopic.plot_overall_topic_stability(
+        topics_to_show=topics_to_show, 
+        normalize=normalize_overall_stability,
+        darkmode=True
+    )
+    st.plotly_chart(fig_overall_stability, use_container_width=True)
 
-        col1, col2 = st.columns(2)
+    st.divider()
+    
+    st.header("Temporal Stability Metrics")
+    col1, col2 = st.columns(2)
 
-        with col1:
-            fig_temporal_stability = temptopic.plot_temporal_stability_metrics(metric="topic_stability", smoothing_factor=smoothing_factor, topics_to_show=topics_to_show)
-            st.plotly_chart(fig_temporal_stability, use_container_width=True)
+    with col1:
+        fig_topic_stability = temptopic.plot_temporal_stability_metrics(
+            metric="topic_stability", 
+            topics_to_show=topics_to_show
+        )
+        st.plotly_chart(fig_topic_stability, use_container_width=True)
 
-        with col2:
-            fig_temporal_representation_stability = temptopic.plot_temporal_stability_metrics(metric="representation_stability", smoothing_factor=smoothing_factor, topics_to_show=topics_to_show)
-            st.plotly_chart(fig_temporal_representation_stability, use_container_width=True)
+    with col2:
+        fig_representation_stability = temptopic.plot_temporal_stability_metrics(
+            metric="representation_stability", 
+            topics_to_show=topics_to_show
+        )
+        st.plotly_chart(fig_representation_stability, use_container_width=True)
 
-
-        st.header("Overall Topic Stability")
-        normalize_overall_stability = st.checkbox("Normalize", value=False)
-        fig_overall_stability = temptopic.plot_overall_topic_stability(topics_to_show=topics_to_show, normalize=normalize_overall_stability)
-        st.plotly_chart(fig_overall_stability, use_container_width=True)
-
-        st.header("3D Topic Evolution Visualization")
-        perplexity = st.number_input("T-SNE Perplexity", min_value=5.0, max_value=50.0, value=30.0, step=1.0)
-        learning_rate = st.number_input("T-SNE Learning Rate", min_value=10.0, max_value=1000.0, value=200.0, step=10.0)
-        metric = st.selectbox("T-SNE Metric", ["cosine", "euclidean", "manhattan"])
-        color_palette = st.selectbox("Color Palette", ["Plotly", "D3", "Alphabet"])
-
-        fig_topic_evolution = temptopic.plot_topic_evolution(granularity=time_granularity, perplexity=perplexity, color_palette=color_palette,topics_to_show=topics_to_show)
-        st.plotly_chart(fig_topic_evolution, theme="streamlit", use_container_width=True)
-
-
-    # with st.expander("Sélectionner un Topic et une Date"):
-    #     available_topics = temptopic.final_df['Topic'].unique()
-    #     selected_topic = st.selectbox("Sélectionnez un topic", available_topics)
-    #     topic_data = temptopic.final_df[temptopic.final_df['Topic'] == selected_topic]
-    #     available_dates = topic_data['Timestamp'].unique()
-    #     selected_date = st.selectbox("Sélectionnez une date", available_dates)
-    #     filtered_data = topic_data[topic_data['Timestamp'] == selected_date]
-
-    #     if not filtered_data.empty:
-    #         documents = filtered_data['Document'].tolist()
-    #         topic_name = filtered_data['Words'].iloc[0] 
-    #         st.header(f"Topic '{topic_name}' à la date {selected_date}")
-
-    #         prompt = f"Voici le contenu du topic '{topic_name}' à la date {selected_date}:\n\n"
-    #         for i, document in enumerate(documents):
-    #             prompt += f"Document {i+1} : {document}\n"
-    #         prompt += "\nVeuillez fournir un titre et un résumé concis du contenu de ce topic."
-            
-    #         if st.button("Générer un résumé"):
-    #             with st.spinner("Création du résumé..."):
-    #                 messages = [
-    #                     SystemMessage(
-    #                         content="Vous êtes un assistant qui résume le contenu d'un topic."
-    #                     ),
-    #                     HumanMessage(
-    #                         content=prompt
-    #                     ),
-    #                 ]
-
-    #                 summary = chat.invoke(messages)
-
-    #                 st.write(summary.content)
-    #     else:
-    #         st.write("Aucun document trouvé pour le topic et la date sélectionnés.")
-
-
-
+    
 with st.spinner("Computing topics over time..."):
     with st.expander("Popularity of topics over time"):
         if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():
@@ -348,8 +232,3 @@ with st.spinner("Computing topics over time..."):
                     st.session_state["dynamic_topics_list"],
                     st.session_state["topic_model"],
                 ), use_container_width=True)
-            
-
-
-
-
