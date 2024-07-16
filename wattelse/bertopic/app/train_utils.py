@@ -18,7 +18,6 @@ from umap import UMAP
 from wattelse.bertopic.train import train_BERTopic, STOP_WORDS_RTE
 
 
-@st.cache_data
 def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parameters, cache_base_name: str) -> Tuple:
 
     # Transform form_parameters from str to dict (dict is not yet hashable using Streamlit)

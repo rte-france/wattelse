@@ -114,7 +114,12 @@ def split_dataframe(split_option):
             )
         st.session_state["split_by_paragraphs"] = True
         
-
+def post_process_representation_models(models):
+    if not models:
+        return ["MaximalMarginalRelevance"]
+    if "OpenAI" in models:
+        models = [model for model in models if model != "OpenAI"] + ["OpenAI"]
+    return models
 
 
 def generate_model_name(base_name="topic_model"):
@@ -127,19 +132,19 @@ def generate_model_name(base_name="topic_model"):
     return model_name
 
 
+# In the save_model_interface function
 def save_model_interface():
     st.write("## Save Model")
 
     # Optional text box for custom model name
-    base_model_name = st.text_input("Enter a name for the model (optional):")
+    base_model_name = st.text_input("Enter a name for the model (optional):", key="base_model_name_input")
 
     # Button to save the model
-    if st.button("Save Model"):
+    if st.button("Save Model", key="save_model_button"):
         if "topic_model" in st.session_state:
             dynamic_model_name = generate_model_name(base_model_name if base_model_name else "topic_model")
             model_save_path = f"./saved_models/{dynamic_model_name}"
             
-            # Assuming the saving function and success/error messages are handled here
             try:
                 st.session_state['topic_model'].save(model_save_path, serialization="safetensors", save_ctfidf=True, save_embedding_model=True)
                 st.success(f"Model saved successfully as {model_save_path}")
@@ -152,79 +157,11 @@ def save_model_interface():
 
 
 
-################################################
-################## MAIN PAGE ###################
-################################################
-
-
-
-# Wide layout
-st.set_page_config(page_title="Wattelse® topic", layout="wide")
-
-
-
-
-# Restore widget state
-restore_widget_state()
-
-
-### TITLE ###
-st.title("Topic modelling")
-
-
-# Initialize default parameters
-initialize_default_parameters_keys()
-
-if 'model_trained' not in st.session_state: st.session_state['model_trained'] = False
-if 'model_saved' not in st.session_state: st.session_state['model_saved'] = False
-
-
-# In the sidebar form
-with st.sidebar.form("parameters_sidebar"):
-    st.title("Parameters")
-
-    with st.expander("Embedding model"):
-        embedding_model_options = embedding_model_options()
-
-    with st.expander("Topics"):
-        bertopic_options = bertopic_options()
-
-    with st.expander("UMAP"):
-        umap_options = umap_options()
-
-    with st.expander("HDBSCAN"):
-        hdbscan_options = hdbscan_options()
-
-    with st.expander("Count Vectorizer"):
-        countvectorizer_options = countvectorizer_options()
-
-    with st.expander("c-TF-IDF"):
-        ctfidf_options = ctfidf_options()
-    
-    with st.expander("Representation Models"):
-        representation_model_options = representation_model_options()
-
-    # Merge parameters in a dict and change type to str to make it hashable
-    st.session_state["parameters"] = str(
-        {
-            **embedding_model_options,
-            **bertopic_options,
-            **umap_options,
-            **hdbscan_options,
-            **countvectorizer_options,
-            **ctfidf_options,
-            **representation_model_options,
-        }
-    )
-
-    parameters_sidebar_clicked = st.form_submit_button(
-        "Train model", type="primary", on_click=save_widget_state
-    )
 
 def select_data():
     st.write("## Data selection")
 
-    choose_data(DATA_DIR, ["*.csv", "*.jsonl*"])
+    choose_data(DATA_DIR, ["*.csv", "*.jsonl*", "*.parquet"])
     
     ########## Adjusting to handle multiple files selection ##########
     if st.session_state["selected_files"]:
@@ -337,9 +274,8 @@ def select_data():
         st.divider()
 
 def train_model():
-    if parameters_sidebar_clicked:
-        if "timefiltered_df" in st.session_state and not st.session_state["timefiltered_df"].empty:
-            
+    if "timefiltered_df" in st.session_state and not st.session_state["timefiltered_df"].empty:
+        with st.spinner("Training model..."):
             full_dataset = st.session_state["timefiltered_df"]
             indices = full_dataset.index.tolist()
 
@@ -357,37 +293,136 @@ def train_model():
                 if st.session_state["split_method"] == "No split"
                 else f'{st.session_state["data_name"]}_split_by_paragraphs',
             )
+        
+        st.success("Model trained successfully!")
+        st.info("Token embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
             
-            st.info("Token embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
-            
-            temp = st.session_state["topic_model"].get_topic_info()
-            st.session_state["topics_info"] = (
-                temp[temp['Topic'] != -1]
-            )  # exclude -1 topic from topic list
+        temp = st.session_state["topic_model"].get_topic_info()
+        st.session_state["topics_info"] = (
+            temp[temp['Topic'] != -1]
+        )  # exclude -1 topic from topic list
+        
+        # Optional : Not really useful here and takes time to calculate, uncomment if you want to calculate them
+        # # Computes coherence value
+        # logger.info("Calculating coherence and diversity values")
+        # coherence_score_type = "c_npmi"
+        # coherence = get_coherence_value(
+        #     st.session_state["topic_model"],
+        #     st.session_state["topics"],
+        #     st.session_state["timefiltered_df"][TEXT_COLUMN],
+        #     coherence_score_type
+        # )
+        # diversity_score_type = "puw"
+        # diversity = get_diversity_value(st.session_state["topic_model"],
+        #                                 st.session_state["topics"],
+        #                                 st.session_state["timefiltered_df"][TEXT_COLUMN],
+        #                                 diversity_score_type="puw")
+        
+        # logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
+        # logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
+        
+        st.session_state['model_trained'] = True
+        if not st.session_state['model_saved']:
+            st.warning('Don\'t forget to save your model!', icon="⚠️")
+    else:
+        st.error("No data available for training. Please ensure data is correctly loaded.")
 
-            # Optional : Not really useful here and takes time to calculate, uncomment if you want to calculate them
-            # # Computes coherence value
-            # coherence_score_type = "c_npmi"
-            # coherence = get_coherence_value(
-            #     st.session_state["topic_model"],
-            #     st.session_state["topics"],
-            #     st.session_state["timefiltered_df"][TEXT_COLUMN],
-            #     coherence_score_type
-            # )
-            # diversity_score_type = "puw"
-            # diversity = get_diversity_value(st.session_state["topic_model"],
-            #                                 st.session_state["topics"],
-            #                                 st.session_state["timefiltered_df"][TEXT_COLUMN],
-            #                                 diversity_score_type="puw")
-            
-            # logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
-            # logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
-            
-            st.session_state['model_trained'] = True
-            if not st.session_state['model_saved']: st.warning('Don\'t forget to save your model!', icon="⚠️")
-            
-        else:
-            st.error("No data available for training. Please ensure data is correctly loaded.")
+
+################################################
+################## MAIN PAGE ###################
+################################################
+
+
+
+# Wide layout
+st.set_page_config(page_title="Wattelse® topic", layout="wide")
+
+# Initialize default parameters
+initialize_default_parameters_keys()
+
+### TITLE ###
+st.title("Topic modelling")
+
+if 'model_trained' not in st.session_state: st.session_state['model_trained'] = False
+if 'model_saved' not in st.session_state: st.session_state['model_saved'] = False
+
+
+# Restore widget state
+restore_widget_state()
+
+# Initialize session state for representation_models
+if "representation_models" not in st.session_state:
+    st.session_state.representation_models = ["MaximalMarginalRelevance"]
+
+def apply_changes():
+    # Get the latest selection from the multiselect widget
+    latest_models = st.session_state.temp_representation_models
+
+    # Update the session state
+    st.session_state.representation_models = latest_models
+
+    # Update other parameters
+    parameters = {
+        **embedding_model_options,
+        **bertopic_options,
+        **umap_options,
+        **hdbscan_options,
+        **countvectorizer_options,
+        **ctfidf_options,
+        "representation_models": latest_models,
+    }
+    st.session_state["parameters"] = str(parameters)
+
+    save_widget_state()
+    st.balloons()
+    st.sidebar.success("Changes applied successfully!")
+    
+
+# In the sidebar form
+with st.sidebar.form("parameters_sidebar"):
+    st.title("Parameters")
+
+    with st.expander("Embedding model"):
+        embedding_model_options = embedding_model_options()
+
+    with st.expander("Topics"):
+        bertopic_options = bertopic_options()
+
+    with st.expander("UMAP"):
+        umap_options = umap_options()
+
+    with st.expander("HDBSCAN"):
+        hdbscan_options = hdbscan_options()
+
+    with st.expander("Count Vectorizer"):
+        countvectorizer_options = countvectorizer_options()
+
+    with st.expander("c-TF-IDF"):
+        ctfidf_options = ctfidf_options()
+
+    with st.expander("Representation Models"):
+        representation_model_options = representation_model_options()
+
+    # Form submit button for applying changes
+    apply_changes_clicked = st.form_submit_button(
+        "Apply Changes", on_click=apply_changes
+    )
+    
+# Update st.session_state.representation_models according to the rules
+if not st.session_state.representation_models:
+    st.session_state.representation_models = ["MaximalMarginalRelevance"]
+elif "OpenAI" in st.session_state.representation_models:
+    st.session_state.representation_models = [model for model in st.session_state.representation_models if model != "OpenAI"] + ["OpenAI"]
+
+# Separate button for training the model
+if st.sidebar.button("Train Model", type="primary", key="train_model_button"):
+    train_model()
+
+    
+st.sidebar.write(f"Debug:")
+st.sidebar.write(st.session_state)
+
+
 
 
 # Load selected DataFrame
@@ -396,11 +431,9 @@ select_data()
 # Data overview
 data_overview(st.session_state["timefiltered_df"])
 
-# Train model
-train_model()
-
 # Save the model button
 save_model_interface()
+
 
 
 

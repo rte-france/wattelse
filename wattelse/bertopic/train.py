@@ -12,7 +12,6 @@ import typer
 from bertopic import BERTopic
 from bertopic.backend import BaseEmbedder
 from bertopic.vectorizers import ClassTfidfTransformer
-from bertopic.representation import MaximalMarginalRelevance
 from hdbscan import HDBSCAN
 from loguru import logger
 from nltk.corpus import stopwords
@@ -20,7 +19,6 @@ from numpy import ndarray
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
-import numpy as np
 import streamlit as st
 import numpy as np
 from tqdm import tqdm
@@ -60,6 +58,7 @@ DEFAULT_VECTORIZER_MODEL = CountVectorizer(
     ngram_range=DEFAULT_NGRAM_RANGE,
     min_df=DEFAULT_MIN_DF,
 )
+
 DEFAULT_CTFIDF_MODEL = ClassTfidfTransformer(reduce_frequent_words=True)
 
 DEFAULT_REPRESENTATION_MODEL = MaximalMarginalRelevance(diversity=0.3)
@@ -73,27 +72,53 @@ Sur la base des informations ci-dessus, extraire une courte étiquette de topic 
 Topic : <étiquette du sujet>
 """
 
+
 class EmbeddingModel(BaseEmbedder):
     """
     Custom class for the embedding model. Currently supports SentenceBert models (model_name should refer to a SentenceBert model).
+    Implements batch processing for efficient memory usage and handles different input types.
     """
 
-    def __init__(self, model_name):
+    def __init__(self, model_name, batch_size=5000):
         super().__init__()
 
         logger.info(f"Loading embedding model: {model_name}...")
         self.embedding_model = SentenceTransformer(model_name)
 
         # Handle the particular scenario of when max seq length in original model is abnormal (not a power of 2)
-        if self.embedding_model.max_seq_length == 514: self.embedding_model.max_seq_length = 512
+        if self.embedding_model.max_seq_length == 514:
+            self.embedding_model.max_seq_length = 512
 
         self.name = model_name
+        self.batch_size = batch_size
         logger.debug("Embedding model loaded")
 
-    def embed(self, documents: List[str], verbose=True) -> List:
-        embeddings = self.embedding_model.encode(documents, show_progress_bar=verbose, output_value=None)
-        return embeddings
+    def embed(self, documents: Union[List[str], pd.Series], verbose=True) -> np.ndarray:
+        # Convert to list if input is a pandas Series
+        if isinstance(documents, pd.Series):
+            documents = documents.tolist()
+        
+        num_documents = len(documents)
+        num_batches = (num_documents + self.batch_size - 1) // self.batch_size
+        embeddings = []
 
+        for i in tqdm(range(num_batches), desc="Embedding batches", disable=not verbose):
+            start_idx = i * self.batch_size
+            end_idx = min(start_idx + self.batch_size, num_documents)
+            batch_documents = documents[start_idx:end_idx]
+            
+            batch_embeddings = self.embedding_model.encode(
+                batch_documents,
+                show_progress_bar=False,
+                output_value=None
+            )
+            embeddings.append(batch_embeddings)
+
+        # Concatenate all batch embeddings
+        all_embeddings = np.concatenate(embeddings, axis=0)
+        
+        logger.info(f"Embedded {num_documents} documents in {num_batches} batches")
+        return all_embeddings
 
 
 def convert_to_numpy(obj, type=None):
@@ -199,6 +224,7 @@ def train_BERTopic(
         filtered_dataset = full_dataset[full_dataset.index.isin(indices)].reset_index(drop=True)
     else:
         filtered_dataset = full_dataset
+    
         
     if cache_path.exists() and use_cache:
         # use previous cache
@@ -230,31 +256,38 @@ def train_BERTopic(
 
     if nr_topics == 0: nr_topics = None
     
-    # Prepare representation models
-    rep_models = []
+    # Separate OpenAI from other representation models
+    openai_model = None
+    other_rep_models = []
     for model in representation_models:
-        if model == "KeyBERTInspired":
-            rep_models.append(KeyBERTInspired(
-                nr_repr_docs=kwargs.get(f"{model}_nr_repr_docs", 5),
-                nr_candidate_words=kwargs.get(f"{model}_nr_candidate_words", 40),
-                top_n_words=kwargs.get(f"{model}_top_n_words", 20)
+        if model == "OpenAI":
+            openai_model = OpenAI(
+                client=openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"]),
+                model=kwargs.get("openai_model", "gpt-3.5-turbo"),
+                nr_docs=kwargs.get("openai_nr_docs", 5),
+                prompt=FRENCH_CHAT_PROMPT if kwargs.get("data_language", "Français") == "Français" else None,
+                chat=True
+            )
+        else:
+            other_rep_models.append(model)
+
+    # Initialize other representation models
+    representation_model_objects = []
+    for model in other_rep_models:
+        if model == "MaximalMarginalRelevance":
+            representation_model_objects.append(MaximalMarginalRelevance(
+                diversity=kwargs.get("mmr_diversity", 0.3),
+                top_n_words=kwargs.get("mmr_top_n_words", 10)
             ))
-        elif model == "MaximalMarginalRelevance":
-            rep_models.append(MaximalMarginalRelevance(
-                diversity=kwargs.get(f"{model}_diversity", 0.2),
-                top_n_words=kwargs.get(f"{model}_top_n_words", 10)
-            ))
-        elif model == "OpenAI":
-            client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-            prompt = FRENCH_CHAT_PROMPT if kwargs.get(f"{model}_language", "Français") == "Français" else None
-            rep_models.append(OpenAI(
-                client=client,
-                model=kwargs.get(f"{model}_model", "gpt-3.5-turbo"),
-                nr_docs=kwargs.get(f"{model}_nr_docs", 5),
-                prompt=prompt
+        elif model == "KeyBERTInspired":
+            representation_model_objects.append(KeyBERTInspired(
+                top_n_words=kwargs.get("keybert_top_n_words", 10),
+                nr_repr_docs=kwargs.get("keybert_nr_repr_docs", 5),
+                nr_candidate_words=kwargs.get("keybert_nr_candidate_words", 20)
             ))
 
-    representation_model = rep_models[0] if len(rep_models) == 1 else rep_models
+    # Use the first model if only one is specified, otherwise use the list
+    representation_model = representation_model_objects[0] if len(representation_model_objects) == 1 else representation_model_objects
 
     # Build BERTopic model
     topic_model = BERTopic(
@@ -276,31 +309,75 @@ def train_BERTopic(
         filtered_dataset[column],
         embeddings
     )
+
+    logger.info("Reducing outliers via embeddings strategy...")
+    new_topics = topic_model.reduce_outliers(documents=filtered_dataset[column], 
+                                             topics=topics, 
+                                             embeddings=embeddings,
+                                             strategy="embeddings")
+    topic_model.update_topics(filtered_dataset[column], topics=new_topics)
     
-    return topic_model, topics, probs, embeddings, token_embeddings, token_strings
+    # If OpenAI model is present, apply it after reducing outliers
+    if openai_model:
+        logger.info("Applying OpenAI representation model...")
+        
+        # WARNING : update_topics updates the topic model's representation model
+        # Solution : Backup the current representation model(s) to avoid using OpenAI later during the computation of topics over time
+        backup_representation_model = topic_model.representation_model 
+        topic_model.update_topics(filtered_dataset[column], topics=new_topics, representation_model=openai_model)
+        topic_model.representation_model = backup_representation_model 
+    
+    return topic_model, new_topics, probs, embeddings, token_embeddings, token_strings
 
 
 
-def group_tokens(tokenizer, token_ids, token_embeddings, language="english"):
-    if language not in ["english", "french"]:
-        raise ValueError("Invalid language. Supported languages: 'english', 'french'")
-    
-    special_tokens = {
-        "english": ["[CLS]", "[SEP]", "[PAD]"],
-        "french": ["<s>", "</s>", "<pad>"]
-    }
-    
+
+
+def group_tokens(tokenizer, token_ids, token_embeddings, language="french"):
     grouped_token_lists = []
     grouped_embedding_lists = []
     
-    for token_id, token_embedding in tqdm(zip(token_ids, token_embeddings), desc="Processing documents"):
-        tokens, embeddings = remove_special_tokens(tokenizer, token_id, token_embedding, special_tokens[language])
-        grouped_tokens, grouped_embeddings = group_subword_tokens(tokens, embeddings, language)
+    special_tokens = {"english": ["[CLS]", "[SEP]", "[PAD]"], "french": ["<s>", "</s>", "<pad>"]}
+    subword_prefix = {"english": "##", "french": "▁"}
+    
+    for token_id, token_embedding in tqdm(zip(token_ids, token_embeddings), desc="Grouping split tokens into whole words"):
+        tokens = tokenizer.convert_ids_to_tokens(token_id)
+        
+        grouped_tokens = []
+        grouped_embeddings = []
+        current_word = ""
+        current_embedding = []
+        
+        for token, embedding in zip(tokens, token_embedding):
+            if token in special_tokens[language]:
+                continue
+            
+            if language == "french" and token.startswith(subword_prefix[language]):
+                if current_word:
+                    grouped_tokens.append(current_word)
+                    grouped_embeddings.append(np.mean(current_embedding, axis=0))
+                current_word = token[1:]
+                current_embedding = [embedding]
+            elif language == "english" and not token.startswith(subword_prefix[language]):
+                if current_word:
+                    grouped_tokens.append(current_word)
+                    grouped_embeddings.append(np.mean(current_embedding, axis=0))
+                current_word = token
+                current_embedding = [embedding]
+            else:
+                current_word += token.lstrip(subword_prefix[language])
+                current_embedding.append(embedding)
+        
+        if current_word:
+            grouped_tokens.append(current_word)
+            grouped_embeddings.append(np.mean(current_embedding, axis=0))
         
         grouped_token_lists.append(grouped_tokens)
-        grouped_embedding_lists.append(np.stack(grouped_embeddings))  # Stack to form numpy arrays
+        grouped_embedding_lists.append(np.array(grouped_embeddings))
     
     return grouped_token_lists, grouped_embedding_lists
+
+
 
 def remove_special_tokens(tokenizer, token_id, token_embedding, special_tokens):
     tokens = tokenizer.convert_ids_to_tokens(token_id)
@@ -313,43 +390,6 @@ def remove_special_tokens(tokenizer, token_id, token_embedding, special_tokens):
             filtered_embeddings.append(embedding)
     
     return filtered_tokens, filtered_embeddings
-
-def group_subword_tokens(tokens, embeddings, language):
-    grouped_tokens = []
-    grouped_embeddings = []
-    current_token = []
-    current_embedding_sum = np.zeros_like(embeddings[0])
-    num_subtokens = 0
-    
-    for token, embedding in zip(tokens, embeddings):
-        if (language == "english" and token.startswith("##")) or (language == "french" and token.startswith("▁")):
-            if language == "english":
-                current_token.append(token[2:])
-            else:  # French
-                if current_token:
-                    grouped_tokens.append("".join(current_token))
-                    grouped_embeddings.append(current_embedding_sum / num_subtokens)
-                current_token = [token[1:]]  # Remove the '▁' character
-                current_embedding_sum = embedding
-                num_subtokens = 1
-                continue
-        else:
-            if current_token:
-                grouped_tokens.append("".join(current_token))
-                grouped_embeddings.append(current_embedding_sum / num_subtokens)
-            current_token = []
-            current_embedding_sum = np.zeros_like(embedding)
-            num_subtokens = 0
-        
-        current_token.append(token)
-        current_embedding_sum += embedding
-        num_subtokens += 1
-    
-    if current_token:
-        grouped_tokens.append("".join(current_token))
-        grouped_embeddings.append(current_embedding_sum / num_subtokens)
-    
-    return grouped_tokens, grouped_embeddings
 
 
 

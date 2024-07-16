@@ -140,7 +140,7 @@ def calculate_document_lengths(documents):
 def create_datamap():
     with st.spinner("Loading Data-map plot..."):
         # Calculate 2D embeddings
-        reduced_embeddings = UMAP(n_neighbors=5, n_components=2, min_dist=0.15, metric='cosine').fit_transform(st.session_state["embeddings"])
+        reduced_embeddings = UMAP(n_neighbors=5, n_components=2, min_dist=0.2, metric='cosine').fit_transform(st.session_state["embeddings"])
 
         # Create a dataframe that associates documents with their embeddings and the topics they belong to
         topic_nums = list(set(st.session_state['topics']))
@@ -159,10 +159,10 @@ def create_datamap():
         # Add option to include or exclude noise points
         include_noise = st.sidebar.checkbox("Include unlabelled text (Topic = -1)", value=False)
         if not include_noise:
-            df = df[~df['topic_representation'].str.startswith('-1_')]
+            df = df[~df['topic_representation'].str.contains('-1')]
 
         # Treat topics starting with -1_ as noise
-        df['is_noise'] = df['topic_representation'].str.startswith('-1_')
+        df['is_noise'] = df['topic_representation'].str.contains('-1')
         df['topic_representation'] = df.apply(lambda row: "" if row['is_noise'] else topic_representations.get(row['topic_num'], ""), axis=1)
         df['topic_color'] = df.apply(lambda row: '#999999' if row['is_noise'] else None, axis=1)
 
@@ -218,12 +218,12 @@ def create_datamap():
             html_str = plot._html_str.encode(encoding='UTF-8', errors='replace')
 
             # Save the encoded HTML string to a file
-            with open('datamapplot.html', 'wb') as f:
+            with open('wattelse/bertopic/app/datamapplot.html', 'wb') as f:
                 f.write(html_str)
 
-            HtmlFile = open("datamapplot.html", 'r', encoding='utf-8')
+            HtmlFile = open("wattelse/bertopic/app/datamapplot.html", 'r', encoding='utf-8')
             source_code = HtmlFile.read()
-            components.html(source_code, width=2000, height=1000, scrolling=True)
+            components.html(source_code, width=1500, height=1000, scrolling=True)
 
         except KeyError as e:
             st.error(f"An error occurred while creating the datamap: {str(e)}")
