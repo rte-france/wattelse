@@ -12,6 +12,7 @@ from pathlib import Path
 from plotly.express import bar
 import plotly.graph_objects as go
 
+from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 from wattelse.chatbot.frontend.django_chatbot.settings import DB_DIR
 
 DB_PATH = DB_DIR / "db.sqlite3"
@@ -112,6 +113,18 @@ def filter_data():
     st.session_state["filtered_data"] = filtered
 
 
+def _compute_file_indicators():
+    if st.session_state["group"]:
+        bak = RAGBackEnd(st.session_state["group"])
+        nb_files = len(bak.get_available_docs())
+        nb_chunks = len(bak.document_collection.collection)
+    else:
+        nb_files = np.NaN
+        nb_chunks = np.NaN
+
+    return nb_files, nb_chunks
+
+
 def display_indicators():
     nb_questions = len(st.session_state["filtered_data"].message)
     nb_conversations = len(st.session_state["filtered_data"].conversation_id.unique())
@@ -123,9 +136,11 @@ def display_indicators():
     ) // len(st.session_state["full_data"].username.unique())
     nb_short_feedback = (st.session_state["filtered_data"].short_feedback != "").sum()
     nb_long_feedback = (st.session_state["filtered_data"].long_feedback != "").sum()
-    median_answer_delay = st.session_state["filtered_data"].answer_delay.median()/1e6
+    median_answer_delay = st.session_state["filtered_data"].answer_delay.median() / 1e6
 
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    number_of_files, number_of_chunks = _compute_file_indicators()
+
+    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
     col1.metric(
         "Questions/Answers",
         nb_questions,
@@ -162,15 +177,24 @@ def display_indicators():
         f"{nb_long_feedback}",
     )
 
-
     col5.metric(
         "Short feedback percentage",
-        f"{nb_short_feedback/nb_questions*100:.2f}%",
+        f"{nb_short_feedback / nb_questions * 100:.2f}%",
     )
 
     col6.metric(
         "Median answer delay",
         f"{median_answer_delay:.2f}s",
+    )
+
+    col7.metric(
+        "Number of files",
+        f"{number_of_files}"
+    )
+
+    col8.metric(
+        "Number of chunks",
+        f"{number_of_chunks}"
     )
 
 
@@ -270,11 +294,12 @@ def display_feedback_rates():
     for i, feedback_type in enumerate(FEEDBACK_COLORS.keys()):
         if feedback_type in short_feedback_counts.keys():
             cols[i].metric(
-                    f":{FEEDBACK_COLORS[feedback_type]}[Ratio of feedback '{feedback_type}']",
-                    f"{short_feedback_counts[feedback_type]/total_short_feedback*100:.1f}%",
-                    "",
-                )
-            
+                f":{FEEDBACK_COLORS[feedback_type]}[Ratio of feedback '{feedback_type}']",
+                f"{short_feedback_counts[feedback_type] / total_short_feedback * 100:.1f}%",
+                "",
+            )
+
+
 def check_password():
     """Returns `True` if the user had the correct password."""
 
@@ -297,7 +322,6 @@ def check_password():
     if "password_correct" in st.session_state:
         st.error("😕 Password incorrect")
     return False
-            
 
 
 def main():

@@ -5,4 +5,4 @@
 # This file is part of Wattelse, a NLP application suite.
 #
 
-streamlit run dashboard.py --server.port 9090
+streamlit run --theme.primaryColor royalblue dashboard.py --server.port 9090
