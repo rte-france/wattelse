@@ -3,6 +3,7 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 import hmac
+import yaml
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -33,6 +34,15 @@ FEEDBACK_COLORS = {
     WRONG: "red",
 }
 
+# Get main experimentations group names
+DRH_GROUP_NAME = "DRH"
+METIERS_GROUP_NAME = "Expé_Métiers"
+
+# Get Expé_Métiers group names list
+GROUP_NAMES_LIST_FILE_PATH = Path(__file__).parent / "expe_metier_group_name_list.yaml"
+with open(GROUP_NAMES_LIST_FILE_PATH) as f:
+    GROUP_NAMES_LIST = yaml.safe_load(f)
+
 
 def get_db_data(path_to_db: Path) -> pd.DataFrame:
     con = sqlite3.connect(path_to_db)
@@ -62,16 +72,28 @@ def side_bar():
     with st.sidebar.form("parameters_sidebar"):
         st.title("Parameters")
 
+        # Get user and group names and sort them
+        user_names_list = list(st.session_state["full_data"].username.unique())
+        user_names_list.sort(key=str.lower)
+        group_names_list = list(st.session_state["full_data"].group_id.unique())
+        group_names_list.sort(key=str.lower)
+
+        # Format group_names_list so DRH and Expé_Métiers are at the top of the list
+        if DRH_GROUP_NAME in group_names_list:
+            group_names_list.remove(DRH_GROUP_NAME)
+            group_names_list.insert(0, DRH_GROUP_NAME)
+            group_names_list.insert(0, METIERS_GROUP_NAME)
+
         st.selectbox(
             "Select user",
-            st.session_state["full_data"].username.unique(),
+            user_names_list,
             index=None,
             placeholder="Select user...",
             key="user",
         )
         st.selectbox(
             "Select group",
-            st.session_state["full_data"].group_id.unique(),
+            group_names_list,
             index=None,
             placeholder="Select group...",
             key="group",
@@ -102,7 +124,10 @@ def filter_data():
     if st.session_state["user"]:
         filtered = filtered[filtered.username == st.session_state["user"]]
     if st.session_state["group"]:
-        filtered = filtered[filtered.group_id == st.session_state["group"]]
+        if st.session_state["group"]==METIERS_GROUP_NAME:
+            filtered = filtered[filtered.group_id.isin(GROUP_NAMES_LIST)]
+        else:
+            filtered = filtered[filtered.group_id == st.session_state["group"]]
 
     # Filter dataset to select only text within time range
     timestamp_range = st.session_state["timestamp_range"]
@@ -114,7 +139,7 @@ def filter_data():
 
 
 def _compute_file_indicators():
-    if st.session_state["group"]:
+    if st.session_state["group"] and st.session_state["group"]!=METIERS_GROUP_NAME:
         bak = RAGBackEnd(st.session_state["group"])
         nb_files = len(bak.get_available_docs())
         nb_chunks = len(bak.document_collection.collection)
