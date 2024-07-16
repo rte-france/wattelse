@@ -79,6 +79,7 @@ def side_bar():
         group_names_list.sort(key=str.lower)
 
         # Format group_names_list so DRH and Expé_Métiers are at the top of the list
+        # Only if DRH_GROUP_NAME in group_names (so this option only appear on server 1)
         if DRH_GROUP_NAME in group_names_list:
             group_names_list.remove(DRH_GROUP_NAME)
             group_names_list.insert(0, DRH_GROUP_NAME)
