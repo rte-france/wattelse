@@ -3,18 +3,12 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-from typing import List
-
-import tiktoken
 from loguru import logger
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.api.prompts import FR_SYSTEM_SUMMARY_WORDS, EN_SYSTEM_SUMMARY_WORDS
-from wattelse.summary.summarizer import (
-    DEFAULT_MAX_SENTENCES,
-    DEFAULT_MAX_WORDS,
-    DEFAULT_SUMMARIZATION_RATIO,
-)
+from wattelse.api.prompts import EN_SYSTEM_SUMMARY_SENTENCES, FR_SYSTEM_SUMMARY_SENTENCES
+from wattelse.summary.summarizer import DEFAULT_MAX_SENTENCES
+
 from wattelse.summary.summarizer import Summarizer
 
 
@@ -30,23 +24,23 @@ class GPTSummarizer(Summarizer):
             self,
             article_text: str,
             max_sentences: int = DEFAULT_MAX_SENTENCES,
-            max_words: int = DEFAULT_MAX_WORDS,
-            max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
             prompt_language: str = "fr",
             max_article_length: int = 1500,
             model_name: str = None,
+            **kwargs
     ) -> str:
+
         # Limit input length in case the text is large
         article_text = keep_first_n_words(article_text, max_article_length)
 
         # Create answer object
         prompt = (
-            FR_SYSTEM_SUMMARY_WORDS
+            FR_SYSTEM_SUMMARY_SENTENCES
             if prompt_language == "fr"
-            else EN_SYSTEM_SUMMARY_WORDS
+            else EN_SYSTEM_SUMMARY_SENTENCES
         )
         answer = self.api.generate(
-            system_prompt=prompt.format(num_words=max_words),
+            system_prompt=prompt.format(num_sentences=max_sentences),
             user_prompt=article_text,
         )
         return answer

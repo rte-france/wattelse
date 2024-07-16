@@ -16,10 +16,7 @@ class Summarizer(ABC):
     def generate_summary(
             self,
             article_text: str,
-            max_sentences: int = DEFAULT_MAX_SENTENCES,
-            max_words: int = DEFAULT_MAX_WORDS,
-            max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
-            prompt_language="fr",
+            **kwargs,
     ) -> str:
         pass
 

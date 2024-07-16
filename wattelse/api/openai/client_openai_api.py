@@ -3,9 +3,7 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-import configparser
 import os
-from pathlib import Path
 
 from openai import OpenAI, AzureOpenAI, Timeout
 from loguru import logger
@@ -13,6 +11,9 @@ from openai._types import NOT_GIVEN
 
 MAX_ATTEMPTS = 3
 TIMEOUT = 60.0
+DEFAULT_TEMPERATURE = 0.1
+
+AZURE_API_VERSION = "2024-02-01"
 
 
 class OpenAI_Client:
@@ -21,9 +22,7 @@ class OpenAI_Client:
     OPENAI_ENDPOINT respectively. (The endpoint shall only be set for Azure or local deployment)
     """
 
-    def __init__(self, api_key: str = None, endpoint: str = None, config_path=Path(__file__).parent / "default_openai.cfg"):
-        config = configparser.ConfigParser()
-        config.read(config_path)
+    def __init__(self, api_key: str = None, endpoint: str = None):
         if not api_key:
             api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
@@ -45,7 +44,7 @@ class OpenAI_Client:
         }
         azure_params = {
             "azure_endpoint": endpoint,
-            "api_version": config.get("API_CONFIG", "api_version")
+            "api_version": AZURE_API_VERSION
         }
 
         if not run_on_azure:
@@ -58,8 +57,8 @@ class OpenAI_Client:
                 **common_params,
                 **azure_params,
             )
-        self.model_name = config.get("API_CONFIG", "model_name")
-        self.temperature = config.getfloat("API_CONFIG", "temperature")
+        self.model_name = os.getenv("OPENAI_DEFAULT_MODEL_NAME")
+        self.temperature = DEFAULT_TEMPERATURE
 
     def generate(
             self,

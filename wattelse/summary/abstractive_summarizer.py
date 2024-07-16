@@ -9,12 +9,7 @@ from typing import List
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-from wattelse.summary.summarizer import (
-    Summarizer,
-    DEFAULT_MAX_SENTENCES,
-    DEFAULT_MAX_WORDS,
-    DEFAULT_SUMMARIZATION_RATIO,
-)
+from wattelse.summary.summarizer import Summarizer
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -38,20 +33,13 @@ class AbstractiveSummarizer(Summarizer):
     def generate_summary(
         self,
         article_text,
-        max_sentences=DEFAULT_MAX_SENTENCES,
-        max_words=DEFAULT_MAX_WORDS,
-        max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
-        prompt_language="fr"
+        **kwargs
     ) -> str:
-        return self.summarize_batch([article_text], max_sentences, max_length_ratio)[0]
+        return self.summarize_batch([article_text])[0]
 
     def summarize_batch(
         self,
         article_texts: List[str],
-        max_sentences: int=DEFAULT_MAX_SENTENCES,
-        max_words=DEFAULT_MAX_WORDS,
-        max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
-        prompt_language="fr",
         **kwargs
     ) -> List[str]:
         inputs = self.tokenizer(
@@ -66,7 +54,7 @@ class AbstractiveSummarizer(Summarizer):
 
         attention_mask = inputs.attention_mask.to(device)
 
-        max_length = 512#max([round(len(article_text) * max_length_ratio) for article_text in article_texts])
+        max_length = 512
 
         output_ids = self.model.generate(
             input_ids=input_ids,
@@ -90,6 +78,6 @@ if __name__ == "__main__":
     model_name = "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
 
     summarizer = AbstractiveSummarizer(model_name)
-    summary = summarizer.generate_summary(text, 3,0.3)
+    summary = summarizer.generate_summary(text)
 
     print(summary)
