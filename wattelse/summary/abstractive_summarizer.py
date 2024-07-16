@@ -51,7 +51,8 @@ class AbstractiveSummarizer(Summarizer):
         max_sentences: int=DEFAULT_MAX_SENTENCES,
         max_words=DEFAULT_MAX_WORDS,
         max_length_ratio: float=DEFAULT_SUMMARIZATION_RATIO,
-        prompt_language="fr"
+        prompt_language="fr",
+        **kwargs
     ) -> List[str]:
         inputs = self.tokenizer(
             [self.WHITESPACE_HANDLER(text) for text in article_texts],
