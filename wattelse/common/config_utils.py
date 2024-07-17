@@ -4,6 +4,8 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import ast
+import os
+from configparser import BasicInterpolation
 from typing import Any
 
 
@@ -16,3 +18,11 @@ def parse_literal(expr: Any) -> Any:
             return ast.literal_eval(expr)
         except:
             return expr
+
+
+class EnvInterpolation(BasicInterpolation):
+    """Interpolation which expands environment variables in values."""
+
+    def before_get(self, parser, section, option, value, defaults):
+        value = super().before_get(parser, section, option, value, defaults)
+        return os.path.expandvars(value)

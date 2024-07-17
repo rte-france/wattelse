@@ -4,7 +4,8 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import json
-import configparser
+import os
+
 from loguru import logger
 
 from django.http import JsonResponse, StreamingHttpResponse
@@ -12,23 +13,21 @@ from django.shortcuts import render, redirect
 
 from openai import OpenAI
 
-from wattelse.chatbot.backend import LLM_CONFIGS, FASTCHAT_LLM
-from wattelse.chatbot.backend.rag_backend import RAGError
-from wattelse.common.config_utils import parse_literal
-
 from .utils import streaming_generator_llm
 
-# Load locally deployed LLM configuration file
-llm_config_file = LLM_CONFIGS.get(FASTCHAT_LLM, None)
-if llm_config_file is None:
-    raise RAGError(f"Unrecognized LLM API name")
-config = configparser.ConfigParser(converters={"literal": parse_literal})
-config.read(llm_config_file)
+# Uses environment variables to configure the openai API
+api_key = os.getenv("LOCAL_OPENAI_API_KEY")
+if not api_key:
+    logger.error(
+        "WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services.")
+    raise EnvironmentError(f"LOCAL_OPENAI_API_KEY environment variable not found.")
+endpoint = os.getenv("LOCAL_OPENAI_ENDPOINT", None)
+if endpoint == "":  # check empty env var
+    endpoint = None
+model_name = os.getenv("OPENAI_MODEL_NAME", None)
 
-# Initialize OpenAI API with configuration parameters from config file
-api_config = config["API_CONFIG"]
-llm_config = {"api_key": api_config["openai_api_key"],
-              "base_url": api_config["openai_url"],
+llm_config = {"api_key": api_key,
+              "base_url": endpoint,
               }
 LLM_CLIENT = OpenAI(**llm_config)
 
@@ -57,7 +56,7 @@ def request_client(request):
         try:
             response = LLM_CLIENT.chat.completions.create(
                 messages=history,
-                model=api_config["model_name"],
+                model=model_name,
                 stream=True,
             )
             return StreamingHttpResponse(streaming_generator_llm(response), status=200, content_type='text/event-stream')
@@ -66,4 +65,4 @@ def request_client(request):
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse({"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500)
     else:
-        return render(request, "chatbot/secureGPT.html", context={"llm_name": api_config["model_name"]})
+        return render(request, "chatbot/secureGPT.html", context={"llm_name": model_name})
