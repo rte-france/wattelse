@@ -336,16 +336,17 @@ class EnhancedExtractiveSummarizer(ExtractiveSummarizer):
     """Combination of extractive summarizer for quality of extraction and LLM for rephrasing and make the text more
     fluid"""
 
-    def __init__(self, model_name=DEFAULT_SUMMARIZER_MODEL):
+    def __init__(self, api_key: str = None, endpoint: str = None, model_name=DEFAULT_SUMMARIZER_MODEL):
         super().__init__(model_name=model_name)
-        self.api = OpenAI_Client()
+        self.api = OpenAI_Client(api_key=api_key, endpoint=endpoint)
 
     def generate_summary(
             self,
             text,
             max_sentences=DEFAULT_MAX_SENTENCES,
             max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
-            prompt_language="fr"
+            prompt_language="fr",
+            model_name: str = None,
     ) -> str:
         base_summary = super().generate_summary(text=text, max_sentences=max_sentences, max_length_ratio=max_length_ratio)
         logger.debug(f"Base summary: {base_summary}")
@@ -354,5 +355,6 @@ class EnhancedExtractiveSummarizer(ExtractiveSummarizer):
                 FR_SYSTEM_SUMMARY_SENTENCES if prompt_language == "fr" else EN_SYSTEM_SUMMARY_SENTENCES).format(
                 num_sentences=max_sentences),
             user_prompt=base_summary,
+            model_name=model_name if model_name else self.api.model_name,
         )
         return improved_summary
