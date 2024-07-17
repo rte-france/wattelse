@@ -14,6 +14,57 @@ from app_utils import print_docs_for_specific_topic, plot_topics_over_time, load
 from state_utils import register_widget, save_widget_state, restore_widget_state
 from wattelse.bertopic.app.app_utils import compute_topics_over_time
 
+import os
+from datetime import timedelta
+
+from jinja2 import Template
+import html
+import re
+
+EXPORT_BASE_FOLDER = os.path.join('wattelse', 'bertopic', 'app', 'exported_topics')
+
+def export_topic_documents(topic_docs, granularity_days, export_base_folder, topic_number, topic_words):
+    """
+    Export documents for a specific topic grouped by a given time granularity.
+    
+    Args:
+    topic_docs (pd.DataFrame): DataFrame containing documents and timestamps for a specific topic.
+    granularity_days (int): Number of days to group documents by.
+    export_base_folder (str): Base folder path to export the text files.
+    topic_number (int): The number of the current topic.
+    topic_words (list): List of words representing the topic.
+    
+    Returns:
+    str: Path to the created folder.
+    """
+    # Create a folder name based on topic number, first three words, and granularity
+    folder_name = f"topic_{topic_number}_{' '.join(topic_words[:3])}_{granularity_days}days"
+    folder_name = re.sub(r'[^\w\-_\. ]', '_', folder_name)  # Replace invalid characters
+    export_folder = os.path.join(export_base_folder, folder_name)
+    os.makedirs(export_folder, exist_ok=True)
+    
+    topic_docs = topic_docs.sort_values('timestamp')
+    start_date = topic_docs['timestamp'].min()
+    end_date = topic_docs['timestamp'].max()
+    current_date = start_date
+    
+    while current_date <= end_date:
+        next_date = current_date + timedelta(days=granularity_days)
+        
+        period_docs = topic_docs[(topic_docs['timestamp'] >= current_date) & (topic_docs['timestamp'] < next_date)]
+        
+        if not period_docs.empty:
+            file_name = f"{current_date.strftime('%Y%m%d')}-{(next_date - timedelta(days=1)).strftime('%Y%m%d')}.txt"
+            file_path = os.path.join(export_folder, file_name)
+            
+            with open(file_path, 'w', encoding='utf-8') as f:
+                for _, doc in period_docs.iterrows():
+                    f.write(f"{doc['text']}\n\n")  # Write raw document text with double line break
+        
+        current_date = next_date
+    
+    return export_folder
+
 # Set locale to get french date names
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
 
@@ -50,18 +101,18 @@ def find_similar_topic():
 
 with st.sidebar:
 
-	# Search bar
-	search_terms = st.text_input("Search topic", on_change=find_similar_topic, key="search_terms")
+    # Search bar
+    search_terms = st.text_input("Search topic", on_change=find_similar_topic, key="search_terms")
 
-	# Topics list
-	for index, topic in st.session_state["topics_info"].iterrows():
-		topic_number = topic["Topic"]
-		topic_words = topic["Representation"][:3]
-		button_title = f"{topic_number+1} - {' | '.join(topic_words)}"
-		if "new_topics" in st.session_state.keys():
-			new_docs_number = st.session_state["new_topics"].count(topic_number)
-			button_title += f" :red[+{new_docs_number}]"
-		st.button(button_title, use_container_width=True, on_click=set_topic_selection, args=(topic_number,))
+    # Topics list
+    for index, topic in st.session_state["topics_info"].iterrows():
+        topic_number = topic["Topic"]
+        topic_words = topic["Representation"][:3]
+        button_title = f"{topic_number} - {' | '.join(topic_words)}"
+        if "new_topics" in st.session_state.keys():
+            new_docs_number = st.session_state["new_topics"].count(topic_number)
+            button_title += f" :red[+{new_docs_number}]"
+        st.button(button_title, use_container_width=True, on_click=set_topic_selection, args=(topic_number,))
 
 
 
@@ -75,7 +126,7 @@ if "selected_topic_number" not in st.session_state.keys():
 topic_docs_number = st.session_state["topics_info"].iloc[st.session_state["selected_topic_number"]]["Count"]
 topic_words = st.session_state["topics_info"].iloc[st.session_state["selected_topic_number"]]["Representation"]
 
-st.write(f"# Thème {st.session_state['selected_topic_number']+1} : {topic_docs_number} documents")
+st.write(f"# Thème {st.session_state['selected_topic_number']} : {topic_docs_number} documents")
 
 
 st.markdown(f"## #{' #'.join(topic_words)}")
@@ -187,6 +238,7 @@ with col1:
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
+
     # Container for representative documents
     with st.container(border=False,height=600):
         for i, doc in filtered_df.iterrows():
@@ -201,12 +253,40 @@ with col2:
                 f"*{website_name}*\n\n**{doc.title}**\n\n{date}\n\n{snippet}",
                 doc.url
             )
-            
             # Add a small space between buttons
             st.write("")
-
 
 # If remaining data is processed, print new docs
 if "new_topics_over_time" in st.session_state.keys():
 	st.write("## New documents")
 	print_docs_for_specific_topic(st.session_state["remaining_df"], st.session_state["new_topics"], st.session_state["selected_topic_number"])
+      
+
+# Add export functionality
+st.write("## Export Topic Documents")
+granularity_days = st.number_input("Granularity (number of days)", min_value=1, value=3, step=1)
+
+if st.button("Export Topic Documents"):
+    # Use the filtered_df that's already being used to display documents
+    topic_docs = filtered_df.sort_values(by='timestamp')
+    
+    if not topic_docs.empty:
+        topic_number = st.session_state["selected_topic_number"]
+        topic_words = st.session_state["topic_model"].get_topic(topic_number)
+        topic_words = [word for word, _ in topic_words]  # Extract just the words
+        
+        exported_folder = export_topic_documents(
+            topic_docs, 
+            granularity_days, 
+            EXPORT_BASE_FOLDER,
+            topic_number,
+            topic_words
+        )
+        
+        st.success(f"Successfully exported documents to folder: {exported_folder}")
+        st.write("You can find the exported files in this folder.")
+    else:
+        st.warning("No documents found for the selected topic.")
+
+
+

@@ -25,26 +25,27 @@ from wattelse.api.prompts import (
     EN_USER_SUMMARY_MULTIPLE_DOCS,
 )
 from bertopic._bertopic import BERTopic
+from tqdm import tqdm 
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
 
 
 def generate_newsletter(
-        topic_model: BERTopic,
-        df: pd.DataFrame,
-        topics: List[int],
-        df_split: pd.DataFrame = None,
-        top_n_topics: int = 5,
-        top_n_docs: int = 3,
-        top_n_docs_mode: str = "cluster_probability",
-        newsletter_title: str = "Newsletter",
-        summarizer_class: Summarizer = AbstractiveSummarizer,
-        summary_mode: str = "document",
-        prompt_language: str = "fr",
-        improve_topic_description: bool = False,
-        openai_model_name: str = None,
-        nb_sentences: int = 3,
+    topic_model: BERTopic,
+    df: pd.DataFrame,
+    topics: List[int],
+    df_split: pd.DataFrame = None,
+    top_n_topics: int = 5,
+    top_n_docs: int = 3,
+    top_n_docs_mode: str = "cluster_probability",
+    newsletter_title: str = "Newsletter",
+    summarizer_class: Summarizer = AbstractiveSummarizer,
+    summary_mode: str = "document",
+    prompt_language: str = "fr",
+    improve_topic_description: bool = False,
+    openai_model_name: str = None,
+    nb_sentences: int = 3,
 ) -> Tuple[str, Any, Any]:
     """Generates a newsletter based on a trained BERTopic model.
 
@@ -61,6 +62,7 @@ def generate_newsletter(
         summary_mode (str, optional): - `document` : for each topic, summarize top n documents independently
                                       - `topic`   : for each topic, use top n documents to generate a single topic summary
                                                     using OpenAI API
+                                      - `none`    : do not perform any summarization
         prompt_language (str, optional): prompt language
         improve_topic_description (bool, optional): whether to use ChatGPT to transform topic keywords to a more readable description
         openai_model_name (str, optional): OpenAI model called using OpenAI_API, used to improve topic description and when summary_mode=topic
@@ -83,7 +85,8 @@ def generate_newsletter(
 
     # Ensure top_n_topics is smaller than number of topics
     topics_info = topic_model.get_topic_info()[1:]
-    if len(topics_info) < top_n_topics:
+    
+    if top_n_topics is None or top_n_topics > len(topics_info):
         top_n_topics = len(topics_info)
 
     # Date range
@@ -92,13 +95,13 @@ def generate_newsletter(
 
     # Store each line in a list
     md_lines = [f"# {newsletter_title}"]
-    if prompt_language == "fr":
+    if prompt_language=="fr":
         md_lines.append(f"<div class='date_range'>du {date_min} au {date_max}</div>")
     else:
         md_lines.append(f"<div class='date_range'>from {date_min} to {date_max}</div>")
 
     # Iterate over topics
-    for i in range(top_n_topics):
+    for i in tqdm(range(top_n_topics), desc="Processing topics..."):
         sub_df = get_most_representative_docs(
             topic_model,
             df,
@@ -118,18 +121,20 @@ def generate_newsletter(
             article_list = ""
             for _, doc in sub_df.iterrows():
                 article_list += f"Titre : {doc.title}\nContenu : {doc.text}\n\n"
-
+            
             topic_summary = openai_api.generate(
-                (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language == 'fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
+                (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language=='fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
                     keywords=', '.join(topics_info['Representation'].iloc[i]),
                     article_list=article_list,
                     nb_sentences=nb_sentences,
                 ),
                 model_name=openai_model_name,
             )
+        elif summary_mode == 'none':
+            # No summarization is performed
+            pass
         else:
-            logger.error(
-                f'{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter')
+            logger.error(f'{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter')
             exit()
 
         # Improve topic description
@@ -138,9 +143,8 @@ def generate_newsletter(
 
             improved_topic_description_v2 = (
                 openai_api.generate(
-                    (
-                        FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES if prompt_language == 'fr' else EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES).format(
-                        title_list=(" ; ".join(summaries) if summary_mode == 'document' else topic_summary),
+                    (FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES if prompt_language=='fr' else EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES).format(
+                        title_list=(" ; ".join(summaries) if summary_mode=='document' else topic_summary),
                     ),
                     model_name=openai_model_name,
                 )
@@ -148,16 +152,16 @@ def generate_newsletter(
             )
 
             if improved_topic_description_v2.endswith("."):
-                improved_topic_description_v2 = improved_topic_description_v2[:-1]
+                improved_topic_description_v2 =  improved_topic_description_v2[:-1]
 
-            md_lines.append(f"## Sujet {i + 1} : {improved_topic_description_v2}")
+            md_lines.append(f"## Sujet {i+1} : {improved_topic_description_v2}")
 
             md_lines.append(
                 f"### {' '.join(['#' + keyword for keyword in topics_info['Representation'].iloc[i]])}"
             )
         else:
             md_lines.append(
-                f"## Sujet {i + 1} : {', '.join(topics_info['Representation'].iloc[i])}"
+                f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
             )
 
         # Write summaries + documents
@@ -166,7 +170,6 @@ def generate_newsletter(
         i = 0
         for _, doc in sub_df.iterrows():
             # Write newsletter
-
             md_lines.append(f"### [*{doc.title}*]({doc.url})")
             try:
                 domain = tldextract.extract(doc.url).domain
@@ -178,6 +181,8 @@ def generate_newsletter(
             )
             if summary_mode == 'document':
                 md_lines.append(summaries[i])
+            elif summary_mode == 'none':
+                md_lines.append(doc.text)  # Add the full text when no summarization is performed
             i += 1
 
     # Write full file
@@ -226,13 +231,13 @@ def md2html(md: str, css_style: Path = None) -> str:
 
 
 def get_most_representative_docs(
-        topic_model,
-        df,
-        topics,
-        mode="cluster_probability",
-        df_split=None,
-        topic_number=0,
-        top_n_docs=3,
+    topic_model,
+    df,
+    topics,
+    mode="cluster_probability",
+    df_split=None,
+    topic_number=0,
+    top_n_docs=3,
 ):
     """
     Return most representative documents for a given topic.
@@ -257,9 +262,8 @@ def get_most_representative_docs(
             .size()
             .reset_index(name="counts")
             .sort_values("counts", ascending=False)
+            .iloc[0:top_n_docs]
         )
-        if top_n_docs > 0:
-            sub_df = sub_df.iloc[0:top_n_docs]
         return df[df["title"].isin(sub_df["title"])]
 
     # If no df_split is None, use mode to determine how to return most representative docs :
@@ -267,15 +271,12 @@ def get_most_representative_docs(
         docs_prob = topic_model.get_document_info(df["text"])["Probability"]
         df = df.assign(Probability=docs_prob)
         sub_df = df.loc[pd.Series(topics) == topic_number]
-        sub_df = sub_df.sort_values("Probability", ascending=False)
-        if top_n_docs > 0:
-            sub_df = sub_df.iloc[0:top_n_docs]
+        sub_df = sub_df.sort_values("Probability", ascending=False).iloc[0:top_n_docs]
         return sub_df
 
     elif mode == "ctfidf_representation":
-        # Get all documents for the topic
+        # TODO : "get_representative_docs" currently returns maximum 3 docs as implemtented in BERTopic
+        # We should modify the function to return more if needed
         docs = topic_model.get_representative_docs(topic=topic_number)
-        sub_df = df[df["text"].isin(docs)]
-        if top_n_docs > 0:
-            sub_df = sub_df.iloc[0:top_n_docs]
+        sub_df = df[df["text"].isin(docs)].iloc[0:top_n_docs]
         return sub_df

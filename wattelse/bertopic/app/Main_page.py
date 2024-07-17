@@ -381,6 +381,7 @@ def apply_changes():
 # In the sidebar form
 with st.sidebar.form("parameters_sidebar"):
     st.title("Parameters")
+    st.warning("Please make sure to always review the parameters first then click on 'Apply Changes' button before clicking on 'Train Model'")
 
     with st.expander("Embedding model"):
         embedding_model_options = embedding_model_options()
@@ -432,7 +433,7 @@ select_data()
 data_overview(st.session_state["timefiltered_df"])
 
 # Save the model button
-save_model_interface()
+# save_model_interface()
 
 
 

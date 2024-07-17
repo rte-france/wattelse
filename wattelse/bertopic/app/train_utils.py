@@ -13,9 +13,9 @@ from hdbscan import HDBSCAN
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
+from loguru import logger
 
-
-from wattelse.bertopic.train import train_BERTopic, STOP_WORDS_RTE
+from wattelse.bertopic.train import train_BERTopic, DEFAULT_STOP_WORDS
 
 
 def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parameters, cache_base_name: str) -> Tuple:
@@ -48,13 +48,12 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
 
     # Step 4 - Count vectorizer
     stop_words = (
-        stopwords.words(form_parameters["countvectorizer_stop_words"])
-        if form_parameters["countvectorizer_stop_words"]
-        else None
+        stopwords.words('english') if form_parameters["countvectorizer_stop_words"] == 'english'
+        else DEFAULT_STOP_WORDS
     )
 
     vectorizer_model = CountVectorizer(
-        stop_words=stop_words + STOP_WORDS_RTE,
+        stop_words=stop_words,
         ngram_range=form_parameters["countvectorizer_ngram_range"],
         min_df=form_parameters["countvectorizer_min_df"],
     )

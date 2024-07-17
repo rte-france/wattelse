@@ -25,6 +25,8 @@ from tqdm import tqdm
 from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance, OpenAI
 import openai
 import os
+from pathlib import Path
+import json
 
 
 from wattelse.bertopic.utils import (
@@ -52,7 +54,38 @@ DEFAULT_HBSCAN_MODEL = HDBSCAN(
 )
 
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
-DEFAULT_STOP_WORDS = stopwords.words("french") + STOP_WORDS_RTE
+COMMON_NGRAMS = [
+    "éléctricité",
+    "RTE",
+    "France",
+    "électrique",
+    "projet",
+    "année",
+    "transport électricité",
+    "réseau électrique",
+    "gestionnaire réseau",
+    "réseau transport",
+    "production électricité",
+    "milliards euros",
+    "euros",
+    "2022",
+    "2023",
+    "2024",
+    "électricité RTE",
+    "Réseau transport",
+    "RTE gestionnaire",
+    "électricité France",
+    "système électrique"
+]
+
+# Define the path to your JSON file
+stopwords_fr_file = Path(os.getcwd()) / "wattelse" / "bertopic" / "weak_signals" / 'stopwords-fr.json'
+
+# Read the JSON data from the file and directly assign it to the list
+with open(stopwords_fr_file, 'r', encoding='utf-8') as file:
+    FRENCH_STOPWORDS = json.load(file)
+
+DEFAULT_STOP_WORDS = FRENCH_STOPWORDS + STOP_WORDS_RTE + COMMON_NGRAMS
 DEFAULT_VECTORIZER_MODEL = CountVectorizer(
     stop_words=DEFAULT_STOP_WORDS,
     ngram_range=DEFAULT_NGRAM_RANGE,
@@ -315,7 +348,11 @@ def train_BERTopic(
                                              topics=topics, 
                                              embeddings=embeddings,
                                              strategy="embeddings")
-    topic_model.update_topics(filtered_dataset[column], topics=new_topics)
+    
+    # WARNING : We have to repass the vectorizer and representation models again otherwise BERTopic will use the default ones
+    topic_model.update_topics(filtered_dataset[column], topics=new_topics, 
+                              vectorizer_model=vectorizer_model, 
+                              representation_model=representation_model)
     
     # If OpenAI model is present, apply it after reducing outliers
     if openai_model:
