@@ -23,6 +23,7 @@ SUMMARIZER_OPTIONS_MAPPER = {
     "ExtractiveSummarizer": ExtractiveSummarizer,
 }
 
+EXPORT_BASE_FOLDER = "wattelse/bertopic/app/exported_topics"
 
 def generate_newsletter_wrapper():
     return generate_newsletter(
@@ -30,15 +31,15 @@ def generate_newsletter_wrapper():
         df=df,
         topics=st.session_state["topics"],
         df_split=df_split,
-        top_n_topics=st.session_state["newsletter_nb_topics"],
-        top_n_docs=st.session_state["newsletter_nb_docs"],
+        top_n_topics=None if st.session_state["all_topics"] else st.session_state["newsletter_nb_topics"],
+        top_n_docs=None if st.session_state["all_docs"] else st.session_state["newsletter_nb_docs"],
         improve_topic_description=st.session_state["newsletter_improve_description"],
         summarizer_class=SUMMARIZER_OPTIONS_MAPPER[
             st.session_state["summarizer_classname"]
         ],
         summary_mode=st.session_state['summary_mode'],
+        export_base_folder=EXPORT_BASE_FOLDER
     )
-
 
 # Stop app if no topic is selected
 if "topic_model" not in st.session_state.keys():
@@ -56,23 +57,33 @@ if "summarizer_classname" not in st.session_state:
     st.session_state["summarizer_classname"] = list(SUMMARIZER_OPTIONS_MAPPER.keys())[0]
 if "summary_mode" not in st.session_state:
     st.session_state["summary_mode"] = 'topic'
+if "all_topics" not in st.session_state:
+    st.session_state["all_topics"] = False
+if "all_docs" not in st.session_state:
+    st.session_state["all_docs"] = False
 
 # Newsletter params
 with st.sidebar.form("newsletter_parameters"):
+    register_widget("all_topics")
+    register_widget("all_docs")
     register_widget("newsletter_nb_topics")
     register_widget("newsletter_nb_docs")
     register_widget("newsletter_improve_description")
     register_widget("summarizer_classname")
     register_widget("summary_mode")
+    
+    st.checkbox("Include all topics", key="all_topics")
+    st.checkbox("Include all documents per topic", key="all_docs")
+    
     st.slider(
         "Number of topics",
         min_value=1,
         max_value=10,
         key="newsletter_nb_topics",
     )
-
+    
     st.slider(
-        "Number of docs",
+        "Number of docs per topic",
         min_value=1,
         max_value=6,
         key="newsletter_nb_docs",
@@ -109,14 +120,14 @@ if newsletter_parameters_clicked:
         df = st.session_state["timefiltered_df"]
         df_split = None
     with st.spinner("Generating newsletter..."):
-        st.session_state["newsletter"] = generate_newsletter_wrapper()
-
-if "newsletter" in st.session_state:
-    st.components.v1.html(
-        md2html(
-            st.session_state["newsletter"][0],
-            Path(__file__).parent.parent.parent / "newsletter.css",
-        ),
-        height=800,
-        scrolling=True,
-    )
+        md_content, html_content, date_min, date_max, file_path = generate_newsletter_wrapper()
+    
+    if md_content and html_content:
+        st.success(f"Newsletter generated successfully! You can find the HTML version at: {file_path}")
+        # st.markdown("## Newsletter Preview (Markdown version)")
+        # st.markdown(md_content)
+        
+        st.markdown("## Newsletter Preview (HTML version)")
+        st.components.v1.html(html_content, height=800, scrolling=True)
+    else:
+        st.error("Failed to generate the newsletter. Please check the logs for more information.")

@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 import locale
-from typing import List
+from typing import List, Tuple
 
 # from md2pdf.core import md2pdf
 import markdown
@@ -23,87 +23,89 @@ from bertopic._bertopic import BERTopic
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
 
+from wattelse.bertopic.utils import TEXT_COLUMN, TIMESTAMP_COLUMN
+from jinja2 import Template
+
+from tqdm import tqdm
+
+import pandas as pd
+from loguru import logger
+import tldextract
+from wattelse.bertopic.utils import TEXT_COLUMN, TIMESTAMP_COLUMN
+from jinja2 import Template
+import os
+from wattelse.api.openai.client_openai_api import OpenAI_API
+from tqdm import tqdm
 
 def generate_newsletter(
-    topic_model: BERTopic,
+    topic_model,
     df: pd.DataFrame,
     topics: List[int],
     df_split: pd.DataFrame = None,
-    top_n_topics: int = 5,
-    top_n_docs: int = 3,
-    top_n_docs_mode: str = "cluster_probability",
+    top_n_topics: int = None,
+    top_n_docs: int = None,
     newsletter_title: str = "Newsletter",
-    summarizer_class: Summarizer = AbstractiveSummarizer,
+    summarizer_class = None,
     summary_mode: str = "document",
     prompt_language: str = "fr",
     improve_topic_description: bool = False,
-) -> str:
-    """Generates a newsletter based on a trained BERTopic model.
-
-    Args:
-        topic_model (BERTopic): trained BERTopic model
-        df (pd.DataFrame): DataFrame containing documents
-        topics (List[int]): list of length len(df) containing the topic number for every document
-        df_split (pd.DataFrame, optional): DataFrame containing split documents
-        top_n_topics (int, optional): Number of topics to use for newsletter
-        top_n_docs (int, optional): Number of document to use to summarize each topic
-        top_n_docs_mode (str, optional): algorithm used to recover top n documents (see `get_most_representative_docs` function)
-        newsletter_title (str, optional): newsletter title
-        summarizer_class (Summarizer, optional): type of summarizer to use (see `wattelse/summary`)
-        summary_mode (str, optional): - `document` : for each topic, summarize top n documents independently
-                                      - `topic`   : for each topic, use top n documents to generate a single topic summary
-                                                    using OpenAI API
-        prompt_language (str, optional): prompt language
-        improve_topic_description (bool, optional): whether to use ChatGPT to transform topic keywords to a more readable description
-
-    Returns:
-        str: Newsletter in Markdown format
-    """
+    export_base_folder: str = "exported_topics",
+    batch_size: int = 10  # New parameter for batching
+) -> Tuple[str, str, str, str, str]:
     logger.debug("Generating newsletter...")
+    
     openai_api = OpenAI_API()
-    # Adapt language for date
-    current_local = locale.getlocale()
-    if prompt_language == "en":
-        locale.setlocale(locale.LC_TIME, 'en_US.UTF-8')
-    elif prompt_language == "fr":
-        locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
-
+    
     # Instantiates summarizer
     summarizer = summarizer_class()
 
+    # Filter out topic -1 and sort by topic number
+    topics_info = topic_model.get_topic_info()
+    topics_info = topics_info[topics_info['Topic'] != -1].sort_values('Topic')
+
     # Ensure top_n_topics is smaller than number of topics
-    topics_info = topic_model.get_topic_info()[1:]
-    if len(topics_info) < top_n_topics:
+    if top_n_topics is None:
         top_n_topics = len(topics_info)
+    else:
+        top_n_topics = min(top_n_topics, len(topics_info))
 
     # Date range
-    date_min = df.timestamp.min().strftime("%A %d %b %Y")
-    date_max = df.timestamp.max().strftime("%A %d %b %Y")
+    try:
+        date_min = df[TIMESTAMP_COLUMN].min()
+        date_max = df[TIMESTAMP_COLUMN].max()
+        if pd.isnull(date_min) or pd.isnull(date_max):
+            raise ValueError("Invalid timestamp data")
+        date_range = f"from {date_min.strftime('%A %d %b %Y')} to {date_max.strftime('%A %d %b %Y')}"
+    except Exception as e:
+        logger.error(f"Error processing timestamp data: {e}")
+        date_range = "Date range unavailable"
 
-    # Store each line in a list
-    md_lines = [f"# {newsletter_title}"]
-    if prompt_language=="fr":
-        md_lines.append(f"<div class='date_range'>du {date_min} au {date_max}</div>")
-    else:
-        md_lines.append(f"<div class='date_range'>from {date_min} to {date_max}</div>")
+    topics_content = []
+    md_lines = [f"# {newsletter_title}", f"<div class='date_range'>{date_range}</div>"]
 
-    # Iterate over topics
-    for i in range(top_n_topics):
+    # Iterate over topics with progress bar
+    for i in tqdm(range(top_n_topics), desc="Processing topics", unit="topic"):
+        topic_info = topics_info.iloc[i]
+        topic_id = topic_info.Topic
+        
         sub_df = get_most_representative_docs(
             topic_model,
             df,
             topics,
-            mode=top_n_docs_mode,
+            mode="cluster_probability",
             df_split=df_split,
-            topic_number=i,
-            top_n_docs=top_n_docs,
+            topic_number=topic_id,
+            top_n_docs=top_n_docs
         )
 
-        # Compute summary according to summary_mode
+        # Batch processing for document summarization
         if summary_mode == 'document':
-            # Generates summaries for articles
-            texts = [doc.text for _, doc in sub_df.iterrows()]
-            summaries = summarizer.summarize_batch(texts, prompt_language=prompt_language)
+            summaries = []
+            for start_idx in range(0, len(sub_df), batch_size):
+                batch_df = sub_df.iloc[start_idx:start_idx+batch_size]
+                texts = [doc.text for _, doc in batch_df.iterrows()]
+                batch_summaries = summarizer.summarize_batch(texts, prompt_language=prompt_language)
+                summaries.extend(batch_summaries)
         elif summary_mode == 'topic':
             article_list = ""
             for _, doc in sub_df.iterrows():
@@ -111,67 +113,113 @@ def generate_newsletter(
             
             topic_summary = openai_api.generate(
                 (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language=='fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
-                    keywords=', '.join(topics_info['Representation'].iloc[i]),
+                    keywords=', '.join(topic_info['Representation']),
                     article_list=article_list,
                 )
             )
         else:
             logger.error(f'{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter')
-            exit()
+            return None
 
-        # Improve topic description
+        topic_title = f"Topic {topic_id}: {', '.join(topic_info['Representation'])}"
         if improve_topic_description:
-            titles = [doc.title for _, doc in sub_df.iterrows()]
-
-            improved_topic_description_v2 = (
-                openai_api.generate(
-                    FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES.format(
-                        title_list=(" ; ".join(summaries) if summary_mode=='document' else topic_summary),
-                    )
+            improved_topic_description = openai_api.generate(
+                FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES.format(
+                    title_list=(" ; ".join(summaries) if summary_mode=='document' else topic_summary),
                 )
-                .replace('"', "")
-            )
+            ).replace('"', "").rstrip('.')
+            topic_title = f"Topic {topic_id}: {improved_topic_description}"
 
-            if improved_topic_description_v2.endswith("."):
-                improved_topic_description_v2 =  improved_topic_description_v2[:-1]
+        md_lines.append(f"## {topic_title}")
+        if summary_mode == 'topic':
+            md_lines.append(topic_summary)
 
-            md_lines.append(f"## Sujet {i+1} : {improved_topic_description_v2}")
-
-            md_lines.append(
-                f"### {' '.join(['#' + keyword for keyword in topics_info['Representation'].iloc[i]])}"
-            )
-        else:
-            md_lines.append(
-                f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
-            )
-
-        # Write summaries + documents
-        if summary_mode=='topic':
-                md_lines.append(topic_summary)
-        i = 0
-        for _, doc in sub_df.iterrows():
-            # Write newsletter
-
-            md_lines.append(f"### [*{doc.title}*]({doc.url})")
+        documents = []
+        for j, (_, doc) in enumerate(sub_df.iterrows()):
             try:
                 domain = tldextract.extract(doc.url).domain
             except:
                 logger.warning(f"Cannot extract URL for {doc}")
                 domain = ""
-            md_lines.append(
-                f"<div class='timestamp'>{doc.timestamp.strftime('%A %d %b %Y')} | {domain}</div>"
-            )
-            if summary_mode=='document':
-                md_lines.append(summaries[i])
-            i += 1
+            
+            md_lines.append(f"### [*{doc.title}*]({doc.url})")
+            md_lines.append(f"<div class='timestamp'>{doc.timestamp.strftime('%A %d %b %Y')} | {domain}</div>")
+            if summary_mode == 'document':
+                md_lines.append(summaries[j])
+            
+            documents.append({
+                'title': doc.title,
+                'url': doc.url,
+                'date': doc.timestamp.strftime('%A %d %b %Y'),
+                'domain': domain,
+                'summary': summaries[j] if summary_mode == 'document' else ''
+            })
 
-    # Write full file
+        topics_content.append({
+            'title': topic_title,
+            'summary': topic_summary if summary_mode == 'topic' else '',
+            'documents': documents
+        })
+
+    # Generate Markdown content
     md_content = "\n\n".join(md_lines)
 
-    # Reset locale
-    locale.setlocale(locale.LC_TIME, '.'.join(current_local))
-    return md_content, date_min, date_max
+    # Generate HTML content
+    html_template = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ newsletter_title }}</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+            h1 { color: #ff0000; border-bottom: 2px solid #ff0000; padding-bottom: 10px; }
+            h2 { color: #0000ff; margin-top: 30px; }
+            .date-range { font-style: italic; color: #666; }
+            .document { background-color: #f9f9f9; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; }
+            .document h3 { margin-top: 0; }
+            .document .meta { font-size: 0.9em; color: #666; }
+            a { color: #0066cc; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+        </style>
+    </head>
+    <body>
+        <h1>{{ newsletter_title }}</h1>
+        <p class="date-range">{{ date_range }}</p>
+        {% for topic in topics_content %}
+            <h2>{{ topic.title }}</h2>
+            {% if topic.summary %}
+                <p>{{ topic.summary }}</p>
+            {% endif %}
+            {% for doc in topic.documents %}
+                <div class="document">
+                    <h3><a href="{{ doc.url }}">{{ doc.title }}</a></h3>
+                    <p class="meta">{{ doc.date }} | {{ doc.domain }}</p>
+                    {% if doc.summary %}
+                        <p>{{ doc.summary }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </body>
+    </html>
+    """
 
+    template = Template(html_template)
+    html_content = template.render(
+        newsletter_title=newsletter_title,
+        date_range=date_range,
+        topics_content=topics_content
+    )
+
+    # Save the HTML file
+    os.makedirs(export_base_folder, exist_ok=True)
+    file_path = os.path.join(export_base_folder, 'newsletter.html')
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+
+    return md_content, html_content, date_min, date_max, file_path
 
 def export_md_string(newsletter_md: str, path: Path, format="md"):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -217,7 +265,7 @@ def get_most_representative_docs(
     mode="cluster_probability",
     df_split=None,
     topic_number=0,
-    top_n_docs=3,
+    top_n_docs=None
 ):
     """
     Return most representative documents for a given topic.
@@ -243,8 +291,8 @@ def get_most_representative_docs(
             .reset_index(name="counts")
             .sort_values("counts", ascending=False)
         )
-        if top_n_docs > 0:
-            sub_df = sub_df.iloc[0:top_n_docs]
+        if top_n_docs is not None:
+            sub_df = sub_df.head(top_n_docs)
         return df[df["title"].isin(sub_df["title"])]
 
     # If no df_split is None, use mode to determine how to return most representative docs :
@@ -253,14 +301,14 @@ def get_most_representative_docs(
         df = df.assign(Probability=docs_prob)
         sub_df = df.loc[pd.Series(topics) == topic_number]
         sub_df = sub_df.sort_values("Probability", ascending=False)
-        if top_n_docs > 0:
-            sub_df = sub_df.iloc[0:top_n_docs]
+        if top_n_docs is not None:
+            sub_df = sub_df.head(top_n_docs)
         return sub_df
 
     elif mode == "ctfidf_representation":
         # Get all documents for the topic
         docs = topic_model.get_representative_docs(topic=topic_number)
         sub_df = df[df["text"].isin(docs)]
-        if top_n_docs > 0:
-            sub_df = sub_df.iloc[0:top_n_docs]
+        if top_n_docs is not None:
+            sub_df = sub_df.head(top_n_docs)
         return sub_df
