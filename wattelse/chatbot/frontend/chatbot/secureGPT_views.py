@@ -24,7 +24,7 @@ if not api_key:
 endpoint = os.getenv("LOCAL_OPENAI_ENDPOINT", None)
 if endpoint == "":  # check empty env var
     endpoint = None
-model_name = os.getenv("OPENAI_MODEL_NAME", None)
+model_name = os.getenv("LOCAL_OPENAI_DEFAULT_MODEL_NAME", None)
 
 llm_config = {"api_key": api_key,
               "base_url": endpoint,
