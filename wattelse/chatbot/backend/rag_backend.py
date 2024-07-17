@@ -16,7 +16,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate, \
     PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from loguru import logger
 from starlette.responses import StreamingResponse
 
@@ -35,6 +35,7 @@ logging.basicConfig()
 logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
 DEFAULT_TEMPERATURE = 0.1
+AZURE_API_VERSION = "2024-02-01"
 
 
 class RAGError(Exception):
@@ -42,12 +43,22 @@ class RAGError(Exception):
 
 
 def get_chat_model() -> BaseChatModel:
-    llm_config = {"openai_api_key": generator_config["openai_api_key"],
-                  "openai_api_base": generator_config["openai_endpoint"],
-                  "model_name": generator_config["openai_default_model"],
-                  "temperature": DEFAULT_TEMPERATURE,
-                  }
-    return ChatOpenAI(**llm_config)
+    endpoint = generator_config["openai_endpoint"]
+    if "azure.com" not in endpoint:
+        llm_config = {"openai_api_key": generator_config["openai_api_key"],
+                      "openai_api_base": generator_config["openai_endpoint"],
+                      "model_name": generator_config["openai_default_model"],
+                      "temperature": DEFAULT_TEMPERATURE,
+                      }
+        return ChatOpenAI(**llm_config)
+    else:
+        llm_config = {"openai_api_key": generator_config["openai_api_key"],
+                      "azure_endpoint": generator_config["openai_endpoint"],
+                      "azure_deployment": generator_config["openai_default_model"],
+                      "api_version": AZURE_API_VERSION,
+                      "temperature": DEFAULT_TEMPERATURE,
+                      }
+        return AzureChatOpenAI(**llm_config)
 
 
 def preprocess_streaming_data(streaming_data):
