@@ -5,9 +5,10 @@
 
 import os
 
-from openai import OpenAI, AzureOpenAI, Timeout
+from openai import OpenAI, AzureOpenAI, Timeout, Stream
 from loguru import logger
 from openai._types import NOT_GIVEN
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 MAX_ATTEMPTS = 3
 TIMEOUT = 60.0
@@ -31,6 +32,8 @@ class OpenAI_Client:
             raise EnvironmentError(f"OPENAI_API_KEY environment variable not found.")
 
         endpoint = endpoint if endpoint else os.getenv("OPENAI_ENDPOINT", None)
+        if endpoint == "": # check empty env var
+            endpoint = None
 
         run_on_azure = "azure.com" in endpoint if endpoint else False
 
@@ -69,7 +72,7 @@ class OpenAI_Client:
             max_tokens=512,
             seed=NOT_GIVEN,
             stream=NOT_GIVEN,
-    ) -> str:
+    ) -> ChatCompletion | Stream[ChatCompletionChunk] | str:
         """Call openai model for generation.
 
             Args:
@@ -77,11 +80,13 @@ class OpenAI_Client:
                     system_prompt (str): prompt to send to the model with role=system.
                     model_name (str, optional): name of the openai model to use for generation.
                     temperature (float, optional): Temperature for generation.
-        max_tokens (int, optional): Maximum tokens to be generated.
-                    current_try: id of current try (in case of failure, this is increased and another try is done)
+                    max_tokens (int, optional): Maximum tokens to be generated.
+                    seed: seed for generation
+                    stream: indicated if the result has to be streamed or not
 
             Returns:
-                    str: model answer.
+                    (str or Stream[ChatCompletionChunk]): model answer.
+
         """
         messages = [{"role": "user", "content": user_prompt}]
         # add system prompt if one is provided
