@@ -154,6 +154,13 @@ def display_data():
         # Affichage du contenu des données
         with st.expander("**Contenu des données**", expanded=False):
             st.dataframe(st.session_state["df"])
+            st.download_button(
+                "Save dataset",
+                st.session_state["df_split"].to_csv(index=False).encode('utf-8'),
+                "topic_dataset.csv",
+                "text/csv",
+                key='download-csv'
+            )
 
 
 def detect_topics():
@@ -213,7 +220,7 @@ def options():
     with st.sidebar:
         st.title("Réglages")
 
-        st.slider("Nombre max de topics", min_value=1, max_value=10, value=5, key="newsletter_nb_topics")
+        st.slider("Nombre max de topics", min_value=1, max_value=15, value=10, key="newsletter_nb_topics")
 
         st.slider("Nombre max d'articles par topics", min_value=1, max_value=10, value=5, key="newsletter_nb_docs")
 
