@@ -10,37 +10,7 @@ from loguru import logger
 from pprint import pprint
 from tqdm import tqdm  # Import the tqdm library
 import scipy
-
-# def detect_weak_signals_zeroshot(topic_models: Dict[pd.Timestamp, BERTopic], zeroshot_topic_list: List[str]) -> Dict[str, Dict[pd.Timestamp, Dict[str, any]]]:
-#     """
-#     Detect weak signals based on the zero-shot list of topics to monitor.
-
-#     Args:
-#         topic_models (Dict[pd.Timestamp, BERTopic]): Dictionary of BERTopic models for each timestamp.
-#         zeroshot_topic_list (List[str]): List of topics to monitor for weak signals.
-
-#     Returns:
-#         Dict[str, Dict[pd.Timestamp, Dict[str, any]]]: Dictionary of weak signal trends for each monitored topic.
-#     """
-#     weak_signal_trends = {}
-
-#     for topic in zeroshot_topic_list:
-#         weak_signal_trends[topic] = {}
-
-#         for timestamp, topic_model in topic_models.items():
-#             topic_info = topic_model.topic_info_df
-
-#             for _, row in topic_info.iterrows():
-#                 if row['Name'] == topic:
-#                     weak_signal_trends[topic][timestamp] = {
-#                         'Representation': row['Representation'],
-#                         'Representative_Docs': row['Representative_Docs'],
-#                         'Count': row['Count'],
-#                         'Document_Count': row['Document_Count']
-#                     }
-#                     break
-
-#     return weak_signal_trends
+from pathlib import Path 
 
 def detect_weak_signals_zeroshot(topic_models: Dict[pd.Timestamp, BERTopic], zeroshot_topic_list: List[str], granularity: int, decay_factor: float = 0.01, decay_power: float = 2) -> Dict[str, Dict[pd.Timestamp, Dict[str, any]]]:
     """
@@ -394,7 +364,7 @@ def save_signal_evolution_data(all_merge_histories_df: pd.DataFrame, topic_sizes
     # Determine the number of iterations for tqdm
     total_iterations = (end_timestamp - start_timestamp) // granularity_timedelta + 1
 
-    save_path = "wattelse/bertopic/app/weak_signals/ablation_study/signal_evolution_data_arxiv"
+    save_path = Path(__file__).parent / 'ablation_study' 
     os.makedirs(save_path, exist_ok=True)
 
     q1_values = []

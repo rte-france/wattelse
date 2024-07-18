@@ -23,10 +23,12 @@ SUMMARIZER_OPTIONS_MAPPER = {
     "ExtractiveSummarizer": ExtractiveSummarizer,
 }
 
-EXPORT_BASE_FOLDER = "wattelse/bertopic/app/exported_topics"
+EXPORT_BASE_FOLDER = Path(__file__).parent.parent / 'exported_topics'
 
 def generate_newsletter_wrapper():
-    return generate_newsletter(
+    summarizer_class = None if st.session_state["summary_mode"] == "none" else SUMMARIZER_OPTIONS_MAPPER[st.session_state["summarizer_classname"]]
+    
+    md_content, html_content, date_min, date_max, html_file_path, json_file_path = generate_newsletter(
         topic_model=st.session_state["topic_model"],
         df=df,
         topics=st.session_state["topics"],
@@ -34,12 +36,12 @@ def generate_newsletter_wrapper():
         top_n_topics=None if st.session_state["all_topics"] else st.session_state["newsletter_nb_topics"],
         top_n_docs=None if st.session_state["all_docs"] else st.session_state["newsletter_nb_docs"],
         improve_topic_description=st.session_state["newsletter_improve_description"],
-        summarizer_class=SUMMARIZER_OPTIONS_MAPPER[
-            st.session_state["summarizer_classname"]
-        ],
+        summarizer_class=summarizer_class,
         summary_mode=st.session_state['summary_mode'],
-        export_base_folder=EXPORT_BASE_FOLDER
+        export_base_folder=EXPORT_BASE_FOLDER,
+        batch_size=10
     )
+    return md_content, html_content, date_min, date_max, html_file_path, json_file_path
 
 # Stop app if no topic is selected
 if "topic_model" not in st.session_state.keys():
@@ -56,7 +58,7 @@ if "newsletter_nb_docs" not in st.session_state:
 if "summarizer_classname" not in st.session_state:
     st.session_state["summarizer_classname"] = list(SUMMARIZER_OPTIONS_MAPPER.keys())[0]
 if "summary_mode" not in st.session_state:
-    st.session_state["summary_mode"] = 'topic'
+    st.session_state["summary_mode"] = 'none'
 if "all_topics" not in st.session_state:
     st.session_state["all_topics"] = False
 if "all_docs" not in st.session_state:
@@ -96,8 +98,8 @@ with st.sidebar.form("newsletter_parameters"):
     )
 
     st.selectbox(
-        "Summary mode ('topic' uses OpenAI API)",
-        ['topic', 'document'],
+        "Summary mode",
+        ['none', 'topic', 'document'],
         key="summary_mode",
     )
 
@@ -120,12 +122,11 @@ if newsletter_parameters_clicked:
         df = st.session_state["timefiltered_df"]
         df_split = None
     with st.spinner("Generating newsletter..."):
-        md_content, html_content, date_min, date_max, file_path = generate_newsletter_wrapper()
+        md_content, html_content, date_min, date_max, html_file_path, json_file_path = generate_newsletter_wrapper()
     
     if md_content and html_content:
-        st.success(f"Newsletter generated successfully! You can find the HTML version at: {file_path}")
-        # st.markdown("## Newsletter Preview (Markdown version)")
-        # st.markdown(md_content)
+        st.success(f"Newsletter generated successfully! You can find the HTML version at: {html_file_path}")
+        st.success(f"JSON data saved at: {json_file_path}")
         
         st.markdown("## Newsletter Preview (HTML version)")
         st.components.v1.html(html_content, height=800, scrolling=True)

@@ -20,12 +20,8 @@ BASE_DATA_DIR = (
     else Path(__file__).parent.parent.parent / "data"
 )
 
-# Working directory
-cwd = os.getcwd()
-logger.info(f"CWD: {cwd}")
-
-# DATA_PATH = BASE_DATA_DIR.absolute().as_posix() +'/'
-DATA_PATH = Path(cwd) / "data" / "bertopic"
+DATA_PATH = BASE_DATA_DIR.absolute().as_posix() +'/'
+# DATA_PATH = Path(cwd) / "data" / "bertopic"
 
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
 COMMON_NGRAMS = [
@@ -53,7 +49,7 @@ COMMON_NGRAMS = [
 ]
 
 # Define the path to your JSON file
-stopwords_fr_file = Path(cwd) / "wattelse" / "bertopic" / "weak_signals" / 'stopwords-fr.json'
+stopwords_fr_file = Path(__file__).parent / 'stopwords-fr.json'
 
 # Read the JSON data from the file and directly assign it to the list
 with open(stopwords_fr_file, 'r', encoding='utf-8') as file:

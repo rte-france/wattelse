@@ -15,7 +15,7 @@ import seaborn as sns
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN
 from app_utils import plot_topics_over_time
 from state_utils import restore_widget_state
-
+from pathlib import Path
 from wattelse.bertopic.app.app_utils import (
     plot_2d_topics,
     plot_topics_over_time,
@@ -216,12 +216,11 @@ def create_datamap():
 
             # Encode the HTML string using UTF-8
             html_str = plot._html_str.encode(encoding='UTF-8', errors='replace')
-
-            # Save the encoded HTML string to a file
-            with open('wattelse/bertopic/app/datamapplot.html', 'wb') as f:
+            save_path = Path(__file__).parent.parent / 'datamapplot.html'
+            with open(save_path, 'wb') as f:
                 f.write(html_str)
 
-            HtmlFile = open("wattelse/bertopic/app/datamapplot.html", 'r', encoding='utf-8')
+            HtmlFile = open(save_path, 'r', encoding='utf-8')
             source_code = HtmlFile.read()
             components.html(source_code, width=1500, height=1000, scrolling=True)
 
