@@ -1,5 +1,6 @@
 import streamlit as st
 from pathlib import Path
+from loguru import logger
 
 from wattelse.bertopic.newsletter_features import generate_newsletter, md2html
 from wattelse.bertopic.app.state_utils import (
@@ -26,9 +27,16 @@ SUMMARIZER_OPTIONS_MAPPER = {
 EXPORT_BASE_FOLDER = Path(__file__).parent.parent / 'exported_topics'
 
 def generate_newsletter_wrapper():
+    logger.debug("Generating newsletter wrapper called")
+
     summarizer_class = None if st.session_state["summary_mode"] == "none" else SUMMARIZER_OPTIONS_MAPPER[st.session_state["summarizer_classname"]]
     
-    md_content, html_content, date_min, date_max, html_file_path, json_file_path = generate_newsletter(
+    logger.debug(f"Summarizer class: {summarizer_class}")
+    logger.debug(f"DataFrame shape: {df.shape}")
+    if df_split is not None:
+        logger.debug(f"df_split shape: {df_split.shape}")
+
+    html_content, date_min, date_max, html_file_path, json_file_path = generate_newsletter(
         topic_model=st.session_state["topic_model"],
         df=df,
         topics=st.session_state["topics"],
@@ -41,7 +49,7 @@ def generate_newsletter_wrapper():
         export_base_folder=EXPORT_BASE_FOLDER,
         batch_size=10
     )
-    return md_content, html_content, date_min, date_max, html_file_path, json_file_path
+    return html_content, date_min, date_max, html_file_path, json_file_path
 
 # Stop app if no topic is selected
 if "topic_model" not in st.session_state.keys():
@@ -114,21 +122,27 @@ with st.sidebar.form("newsletter_parameters"):
     )
 
 if newsletter_parameters_clicked:
+    logger.debug("Newsletter generation started")
     # Automatic newsletter
     if st.session_state["split_by_paragraphs"]:
         df = st.session_state["initial_df"]
         df_split = st.session_state["timefiltered_df"]
+        logger.debug("Using split paragraphs")
     else:
         df = st.session_state["timefiltered_df"]
         df_split = None
-    with st.spinner("Generating newsletter..."):
-        md_content, html_content, date_min, date_max, html_file_path, json_file_path = generate_newsletter_wrapper()
+        logger.debug("Not using split paragraphs")
     
-    if md_content and html_content:
+    with st.spinner("Generating newsletter..."):
+        html_content, date_min, date_max, html_file_path, json_file_path = generate_newsletter_wrapper()
+
+    if html_content:
+        logger.info("Newsletter generated successfully")
         st.success(f"Newsletter generated successfully! You can find the HTML version at: {html_file_path}")
         st.success(f"JSON data saved at: {json_file_path}")
         
         st.markdown("## Newsletter Preview (HTML version)")
         st.components.v1.html(html_content, height=800, scrolling=True)
     else:
+        logger.error("Failed to generate the newsletter")
         st.error("Failed to generate the newsletter. Please check the logs for more information.")

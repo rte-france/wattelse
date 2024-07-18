@@ -149,7 +149,6 @@ def save_model_interface():
                 st.session_state['topic_model'].save(model_save_path, serialization="safetensors", save_ctfidf=True, save_embedding_model=True)
                 st.success(f"Model saved successfully as {model_save_path}")
                 st.session_state['model_saved'] = True
-                st.balloons()
             except Exception as e:
                 st.error(f"Failed to save the model: {e}")
         else:
@@ -295,14 +294,14 @@ def train_model():
             )
         
         st.success("Model trained successfully!")
-        st.info("Token embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
+        # st.info("Token embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
             
         temp = st.session_state["topic_model"].get_topic_info()
         st.session_state["topics_info"] = (
             temp[temp['Topic'] != -1]
         )  # exclude -1 topic from topic list
         
-        # Optional : Not really useful here and takes time to calculate, uncomment if you want to calculate them
+        # # TOPIC MODEL COHERENCE AND DIVERSITY METRICS (optional) :
         # # Computes coherence value
         # logger.info("Calculating coherence and diversity values")
         # coherence_score_type = "c_npmi"
@@ -321,9 +320,9 @@ def train_model():
         # logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
         # logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
         
-        st.session_state['model_trained'] = True
-        if not st.session_state['model_saved']:
-            st.warning('Don\'t forget to save your model!', icon="⚠️")
+        # st.session_state['model_trained'] = True
+        # if not st.session_state['model_saved']:
+        #     st.warning('Don\'t forget to save your model!', icon="⚠️")
     else:
         st.error("No data available for training. Please ensure data is correctly loaded.")
 
@@ -342,6 +341,9 @@ initialize_default_parameters_keys()
 
 ### TITLE ###
 st.title("Topic modelling")
+
+if 'timefiltered_df' in st.session_state:
+    st.dataframe(st.session_state['timefiltered_df'])
 
 if 'model_trained' not in st.session_state: st.session_state['model_trained'] = False
 if 'model_saved' not in st.session_state: st.session_state['model_saved'] = False
@@ -374,7 +376,6 @@ def apply_changes():
     st.session_state["parameters"] = str(parameters)
 
     save_widget_state()
-    st.balloons()
     st.sidebar.success("Changes applied successfully!")
     
 
