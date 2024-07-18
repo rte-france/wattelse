@@ -36,6 +36,19 @@ from jinja2 import Template
 import os
 from wattelse.api.openai.client_openai_api import OpenAI_API
 from tqdm import tqdm
+import json
+
+import numpy as np
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
 
 def generate_newsletter(
     topic_model,
@@ -46,18 +59,18 @@ def generate_newsletter(
     top_n_docs: int = None,
     newsletter_title: str = "Newsletter",
     summarizer_class = None,
-    summary_mode: str = "document",
+    summary_mode: str = "none",
     prompt_language: str = "fr",
     improve_topic_description: bool = False,
     export_base_folder: str = "exported_topics",
-    batch_size: int = 10  # New parameter for batching
-) -> Tuple[str, str, str, str, str]:
+    batch_size: int = 10
+) -> Tuple[str, str, str, str, str, str]:
     logger.debug("Generating newsletter...")
     
     openai_api = OpenAI_API()
     
-    # Instantiates summarizer
-    summarizer = summarizer_class()
+    # Instantiates summarizer only if needed
+    summarizer = summarizer_class() if summary_mode != "none" else None
 
     # Filter out topic -1 and sort by topic number
     topics_info = topic_model.get_topic_info()
@@ -83,10 +96,17 @@ def generate_newsletter(
     topics_content = []
     md_lines = [f"# {newsletter_title}", f"<div class='date_range'>{date_range}</div>"]
 
+    # Prepare data structure for JSON export
+    json_data = {
+        "newsletter_title": newsletter_title,
+        "date_range": date_range,
+        "topics": []
+    }
+
     # Iterate over topics with progress bar
     for i in tqdm(range(top_n_topics), desc="Processing topics", unit="topic"):
         topic_info = topics_info.iloc[i]
-        topic_id = topic_info.Topic
+        topic_id = int(topic_info.Topic)  # Convert to standard Python int
         
         sub_df = get_most_representative_docs(
             topic_model,
@@ -98,44 +118,20 @@ def generate_newsletter(
             top_n_docs=top_n_docs
         )
 
-        # Batch processing for document summarization
-        if summary_mode == 'document':
-            summaries = []
-            for start_idx in range(0, len(sub_df), batch_size):
-                batch_df = sub_df.iloc[start_idx:start_idx+batch_size]
-                texts = [doc.text for _, doc in batch_df.iterrows()]
-                batch_summaries = summarizer.summarize_batch(texts, prompt_language=prompt_language)
-                summaries.extend(batch_summaries)
-        elif summary_mode == 'topic':
-            article_list = ""
-            for _, doc in sub_df.iterrows():
-                article_list += f"Titre : {doc.title}\nContenu : {doc.text}\n\n"
-            
-            topic_summary = openai_api.generate(
-                (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language=='fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
-                    keywords=', '.join(topic_info['Representation']),
-                    article_list=article_list,
-                )
-            )
-        else:
-            logger.error(f'{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter')
-            return None
-
         topic_title = f"Topic {topic_id}: {', '.join(topic_info['Representation'])}"
         if improve_topic_description:
             improved_topic_description = openai_api.generate(
                 FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES.format(
-                    title_list=(" ; ".join(summaries) if summary_mode=='document' else topic_summary),
+                    title_list=", ".join(sub_df['title'].tolist()),
                 )
             ).replace('"', "").rstrip('.')
             topic_title = f"Topic {topic_id}: {improved_topic_description}"
 
         md_lines.append(f"## {topic_title}")
-        if summary_mode == 'topic':
-            md_lines.append(topic_summary)
 
         documents = []
-        for j, (_, doc) in enumerate(sub_df.iterrows()):
+        json_documents = []
+        for _, doc in sub_df.iterrows():
             try:
                 domain = tldextract.extract(doc.url).domain
             except:
@@ -144,27 +140,40 @@ def generate_newsletter(
             
             md_lines.append(f"### [*{doc.title}*]({doc.url})")
             md_lines.append(f"<div class='timestamp'>{doc.timestamp.strftime('%A %d %b %Y')} | {domain}</div>")
-            if summary_mode == 'document':
-                md_lines.append(summaries[j])
             
-            documents.append({
+            if summary_mode == 'none':
+                content = doc.text[:200] + "..." if len(doc.text) > 200 else doc.text
+            else:
+                content = summarizer.summarize(doc.text, prompt_language=prompt_language)
+            
+            md_lines.append(content)
+            
+            doc_info = {
                 'title': doc.title,
                 'url': doc.url,
-                'date': doc.timestamp.strftime('%A %d %b %Y'),
+                'date': doc.timestamp.strftime('%Y-%m-%d'),
                 'domain': domain,
-                'summary': summaries[j] if summary_mode == 'document' else ''
-            })
+                'content': content
+            }
+            documents.append(doc_info)
+            json_documents.append(doc_info)
 
         topics_content.append({
             'title': topic_title,
-            'summary': topic_summary if summary_mode == 'topic' else '',
             'documents': documents
+        })
+
+        # Add topic information to JSON data
+        json_data["topics"].append({
+            "id": topic_id,
+            "title": topic_title,
+            "representation": topic_info['Representation'],
+            "documents": json_documents
         })
 
     # Generate Markdown content
     md_content = "\n\n".join(md_lines)
 
-    # Generate HTML content
     html_template = """
     <!DOCTYPE html>
     <html lang="en">
@@ -175,8 +184,12 @@ def generate_newsletter(
         <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
             h1 { color: #ff0000; border-bottom: 2px solid #ff0000; padding-bottom: 10px; }
-            h2 { color: #0000ff; margin-top: 30px; }
+            h2 { color: #0000ff; margin-top: 30px; cursor: pointer; }
+            h2::before { content: '▼ '; font-size: 0.8em; }
+            h2.collapsed::before { content: '▶ '; }
             .date-range { font-style: italic; color: #666; }
+            .topic-content { display: block; }
+            .topic-content.collapsed { display: none; }
             .document { background-color: #f9f9f9; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; }
             .document h3 { margin-top: 0; }
             .document .meta { font-size: 0.9em; color: #666; }
@@ -188,20 +201,26 @@ def generate_newsletter(
         <h1>{{ newsletter_title }}</h1>
         <p class="date-range">{{ date_range }}</p>
         {% for topic in topics_content %}
-            <h2>{{ topic.title }}</h2>
-            {% if topic.summary %}
-                <p>{{ topic.summary }}</p>
-            {% endif %}
-            {% for doc in topic.documents %}
-                <div class="document">
-                    <h3><a href="{{ doc.url }}">{{ doc.title }}</a></h3>
-                    <p class="meta">{{ doc.date }} | {{ doc.domain }}</p>
-                    {% if doc.summary %}
-                        <p>{{ doc.summary }}</p>
-                    {% endif %}
-                </div>
-            {% endfor %}
+            <h2 onclick="toggleTopic({{ loop.index }})">{{ topic.title }}</h2>
+            <div id="topic-{{ loop.index }}" class="topic-content">
+                {% for doc in topic.documents %}
+                    <div class="document">
+                        <h3><a href="{{ doc.url }}">{{ doc.title }}</a></h3>
+                        <p class="meta">{{ doc.date }} | {{ doc.domain }}</p>
+                        <p>{{ doc.content }}</p>
+                    </div>
+                {% endfor %}
+            </div>
         {% endfor %}
+
+        <script>
+            function toggleTopic(topicId) {
+                var content = document.getElementById('topic-' + topicId);
+                var header = content.previousElementSibling;
+                content.classList.toggle('collapsed');
+                header.classList.toggle('collapsed');
+            }
+        </script>
     </body>
     </html>
     """
@@ -215,11 +234,17 @@ def generate_newsletter(
 
     # Save the HTML file
     os.makedirs(export_base_folder, exist_ok=True)
-    file_path = os.path.join(export_base_folder, 'newsletter.html')
-    with open(file_path, 'w', encoding='utf-8') as f:
+    html_file_path = os.path.join(export_base_folder, 'newsletter.html')
+    with open(html_file_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
-    return md_content, html_content, date_min, date_max, file_path
+    # Save the JSON file using the custom encoder
+    json_file_path = os.path.join(export_base_folder, 'newsletter_data.json')
+    with open(json_file_path, 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=2, cls=NumpyEncoder)
+
+    return md_content, html_content, date_min, date_max, html_file_path, json_file_path
+
 
 def export_md_string(newsletter_md: str, path: Path, format="md"):
     path.parent.mkdir(parents=True, exist_ok=True)

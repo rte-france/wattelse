@@ -78,10 +78,10 @@ def umap_options():
 
 def hdbscan_options():
     return {
-        "hdbscan_min_cluster_size": st.number_input("min_cluster_size", min_value=1, value=DEFAULT_PARAMETERS["hdbscan_min_cluster_size"], key="hdbscan_min_cluster_size"),
+        "hdbscan_min_cluster_size": st.number_input("min_cluster_size", min_value=2, value=DEFAULT_PARAMETERS["hdbscan_min_cluster_size"], key="hdbscan_min_cluster_size"),
         "hdbscan_min_samples": st.number_input("min_samples", min_value=1, value=DEFAULT_PARAMETERS["hdbscan_min_samples"], key="hdbscan_min_samples"),
         "hdbscan_metric": st.selectbox("metric", ["euclidean"], key="hdbscan_metric"),
-        "hdbscan_cluster_selection_method": st.selectbox("cluster_selection_method", ["eom"], key="hdbscan_cluster_selection_method"),
+        "hdbscan_cluster_selection_method": st.selectbox("cluster_selection_method", ["eom", "leaf"], key="hdbscan_cluster_selection_method"),
         "hdbscan_cluster_selection_epsilon": st.number_input("cluster_selection_epsilon", min_value=0.0, value=DEFAULT_PARAMETERS["hdbscan_cluster_selection_epsilon"], format="%.2f", step=0.01, key="hdbscan_cluster_selection_epsilon"),
         "hdbscan_max_cluster_size": st.number_input("max_cluster_size", min_value=0, value=DEFAULT_PARAMETERS["hdbscan_max_cluster_size"], key="hdbscan_max_cluster_size"),
         "hdbscan_allow_single_cluster": st.toggle("allow_single_cluster", value=DEFAULT_PARAMETERS["hdbscan_allow_single_cluster"], key="hdbscan_allow_single_cluster")

@@ -18,7 +18,7 @@ import umap
 from scipy.sparse import csr_matrix
 from sklearn.preprocessing import normalize
 from thefuzz import fuzz
-
+from pathlib import Path
 
 class TempTopic:
     
@@ -45,7 +45,7 @@ class TempTopic:
         self.representation_embeddings_df = None
         self.stemmer = PorterStemmer()
         
-        self.debug_file = "wattelse/bertopic/app/match_debugging.txt"
+        self.debug_file = Path(__file__).parent / 'app' / 'match_debugging.txt'
         open(self.debug_file, 'w').close()
         
         self.validate_input_data()

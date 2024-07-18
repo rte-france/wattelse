@@ -74,7 +74,7 @@ COMMON_NGRAMS = [
 ]
 
 # Define the path to your JSON file
-stopwords_fr_file = Path(os.getcwd()) / "wattelse" / "bertopic" / "weak_signals" / 'stopwords-fr.json'
+stopwords_fr_file = Path(__file__).parent / 'weak_signals' / 'stopwords-fr.json'
 
 # Read the JSON data from the file and directly assign it to the list
 with open(stopwords_fr_file, 'r', encoding='utf-8') as file:

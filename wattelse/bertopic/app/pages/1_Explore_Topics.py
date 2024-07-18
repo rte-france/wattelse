@@ -21,7 +21,9 @@ from jinja2 import Template
 import html
 import re
 
-EXPORT_BASE_FOLDER = os.path.join('wattelse', 'bertopic', 'app', 'exported_topics')
+from pathlib import Path
+
+EXPORT_BASE_FOLDER = Path(__file__).parent.parent / 'exported_topics'
 
 def export_topic_documents(topic_docs, granularity_days, export_base_folder, topic_number, topic_words):
     """

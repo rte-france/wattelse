@@ -32,8 +32,11 @@ from pathlib import Path
 
 import json
 
+WS_CACHE_DIR = Path(__file__).parent / 'cache'
+
+
 def save_state():
-    cache_dir = Path(os.getcwd()) / "wattelse" / "bertopic" / "weak_signals" / "cache"
+    cache_dir = WS_CACHE_DIR
     
     if os.path.exists(cache_dir):
         shutil.rmtree(cache_dir)
@@ -65,7 +68,7 @@ def save_state():
     st.success(f"Application state saved.")
 
 def restore_state():
-    cache_dir = Path(os.getcwd()) / "wattelse" / "bertopic" / "weak_signals" / "cache"
+    cache_dir = WS_CACHE_DIR
     state_file = os.path.join(cache_dir, "app_state.pkl")
     embeddings_file = os.path.join(cache_dir, "embeddings.npy")
 
@@ -399,7 +402,7 @@ def main():
                     st.dataframe(zeroshot_topics_df, use_container_width=True)
 
                     # Save the zeroshot topics data to a CSV file
-                    save_path = Path(os.getcwd()) / "wattelse" / "bertopic" / "weak_signals" / "cache" / "zeroshot_topics_data"
+                    save_path = WS_CACHE_DIR / "zeroshot_topics_data"
 
                     os.makedirs(save_path, exist_ok=True)
                     json_file_path = os.path.join(save_path, "zeroshot_topics_data_arxiv.json")
@@ -587,7 +590,7 @@ def main():
             json_data_2 = df2.to_json(orient='records', date_format='iso', indent=4)
 
             # Save JSON data to a file
-            json_file_path = Path(os.getcwd()) / "wattelse" / "bertopic" / "weak_signals" / "cache" / "signal_evolution_data"
+            json_file_path = WS_CACHE_DIR / "signal_evolution_data"
 
             with open(json_file_path + "topics_signal_counts.json", 'w') as f:
                 f.write(json_data)
