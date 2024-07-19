@@ -87,8 +87,6 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
         cache_base_name=cache_base_name
     )
     
-    
-
-    
+        
 
 

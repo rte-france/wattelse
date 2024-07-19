@@ -1,36 +1,44 @@
 import streamlit as st
 import pandas as pd
 import locale
+from datetime import timedelta
 
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
 from app_utils import plot_topics_over_time
 from state_utils import restore_widget_state, register_widget, save_widget_state
-
-from wattelse.bertopic.app.app_utils import (
-    plot_topics_over_time,
-    compute_topics_over_time,
-)
-import pandas as pd
-
+from wattelse.bertopic.app.app_utils import plot_topics_over_time, compute_topics_over_time
 from wattelse.bertopic.temporal_metrics_embedding import TempTopic
 
-
-
-# Set locale to get French date names
+# Set locale for French date names
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
 
-# Wide layout
+# Page configuration
 st.set_page_config(page_title="Wattelse® topic", layout="wide")
 
-# Stop script if no model is trained
-if "topic_model" not in st.session_state.keys():
-    st.error("Train a model to explore different temporal visualizations.", icon="🚨")
-    st.stop()
+# Initialize session state variables
+if 'temptopic' not in st.session_state:
+    st.session_state.temptopic = None
+
+if 'granularity' not in st.session_state:
+    st.session_state.granularity = ""
 
 # Restore widget state
 restore_widget_state()
 
-# In the sidebar
+# Check if a model is trained
+if "topic_model" not in st.session_state:
+    st.error("Train a model to explore different temporal visualizations.", icon="🚨")
+    st.stop()
+
+def parameters_changed():
+    """Check if any of the parameters have changed."""
+    params_to_check = [
+        'window_size', 'k', 'alpha', 'double_agg', 'doc_agg', 'global_agg',
+        'evolution_tuning', 'global_tuning', 'granularity'
+    ]
+    return any(st.session_state.get(f'prev_{param}') != st.session_state.get(param) for param in params_to_check)
+
+# Sidebar
 with st.sidebar:
     st.header("TEMPTopic Parameters")
     
@@ -58,9 +66,7 @@ with st.sidebar:
     register_widget("global_tuning")
     global_tuning = st.checkbox("Use Global Tuning", value=False, key="global_tuning", on_change=save_widget_state)
 
-
-
-# Determine available time granularities based on data
+# Determine available time granularities
 min_date = st.session_state['timefiltered_df']['timestamp'].min()
 max_date = st.session_state['timefiltered_df']['timestamp'].max()
 time_diff = max_date - min_date
@@ -77,16 +83,12 @@ if time_diff >= pd.Timedelta(days=365):
 register_widget("granularity")
 time_granularity = st.selectbox("Select time granularity", [""] + available_granularities, key="granularity", on_change=save_widget_state)
 
-def parameters_changed():
-    params_to_check = [
-        'window_size', 'k', 'alpha', 'double_agg', 'doc_agg', 'global_agg',
-        'evolution_tuning', 'global_tuning', 'granularity'
-    ]
-    return any(st.session_state.get(f'prev_{param}') != st.session_state.get(param) for param in params_to_check)
+if time_granularity == "":
+    st.info("Please select a time granularity to view the temporal visualizations.")
+    st.stop()
 
-
-if time_granularity != "" and (parameters_changed() or 'temptopic' not in st.session_state):
-    # Aggregate dataframe based on selected time granularity
+# Process data and fit TempTopic if parameters changed
+if parameters_changed() or 'temptopic' not in st.session_state:
     df = st.session_state['timefiltered_df'].copy()
     df['timestamp'] = pd.to_datetime(df['timestamp'])
 
@@ -137,98 +139,109 @@ else:
     temptopic = st.session_state.temptopic 
     aggregated_df = st.session_state.aggregated_df
 
+# Visualizations
+if st.session_state.temptopic is not None:
+    temptopic = st.session_state.temptopic 
 
+    # Topic Evolution Dataframe
+    with st.expander("Topic Evolution Dataframe"):
+        columns_to_display = ["Topic", "Words", "Frequency", "Timestamp"]
+        columns_present = [col for col in columns_to_display if col in temptopic.final_df.columns]
+        st.dataframe(temptopic.final_df[columns_present].sort_values(by=['Topic', 'Timestamp'], ascending=[True, True]), use_container_width=True)
 
-# TEMPTopic Results
-with st.expander("Topic Evolution Dataframe"):
-    # Replace the line causing the error with this:
-    columns_to_display = ["Topic", "Words", "Frequency", "Timestamp"]
-    columns_present = [col for col in columns_to_display if col in temptopic.final_df.columns]
+    # Topic Info Dataframe
+    with st.expander("Topic Info Dataframe"):
+        st.dataframe(temptopic.topic_model.get_topic_info(), use_container_width=True)
 
-    st.dataframe(temptopic.final_df[columns_present].sort_values(by=['Topic', 'Timestamp'], ascending=[True, True]), use_container_width=True)
+    # Documents per Date Dataframe
+    with st.expander("Documents per Date Dataframe"):
+        st.dataframe(aggregated_df, use_container_width=True)
 
-with st.expander("Topic Info Dataframe"):
-    st.dataframe(temptopic.topic_model.get_topic_info(), use_container_width=True)
+    # TempTopic Visualizations
+    with st.expander("TempTopic Visualizations"):
+        topics_to_show = st.multiselect("Topics to Show", options=list(temptopic.final_df["Topic"].unique()), default=None)
 
-with st.expander("Documents per Date Dataframe"):
-    st.dataframe(aggregated_df, use_container_width=True)
-
-with st.expander("TempTopic Visualizations"):
-    topics_to_show = st.multiselect("Topics to Show", options=list(temptopic.final_df["Topic"].unique()), default=None)
-
-    st.header("Topic Evolution in Time and Semantic Space")
-    n_neighbors = st.slider("UMAP n_neighbors", min_value=2, max_value=100, value=15, step=1)
-    min_dist = st.slider("UMAP min_dist", min_value=0.0, max_value=0.99, value=0.1, step=0.01)
-    metric = st.selectbox("UMAP Metric", ["cosine", "euclidean", "manhattan"])
-    color_palette = st.selectbox("Color Palette", ["Plotly", "D3", "Alphabet"])
-    
-    fig_topic_evolution = temptopic.plot_topic_evolution(
-        granularity=time_granularity, 
-        topics_to_show=topics_to_show,
-        n_neighbors=n_neighbors,
-        min_dist=min_dist,
-        metric=metric,
-        color_palette=color_palette
-    )
-    st.plotly_chart(fig_topic_evolution, use_container_width=True)
-    
-    st.divider()
-
-    st.header("Overall Topic Stability")
-    normalize_overall_stability = st.checkbox("Normalize", value=False)
-    overall_stability_df = temptopic.calculate_overall_topic_stability(window_size=window_size, k=k, alpha=alpha)
-    fig_overall_stability = temptopic.plot_overall_topic_stability(
-        topics_to_show=topics_to_show, 
-        normalize=normalize_overall_stability,
-        darkmode=True
-    )
-    st.plotly_chart(fig_overall_stability, use_container_width=True)
-
-    st.divider()
-    
-    st.header("Temporal Stability Metrics")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        fig_topic_stability = temptopic.plot_temporal_stability_metrics(
-            metric="topic_stability", 
-            topics_to_show=topics_to_show
+        # Topic Evolution in Time and Semantic Space
+        st.header("Topic Evolution in Time and Semantic Space")
+        n_neighbors = st.slider("UMAP n_neighbors", min_value=2, max_value=100, value=15, step=1)
+        min_dist = st.slider("UMAP min_dist", min_value=0.0, max_value=0.99, value=0.1, step=0.01)
+        metric = st.selectbox("UMAP Metric", ["cosine", "euclidean", "manhattan"])
+        color_palette = st.selectbox("Color Palette", ["Plotly", "D3", "Alphabet"])
+        
+        fig_topic_evolution = temptopic.plot_topic_evolution(
+            granularity=time_granularity, 
+            topics_to_show=topics_to_show,
+            n_neighbors=n_neighbors,
+            min_dist=min_dist,
+            metric=metric,
+            color_palette=color_palette
         )
-        st.plotly_chart(fig_topic_stability, use_container_width=True)
+        st.plotly_chart(fig_topic_evolution, use_container_width=True)
+        
+        st.divider()
 
-    with col2:
-        fig_representation_stability = temptopic.plot_temporal_stability_metrics(
-            metric="representation_stability", 
-            topics_to_show=topics_to_show
+        # Overall Topic Stability
+        st.header("Overall Topic Stability")
+        normalize_overall_stability = st.checkbox("Normalize", value=False)
+        overall_stability_df = temptopic.calculate_overall_topic_stability(window_size=window_size, k=k, alpha=alpha)
+        fig_overall_stability = temptopic.plot_overall_topic_stability(
+            topics_to_show=topics_to_show, 
+            normalize=normalize_overall_stability,
+            darkmode=True
         )
-        st.plotly_chart(fig_representation_stability, use_container_width=True)
+        st.plotly_chart(fig_overall_stability, use_container_width=True)
 
-    
-with st.spinner("Computing topics over time..."):
-    with st.expander("Popularity of topics over time"):
-        if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"].keys():
-            st.write("## Popularity of topics over time")
+        st.divider()
+        
+        # Temporal Stability Metrics
+        st.header("Temporal Stability Metrics")
+        col1, col2 = st.columns(2)
 
-            # Parameters
-            st.text_input(
-                "Topics list (format 1,12,52 or 1:20)",
-                key="dynamic_topics_list",
-                value="0:10",
+        with col1:
+            fig_topic_stability = temptopic.plot_temporal_stability_metrics(
+                metric="topic_stability", 
+                topics_to_show=topics_to_show
             )
+            st.plotly_chart(fig_topic_stability, use_container_width=True)
 
-            st.number_input("nr_bins", min_value=1, value=10, key="nr_bins")
-
-            # Compute topics over time only when train button is clicked
-            st.session_state["topics_over_time"] = compute_topics_over_time(
-                st.session_state["parameters"],
-                st.session_state["topic_model"],
-                st.session_state["timefiltered_df"],
-                nr_bins=st.session_state["nr_bins"],
+        with col2:
+            fig_representation_stability = temptopic.plot_temporal_stability_metrics(
+                metric="representation_stability", 
+                topics_to_show=topics_to_show
             )
+            st.plotly_chart(fig_representation_stability, use_container_width=True)
 
-            # Visualize
-            st.plotly_chart(plot_topics_over_time(
+    # Popularity of topics over time
+    with st.spinner("Computing topics over time..."):
+        with st.expander("Popularity of topics over time"):
+            if TIMESTAMP_COLUMN in st.session_state["timefiltered_df"]:
+                st.write("## Popularity of topics over time")
+
+                # Parameters
+                st.text_input(
+                    "Topics list (format 1,12,52 or 1:20)",
+                    key="dynamic_topics_list",
+                    value="0:10",
+                )
+
+                st.number_input("nr_bins", min_value=1, value=10, key="nr_bins")
+
+                # Compute topics over time
+                st.session_state["topics_over_time"] = compute_topics_over_time(
+                    st.session_state["parameters"],
+                    st.session_state["topic_model"],
+                    st.session_state["timefiltered_df"],
+                    nr_bins=st.session_state["nr_bins"],
+                )
+
+                # Visualize
+                st.plotly_chart(plot_topics_over_time(
                     st.session_state["topics_over_time"],
                     st.session_state["dynamic_topics_list"],
                     st.session_state["topic_model"],
                 ), use_container_width=True)
+else:
+    st.info("Please select a time granularity to view the temporal visualizations.")
+    
+    
+# FIXME: Popularity of topics over time visualization is based on the number of paragraphs instead of original articles, since it's the default BERTopic method

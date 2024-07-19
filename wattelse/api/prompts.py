@@ -36,6 +36,19 @@ EN_SYSTEM_SUMMARY_WORDS = ("You are a highly qualified AI, trained in language u
                            )
 # num_words: number of words the summary should contain
 
+
+FR_USER_SUMMARY_WORDS = FR_SYSTEM_SUMMARY_WORDS + (
+						 " Texte :\n {text}"
+						 )
+# num_words: number of words the summary should contain
+# text: text to be summarized
+
+EN_USER_SUMMARY_WORDS = EN_SYSTEM_SUMMARY_WORDS + (
+	" Text :\n {text}"
+)
+# num_words: number of words the summary should contain
+# text: text to be summarized
+
 FR_SYSTEM_SUMMARY_SENTENCES = FR_SYSTEM_SUMMARY_WORDS.replace("{num_words} mots", "{num_sentences} phrases")
 EN_SYSTEM_SUMMARY_SENTENCES = EN_SYSTEM_SUMMARY_WORDS.replace("{num_words} words", "{num_sentences} sentences")
 # num_sentences: number of sentences the summary should contain
@@ -84,6 +97,14 @@ EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES = (
     "The topic description should be short and specific, no more than 4 words. "
     "\n\"{title_list}\"")
 # title_list: list of documents extracts belonging to the topic
+
+FRENCH_TOPIC_REPRESENTATION_PROMPT = ("J'ai un topic qui contient les documents suivants :\n"
+									  "[DOCUMENTS]\n"
+									  "Le topic est décrit par les mots-clés suivants : [KEYWORDS]\n"
+									  "Sur la base des informations ci-dessus, extraire une courte étiquette de topic dans le format suivant :\n"
+									  "Topic : <étiquette du sujet>")
+# Passed directly to BERTopic's OpenAI wrapper, formatted similar to BERTopic's original prompt which can be found in its source code
+
 
 
 ### CHATBOT ###

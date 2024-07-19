@@ -1,17 +1,53 @@
+"""
+TempTopic: An addon to BERTopic that evaluates the model's dynamic topic modeling using embeddings
+
+The TempTopic class extends BERTopic for dynamic topic modeling evaluation, incorporating metrics such as 
+Temporal Topic Representation Stability and Temporal Topic Embedding Stability. This approach provides a 
+comprehensive analysis of how topics evolve over time, focusing on their embeddings and vocabulary consistency.
+
+Key Features:
+- Temporal Topic Representation Stability: Assesses the stability of topic representations over different timestamps.
+- Temporal Topic Embedding Stability: Evaluates the consistency of topic embeddings over time.
+- Overall Topic Stability: Combines representation stability and embedding stability for a comprehensive stability measure.
+- Visualization: Various plotting functions to visualize topic evolution, stability metrics, and overall topic stability.
+
+Requirements:
+- A trained BERTopic model
+- A list of documents and their corresponding timestamps
+- Embeddings for documents and words
+- Optionally, a list of pre-assigned topics for each document
+
+Example Usage:
+
+```python
+from bertopic import BERTopic
+from temporal_metrics_embedding import TempTopic
+
+# Assuming `documents`, `embeddings`, `word_embeddings`, `token_strings`, and `timestamps` are prepared
+
+topic_model = BERTopic()
+topics, probs = topic_model.fit_transform(documents)
+
+# Initialize TempTopic with the BERTopic model, documents, embeddings, and timestamps
+temptopic = TempTopic(topic_model=topic_model, docs=documents, embeddings=embeddings, 
+                      word_embeddings=word_embeddings, token_strings=token_strings, timestamps=timestamps)
+
+# Fit the TempTopic model
+temptopic.fit(window_size=2, k=1)
+
+# Calculate and plot stability metrics
+temptopic.calculate_temporal_representation_stability()
+temptopic.calculate_topic_embedding_stability()
+temptopic.plot_temporal_stability_metrics(metric='topic_stability')
+temptopic.plot_overall_topic_stability()
+"""
+
 import pandas as pd
 from loguru import logger
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-
-
-import numpy as np
-import pandas as pd
-from typing import List, Union, Tuple
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.stem import PorterStemmer
 from bertopic import BERTopic
-
 from tqdm import tqdm
 import itertools
 import umap
@@ -19,6 +55,9 @@ from scipy.sparse import csr_matrix
 from sklearn.preprocessing import normalize
 from thefuzz import fuzz
 from pathlib import Path
+import plotly.express as px
+import plotly.graph_objects as go
+from typing import List, Union, Tuple
 
 class TempTopic:
     
@@ -31,6 +70,35 @@ class TempTopic:
                  topics: List[int] = None,
                  evolution_tuning: bool = True,
                  global_tuning: bool = False):
+        """
+        Initializes the TempTopic object with a BERTopic model, a list of documents, embeddings, and timestamps.
+
+        Parameters:
+        - topic_model: A trained BERTopic model.
+        - docs: A list of documents (strings).
+        - embeddings: List of document embeddings.
+        - word_embeddings: List of word embeddings.
+        - token_strings: List of token strings corresponding to the word embeddings.
+        - timestamps: A list of timestamps corresponding to each document. The list can contain strings or integers.
+        - topics: An optional list of topics corresponding to each document.
+        - evolution_tuning: Boolean to fine-tune the c-TF-IDF matrix at timestamp t by averaging it with the c-TF-IDF at t-1.
+        - global_tuning: Boolean indicating whether to apply global tuning to align topics with the global c-TF-IDF representation.
+        """
+        if not isinstance(topic_model, BERTopic):
+            raise TypeError("topic_model must be an instance of BERTopic.")
+        if not isinstance(docs, list) or not all(isinstance(doc, str) for doc in docs):
+            raise TypeError("docs must be a list of strings.")
+        if not isinstance(timestamps, list) or not all(isinstance(t, (str, int, float)) for t in timestamps):
+            raise TypeError("timestamps must be a list of str, int or float.")
+        if topics is not None and (not isinstance(topics, list) or not all(isinstance(topic, int) for topic in topics)):
+            raise TypeError("topics, if provided, must be a list of integers.")
+
+        # Ensure all inputs have the same length
+        if topics is not None and not (len(docs) == len(timestamps) == len(topics)):
+            raise ValueError("Lengths of docs, timestamps, and topics must all be the same.")
+        elif not (len(docs) == len(timestamps)):
+            raise ValueError("Lengths of docs and timestamps must be the same.")
+
         self.topic_model = topic_model
         self.docs = docs
         self.embeddings = embeddings
@@ -48,12 +116,18 @@ class TempTopic:
         self.debug_file = Path(__file__).parent / 'app' / 'match_debugging.txt'
         open(self.debug_file, 'w').close()
         
-        self.validate_input_data()
 
-    def validate_input_data(self):
-        assert len(self.docs) == len(self.embeddings) == len(self.word_embeddings) == len(self.token_strings) == len(self.timestamps) == len(self.topics), "Input data lengths do not match"
-        
     def fit(self, window_size: int = 2, k: int = 1, double_agg: bool = True, doc_agg: str = "mean", global_agg: str = "max"):
+        """
+        Fits the TempTopic model to calculate and store topic dynamics over time.
+
+        Parameters:
+        - window_size: Size of the window for temporal analysis.
+        - k: Number of nearest neighbors for stability calculation.
+        - double_agg: Boolean to apply double aggregation.
+        - doc_agg: Aggregation method for document embeddings.
+        - global_agg: Aggregation method for global embeddings.
+        """
         self._topics_over_time()
         self._calculate_representation_embeddings(double_agg=double_agg, doc_agg=doc_agg, global_agg=global_agg)
         self.calculate_temporal_representation_stability(window_size=window_size, k=k)
@@ -62,6 +136,9 @@ class TempTopic:
     def _topics_over_time(self) -> pd.DataFrame:
         """
         Extends the existing method to include document embeddings and the mean topic embedding for each topic at each timestamp.
+
+        Returns:
+        A pandas DataFrame containing topics, their top words, frequencies, timestamps, and embeddings.
         """
         documents = pd.DataFrame({
             "Document": self.docs,
@@ -166,6 +243,20 @@ class TempTopic:
 
 
     def _fuzzy_match_and_embed(self, phrase: str, token_strings: List[List[str]], token_embeddings: List[np.ndarray], topic_id: int, timestamp: str, window_size: int) -> Tuple[str, np.ndarray]:
+        """
+        Matches a phrase to the most similar window in token_strings using fuzzy matching and returns the corresponding embedding.
+
+        Parameters:
+        - phrase: The phrase to match.
+        - token_strings: List of token strings.
+        - token_embeddings: List of token embeddings.
+        - topic_id: The topic ID.
+        - timestamp: The timestamp of the topic.
+        - window_size: The size of the window for fuzzy matching.
+
+        Returns:
+        - Tuple containing the best matched phrase and its embedding.
+        """
         phrase_tokens = phrase.split()
         best_match = None
         best_score = 0
@@ -190,6 +281,17 @@ class TempTopic:
             return None, None
 
     def _log_failed_match(self, phrase: str, token_strings: List[List[str]], topic_id: int, timestamp: str, best_match: str, best_score: int):
+        """
+        Logs failed matches for debugging purposes.
+
+        Parameters:
+        - phrase: The phrase that failed to match.
+        - token_strings: List of token strings.
+        - topic_id: The topic ID.
+        - timestamp: The timestamp of the topic.
+        - best_match: The best matched phrase.
+        - best_score: The best score achieved.
+        """
         with open(self.debug_file, 'a', encoding='utf-8') as f:
             f.write(f"{'#'*50}\n")
             f.write(f"Failed match for Topic {topic_id} at Timestamp {timestamp}\n")
@@ -202,6 +304,15 @@ class TempTopic:
             f.write(f"{'#'*50}\n\n")
 
     def _calculate_representation_embeddings(self, double_agg: bool = True, doc_agg: str = "mean", global_agg: str = "max", window_size: int = 10):
+        """
+        Calculates embeddings for topic representations using fuzzy matching.
+
+        Parameters:
+        - double_agg: Boolean to apply double aggregation.
+        - doc_agg: Aggregation method for document embeddings.
+        - global_agg: Aggregation method for global embeddings.
+        - window_size: The size of the window for fuzzy matching.
+        """
         representation_embeddings = []
 
         for _, row in self.final_df.iterrows():
@@ -237,9 +348,17 @@ class TempTopic:
         logger.info(f"Detailed debugging information for failed matches has been written to {self.debug_file}")
 
 
-
-
     def calculate_temporal_representation_stability(self, window_size: int = 2, k: int = 1) -> Tuple[pd.DataFrame, float]:
+        """
+        Calculates the Temporal Representation Stability (TRS) scores for each topic.
+
+        Parameters:
+        - window_size: Size of the window for temporal analysis.
+        - k: Number of nearest neighbors for stability calculation.
+
+        Returns:
+        - Tuple containing a DataFrame with TRS scores and the average TRS score.
+        """
         if window_size < 2:
             raise ValueError("window_size must be 2 or above.")
 
@@ -289,6 +408,15 @@ class TempTopic:
 
 
     def calculate_topic_embedding_stability(self, window_size: int = 2) -> Tuple[pd.DataFrame, float]:
+        """
+        Calculates the Temporal Topic Embedding Stability (TTES) scores for each topic.
+
+        Parameters:
+        - window_size: Size of the window for temporal analysis.
+
+        Returns:
+        - Tuple containing a DataFrame with TTES scores and the average TTES score.
+        """
         if window_size < 2:
             raise ValueError("window_size must be 2 or above.")
 
@@ -320,6 +448,19 @@ class TempTopic:
         return self.topic_stability_scores_df, self.avg_topic_stability_score
 
     def calculate_overall_topic_stability(self, window_size: int = 2, k: int = 1, alpha: float = 0.5) -> pd.DataFrame:
+        """
+        Calculates the Overall Topic Stability (OTS) score by combining representation stability and embedding stability.
+
+        Parameters:
+        - window_size: Size of the window for temporal analysis.
+        - k: Number of nearest neighbors for stability calculation.
+        - alpha: Weight for combining representation and
+
+ embedding stability.
+
+        Returns:
+        - DataFrame containing the overall stability scores.
+        """
         representation_stability_df, _ = self.calculate_temporal_representation_stability(window_size, k)
         topic_stability_df, _ = self.calculate_topic_embedding_stability(window_size)
 
@@ -341,8 +482,16 @@ class TempTopic:
         return self.overall_stability_df
 
 
-
     def find_similar_topic_pairs(self, similarity_threshold: float = 0.8) -> List[List[Tuple[int, int, str]]]:
+        """
+        Finds similar topic pairs based on cosine similarity.
+
+        Parameters:
+        - similarity_threshold: Threshold for cosine similarity to consider topics as similar.
+
+        Returns:
+        - List of similar topic pairs.
+        """
         topic_ids = self.final_df['Topic'].unique()
         num_topics = len(topic_ids)
         
@@ -379,6 +528,20 @@ class TempTopic:
     
     
     def plot_topic_evolution(self, granularity: str, topics_to_show: List[int] = None, n_neighbors: int = 15, min_dist: float = 0.1, metric: str = 'cosine', color_palette='Plotly'):
+        """
+        Plots the evolution of topics over time using UMAP for dimensionality reduction.
+
+        Parameters:
+        - granularity: The granularity of the timestamps ('Week', 'Month', 'Year', or 'Day').
+        - topics_to_show: List of topic IDs to show in the plot.
+        - n_neighbors: Number of neighbors for UMAP.
+        - min_dist: Minimum distance for UMAP.
+        - metric: Metric for UMAP.
+        - color_palette: Color palette for the plot.
+
+        Returns:
+        - Plotly figure object.
+        """
         topic_data = {}
         for topic_id in self.final_df['Topic'].unique():
             topic_df = self.final_df[self.final_df['Topic'] == topic_id]
@@ -442,6 +605,17 @@ class TempTopic:
         return fig
 
     def plot_temporal_stability_metrics(self, metric: str, darkmode: bool = True, topics_to_show: List[int] = None):
+        """
+        Plots temporal stability metrics for topics.
+
+        Parameters:
+        - metric: The metric to plot ('topic_stability' or 'representation_stability').
+        - darkmode: Boolean to use dark mode for the plot.
+        - topics_to_show: List of topic IDs to show in the plot.
+
+        Returns:
+        - Plotly figure object.
+        """
         if darkmode:
             fig = go.Figure(layout=go.Layout(template="plotly_dark"))
         else:
@@ -499,6 +673,19 @@ class TempTopic:
         return fig
 
     def plot_overall_topic_stability(self, darkmode: bool = True, normalize: bool = False, topics_to_show: List[int] = None):
+        """
+        Plots overall topic stability scores.
+
+        Parameters:
+        - darkmode: Boolean to use dark mode for the plot
+
+.
+        - normalize: Boolean to normalize the stability scores.
+        - topics_to_show: List of topic IDs to show in the plot.
+
+        Returns:
+        - Plotly figure object.
+        """
         if self.overall_stability_df is None:
             self.calculate_overall_topic_stability()
 
@@ -539,5 +726,4 @@ class TempTopic:
             showlegend=False
         )
         
-
         return fig
