@@ -150,4 +150,5 @@ postman
 **/cache*/
 **/exported_topics*/
 
-nyt-2019-2023.parquet
+wattelse/bertopic/app/*.html
+wattelse/bertopic/app/*debugging*.txt

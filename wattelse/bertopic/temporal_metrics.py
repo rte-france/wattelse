@@ -1,5 +1,8 @@
 """
-TempTopic: An addon to BERTopic that allows the evaluation of the model's dynamic topic modeling
+An addon to BERTopic that allows the evaluation of the model's dynamic topic modeling
+
+Link to paper: https://arxiv.org/abs/2309.08627
+
 
 The TempTopic class extends the capabilities of BERTopic for dynamic topic modeling evaluation, incorporating metrics such as 
 Temporal Topic Coherence (TTC), Temporal Topic Smoothness (TTS), and Temporal Topic Quality (TTQ). This approach enables a 
@@ -49,10 +52,7 @@ temptopic.plot_temporal_topic_metrics(metric='smoothness')
 
 # Plot temporal topic quality
 temptopic.plot_temporal_topic_quality()
-
-Link to paper: https://arxiv.org/abs/2309.08627
 """
-
 
 from sklearn.preprocessing import normalize
 import pandas as pd
@@ -66,10 +66,13 @@ import itertools
 import plotly.graph_objects as go
 import plotly.express as px
 
-
-
 class TempTopic:
-    
+    """
+    An addon to BERTopic that allows the evaluation of the model's dynamic topic modeling.
+    Incorporates metrics such as Temporal Topic Coherence (TTC), Temporal Topic Smoothness (TTS), 
+    and Temporal Topic Quality (TTQ) for comprehensive analysis of topic evolution over time.
+    """
+
     def __init__(self, topic_model: BERTopic, 
                  docs: List[str], 
                  timestamps: Union[List[str], List[int]], 
@@ -77,20 +80,16 @@ class TempTopic:
                  evolution_tuning: bool = True,
                  global_tuning: bool = False):
         """
-        Initializes the TempTopic object with a BERTopic model, a list of documents, 
-        their corresponding timestamps, and optionally a list of topics.
+        Initialize the TempTopic object with a BERTopic model, a list of documents, their timestamps, 
+        and optionally a list of topics.
 
         Parameters:
-        - topic_model: A trained BERTopic model.
-        - docs: A list of documents (strings).
-        - timestamps: A list of timestamps corresponding to each document. The list can contain strings or integers.
-        - topics: An optional list of topics corresponding to each document.
-        - evolution_tuning: Boolean to fine-tune the c-TF-IDF matrix at timestamp t by averaging it with the c-TF-IDF at t-1.
-        - global_tuning: Boolean indicating whether to apply global tuning to align topics with the global c-TF-IDF representation.
-
-        Raises:
-        - ValueError: If the lengths of docs, timestamps, and optionally topics are not the same.
-        - TypeError: If the provided arguments are not of the expected types.
+        - topic_model (BERTopic): A trained BERTopic model.
+        - docs (List[str]): A list of documents (strings).
+        - timestamps (Union[List[str], List[int]]): A list of timestamps corresponding to each document.
+        - topics (List[int], optional): A list of topics corresponding to each document.
+        - evolution_tuning (bool): Fine-tune the c-TF-IDF matrix at timestamp t by averaging it with the c-TF-IDF at t-1.
+        - global_tuning (bool): Apply global tuning to align topics with the global c-TF-IDF representation.
         """
         if not isinstance(topic_model, BERTopic):
             raise TypeError("topic_model must be an instance of BERTopic.")
@@ -123,16 +122,13 @@ class TempTopic:
         self.tts_scores_df = None
         self.ttc_scores_df = None
 
-
     def _topics_over_time(self) -> pd.DataFrame:
-        
         """
         Calculates and returns a DataFrame containing topics over time with their respective words and frequencies.
 
         Returns:
-        A pandas DataFrame containing topics, their top words, frequencies, and timestamps.
+        - pd.DataFrame: Topics, their top words, frequencies, and timestamps.
         """
-        
         # Prepare documents DataFrame
         documents = pd.DataFrame({
             "Document": self.docs,
@@ -151,8 +147,8 @@ class TempTopic:
         documents.sort_values("Timestamps", inplace=True)
         timestamps = documents["Timestamps"].unique()
 
-        topics_over_time = [] # Accumulates the final data for each timestamp
-        document_per_topic_list = [] # Tracks documents associated with each topic at each timestamp
+        topics_over_time = []  # Accumulates the final data for each timestamp
+        document_per_topic_list = []  # Tracks documents associated with each topic at each timestamp
 
         for index, timestamp in tqdm(enumerate(timestamps), desc="Initial processing"):
             # Select documents for the current timestamp
@@ -160,9 +156,9 @@ class TempTopic:
             
             # Aggregate documents by topic to compute c-TF-IDF
             documents_per_topic = selection.groupby(['Topic'], as_index=False).agg({
-                'Document': ' '.join, # Combine documents for each topic
-                "Timestamps": "count" # Count of documents per topic
-                })
+                'Document': ' '.join,  # Combine documents for each topic
+                "Timestamps": "count"  # Count of documents per topic
+            })
 
             # Compute c-TF-IDF for the current selection
             c_tf_idf, words = self.topic_model._c_tf_idf(documents_per_topic, fit=False)
@@ -174,8 +170,7 @@ class TempTopic:
             documents_per_topic_2['Timestamp'] = timestamp
             document_per_topic_list.append(documents_per_topic_2)
 
-            # Fine-tune the c-TF-IDF matrix at timestamp t by averaging it with the c-TF-IDF
-            # matrix at timestamp t-1
+            # Fine-tune the c-TF-IDF matrix at timestamp t by averaging it with the c-TF-IDF matrix at timestamp t-1
             if self.evolution_tuning and index != 0:
                 current_topics = sorted(list(documents_per_topic.Topic.values))
                 overlapping_topics = sorted(list(set(previous_topics).intersection(set(current_topics))))
@@ -193,14 +188,10 @@ class TempTopic:
 
             # Extract the words per topic
             words_per_topic = self.topic_model._extract_words_per_topic(words, selection, c_tf_idf, calculate_aspects=False)
-            topic_frequency = pd.Series(documents_per_topic.Timestamps.values,
-                                        index=documents_per_topic.Topic).to_dict()
+            topic_frequency = pd.Series(documents_per_topic.Timestamps.values, index=documents_per_topic.Topic).to_dict()
 
             # Fill dataframe with results
-            topics_at_timestamp = [(topic,
-                                    ", ".join([words[0] for words in values][:10]),
-                                    topic_frequency[topic],
-                                    timestamp) for topic, values in words_per_topic.items()]
+            topics_at_timestamp = [(topic, ", ".join([words[0] for words in values][:10]), topic_frequency[topic], timestamp) for topic, values in words_per_topic.items()]
             topics_over_time.extend(topics_at_timestamp)
             
             if self.evolution_tuning:
@@ -209,36 +200,23 @@ class TempTopic:
 
         topics_over_time_df = pd.DataFrame(topics_over_time, columns=["Topic", "Words", "Frequency", "Timestamp"])
         self.final_df = topics_over_time_df.merge(pd.concat(document_per_topic_list), on=['Topic', 'Timestamp'], how='left')
-        
-        
+
     def calculate_temporal_coherence(self, window_size: int = 2, epsilon: float = 1e-12) -> Tuple[pd.DataFrame, float]:
-        
         """
-        Calculates the Temporal Topic Coherence (TTC) scores for topics identified in a dataset across different timestamps. 
-        This method provides insights into the consistency and relevance of topics over time. It leverages a co-occurrence 
-        matrix and word frequencies to compute Normalized Pointwise Mutual Information (NPMI) between word pairs from topics 
-        within a specified temporal window. The TTC scores are indicative of how coherently topics are discussed throughout 
-        the dataset's timeline.
+        Calculate the Temporal Topic Coherence (TTC) scores for topics across different timestamps.
 
         Parameters:
-        - window_size (int): Specifies the temporal window size to calculate coherence between topic pairs. Must be 2 or above.
-        - epsilon (float): A small value added to probabilities to prevent log of 0 in TTC score. Smaller is better.
+        - window_size (int): Temporal window size to calculate coherence between topic pairs.
+        - epsilon (float): A small value added to probabilities to prevent log of 0 in TTC score.
 
         Returns:
-        - Tuple[pd.DataFrame, float]: A tuple containing a DataFrame and a float value. 
-        The DataFrame includes columns for 'Topic ID', 'Start Timestamp', 'End Timestamp', 'Start Topic', 'End Topic', 
-        and 'TTC Score', detailing the coherence scores for topic pairs between timestamps. 
-        The float value represents the average TTC score across all topic pairs and timestamps, providing a single measure 
-        of overall temporal topic coherence in the dataset.
-
-        Raises:
-        - ValueError: If window_size is less than 2.
+        - Tuple[pd.DataFrame, float]: DataFrame with coherence scores and average coherence score.
         """
+        if window_size < 2:
+            raise ValueError("window_size must be 2 or above.")
         
-        
-        if window_size < 2: raise ValueError("window_size must be 2 or above.")
-        
-        if self.final_df is None: self._topics_over_time()
+        if self.final_df is None:
+            self._topics_over_time()
         
         # Preprocess and create a dictionary of unique words
         unique_words = set()
@@ -256,7 +234,7 @@ class TempTopic:
         # Build co-occurrence matrix
         if self.co_occurrence_matrix is None:
             self.co_occurrence_matrix = lil_matrix((len(dictionary), len(dictionary)), dtype=np.int32)
-            for doc in tqdm(self.docs, desc="Building word co-occurence matrix"):
+            for doc in tqdm(self.docs, desc="Building word co-occurrence matrix"):
                 transformed_doc = vectorizer.transform([doc])
                 indices = transformed_doc.nonzero()[1]
                 for i, j in itertools.combinations(indices, 2):
@@ -265,7 +243,9 @@ class TempTopic:
             
             # Fill diagonal with word frequencies
             for word, freq in word_freq.items():
-                index = vectorizer.vocabulary_.get(word)
+                index = vectorizer.vocabulary_.get(word
+
+)
                 if index is not None:
                     self.co_occurrence_matrix[index, index] = freq
         
@@ -296,13 +276,24 @@ class TempTopic:
         self.average_ttc = self.ttc_scores_df['TTC Score'].mean()
         return self.ttc_scores_df, self.average_ttc
 
-    def _calculate_npmi(self, words_t1: List[str], 
-                        words_t2: List[str], 
-                        word_freq: Dict[str, int], 
-                        co_occurrence_matrix: lil_matrix, 
-                        vectorizer: CountVectorizer, 
-                        epsilon: float, 
-                        total_docs: int) -> float:
+    def _calculate_npmi(self, words_t1: List[str], words_t2: List[str], word_freq: Dict[str, int], 
+                        co_occurrence_matrix: lil_matrix, vectorizer: CountVectorizer, 
+                        epsilon: float, total_docs: int) -> float:
+        """
+        Calculate Normalized Pointwise Mutual Information (NPMI) between two sets of words.
+
+        Parameters:
+        - words_t1 (List[str]): First set of words.
+        - words_t2 (List[str]): Second set of words.
+        - word_freq (Dict[str, int]): Dictionary of word frequencies.
+        - co_occurrence_matrix (lil_matrix): Co-occurrence matrix of words.
+        - vectorizer (CountVectorizer): Vectorizer used for word tokenization.
+        - epsilon (float): Small value to prevent division by zero.
+        - total_docs (int): Total number of documents.
+
+        Returns:
+        - float: NPMI score.
+        """
         npmi = 0
         for word_i in words_t1:
             for word_j in words_t2:
@@ -313,34 +304,24 @@ class TempTopic:
                 npmi += npmi_value
         npmi /= (len(words_t1) * len(words_t2))
         return npmi
-    
-    
-    
+
     def calculate_temporal_smoothness(self, window_size: int = 2) -> Tuple[pd.DataFrame, float]:
-        
         """
-        Calculates the Temporal Topic Smoothness (TTS) for topics within a dataset across different timestamps. This measure 
-        evaluates the consistency of topic vocabulary over a specified window size, offering insights into how smoothly topics 
-        transition or evolve over time. The smoothness is quantified by computing the redundancy of words in a topic at a given 
-        timestamp with the words in the same topic across subsequent timestamps within the defined window.
+        Calculate the Temporal Topic Smoothness (TTS) for topics within a dataset across different timestamps.
 
         Parameters:
-        - window_size (int): The temporal window size over which to calculate the smoothness. The window includes the starting 
-        timestamp and extends to include 'window_size - 1' subsequent timestamps.
+        - window_size (int): Temporal window size to calculate smoothness.
 
         Returns:
-        - Tuple[pd.DataFrame, float]: A tuple where the first element is a DataFrame containing the TTS scores for each topic 
-        across the specified timestamps. The DataFrame includes columns for 'Topic ID', 'Start Timestamp', 'End Timestamp', 
-        'Start Topic', and 'TTS Score'. The 'TTS Score' represents the smoothness of the topic's vocabulary from the start 
-        to the end of the window. The second element is a float representing the average TTS score across all topics and 
-        windows, providing an overall measure of temporal smoothness in the dataset's topics.
+        - Tuple[pd.DataFrame, float]: DataFrame with smoothness scores and average smoothness score.
         """
+        if window_size < 2:
+            raise ValueError("window_size must be 2 or above.")
         
-        if window_size < 2: raise ValueError("window_size must be 2 or above.")
-        
-        if self.final_df is None: self._topics_over_time()
+        if self.final_df is None:
+            self._topics_over_time()
 
-        # Initialize a DataFrame to hold the TTC scores for each topic and timestamp
+        # Initialize a DataFrame to hold the TTS scores for each topic and timestamp
         tts_scores_df = pd.DataFrame(columns=['Topic ID', 'Start Timestamp', 'End Timestamp', 'Start Topic', 'TTS Score'])
         
         grouped_topics = self.final_df.groupby('Topic')
@@ -372,35 +353,30 @@ class TempTopic:
                 end_timestamp = sorted_topic_group.iloc[i + window_size - 1]['Timestamp']
                 
                 # Store the TTS score in the DataFrame
-                self.tts_scores_df = pd.concat([self.tts_scores_df, pd.DataFrame([{'Topic ID': topic_id, 'Start Timestamp': t1_row['Timestamp'], 'End Timestamp': end_timestamp,
-                                                                        'Start Topic' : words_t1,
-                                                                        'TTS Score': tts}])])
+                tts_scores_df = pd.concat([tts_scores_df, pd.DataFrame([{'Topic ID': topic_id, 'Start Timestamp': t1_row['Timestamp'], 'End Timestamp': end_timestamp,
+                                                                        'Start Topic' : words_t1, 'TTS Score': tts}])])
             
+        self.tts_scores_df = tts_scores_df
         self.average_tts = self.tts_scores_df['TTS Score'].mean()
         return self.tts_scores_df, self.average_tts
-    
-    
-    
+
     def calculate_temporal_quality(self, window_size: int = 2, epsilon: float = 1e-12) -> Tuple[pd.DataFrame, float]:
         """
-        Calculates the Temporal Topic Quality (TTQ) for each topic over time. TTQ is computed as the product of 
-        Temporal Topic Coherence (TTC) and Temporal Topic Smoothness (TTS) across a specified window size. This metric 
-        gives an indication of the overall quality of topics over time, considering both their coherence and smoothness.
+        Calculate the Temporal Topic Quality (TTQ) for each topic over time.
 
         Parameters:
         - window_size (int): The number of timestamps to consider for each sliding window calculation.
         - epsilon (float): A small number to stabilize the calculations.
 
         Returns:
-        - Tuple containing a DataFrame with TTQ scores for each topic and the average TTQ score across all topics.
+        - Tuple[pd.DataFrame, float]: DataFrame with TTQ scores and average TTQ score.
         """
-        
         # Ensure that we have the necessary TTC and TTS scores calculated
         self.calculate_temporal_coherence(window_size, epsilon)
         self.calculate_temporal_smoothness(window_size)
 
         # Initialize the DataFrame to hold the TTQ scores
-        self.ttq_scores_df = pd.DataFrame(columns=['Topic ID', 'TTQ Score'])
+        ttq_scores_df = pd.DataFrame(columns=['Topic ID', 'TTQ Score'])
 
         # Iterate over each unique topic
         for topic_id in self.final_df['Topic'].unique():
@@ -430,23 +406,20 @@ class TempTopic:
 
             # Calculate the average TTQ score for the topic, considering only windows with valid data
             avg_ttq_score = sum(ttq_scores) / count_valid_windows if count_valid_windows else 0
-            self.ttq_scores_df = pd.concat([self.ttq_scores_df, pd.DataFrame({'Topic ID': [topic_id], 'TTQ Score': [avg_ttq_score]})])
+            ttq_scores_df = pd.concat([ttq_scores_df, pd.DataFrame({'Topic ID': [topic_id], 'TTQ Score': [avg_ttq_score]})])
 
-
-        # Calculate the average TTQ score across all topics
+        self.ttq_scores_df = ttq_scores_df
         self.average_ttq = self.ttq_scores_df['TTQ Score'].mean() if not self.ttq_scores_df.empty else 0
-
         return self.ttq_scores_df, self.average_ttq
-    
-    
-    def plot_temporal_topic_metrics(self, metric: str, darkmode: bool = True, topics_to_show : List[int] = None):
+
+    def plot_temporal_topic_metrics(self, metric: str, darkmode: bool = True, topics_to_show: List[int] = None):
         """
         Plot temporal topic coherence/smoothness with an option to select specific topics.
 
         Parameters:
-        - metric: The metric to plot ('coherence' or 'smoothness').
-        - topics_to_show: Optional list of topic IDs to display. If None or empty, show all.
-        - darkmode: for the aesthetic of the plot only
+        - metric (str): The metric to plot ('coherence' or 'smoothness').
+        - darkmode (bool): For the aesthetic of the plot.
+        - topics_to_show (List[int], optional): List of topic IDs to display. If None or empty, show all.
         """
         if metric == "coherence":
             metric_column = "TTC Score"
@@ -456,8 +429,7 @@ class TempTopic:
             df = self.tts_scores_df
 
         # Initialize a Plotly figure
-        if darkmode: fig = go.Figure(layout=go.Layout(template="plotly_dark"))
-        else: fig = go.Figure()
+        fig = go.Figure(layout=go.Layout(template="plotly_dark" if darkmode else "plotly"))
 
         # Determine which topics to plot
         if topics_to_show is None or not topics_to_show:
@@ -496,31 +468,21 @@ class TempTopic:
         fig.update_layout(
             title='Temporal Topic ' + metric.capitalize(),
             xaxis_title='Timestamp',
-            yaxis_title='Temporal '+ metric.capitalize() + ' Score',
+            yaxis_title='Temporal ' + metric.capitalize() + ' Score',
             legend_title='Topic',
-            hovermode='closest',
-            # plot_bgcolor='rgba(0,0,0,0)',  # Sets the plot background to transparent
+            hovermode='closest'
         )
 
         # Show the figure
         fig.show()
 
-    
-    
-    def plot_temporal_topic_quality(self, darkmode : bool = True, topics_to_show : List[int] = None):
+    def plot_temporal_topic_quality(self, darkmode: bool = True, topics_to_show: List[int] = None):
         """
         Plot temporal topic quality as a histogram with a color gradient from blue to red.
-        Blue: High temporal topic alignment quality
-        Red: Low temporal topic alignment quality
-        
-        Warning: Red doesn't mean the topic's alignment is necessarily bad. It simply 
-        means that the topic is unstable and has a tendency of changing a lot.
-        Whereas Blue indicates an overall smooth/stable topic evolution.
 
         Parameters:
-        - topics_to_show: Optional list of topic IDs to display. If None or empty, show all.
-        - darkmode: for the aesthetic of the plot only
-
+        - darkmode (bool): For the aesthetic of the plot.
+        - topics_to_show (List[int], optional): List of topic IDs to display. If None or empty, show all.
         """
         metric_column = "TTQ Score"
         df = self.ttq_scores_df
@@ -538,8 +500,7 @@ class TempTopic:
         df['Color'] = df['ScoreNormalized'].apply(lambda x: px.colors.diverging.RdYlGn[int(x * (len(px.colors.diverging.RdYlGn) - 1))])
 
         # Initialize a Plotly figure with a dark theme
-        if darkmode: fig = go.Figure(layout=go.Layout(template="plotly_dark"))
-        else: fig = go.Figure()
+        fig = go.Figure(layout=go.Layout(template="plotly_dark" if darkmode else "plotly"))
 
         # Create a histogram (bar chart) for the topic quality scores
         for _, row in df.iterrows():
@@ -561,12 +522,10 @@ class TempTopic:
             title='Temporal Topic Quality Scores',
             xaxis=dict(
                 title='Topic ID',
-
             ),
             yaxis=dict(
                 title='Temporal Quality Score'
             ),
-            # plot_bgcolor='rgba(0,0,0,0)',  # Sets the plot background to transparent
             showlegend=False
         )
 

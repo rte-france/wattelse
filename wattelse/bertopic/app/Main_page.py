@@ -13,6 +13,7 @@ from sentence_transformers import SentenceTransformer
 import re
 import ast
 import torch
+from pathlib import Path 
 
 from wattelse.bertopic.temporal_metrics_embedding import TempTopic
 
@@ -92,6 +93,10 @@ def preprocess_text(text: str) -> str:
 
 
 def split_dataframe(split_option):
+    """
+    Default split is done by paragraph, 
+    Enhanced split is done via paragraph while taking into consideration embedding model's context window
+    """
     if split_option == "Default split":
         st.session_state["split_df"] = split_df_by_paragraphs(st.session_state["raw_df"])
         st.session_state["split_by_paragraphs"] = True
@@ -110,6 +115,7 @@ def split_dataframe(split_option):
         st.session_state["split_by_paragraphs"] = True
         
 def post_process_representation_models(models):
+    """Make sure that OpenAI, if selected, is always last in the list of rep models"""
     if not models:
         return ["MaximalMarginalRelevance"]
     if "OpenAI" in models:
@@ -127,7 +133,6 @@ def generate_model_name(base_name="topic_model"):
     return model_name
 
 
-# In the save_model_interface function
 def save_model_interface():
     st.write("## Save Model")
 
@@ -138,7 +143,7 @@ def save_model_interface():
     if st.button("Save Model", key="save_model_button"):
         if "topic_model" in st.session_state:
             dynamic_model_name = generate_model_name(base_model_name if base_model_name else "topic_model")
-            model_save_path = f"./saved_models/{dynamic_model_name}"
+            model_save_path = Path(__file__) / "saved_models" / {dynamic_model_name}
             
             try:
                 st.session_state['topic_model'].save(model_save_path, serialization="safetensors", save_ctfidf=True, save_embedding_model=True)
@@ -326,8 +331,6 @@ def train_model():
 ################## MAIN PAGE ###################
 ################################################
 
-
-
 # Wide layout
 st.set_page_config(page_title="Wattelse® topic", layout="wide")
 
@@ -337,8 +340,6 @@ initialize_default_parameters_keys()
 ### TITLE ###
 st.title("Topic modelling")
 
-if 'timefiltered_df' in st.session_state:
-    st.dataframe(st.session_state['timefiltered_df'])
 
 if 'model_trained' not in st.session_state: st.session_state['model_trained'] = False
 if 'model_saved' not in st.session_state: st.session_state['model_saved'] = False
@@ -432,5 +433,7 @@ data_overview(st.session_state["timefiltered_df"])
 # save_model_interface()
 
 
+# TODO: Investigate the potentially deprecated save_model_interface() I implemented a while ago 
+# to save a BERTopic model to either load it up later or load it up somewhere else
 
 

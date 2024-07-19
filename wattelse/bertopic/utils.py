@@ -1,24 +1,21 @@
 import gzip
 import os
 import ssl
-from loguru import logger
-from pathlib import Path
 import re
+from pathlib import Path
 
 import nltk
 import pandas as pd
 from transformers import AutoTokenizer
+from loguru import logger
 
-from wattelse.common.vars import (
-    BASE_OUTPUT_DIR,
-    BASE_CACHE_PATH,
-)
+from wattelse.common.vars import BASE_OUTPUT_DIR, BASE_CACHE_PATH
 from wattelse.common import BASE_DATA_DIR
 
-# Ensures to write with +rw for both user and groups
+# Ensures files are written with +rw permissions for both user and groups
 os.umask(0o002)
 
-# this is a workaround for downloading nltk data in some environments (https://stackoverflow.com/questions/38916452/nltk-download-ssl-certificate-verify-failed)
+# Workaround for downloading nltk data in some environments
 try:
     _create_unverified_https_context = ssl._create_unverified_context
 except AttributeError:
@@ -27,10 +24,12 @@ else:
     ssl._create_default_https_context = _create_unverified_https_context
 nltk.download("stopwords")
 
+# Define directories
 DATA_DIR = BASE_DATA_DIR / "bertopic"
 OUTPUT_DIR = BASE_OUTPUT_DIR / "bertopic"
 CACHE_DIR = BASE_CACHE_PATH / "bertopic"
 
+# Define column names
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
 GROUPED_TIMESTAMP_COLUMN = "grouped_timestamp"
@@ -38,57 +37,95 @@ URL_COLUMN = "url"
 TITLE_COLUMN = "title"
 CITATION_COUNT_COL = "citation_count"
 
-# Make dirs if not exist
+# Create directories if they do not exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+def load_data(full_data_name: Path) -> pd.DataFrame:
+    """
+    Load data from a file into a pandas DataFrame.
 
+    Args:
+        full_data_name (Path): The path to the data file.
 
-def load_data(full_data_name: Path):
+    Returns:
+        pd.DataFrame: Loaded data with timestamp column converted to datetime.
+    """
     logger.info(f"Loading data from: {full_data_name}")
-    # Convert the Path object to a string before passing to file_to_pd
     df = file_to_pd(str(full_data_name), full_data_name.parent)
-    # Convert timestamp column
     df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
     return df.drop_duplicates(subset=["title"], keep="first")
 
-
 def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
-    """Read data in various format and convert it to a DataFrame."""
+    """
+    Read data in various formats and convert it to a DataFrame.
+
+    Args:
+        file_name (str): The name of the file to read.
+        base_dir (Path, optional): The base directory of the file.
+
+    Returns:
+        pd.DataFrame: The loaded data.
+    """
     data_path = base_dir / file_name if base_dir else Path(file_name)
-    data_path_str = str(data_path)  # Ensure the path is converted to string for pandas
-    if ".csv" in file_name:
+    data_path_str = str(data_path)
+
+    if file_name.endswith(".csv"):
         return pd.read_csv(data_path_str)
-    elif ".jsonl" in file_name or ".jsonlines" in file_name:
+    elif file_name.endswith(".jsonl") or file_name.endswith(".jsonlines"):
         return pd.read_json(data_path_str, lines=True)
-    elif ".jsonl.gz" in file_name or ".jsonlines.gz" in file_name:
-        with gzip.open(data_path_str, 'rt') as f_in:  # Open as text for JSON parsing
+    elif file_name.endswith(".jsonl.gz") or file_name.endswith(".jsonlines.gz"):
+        with gzip.open(data_path_str, 'rt') as f_in:
             return pd.read_json(f_in, lines=True)
-    elif ".parquet" in file_name:
+    elif file_name.endswith(".parquet"):
         return pd.read_parquet(data_path_str)
 
+def clean_dataset(dataset: pd.DataFrame, length_criteria: int) -> pd.DataFrame:
+    """
+    Clean the dataset by removing short texts.
 
-def clean_dataset(dataset: pd.DataFrame, length_criteria: int):
-    """Clean dataset. So far, only removes short text."""
-    cleaned_dataset = dataset.loc[
-        dataset[TEXT_COLUMN].str.len() >= length_criteria
-    ]
+    Args:
+        dataset (pd.DataFrame): The dataset to clean.
+        length_criteria (int): The minimum length of text to keep.
+
+    Returns:
+        pd.DataFrame: The cleaned dataset.
+    """
+    cleaned_dataset = dataset.loc[dataset[TEXT_COLUMN].str.len() >= length_criteria]
     return cleaned_dataset
 
+def split_df_by_paragraphs(dataset: pd.DataFrame) -> pd.DataFrame:
+    """
+    Split texts into multiple paragraphs and return a concatenation of all extracts as a new DataFrame.
 
-def split_df_by_paragraphs(dataset: pd.DataFrame):
-    """Split texts into multiple paragraphs and returns a concatenation of all extracts as a new pandas DF"""
-    df = dataset.copy()  # to avoid modifying the original dataframe
+    Args:
+        dataset (pd.DataFrame): The dataset to split.
+
+    Returns:
+        pd.DataFrame: The dataset with texts split into paragraphs.
+    """
+    df = dataset.copy()
     df[TEXT_COLUMN] = df[TEXT_COLUMN].str.split("\n")
     df = df.explode(TEXT_COLUMN)
     df = df[df[TEXT_COLUMN] != ""]
     return df
 
+def split_df_by_paragraphs_v2(dataset: pd.DataFrame, tokenizer: AutoTokenizer, max_length: int = 512, min_length: int = 5) -> pd.DataFrame:
+    """
+    Split text into multiple paragraphs, ensuring that paragraphs aren't longer than the embedding model's max sequence length.
 
-def split_df_by_paragraphs_v2(dataset: pd.DataFrame, tokenizer: AutoTokenizer, max_length: int = 512, min_length: int = 5):
-    """Split text into multiple paragraphs all while ensuring that paragraphs aren't longer than embedding model's max sequence length"""
-    df = dataset.copy()  # to avoid modifying the original dataframe
+    Args:
+        dataset (pd.DataFrame): The dataset to split.
+        tokenizer (AutoTokenizer): The tokenizer to use for splitting.
+        max_length (int, optional): The maximum length of tokens. Defaults to 512.
+        min_length (int, optional): The minimum length of tokens. Defaults to 5.
+
+    Returns:
+        pd.DataFrame: The dataset with texts split into appropriate lengths.
+    """
+    df = dataset.copy()
     new_rows = []
+
     for _, row in df.iterrows():
         doc = row['text']
         timestamp = row['timestamp']
@@ -137,5 +174,3 @@ def split_df_by_paragraphs_v2(dataset: pd.DataFrame, tokenizer: AutoTokenizer, m
 
     new_df = pd.DataFrame(new_rows)
     return new_df
-
-

@@ -549,12 +549,12 @@ def main():
                     with st.spinner("Generating summary..."):
                         try:
                             completion = client.chat.completions.create(
-                                model="gpt-3.5-turbo",
+                                model="gpt-4o-mini",
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant, skilled in detailing topic evolution over time for the detection of emerging trends and signals."},
                                     {"role": "user", "content": prompt}
                                 ],
-                                temperature=0.2,
+                                temperature=0.1,
                             )
                             summary = completion.choices[0].message.content
                             st.markdown(summary)

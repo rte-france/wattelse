@@ -13,8 +13,6 @@ import plotly.express as px
 # from langchain_core.messages import HumanMessage, SystemMessage
 
 
-
-
 from wattelse.bertopic.temporal_metrics_embedding import TempTopic
 
 
@@ -29,9 +27,6 @@ from wattelse.bertopic.app.app_utils import (
     plot_topics_over_time,
     compute_topics_over_time,
 )
-
-
-
 
 from sklearn.preprocessing import normalize
 from sklearn.metrics.pairwise import cosine_similarity
@@ -54,10 +49,6 @@ from loguru import logger
 import plotly.express as px
 import numpy as np
 import plotly.graph_objs as go
-
-
-# chat = ChatOpenAI(model="gpt-3.5-turbo-1106", temperature=0, openai_api_key="")
-
 
 
 def display_documents_on_click(clicked_point):

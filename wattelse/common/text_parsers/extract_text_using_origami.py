@@ -11,7 +11,7 @@ try:
 except ImportError as e:
     logger.error("Origami module is required for .docx upload feature")
 
-#TODO: ideally, the call to the Origami indexer shall be done using a API call to avoid conflicts of versions, etc.
+# TODO: ideally, the call to the Origami indexer shall be done using a API call to avoid conflicts of versions, etc.
 
 def parse_docx(name: Path, output_path: Path = BASE_DATA_DIR) -> Path:
     logger.info(f"Parsing {name}...")

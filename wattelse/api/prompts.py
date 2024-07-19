@@ -49,9 +49,9 @@ EN_SYSTEM_SUMMARY_SENTENCES = EN_SYSTEM_SUMMARY_WORDS.replace("{num_words} words
 FR_USER_SUMMARY_MULTIPLE_DOCS = ("Vous êtes une IA hautement qualifiée, formée à la compréhension et à la synthèse du langage. "
 									   "Voici ci-dessous plusieurs articles de presse (Titre et Contenu). "
 									   "Tous les articles appartiennent au même thème représenté par les mots-clés suivants : {keywords}. "
-									   "Générez une synthèse de ces articles qui doit être en lien avec le thème évoqué par les mots-clés. "
+									   "Générez une synthèse en {nb_sentences} phrases maximum de ces articles qui doit être en lien avec le thème évoqué par les mots-clés. "
 									   "La synthèse doit permettre de donner une vision d'ensemble du thème sans lire les articles. "
-									   "Ne pas commencer par 'Les articles présentent...' mais commencer directement la synthèse.\n"
+									   "Ne pas commencer par 'Les articles...' mais commencer directement la synthèse.\n"
 									   "Liste des articles :\n"
 									   "```{article_list}```\n"
 									   "Synthèse :"
@@ -61,7 +61,7 @@ EN_USER_SUMMARY_MULTIPLE_DOCS = ("You are a highly qualified AI, trained in lang
 									   "Below are several press articles (Title and Content). "
 									   "All the articles belong to the same topic represented by the following keywords: {keywords}. "
 									   "Generate a summary of these articles, which must be related to the theme evoked by the keywords. "
-									   "The summary must be detailed and include the essential information from the articles.\n"
+									   "The summary must not exceed {nb_sentences} sentences and should include the essential information from the articles.\n"
 									   "List of articles :\n"
 									   "```{article_list}```\n"
 									   "Summary :"
@@ -82,6 +82,18 @@ FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES = ("Décrit en une courte expression le t
 										  "suivants. Le thème doit être court et spécifique en 4 mots maximum. "
 										  "\n\"{title_list}\"")
 # title_list: list of documents extracts belonging to the topic
+
+EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES = ("Describe in a short sentence the topic associated with the following extracts. "
+										  "The topic description should be short and specific, no more than 4 words. "
+										  "\n\"{title_list}\"")
+# title_list: list of documents extracts belonging to the topic
+
+FRENCH_TOPIC_REPRESENTATION_PROMPT = ("J'ai un topic qui contient les documents suivants :\n"
+									  "[DOCUMENTS]\n"
+									  "Le topic est décrit par les mots-clés suivants : [KEYWORDS]\n"
+									  "Sur la base des informations ci-dessus, extraire une courte étiquette de topic dans le format suivant :\n"
+									  "Topic : <étiquette du sujet>")
+# Passed directly to BERTopic's OpenAI wrapper, formatted similar to BERTopic's original prompt which can be found in its source code
 
 
 
@@ -130,8 +142,8 @@ FR_USER_MULTITURN_RAG = ("Vous êtes une IA experte qui aide les utilisateurs à
 FR_USER_MULTITURN_QUESTION_SPECIFICATION = ("Vous êtes une IA experte qui aide les utilisateurs à répondre à des "
 											"questions sur la base de documents provenant de l'entreprise RTE (Réseau de Transport de l'Électricité). "
 											"À partir de l'historique de conversation et de la dernière question de l'utilisateur, "
-											"qui peut faire référence à l'histoirique de conversation, reformulez la dernière question "
-											"de l'utilisateur pour qu'elle soit comprégensible sans l'historique de la conversation. "
+											"qui peut faire référence à l'historique de conversation, reformulez la dernière question "
+											"de l'utilisateur pour qu'elle soit compréhensible sans l'historique de la conversation. "
 											"Ne répondez PAS à la question. Reformulez la question si elle fait appel à des "
 											"éléments de l'historique de la conversation. Sinon, renvoyez-la sans reformulation. "
 											"---\nHistorique de conversation:\n"
@@ -171,3 +183,39 @@ FR_USER_BASE_MULTITURN_QUERY = ("À partir de l'historique de la conversation, r
 						 'Historique de conversation:\n'
 						 '"""\n{history}\n"""\n---\n'
 						 'Question finale : {query}')
+
+### LLAMA 3 ###
+
+FR_SYSTEM_RAG_LLAMA3 = ("You are an helpful assistant developed by RTE (Réseau de Transport d'Électricité). "
+						"You help users answer questions based on internal RTE documents. "
+						"Based on the documents provided and the conversation history, answer the user query. "
+						"Don't start your answer with sentences like \"According to documents...\", "
+						"answer the query directly. Your answer must be in french.")
+
+FR_USER_RAG_LLAMA3 = ("Documents:\n"
+					  "```\n"
+					  "{context}\n"
+					  "```\n\n"
+					  "Conversation history:\n"
+					  "```\n"
+					  "{history}\n"
+					  "```\n\n"
+					  "User query: {query}")
+
+FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 = ("You are an helpful assistant that helps for query contextualization task. "
+											"Based on the conversation history and user last query, "
+											"which may refer to the conversation history, rephrase user last query "
+											"to make it understandable without the conversation history. "
+											"Do NOT answer the query. Rephrase the query if it draws on elements "
+											"of the conversation history. Otherwise, send it back without rephrasing. "
+											"Don't start your answer with sentences like \"Here is the rephrased query...\", "
+											"answer with the rephrased query directly. "
+											"The rephrased query must be in french.")
+
+FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 = ("Conversation history:\n"
+										  "```\n"
+										  "{history}\n"
+										  "```\n\n"
+						 				  "User last query: {query}")
+
+
