@@ -21,7 +21,7 @@ BASE_DATA_DIR = (
 )
 
 DATA_PATH = BASE_DATA_DIR.absolute().as_posix() +'/'
-# DATA_PATH = Path(cwd) / "data" / "bertopic"
+DATA_PATH = Path(__file__).parent.parent.parent.parent / "data" / "bertopic"
 
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
 COMMON_NGRAMS = [
@@ -48,9 +48,7 @@ COMMON_NGRAMS = [
     "système électrique"
 ]
 
-# Define the path to your JSON file
 stopwords_fr_file = Path(__file__).parent / 'stopwords-fr.json'
 
-# Read the JSON data from the file and directly assign it to the list
 with open(stopwords_fr_file, 'r', encoding='utf-8') as file:
     FRENCH_STOPWORDS = json.load(file)

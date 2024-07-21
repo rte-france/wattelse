@@ -9,8 +9,12 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 from loguru import logger
+from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance, OpenAI
+import os 
+import openai
 
 from wattelse.bertopic.train import train_BERTopic, DEFAULT_STOP_WORDS
+from wattelse.api.prompts import FRENCH_TOPIC_REPRESENTATION_PROMPT
 
 
 def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parameters, cache_base_name: str) -> Tuple:
@@ -59,6 +63,29 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
         bm25_weighting=form_parameters["ctfidf_bm25_weighting"]
     )
 
+    # Initialize representation models
+    representation_model = []
+    for model in form_parameters["representation_model"]:
+        if model == "MaximalMarginalRelevance":
+            representation_model.append(MaximalMarginalRelevance(
+                diversity=form_parameters["MaximalMarginalRelevance_diversity"],
+                top_n_words=form_parameters["MaximalMarginalRelevance_top_n_words"]
+            ))
+        elif model == "KeyBERTInspired":
+            representation_model.append(KeyBERTInspired(
+                top_n_words=form_parameters["KeyBERTInspired_top_n_words"],
+                nr_repr_docs=form_parameters["KeyBERTInspired_nr_repr_docs"],
+                nr_candidate_words=form_parameters["KeyBERTInspired_nr_candidate_words"]
+            ))
+        elif model == "OpenAI":
+            representation_model.append(OpenAI(
+                client=openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"]),
+                model=form_parameters["OpenAI_model"],
+                nr_docs=form_parameters["OpenAI_nr_docs"],
+                prompt=FRENCH_TOPIC_REPRESENTATION_PROMPT if form_parameters.get("OpenAI_language", "Français") == "Français" else None,
+                chat=True,
+            ))
+
     return train_BERTopic(
         full_dataset=dataset,
         indices=indices,
@@ -67,16 +94,8 @@ def train_BERTopic_wrapper(dataset: pd.DataFrame, indices: pd.Series,form_parame
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
         ctfidf_model=ctfidf_model,
-        representation_models=form_parameters.get("representation_models", ["MaximalMarginalRelevance"]),
-        keybert_nr_repr_docs=form_parameters.get("keybert_nr_repr_docs", 5),
-        keybert_nr_candidate_words=form_parameters.get("keybert_nr_candidate_words", 40),
-        keybert_top_n_words=form_parameters.get("keybert_top_n_words", 20),
-        mmr_diversity=form_parameters.get("mmr_diversity", 0.2),
-        mmr_top_n_words=form_parameters.get("mmr_top_n_words", 10),
-        openai_model=form_parameters.get("openai_model", "gpt-3.5-turbo"),
-        openai_nr_docs=form_parameters.get("openai_nr_docs", 5),
-        data_language=form_parameters.get("data_language", "Français"),
-        # top_n_words=form_parameters["bertopic_top_n_words"],
+        representation_model=representation_model,
+        top_n_words=form_parameters["bertopic_top_n_words"],
         nr_topics=form_parameters["bertopic_nr_topics"] if form_parameters["bertopic_nr_topics"] > 0 else None,
         use_cache=form_parameters["use_cached_embeddings"],
         cache_base_name=cache_base_name

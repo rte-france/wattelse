@@ -33,7 +33,7 @@ DEFAULT_PARAMETERS = {
     "countvectorizer_ngram_range": (1, 2),
     "ctfidf_reduce_frequent_words": True,
     "ctfidf_bm25_weighting": False,
-    "representation_models": ["MaximalMarginalRelevance"],
+    "representation_model": ["MaximalMarginalRelevance"],
     "keybert_nr_repr_docs": 5,
     "keybert_nr_candidate_words": 40,
     "keybert_top_n_words": 20,
@@ -62,8 +62,8 @@ def embedding_model_options():
         "embedding_model_name": st.selectbox(
             "Name",
             [
-                "OrdalieTech/Solon-embeddings-large-0.1",
                 "OrdalieTech/Solon-embeddings-base-0.1",
+                "OrdalieTech/Solon-embeddings-large-0.1",
                 "dangvantuan/sentence-camembert-large",
                 "paraphrase-multilingual-MiniLM-L12-v2",
                 "sentence-transformers/all-mpnet-base-v2",
@@ -198,10 +198,7 @@ def ctfidf_options():
     }
 
 # Representation model options for Streamlit UI
-def representation_model_options():
-    if "representation_models" not in st.session_state:
-        st.session_state.representation_models = ["MaximalMarginalRelevance"]
-    
+def representation_model_options():    
     options = {}
     available_models = ["KeyBERTInspired", "MaximalMarginalRelevance", "OpenAI"]
     
@@ -266,10 +263,15 @@ def representation_model_options():
     selected_models = st.multiselect(
         "Models",
         options=available_models,
-        default=st.session_state.representation_models,
-        key="temp_representation_models"
+        default=DEFAULT_PARAMETERS["representation_model"],
+        key="representation_model"
     )
-    options["representation_models"] = selected_models
+    
+    # if selected, move OpenAI model to the end of the list
+    if 'OpenAI' in selected_models:
+        selected_models = [model for model in selected_models if model != "OpenAI"] + ["OpenAI"]            
+            
+    options["representation_model"] = selected_models
     return options
 
 @st.cache_data

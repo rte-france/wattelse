@@ -1,4 +1,4 @@
-import pdb
+import ast
 from typing import List, Tuple, Union
 import pandas as pd
 import torch
@@ -17,10 +17,10 @@ import streamlit as st
 import numpy as np
 from tqdm import tqdm
 from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance, OpenAI
-import openai
-import os
 from pathlib import Path
 import json
+import os
+import openai
 
 from wattelse.bertopic.utils import (
     TEXT_COLUMN,
@@ -29,8 +29,8 @@ from wattelse.bertopic.utils import (
     file_to_pd,
 )
 from wattelse.common.cache_utils import load_embeddings, save_embeddings, get_hash
-
 from wattelse.api.prompts import FRENCH_TOPIC_REPRESENTATION_PROMPT
+
 
 # Parameters:
 DEFAULT_EMBEDDING_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
@@ -87,7 +87,10 @@ DEFAULT_VECTORIZER_MODEL = CountVectorizer(
 )
 
 DEFAULT_CTFIDF_MODEL = ClassTfidfTransformer(reduce_frequent_words=True)
-DEFAULT_REPRESENTATION_MODEL = MaximalMarginalRelevance(diversity=0.3)
+
+RepresentationModelType = Union[KeyBERTInspired, MaximalMarginalRelevance, OpenAI]
+DEFAULT_REPRESENTATION_MODEL: List[RepresentationModelType] = [MaximalMarginalRelevance(diversity=0.3)]
+
 
 
 class EmbeddingModel(BaseEmbedder):
@@ -135,7 +138,7 @@ class EmbeddingModel(BaseEmbedder):
         # Concatenate all batch embeddings
         all_embeddings = np.concatenate(embeddings, axis=0)
         
-        logger.info(f"Embedded {num_documents} documents in {num_batches} batches")
+        logger.success(f"Embedded {num_documents} documents in {num_batches} batches")
         return all_embeddings
 
 
@@ -243,11 +246,12 @@ def train_BERTopic(
     hdbscan_model: HDBSCAN = DEFAULT_HDBSCAN_MODEL,
     vectorizer_model: CountVectorizer = DEFAULT_VECTORIZER_MODEL,
     ctfidf_model: ClassTfidfTransformer = DEFAULT_CTFIDF_MODEL,
-    representation_models: List[str] = ["MaximalMarginalRelevance"],
+    representation_model: List[RepresentationModelType] = DEFAULT_REPRESENTATION_MODEL,
     top_n_words: int = DEFAULT_TOP_N_WORDS,
     nr_topics: Union[str, int] = DEFAULT_NR_TOPICS,
     use_cache: bool = True,
     cache_base_name: str = None,
+    form_parameters: dict = None,
     **kwargs
 ) -> Tuple[BERTopic, List[int], ndarray, ndarray, List[ndarray], List[List[str]]]:
     """
@@ -257,39 +261,22 @@ def train_BERTopic(
     ----------
     full_dataset: pd.DataFrame
         The full dataset to train
-    indices:  pd.Series
-        Indices of the full_dataset to be used for partial training (ex. selection of date range of the full dataset)
-        If set to None, use all indices
+    indices: pd.Series
+        Indices of the full_dataset to be used for partial training
     column: str
         Column name containing the text data
     embedding_model_name: str
         Name of the embedding model to use
-    umap_model: UMAP or TSNE
-        UMAP or TSNE model to be used in BERTopic
+    umap_model: UMAP
+        UMAP model to be used in BERTopic
     hdbscan_model: HDBSCAN
         HDBSCAN model to be used in BERTopic
     vectorizer_model: CountVectorizer
         CountVectorizer model to be used in BERTopic
-    ctfidf_model:  ClassTfidfTransformer
+    ctfidf_model: ClassTfidfTransformer
         ClassTfidfTransformer model to be used in BERTopic
-    representation_models: List[str]
+    representation_model: List[RepresentationModelType]
         List of representation models to use
-    keybert_nr_repr_docs: int
-        Number of representative documents for KeyBERTInspired
-    keybert_nr_candidate_words: int
-        Number of candidate words for KeyBERTInspired
-    keybert_top_n_words: int
-        Top N words for KeyBERTInspired
-    mmr_diversity: float
-        Diversity parameter for MaximalMarginalRelevance
-    mmr_top_n_words: int
-        Top N words for MaximalMarginalRelevance
-    openai_model: str
-        OpenAI model to use
-    openai_nr_docs: int
-        Number of documents for OpenAI
-    data_language: str
-        Language of the data (default is "Français")
     top_n_words: int
         Number of descriptive words per topic
     nr_topics: int
@@ -297,18 +284,77 @@ def train_BERTopic(
     use_cache: bool
         Parameter to decide to store embeddings of the full dataset in cache
     cache_base_name: str
-        Base name of the cache (for easier identification). If not name is provided, one will be created based on the full_dataset text
+        Base name of the cache
+    form_parameters: dict
+        Additional parameters passed from the Streamlit form
 
     Returns:
     -------
     A tuple containing:
         - a topic model
-        - a list of topics
+        - a list of topics indices corresponding to the documents
         - an array of probabilities
         - the document embeddings
-        - the token embeddings
-        - the token strings
+        - the token embeddings of each document
+        - the tokens (str) of each documents
     """
+    if form_parameters:
+        # Update parameters based on form_parameters
+        embedding_model_name = form_parameters["embedding_model_name"]
+        umap_model = UMAP(
+            n_neighbors=form_parameters["umap_n_neighbors"],
+            n_components=form_parameters["umap_n_components"],
+            min_dist=form_parameters["umap_min_dist"],
+            metric=form_parameters["umap_metric"],
+        )
+        hdbscan_model = HDBSCAN(
+            min_cluster_size=form_parameters["hdbscan_min_cluster_size"],
+            min_samples=form_parameters["hdbscan_min_samples"],
+            metric=form_parameters["hdbscan_metric"],
+            cluster_selection_method=form_parameters["hdbscan_cluster_selection_method"],
+            cluster_selection_epsilon=form_parameters["hdbscan_cluster_selection_epsilon"], 
+            max_cluster_size=form_parameters["hdbscan_max_cluster_size"], 
+            allow_single_cluster=form_parameters["hdbscan_allow_single_cluster"],
+            prediction_data=True,
+        )
+        stop_words = (
+            stopwords.words('english') if form_parameters["countvectorizer_stop_words"] == 'english'
+            else DEFAULT_STOP_WORDS
+        )
+        vectorizer_model = CountVectorizer(
+            stop_words=stop_words,
+            ngram_range=form_parameters["countvectorizer_ngram_range"],
+            min_df=form_parameters["countvectorizer_min_df"],
+        )
+        ctfidf_model = ClassTfidfTransformer(
+            reduce_frequent_words=form_parameters["ctfidf_reduce_frequent_words"],
+            bm25_weighting=form_parameters["ctfidf_bm25_weighting"]
+        )
+        representation_model = []
+        for model in form_parameters["representation_model"]:
+            if model == "MaximalMarginalRelevance":
+                representation_model.append(MaximalMarginalRelevance(
+                    diversity=form_parameters["MaximalMarginalRelevance_diversity"],
+                    top_n_words=form_parameters["MaximalMarginalRelevance_top_n_words"]
+                ))
+            elif model == "KeyBERTInspired":
+                representation_model.append(KeyBERTInspired(
+                    top_n_words=form_parameters["KeyBERTInspired_top_n_words"],
+                    nr_repr_docs=form_parameters["KeyBERTInspired_nr_repr_docs"],
+                    nr_candidate_words=form_parameters["KeyBERTInspired_nr_candidate_words"]
+                ))
+            elif model == "OpenAI":
+                representation_model.append(OpenAI(
+                    client=openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"]),
+                    model=form_parameters["OpenAI_model"],
+                    nr_docs=form_parameters["OpenAI_nr_docs"],
+                    prompt=FRENCH_TOPIC_REPRESENTATION_PROMPT if form_parameters.get("OpenAI_language", "Français") == "Français" else None,
+                    chat=True,
+                ))
+        top_n_words = form_parameters["bertopic_top_n_words"]
+        nr_topics = form_parameters["bertopic_nr_topics"] if form_parameters["bertopic_nr_topics"] > 0 else None
+        use_cache = form_parameters["use_cached_embeddings"]
+
     if use_cache and cache_base_name is None:
         cache_base_name = get_hash(full_dataset[column])
 
@@ -318,14 +364,12 @@ def train_BERTopic(
     logger.debug(f"Using cache: {use_cache}")
     embedding_model = EmbeddingModel(embedding_model_name)
 
-    # Filter the dataset based on the provided indices
     if indices is not None:
         filtered_dataset = full_dataset[full_dataset.index.isin(indices)].reset_index(drop=True)
     else:
         filtered_dataset = full_dataset
     
     if cache_path.exists() and use_cache:
-        # use previous cache
         embeddings = load_embeddings(cache_path)
         logger.info(f"Embeddings loaded from cache file: {cache_path}")
         token_embeddings = None
@@ -352,40 +396,20 @@ def train_BERTopic(
             save_embeddings(embeddings, cache_path)
             logger.info(f"Embeddings stored to cache file: {cache_path}")
 
-    if nr_topics == 0: nr_topics = None
+    if nr_topics == 0:
+        nr_topics = None
     
-    # Separate OpenAI from other representation models
+    # Separate OpenAI model if present
     openai_model = None
-    other_rep_models = []
-    for model in representation_models:
-        if model == "OpenAI":
-            openai_model = OpenAI(
-                client=openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"]),
-                model=kwargs.get("openai_model", "gpt-4o-mini"),
-                nr_docs=kwargs.get("openai_nr_docs", 5),
-                prompt=FRENCH_TOPIC_REPRESENTATION_PROMPT if kwargs.get("data_language", "Français") == "Français" else None,
-                chat=True
-            )
+    other_models = []
+    for model in representation_model:
+        if isinstance(model, OpenAI):
+            openai_model = model
         else:
-            other_rep_models.append(model)
-
-    # Initialize other representation models
-    representation_model_objects = []
-    for model in other_rep_models:
-        if model == "MaximalMarginalRelevance":
-            representation_model_objects.append(MaximalMarginalRelevance(
-                diversity=kwargs.get("mmr_diversity", 0.3),
-                top_n_words=kwargs.get("mmr_top_n_words", 10)
-            ))
-        elif model == "KeyBERTInspired":
-            representation_model_objects.append(KeyBERTInspired(
-                top_n_words=kwargs.get("keybert_top_n_words", 10),
-                nr_repr_docs=kwargs.get("keybert_nr_repr_docs", 5),
-                nr_candidate_words=kwargs.get("keybert_nr_candidate_words", 20)
-            ))
-
-    # Use the first model if only one is specified, otherwise use the list
-    representation_model = representation_model_objects[0] if len(representation_model_objects) == 1 else representation_model_objects
+            other_models.append(model)
+    
+    logger.debug(f"Representation models used: {other_models}")
+    logger.debug(f"Using OpenAI to finetune representations: {(openai_model != None)}")
 
     # Build BERTopic model
     topic_model = BERTopic(
@@ -394,7 +418,7 @@ def train_BERTopic(
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
         ctfidf_model=ctfidf_model,
-        representation_model=representation_model,
+        representation_model=other_models,
         top_n_words=top_n_words,
         nr_topics=nr_topics,
         calculate_probabilities=True,
@@ -416,25 +440,22 @@ def train_BERTopic(
         strategy="embeddings"
     )
     
-    # WARNING: We have to repass the vectorizer and representation models again otherwise BERTopic will use the default ones
     topic_model.update_topics(
         filtered_dataset[column], 
         topics=new_topics, 
         vectorizer_model=vectorizer_model, 
-        representation_model=representation_model
+        representation_model=other_models
     )
     
     # If OpenAI model is present, apply it after reducing outliers
     if openai_model:
         logger.info("Applying OpenAI representation model...")
-        
-        # WARNING: update_topics updates the topic model's representation model
-        # Solution: Backup the current representation model(s) to avoid using OpenAI later during the computation of topics over time
         backup_representation_model = topic_model.representation_model 
         topic_model.update_topics(filtered_dataset[column], topics=new_topics, representation_model=openai_model)
         topic_model.representation_model = backup_representation_model 
     
     return topic_model, new_topics, probs, embeddings, token_embeddings, token_strings
+
 
 
 if __name__ == "__main__":

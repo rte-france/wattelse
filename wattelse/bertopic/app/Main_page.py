@@ -3,7 +3,8 @@ from loguru import logger
 import pandas as pd
 from wattelse.bertopic.app.data_utils import data_overview, choose_data
 from wattelse.bertopic.topic_metrics import get_coherence_value, get_diversity_value
-from wattelse.bertopic.app.train_utils import train_BERTopic_wrapper
+# from wattelse.bertopic.app.train_utils_ import train_BERTopic_wrapper
+from wattelse.bertopic.train import train_BERTopic
 import datetime
 from bertopic import BERTopic
 from typing import List
@@ -21,7 +22,6 @@ from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN,
     clean_dataset,
     split_df_by_paragraphs,
-    split_df_by_paragraphs_v2,
     DATA_DIR,
     TEXT_COLUMN,
 )
@@ -69,10 +69,7 @@ def preprocess_text(text: str) -> str:
     
     # Remove specific prefixes
     text = re.sub(r"\b(l'|L'|D'|d'|l’|L’|D’|d’)", ' ', text)
-    
-    # Remove punctuations (excluding apostrophes, hyphens, and newlines)
-    # text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
-    
+        
     # Replace special characters with a space (preserving accented characters, common Latin extensions, and newlines)
     text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
     
@@ -92,36 +89,44 @@ def preprocess_text(text: str) -> str:
     return text
 
 
-def split_dataframe(split_option):
+def split_dataframe(split_option, enhanced):
     """
-    Default split is done by paragraph, 
-    Enhanced split is done via paragraph while taking into consideration embedding model's context window
+    Split the dataframe based on the selected option.
+    
+    Args:
+    split_option (str): The selected split option ('No split', 'Split by paragraphs')
+    enhanced (bool): Whether to use enhanced splitting. Useful if we want to guarantee avoiding truncation
+    during the embedding process, which happens if the input sequence length is more than the embedding model
+    could handle.
     """
-    if split_option == "Default split":
-        st.session_state["split_df"] = split_df_by_paragraphs(st.session_state["raw_df"])
-        st.session_state["split_by_paragraphs"] = True
-    elif split_option == "Enhanced split":
-        model_name = ast.literal_eval(st.session_state['parameters'])['embedding_model_name']
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        max_length = SentenceTransformer(model_name).get_max_seq_length()
-        if max_length == 514: max_length = 512
-        with st.spinner("Splitting the dataset..."):
-            st.session_state["split_df"] = split_df_by_paragraphs_v2(
-                dataset=st.session_state["raw_df"],
-                tokenizer=tokenizer,
-                max_length=max_length-2,
-                min_length=0
+    if split_option == "No split":
+        st.session_state["split_df"] = st.session_state["raw_df"]
+        st.session_state["split_by_paragraphs"] = False
+    else: # Split by paragraph
+        if enhanced:
+            logger.debug(f"Using {st.session_state.get('embedding_model_name')} for enhanced splitting...")
+            model_name = st.session_state.get('embedding_model_name')
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            max_length = SentenceTransformer(model_name).get_max_seq_length()
+            
+            # Correcting the max seq length anomaly in certain embedding models description
+            if max_length == 514: max_length = 512 
+            
+            with st.spinner("Splitting the dataset..."):
+                st.session_state["split_df"] = split_df_by_paragraphs(
+                    dataset=st.session_state["raw_df"],
+                    enhanced=True,
+                    tokenizer=tokenizer,
+                    max_length=max_length-2, # Minus 2 because beginning and end tokens are not considered
+                    min_length=0
+                )
+        else:
+            st.session_state["split_df"] = split_df_by_paragraphs(
+                st.session_state["raw_df"],
+                enhanced=False
             )
         st.session_state["split_by_paragraphs"] = True
         
-def post_process_representation_models(models):
-    """Make sure that OpenAI, if selected, is always last in the list of rep models"""
-    if not models:
-        return ["MaximalMarginalRelevance"]
-    if "OpenAI" in models:
-        models = [model for model in models if model != "OpenAI"] + ["OpenAI"]
-    return models
-
 
 def generate_model_name(base_name="topic_model"):
     """
@@ -142,15 +147,17 @@ def save_model_interface():
     # Button to save the model
     if st.button("Save Model", key="save_model_button"):
         if "topic_model" in st.session_state:
-            dynamic_model_name = generate_model_name(base_model_name if base_model_name else "topic_model")
+            dynamic_model_name = generate_model_name(base_model_name if base_model_name else "topic_model")            
             model_save_path = Path(__file__) / "saved_models" / {dynamic_model_name}
-            
+            logger.debug(f"Saving the model in the following directory: {model_save_path}")
             try:
                 st.session_state['topic_model'].save(model_save_path, serialization="safetensors", save_ctfidf=True, save_embedding_model=True)
                 st.success(f"Model saved successfully as {model_save_path}")
                 st.session_state['model_saved'] = True
+                logger.success(f"Model saved successfully!")
             except Exception as e:
                 st.error(f"Failed to save the model: {e}")
+                logger.error(f"Failed to save the model: {e}")
         else:
             st.error("No model available to save. Please train a model first.")
 
@@ -211,9 +218,9 @@ def select_data():
             on_change=save_widget_state,
         )
 
-        # Split DF by paragraphs parameter
+        # Split or no split
         register_widget("split_option")
-        split_options = ["No split", "Default split", "Enhanced split"]
+        split_options = ["No split", "Split by paragraphs"]
         split_option = st.radio(
             "Select the split option",
             split_options,
@@ -221,21 +228,31 @@ def select_data():
             on_change=save_widget_state,
             help="""
             - No split: No splitting on the documents.
-            - Default split: Split by paragraph (Warning: might produce paragraphs longer than embedding model's maximum supported input length).
-            - Enhanced split: Split by paragraph. If a paragraph is longer than the embedding model's maximum input length, then split by sentence.
+            - Split by paragraphs: Split documents into paragraphs.
             """
+        )
+        # Add a checkbox for enhanced splitting
+        register_widget("enhanced_split")
+        enhanced_split = st.checkbox(
+            "Use enhanced splitting",
+            key="enhanced_split",
+            on_change=save_widget_state,
+            help="If checked, uses a more advanced but slower method for splitting that considers the embedding model's maximum input length."
         )
     
 
     if ("split_method" not in st.session_state or st.session_state["split_method"] != split_option or
+        "enhanced_splitting" not in st.session_state or st.session_state["enhanced_splitting"] != enhanced_split or
         "prev_timestamp_range" not in st.session_state or st.session_state["prev_timestamp_range"] != timestamp_range or
         "prev_min_text_length" not in st.session_state or st.session_state["prev_min_text_length"] != st.session_state["min_text_length"]):
+        
         st.session_state["split_method"] = split_option
+        st.session_state["enhanced_splitting"] = enhanced_split
         st.session_state["prev_timestamp_range"] = timestamp_range
         st.session_state["prev_min_text_length"] = st.session_state["min_text_length"]
         
         if split_option != "No split":
-            split_dataframe(split_option)
+            split_dataframe(split_option, enhanced_split)
         else: # If No Splitting is done
             st.session_state["split_df"] = st.session_state["raw_df"]
             st.session_state["split_by_paragraphs"] = False
@@ -278,51 +295,52 @@ def train_model():
             full_dataset = st.session_state["timefiltered_df"]
             indices = full_dataset.index.tolist()
 
+            form_parameters = ast.literal_eval(st.session_state["parameters"])
+            
             (   st.session_state["topic_model"],
                 st.session_state["topics"],
                 _,
                 st.session_state["embeddings"],
                 st.session_state["token_embeddings"],
                 st.session_state["token_strings"],
-            ) = train_BERTopic_wrapper(
-                dataset=full_dataset,
+            ) = train_BERTopic(
+                full_dataset=full_dataset,
                 indices=indices,
-                form_parameters=st.session_state["parameters"],
+                form_parameters=form_parameters,
                 cache_base_name=st.session_state["data_name"]
                 if st.session_state["split_method"] == "No split"
                 else f'{st.session_state["data_name"]}_split_by_paragraphs',
             )
         
         st.success("Model trained successfully!")
-        # st.info("Token embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
+        st.info("Embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
             
         temp = st.session_state["topic_model"].get_topic_info()
         st.session_state["topics_info"] = (
             temp[temp['Topic'] != -1]
         )  # exclude -1 topic from topic list
         
-        # # TOPIC MODEL COHERENCE AND DIVERSITY METRICS (optional) :
-        # # Computes coherence value
-        # logger.info("Calculating coherence and diversity values")
-        # coherence_score_type = "c_npmi"
-        # coherence = get_coherence_value(
-        #     st.session_state["topic_model"],
-        #     st.session_state["topics"],
-        #     st.session_state["timefiltered_df"][TEXT_COLUMN],
-        #     coherence_score_type
-        # )
-        # diversity_score_type = "puw"
-        # diversity = get_diversity_value(st.session_state["topic_model"],
-        #                                 st.session_state["topics"],
-        #                                 st.session_state["timefiltered_df"][TEXT_COLUMN],
-        #                                 diversity_score_type="puw")
+        # TOPIC MODEL COHERENCE AND DIVERSITY METRICS (optional) :
+        coherence_score_type = "c_npmi"
+        diversity_score_type = "puw"
+        logger.info(f"Calculating {coherence_score_type} coherence and {diversity_score_type} diversity...")
+        coherence = get_coherence_value(
+            st.session_state["topic_model"],
+            st.session_state["topics"],
+            st.session_state["timefiltered_df"][TEXT_COLUMN],
+            coherence_score_type
+        )
+        diversity = get_diversity_value(st.session_state["topic_model"],
+                                        st.session_state["topics"],
+                                        st.session_state["timefiltered_df"][TEXT_COLUMN],
+                                        diversity_score_type="puw")
         
-        # logger.info(f"Coherence score [{coherence_score_type}]: {coherence}")
-        # logger.info(f"Diversity score [{diversity_score_type}]: {diversity}")
+        logger.success(f"Coherence score [{coherence_score_type}]: {coherence}")
+        logger.success(f"Diversity score [{diversity_score_type}]: {diversity}")
         
-        # st.session_state['model_trained'] = True
-        # if not st.session_state['model_saved']:
-        #     st.warning('Don\'t forget to save your model!', icon="⚠️")
+        st.session_state['model_trained'] = True
+        if not st.session_state['model_saved']:
+            st.warning('Don\'t forget to save your model!', icon="⚠️")
     else:
         st.error("No data available for training. Please ensure data is correctly loaded.")
 
@@ -334,8 +352,7 @@ def train_model():
 # Wide layout
 st.set_page_config(page_title="Wattelse® topic", layout="wide")
 
-# Initialize default parameters
-initialize_default_parameters_keys()
+restore_widget_state()
 
 ### TITLE ###
 st.title("Topic modelling")
@@ -345,20 +362,9 @@ if 'model_trained' not in st.session_state: st.session_state['model_trained'] = 
 if 'model_saved' not in st.session_state: st.session_state['model_saved'] = False
 
 
-# Restore widget state
-restore_widget_state()
-
-# Initialize session state for representation_models
-if "representation_models" not in st.session_state:
-    st.session_state.representation_models = ["MaximalMarginalRelevance"]
 
 def apply_changes():
-    # Get the latest selection from the multiselect widget
-    latest_models = st.session_state.temp_representation_models
-
-    # Update the session state
-    st.session_state.representation_models = latest_models
-
+    
     # Update other parameters
     parameters = {
         **embedding_model_options,
@@ -367,7 +373,7 @@ def apply_changes():
         **hdbscan_options,
         **countvectorizer_options,
         **ctfidf_options,
-        "representation_models": latest_models,
+        **representation_model_options,
     }
     st.session_state["parameters"] = str(parameters)
 
@@ -399,29 +405,20 @@ with st.sidebar.form("parameters_sidebar"):
         ctfidf_options = ctfidf_options()
 
     with st.expander("Representation Models"):
-        representation_model_options = representation_model_options()
-
-    # Form submit button for applying changes
-    apply_changes_clicked = st.form_submit_button(
-        "Apply Changes", on_click=apply_changes
-    )
+        representation_model_options = representation_model_options()        
+            
+    # Form submit button for applying changes 
+    # (using on_click with callback function causes a glitch where the button has to be clicked twice for changes to take effect)
+    changes_applied = st.form_submit_button(label="Apply Changes", type="primary", use_container_width=True)
+    if changes_applied: apply_changes()
     
-# Update st.session_state.representation_models according to the rules
-if not st.session_state.representation_models:
-    st.session_state.representation_models = ["MaximalMarginalRelevance"]
-elif "OpenAI" in st.session_state.representation_models:
-    st.session_state.representation_models = [model for model in st.session_state.representation_models if model != "OpenAI"] + ["OpenAI"]
-
 # Separate button for training the model
-if st.sidebar.button("Train Model", type="primary", key="train_model_button"):
+if st.sidebar.button("Train Model", type="primary", key="train_model_button", use_container_width=True, disabled=('parameters' not in st.session_state)):
     train_model()
 
-    
-st.sidebar.write(f"Debug:")
-st.sidebar.write(st.session_state)
-
-
-
+if "parameters" in st.session_state: 
+    st.sidebar.write(f"Current parameters:")
+    st.sidebar.write(st.session_state["parameters"])
 
 # Load selected DataFrame
 select_data()
@@ -430,7 +427,7 @@ select_data()
 data_overview(st.session_state["timefiltered_df"])
 
 # Save the model button
-# save_model_interface()
+save_model_interface()
 
 
 # TODO: Investigate the potentially deprecated save_model_interface() I implemented a while ago 

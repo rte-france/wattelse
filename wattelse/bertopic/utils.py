@@ -94,35 +94,31 @@ def clean_dataset(dataset: pd.DataFrame, length_criteria: int) -> pd.DataFrame:
     cleaned_dataset = dataset.loc[dataset[TEXT_COLUMN].str.len() >= length_criteria]
     return cleaned_dataset
 
-def split_df_by_paragraphs(dataset: pd.DataFrame) -> pd.DataFrame:
+def split_df_by_paragraphs(dataset: pd.DataFrame, enhanced: bool = False, tokenizer: AutoTokenizer = None, max_length: int = 512, min_length: int = 5) -> pd.DataFrame:
     """
     Split texts into multiple paragraphs and return a concatenation of all extracts as a new DataFrame.
+    If enhanced is True, it also considers the embedding model's max sequence length.
 
     Args:
         dataset (pd.DataFrame): The dataset to split.
+        enhanced (bool): Whether to use the enhanced splitting method.
+        tokenizer (AutoTokenizer): The tokenizer to use for splitting (required if enhanced is True).
+        max_length (int): The maximum length of tokens (used if enhanced is True).
+        min_length (int): The minimum length of tokens (used if enhanced is True).
 
     Returns:
         pd.DataFrame: The dataset with texts split into paragraphs.
     """
-    df = dataset.copy()
-    df[TEXT_COLUMN] = df[TEXT_COLUMN].str.split("\n")
-    df = df.explode(TEXT_COLUMN)
-    df = df[df[TEXT_COLUMN] != ""]
-    return df
+    if not enhanced:
+        df = dataset.copy()
+        df[TEXT_COLUMN] = df[TEXT_COLUMN].str.split("\n")
+        df = df.explode(TEXT_COLUMN)
+        df = df[df[TEXT_COLUMN] != ""]
+        return df
+    
+    if tokenizer is None:
+        raise ValueError("Tokenizer is required for enhanced splitting.")
 
-def split_df_by_paragraphs_v2(dataset: pd.DataFrame, tokenizer: AutoTokenizer, max_length: int = 512, min_length: int = 5) -> pd.DataFrame:
-    """
-    Split text into multiple paragraphs, ensuring that paragraphs aren't longer than the embedding model's max sequence length.
-
-    Args:
-        dataset (pd.DataFrame): The dataset to split.
-        tokenizer (AutoTokenizer): The tokenizer to use for splitting.
-        max_length (int, optional): The maximum length of tokens. Defaults to 512.
-        min_length (int, optional): The minimum length of tokens. Defaults to 5.
-
-    Returns:
-        pd.DataFrame: The dataset with texts split into appropriate lengths.
-    """
     df = dataset.copy()
     new_rows = []
 
@@ -130,11 +126,9 @@ def split_df_by_paragraphs_v2(dataset: pd.DataFrame, tokenizer: AutoTokenizer, m
         doc = row['text']
         timestamp = row['timestamp']
 
-        # Split the document into paragraphs
         paragraphs = re.split(r'\n+', doc)
 
         for paragraph in paragraphs:
-            # Split the paragraph into sentences
             sentences = re.split(r'(?<=[.!?])\s+', paragraph)
 
             current_doc = ""
@@ -142,7 +136,6 @@ def split_df_by_paragraphs_v2(dataset: pd.DataFrame, tokenizer: AutoTokenizer, m
                 sentence_ids = tokenizer.encode(sentence, padding=False, truncation=False, add_special_tokens=False)
 
                 if len(sentence_ids) > max_length:
-                    # If a single sentence is longer than max_length, split it into smaller chunks
                     sentence_chunks = [sentence[i:i+max_length] for i in range(0, len(sentence), max_length)]
                     for chunk in sentence_chunks:
                         new_row = row.copy()
@@ -172,5 +165,4 @@ def split_df_by_paragraphs_v2(dataset: pd.DataFrame, tokenizer: AutoTokenizer, m
                 new_row['num_tokens'] = len(tokenizer.encode(current_doc.strip(), padding=False, truncation=False, add_special_tokens=False))
                 new_rows.append(new_row)
 
-    new_df = pd.DataFrame(new_rows)
-    return new_df
+    return pd.DataFrame(new_rows)
