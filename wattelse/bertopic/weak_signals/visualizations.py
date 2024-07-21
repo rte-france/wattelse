@@ -92,7 +92,6 @@ def plot_topics_per_timestamp(topic_models: Dict[pd.Timestamp, BERTopic]) -> Non
 
 ########################################################################################################################
 
-@st.cache_data
 def create_topic_size_evolution_figure(topic_ids=None):
     fig = go.Figure()
 
@@ -201,6 +200,8 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         window_end = pd.to_datetime(current_date)
         window_start = window_end - window_size_timedelta
 
+        logger.debug(f"WINDOW SPAN: {window_start} to {window_end}")
+        
         # Collect popularity values above 0.01 within the specified window
         all_popularity_values = [
             popularity for topic, data in topic_sizes.items()
@@ -219,9 +220,6 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         st.write(f"Noise Threshold : {q1}")
         st.write(f"Strong Signal Threshold : {q3}")
 
-        st.plotly_chart(fig, use_container_width=True)
-
-
         # Update the figure layout to limit the display range to the window
         fig.update_layout(
             title='Popularity Evolution',
@@ -230,7 +228,9 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
             hovermode='closest',
             xaxis_range=[window_start, window_end]  # Set the range of the x-axis to the retrospective window
         )
-
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
         # Define the columns to display in the DataFrames
         columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest_Popularity', 'Docs_Count', 'Paragraphs_Count', 'Latest_Timestamp', 'Documents']
 
@@ -240,19 +240,20 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         # Display the DataFrames for each category
         st.subheader(":grey[Noise]")
         if not noise_topics_df.empty:
-            st.dataframe(noise_topics_df[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
+            st.dataframe(noise_topics_df.astype(str)[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
         else:
             st.info(f"No noisy signals were detected at timestamp {window_end}.")
 
         st.subheader(":orange[Weak Signals]")
+        
         if not weak_signal_topics_df.empty:
-            st.dataframe(weak_signal_topics_df[columns].sort_values(by=['Latest_Popularity'], ascending=True))
+            st.dataframe(weak_signal_topics_df.astype(str)[columns].sort_values(by=['Latest_Popularity'], ascending=True))
         else:
             st.info(f"No weak signals were detected at timestamp {window_end}.")
 
         st.subheader(":green[Strong Signals]")
         if not strong_signal_topics_df.empty:
-            st.dataframe(strong_signal_topics_df[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
+            st.dataframe(strong_signal_topics_df.astype(str)[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
         else:
             st.info(f"No strong signals were detected at timestamp {window_end}.")
 

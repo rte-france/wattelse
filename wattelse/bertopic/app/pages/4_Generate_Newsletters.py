@@ -13,6 +13,7 @@ from wattelse.summary import (
     FastchatLLMSummarizer,
 )
 
+
 # Restore widget state
 restore_widget_state()
 
@@ -64,7 +65,7 @@ for key, value in default_values.items():
         st.session_state[key] = value
 
 # Newsletter parameters sidebar
-with st.sidebar.form("newsletter_parameters"):
+with st.sidebar:
     register_widget("newsletter_all_topics")
     register_widget("newsletter_all_docs")
     register_widget("newsletter_nb_topics")
@@ -73,22 +74,20 @@ with st.sidebar.form("newsletter_parameters"):
     register_widget("summarizer_classname")
     register_widget("summary_mode")
 
-    st.checkbox("Include all topics", key="newsletter_all_topics")
-    st.slider("Number of topics", min_value=1, max_value=20, key="newsletter_nb_topics")
+    all_topics = st.checkbox("Include all topics", on_change=save_widget_state, key="newsletter_all_topics")
+    st.slider("Number of topics", min_value=1, max_value=20, on_change=save_widget_state, key="newsletter_nb_topics", disabled=all_topics)
 
-    st.checkbox("Include all documents per topic", key="newsletter_all_docs")
-    st.slider("Number of docs per topic", min_value=1, max_value=10, key="newsletter_nb_docs")
+    all_documents = st.checkbox("Include all documents per topic", on_change=save_widget_state, key="newsletter_all_docs")
+    st.slider("Number of docs per topic", min_value=1, max_value=10, on_change=save_widget_state, key="newsletter_nb_docs", disabled=all_documents)
 
-    st.toggle("Improve topic description", value=False, key="newsletter_improve_description")
-    st.selectbox("Summary mode", ['topic', 'document', 'none'], key="summary_mode")
-    st.selectbox("Summarizer class", list(SUMMARIZER_OPTIONS_MAPPER.keys()), key="summarizer_classname")
+    st.toggle("Improve topic description", value=False, on_change=save_widget_state, key="newsletter_improve_description")
+    st.selectbox("Summary mode", ['topic', 'document', 'none'], on_change=save_widget_state, key="summary_mode")
+    st.selectbox("Summarizer class", list(SUMMARIZER_OPTIONS_MAPPER.keys()), on_change=save_widget_state, key="summarizer_classname")
     
-    newsletter_parameters_clicked = st.form_submit_button(
-        "Generate newsletter", type="primary", on_click=save_widget_state
-    )
+    generate_newsletter_clicked = st.button("Generate newsletter", type="primary", use_container_width=True)
 
 # Generate newsletter when button is clicked
-if newsletter_parameters_clicked:
+if generate_newsletter_clicked:
     if st.session_state["split_by_paragraphs"]:
         df = st.session_state["initial_df"]
         df_split = st.session_state["timefiltered_df"]

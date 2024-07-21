@@ -273,7 +273,7 @@ def main():
     df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
 
     # Sample the filtered DataFrame
-    sample_size = st.number_input("Sample Size", value=100, min_value=1, max_value=len(df_filtered), key='sample_size')
+    sample_size = st.number_input("Sample Size", value=len(df_filtered), min_value=1, max_value=len(df_filtered), key='sample_size')
     if sample_size < len(df_filtered):
         df_filtered = df_filtered.sample(n=sample_size, random_state=42)
 
@@ -478,36 +478,31 @@ def main():
                 st.session_state.topic_last_popularity = topic_last_popularity
                 st.session_state.topic_last_update = topic_last_update
 
-            # Create and cache the topic size evolution figure
-            fig = create_topic_size_evolution_figure()
-            st.session_state.topic_size_evolution_fig = fig
-            st.success("Model merging complete!")
 
+            st.success("Model merging complete!")
+            
         # Plot topic size evolution
         if "all_merge_histories_df" in st.session_state:
-            window_size = st.number_input("Retrospective Period (days)", min_value=1, max_value=365, value=28, key='window_size')
-
+            window_size = st.number_input("Retrospective Period (days)", min_value=1, max_value=365, value=7, key='window_size')
             min_datetime = st.session_state.all_merge_histories_df['Timestamp'].min().to_pydatetime()
             max_datetime = st.session_state.all_merge_histories_df['Timestamp'].max().to_pydatetime()
 
-            # current_date = st.date_input(
-            #     "Current date",
-            #     value=min_datetime + pd.Timedelta(days=window_size),
-            #     min_value=min_datetime + pd.Timedelta(days=window_size),
-            #     max_value=max_datetime,
-            # )
-
             current_date = st.slider(
                 "Current date",
-                min_value = min_datetime +  pd.Timedelta(days=window_size),
+                min_value = min_datetime,
                 max_value = max_datetime,
-                value = min_datetime +  pd.Timedelta(days=window_size),
-                step=pd.Timedelta(days=granularity),
                 format = "YYYY-MM-DD",
             )
 
-            # Pass the cached figure to plot_topic_size_evolution
-            plot_topic_size_evolution(st.session_state.topic_size_evolution_fig, window_size, granularity, current_date, min_datetime, max_datetime)
+            logger.debug("DEBUG")
+            logger.debug(current_date)
+            logger.debug(window_size)
+            logger.debug(min_datetime)
+            logger.debug(max_datetime)
+
+            
+            plot_topic_size_evolution(create_topic_size_evolution_figure(), 
+                                      window_size, granularity, current_date, min_datetime, max_datetime)
 
 
             # Create a text input field and a button for taking a closer look at a topic
@@ -545,7 +540,6 @@ def main():
 
                     # Generate the summary using OpenAI ChatGPT
                     prompt = get_prompt(language, topic_number, content_summary)
-                    # print(prompt)
                     with st.spinner("Generating summary..."):
                         try:
                             completion = client.chat.completions.create(
@@ -554,13 +548,12 @@ def main():
                                     {"role": "system", "content": "You are a helpful assistant, skilled in detailing topic evolution over time for the detection of emerging trends and signals."},
                                     {"role": "user", "content": prompt}
                                 ],
-                                temperature=0.1,
+                                temperature=0.2,
                             )
                             summary = completion.choices[0].message.content
                             st.markdown(summary)
                         except Exception as e:
                             st.error(e)
-                            # st.warning("Unable to generate a summary. Too many documents.")
                 else:
                     st.warning(f"Topic {topic_number} not found in the merge histories within the specified window.")
             # Create the Sankey Diagram
