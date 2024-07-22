@@ -2,8 +2,9 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+from random import randint
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from typing import List
 
@@ -63,8 +64,8 @@ def parse_data_from_files(files: List[UploadedFile]) -> pd.DataFrame:
 
                     # construct input data for bertopic
                     df = pd.DataFrame([s.page_content for s in splits], columns=[TEXT_COLUMN])
-                    df[TIMESTAMP_COLUMN] = datetime.now()
-                    df[TITLE_COLUMN] = ""
+                    df[TIMESTAMP_COLUMN] = df[TEXT_COLUMN].apply(lambda x: datetime.now() + timedelta(minutes=randint(0, 9)))
+                    df[TITLE_COLUMN] = df[TEXT_COLUMN].apply(lambda x: x[:50])
                     df[URL_COLUMN] = ""
 
                     dataframes.append(df)
