@@ -19,8 +19,6 @@ locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
 # Page configuration
 st.set_page_config(page_title="Wattelse® topic", layout="wide")
 
-
-
 # TempTopic output visualization functions
 def plot_topic_evolution(temptopic, granularity, topics_to_show=None, n_neighbors=15, min_dist=0.1, metric='cosine', color_palette='Plotly'):
     topic_data = {}
@@ -184,12 +182,6 @@ def plot_overall_topic_stability(temptopic, darkmode=True, normalize=False, topi
     )
     
     return fig
-
-
-
-
-
-
 
 
 def initialize_session_state():
