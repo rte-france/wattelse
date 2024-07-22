@@ -6,12 +6,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 import umap
 import numpy as np
+from loguru import logger
 
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
 from app_utils import plot_topics_over_time
 from state_utils import restore_widget_state, register_widget, save_widget_state
 from wattelse.bertopic.app.app_utils import plot_topics_over_time, compute_topics_over_time
 from wattelse.bertopic.temporal_metrics_embedding import TempTopic
+from datetime import timedelta
 
 # Set locale for French date names
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
@@ -21,25 +23,26 @@ st.set_page_config(page_title="Wattelse® topic", layout="wide")
 
 # TempTopic output visualization functions
 def plot_topic_evolution(temptopic, granularity, topics_to_show=None, n_neighbors=15, min_dist=0.1, metric='cosine', color_palette='Plotly'):
+    all_topics = temptopic.final_df['Topic'].unique()
+    topics_to_include = topics_to_show if topics_to_show else all_topics
+
     topic_data = {}
-    for topic_id in temptopic.final_df['Topic'].unique():
+    for topic_id in topics_to_include:
         topic_df = temptopic.final_df[temptopic.final_df['Topic'] == topic_id]
         
-        # Parse timestamps based on granularity
-        if granularity == "Week":
-            timestamps = pd.to_datetime(topic_df['Timestamp'].apply(lambda x: f"{x}-1"), format="%Y-%W-%w")
-        elif granularity == "Month":
-            timestamps = pd.to_datetime(topic_df['Timestamp'], format="%Y-%m")
-        elif granularity == "Year":
-            timestamps = pd.to_datetime(topic_df['Timestamp'], format="%Y")
-        else:  # Default to daily granularity
-            timestamps = pd.to_datetime(topic_df['Timestamp'], format="%Y-%m-%d")
+        # Parse timestamps correctly
+        timestamps = pd.to_datetime(topic_df['Timestamp'], format='%Y-%m-%d %H:%M:%S')
 
         topic_data[topic_id] = {
             'embeddings': topic_df['Embedding'].tolist(),
             'timestamps': timestamps,
             'words': topic_df['Words'].tolist()
         }
+
+    if not topic_data:
+        fig = go.Figure()
+        fig.add_annotation(text="No topics to display", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        return fig
 
     all_embeddings = np.vstack([data['embeddings'] for data in topic_data.values()])
     reducer = umap.UMAP(n_neighbors=n_neighbors, n_components=2, min_dist=min_dist, metric=metric, random_state=42)
@@ -51,14 +54,9 @@ def plot_topic_evolution(temptopic, granularity, topics_to_show=None, n_neighbor
         data['embeddings_umap'] = all_embeddings_umap[start_idx:end_idx]
         start_idx = end_idx
 
-    if topics_to_show is None or len(topics_to_show) == 0:
-        topics_to_show = list(topic_data.keys())
-
     fig = go.Figure()
 
-    for topic_id in topic_data.keys():
-        data = topic_data[topic_id]
-        visible = 'legendonly' if topic_id not in topics_to_show else True
+    for topic_id, data in topic_data.items():
         topic_words = ', '.join(data['words'][0].split(', ')[:3])  # Get first 3 words of the topic
         fig.add_trace(go.Scatter3d(
             x=data['embeddings_umap'][:, 0],
@@ -68,7 +66,7 @@ def plot_topic_evolution(temptopic, granularity, topics_to_show=None, n_neighbor
             name=f'Topic {topic_id}: {topic_words}',
             text=[f"Topic: {topic_id}<br>Timestamp: {t}<br>Words: {w}" for t, w in zip(data['timestamps'], data['words'])],
             hoverinfo='text',
-            visible=visible,
+            visible='legendonly',
         ))
 
     fig.update_layout(
@@ -89,8 +87,8 @@ def plot_temporal_stability_metrics(temptopic, metric, darkmode=True, topics_to_
     else:
         fig = go.Figure()
 
-    if topics_to_show is None or len(topics_to_show) == 0:
-        topics_to_show = temptopic.final_df['Topic'].unique()
+    all_topics = temptopic.final_df['Topic'].unique()
+    topics_to_include = topics_to_show if topics_to_show else all_topics
 
     if metric == 'topic_stability':
         df = temptopic.topic_stability_scores_df
@@ -103,9 +101,12 @@ def plot_temporal_stability_metrics(temptopic, metric, darkmode=True, topics_to_
     else:
         raise ValueError("Invalid metric. Choose 'topic_stability' or 'representation_stability'.")
 
-    for topic_id in temptopic.final_df['Topic'].unique():
+    for topic_id in topics_to_include:
         topic_data = df[df['Topic ID'] == topic_id].sort_values(by='Start Timestamp')
         
+        if topic_data.empty:
+            continue
+
         topic_words = temptopic.final_df[temptopic.final_df['Topic'] == topic_id]['Words'].iloc[0]
         topic_words = "_".join(topic_words.split(', ')[:3])
 
@@ -126,9 +127,12 @@ def plot_temporal_stability_metrics(temptopic, metric, darkmode=True, topics_to_
             name=f'{topic_id}_{topic_words}',
             text=hover_text,
             hoverinfo='text',
-            visible='legendonly' if topic_id not in topics_to_show else True,
             line=dict(shape='spline', smoothing=0.9),
+            visible='legendonly',
         ))
+
+    if not fig.data:
+        fig.add_annotation(text="No topics to display", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
 
     fig.update_layout(
         title=title,
@@ -183,13 +187,6 @@ def plot_overall_topic_stability(temptopic, darkmode=True, normalize=False, topi
     
     return fig
 
-
-def initialize_session_state():
-    """Initialize session state variables."""
-    if 'temptopic' not in st.session_state:
-        st.session_state.temptopic = None
-    if 'granularity' not in st.session_state:
-        st.session_state.granularity = ""
 
 def check_model_trained():
     """Check if a model is trained and display an error if not."""
@@ -261,28 +258,119 @@ def get_available_granularities(min_date, max_date):
         available_granularities.append("Year")
     return available_granularities
 
-def select_time_granularity(available_granularities):
-    """Allow user to select time granularity."""
-    register_widget("granularity")
-    time_granularity = st.selectbox("Select time granularity", [""] + available_granularities, key="granularity", on_change=save_widget_state)
-    if time_granularity == "":
-        st.info("Please select a time granularity to view the temporal visualizations.")
+# def select_time_granularity(available_granularities):
+#     """Allow user to select time granularity."""
+#     register_widget("granularity")
+#     time_granularity = st.selectbox("Select time granularity", [""] + available_granularities, key="granularity", on_change=save_widget_state)
+#     if time_granularity == "":
+#         st.info("Please select a time granularity to view the temporal visualizations.")
+#         st.stop()
+#     return time_granularity
+
+def format_timedelta(td):
+    """Format a timedelta object into a string with days, hours, minutes, and seconds."""
+    days = td.days
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    parts = []
+    if days > 0:
+        parts.append(f"{days} day{'s' if days > 1 else ''}")
+    if hours > 0:
+        parts.append(f"{hours} hour{'s' if hours > 1 else ''}")
+    if minutes > 0:
+        parts.append(f"{minutes} minute{'s' if minutes > 1 else ''}")
+    if seconds > 0 or not parts:  # Always show seconds if no larger units or if it's the only non-zero unit
+        parts.append(f"{seconds} second{'s' if seconds > 1 else ''}")
+    return " ".join(parts)
+
+def select_time_granularity(max_granularity):
+    """Allow user to select custom time granularity within limits."""
+    st.write("Select custom time granularity:")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    max_days = max_granularity.days
+    max_seconds = max_granularity.seconds
+
+    with col1:
+        days = st.number_input("Days", min_value=0, max_value=max_days, value=min(1, max_days), key="granularity_days")
+    with col2:
+        hours = st.number_input("Hours", min_value=0, max_value=23, value=0, key="granularity_hours")
+    with col3:
+        minutes = st.number_input("Minutes", min_value=0, max_value=59, value=0, key="granularity_minutes")
+    with col4:
+        seconds = st.number_input("Seconds", min_value=0, max_value=59, value=0, key="granularity_seconds")
+
+    selected_granularity = timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
+    formatted_max = format_timedelta(max_granularity)
+
+    st.info(f"Granularity must be greater than zero and less than or equal to {formatted_max}.")
+    
+    if selected_granularity.total_seconds() == 0 or selected_granularity > max_granularity:
         st.stop()
-    return time_granularity
+
+    return pd.Timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
+
+def calculate_max_granularity(df):
+    """Calculate the maximum allowed granularity based on the timestamp range."""
+    time_range = df[TIMESTAMP_COLUMN].max() - df[TIMESTAMP_COLUMN].min()
+    max_granularity = time_range / 2
+    return max_granularity
+
+# def process_data_and_fit_temptopic(time_granularity):
+#     """Process data and fit TempTopic if parameters changed."""
+#     df = st.session_state['timefiltered_df'].copy()
+#     df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+#     if time_granularity == "Day":
+#         df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d')
+#     elif time_granularity == "Week":
+#         df['timestamp'] = df['timestamp'].dt.strftime('%Y-%W')
+#     elif time_granularity == "Month":
+#         df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m')
+#     elif time_granularity == 'Year':
+#         df['timestamp'] = df['timestamp'].dt.strftime('%Y')
+
+#     aggregated_df = df.groupby('timestamp').agg({TEXT_COLUMN: list, 'index': list}).reset_index()
+
+#     indices = st.session_state["timefiltered_df"]["index"]
+#     docs = [st.session_state["split_df"][TEXT_COLUMN][i] for i in indices]
+
+#     index_to_timestamp = {idx: timestamp for timestamp, idx_sublist in zip(aggregated_df['timestamp'], aggregated_df['index']) for idx in idx_sublist}
+#     timestamps_repeated = [index_to_timestamp[idx] for idx in indices]
+    
+#     # Initialize and fit TempTopic
+#     with st.spinner("Fitting TempTopic..."):
+#         temptopic = TempTopic(
+#             st.session_state['topic_model'],
+#             docs,
+#             st.session_state['embeddings'],
+#             st.session_state['token_embeddings'],
+#             st.session_state['token_strings'],
+#             timestamps_repeated,
+#             evolution_tuning=st.session_state.evolution_tuning,
+#             global_tuning=st.session_state.global_tuning
+#         )
+#         temptopic.fit(
+#             window_size=st.session_state.window_size,
+#             k=st.session_state.k,
+#             double_agg=st.session_state.double_agg,
+#             doc_agg=st.session_state.doc_agg,
+#             global_agg=st.session_state.global_agg
+#         )
+
+#     # Store the fitted TempTopic object and current parameter values
+#     st.session_state.temptopic = temptopic
+#     st.session_state.aggregated_df = aggregated_df
+#     for param in ['window_size', 'k', 'alpha', 'double_agg', 'doc_agg', 'global_agg', 'evolution_tuning', 'global_tuning', 'granularity']:
+#         st.session_state[f'prev_{param}'] = st.session_state.get(param)
 
 def process_data_and_fit_temptopic(time_granularity):
-    """Process data and fit TempTopic if parameters changed."""
+    """Process data and fit TempTopic with custom time granularity."""
     df = st.session_state['timefiltered_df'].copy()
     df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-    if time_granularity == "Day":
-        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d')
-    elif time_granularity == "Week":
-        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%W')
-    elif time_granularity == "Month":
-        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m')
-    elif time_granularity == 'Year':
-        df['timestamp'] = df['timestamp'].dt.strftime('%Y')
+    # Group timestamps based on the custom granularity
+    df['timestamp'] = df['timestamp'].dt.floor(time_granularity)
 
     aggregated_df = df.groupby('timestamp').agg({TEXT_COLUMN: list, 'index': list}).reset_index()
 
@@ -290,7 +378,7 @@ def process_data_and_fit_temptopic(time_granularity):
     docs = [st.session_state["split_df"][TEXT_COLUMN][i] for i in indices]
 
     index_to_timestamp = {idx: timestamp for timestamp, idx_sublist in zip(aggregated_df['timestamp'], aggregated_df['index']) for idx in idx_sublist}
-    timestamps_repeated = [index_to_timestamp[idx] for idx in indices]
+    timestamps_repeated = [index_to_timestamp[idx].strftime('%Y-%m-%d %H:%M:%S') for idx in indices]
     
     # Initialize and fit TempTopic
     with st.spinner("Fitting TempTopic..."):
@@ -443,41 +531,38 @@ def main():
     # Restore widget state
     restore_widget_state()
 
-    # Initialize session state
-    initialize_session_state()
-
     # Check if model is trained
     check_model_trained()
 
     # Display sidebar
     display_sidebar()
 
-    # Get available granularities
-    min_date = st.session_state['timefiltered_df']['timestamp'].min()
-    max_date = st.session_state['timefiltered_df']['timestamp'].max()
-    available_granularities = get_available_granularities(min_date, max_date)
+    # Calculate max granularity
+    max_granularity = calculate_max_granularity(st.session_state['timefiltered_df'])
 
     # Select time granularity
-    time_granularity = select_time_granularity(available_granularities)
+    time_granularity = select_time_granularity(max_granularity)
 
-    # Process data and fit TempTopic if parameters changed
-    if parameters_changed() or 'temptopic' not in st.session_state:
-        process_data_and_fit_temptopic(time_granularity)
-    else:
-        st.session_state.temptopic = st.session_state.temptopic 
-        st.session_state.aggregated_df = st.session_state.aggregated_df
+    # Add Apply button
+    apply_button = st.button("Apply Granularity and Parameters")
 
-    # Display visualizations
-    if st.session_state.temptopic is not None:
+    if apply_button:
+        if time_granularity is not None:
+            st.session_state.granularity = time_granularity
+            process_data_and_fit_temptopic(time_granularity)
+        else:
+            st.error("Please select a valid granularity before applying.")
+
+    # Display visualizations only if TempTopic has been fitted
+    if 'temptopic' in st.session_state:
         display_topic_evolution_dataframe()
         display_topic_info_dataframe()
         display_documents_per_date_dataframe()
         display_temptopic_visualizations()
-        display_topics_popularity()
     else:
-        st.info("Please select a time granularity to view the temporal visualizations.")
+        st.info("Please apply granularity and parameters to view the temporal visualizations.")
 
 if __name__ == "__main__":
     main()
-    
+
 # FIXME: Popularity of topics over time visualization is based on the number of paragraphs instead of original articles, since it's the default BERTopic method

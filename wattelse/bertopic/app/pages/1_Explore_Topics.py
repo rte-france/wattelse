@@ -178,18 +178,20 @@ def get_representative_documents(top_n_docs):
         return pd.concat([docs_by_cluster_probability, docs_by_ctfidf_similarity]).drop_duplicates()
 
 
-def display_source_distribution(representative_df, selected_sources):
+import plotly.graph_objects as go
+import streamlit as st
+
+def display_source_distribution(representative_df):
     """Display the distribution of sources in a pie chart."""
-    source_counts = representative_df['url'].apply(lambda x: urlparse(x).netloc.replace("www.", "").split(".")[0]).value_counts()
-    pull = [0.2 if source in selected_sources and 'Tous' not in selected_sources else 0 for source in source_counts.index]
+    source_counts = representative_df['url'].apply(get_website_name).value_counts()
     
     fig = go.Figure(data=[go.Pie(
         labels=source_counts.index,
         values=source_counts.values,
-        pull=pull,
         textposition='inside',
         textinfo='percent+label',
         hole=0.3,
+        marker=dict(colors=['red' if label == "Unknown Source" else 'lightblue' for label in source_counts.index])
     )])
     
     fig.update_layout(
@@ -201,19 +203,30 @@ def display_source_distribution(representative_df, selected_sources):
     
     st.plotly_chart(fig, use_container_width=True)
 
+def get_website_name(url):
+    """Extract website name from URL, handling None, NaN, and invalid URLs."""
+    if pd.isna(url) or url is None or isinstance(url, float):
+        return "Unknown Source"
+    try:
+        return urlparse(str(url)).netloc.replace("www.", "").split(".")[0] or "Unknown Source"
+    except:
+        return "Unknown Source"
+
 def display_representative_documents(filtered_df):
     """Display representative documents for the selected topic."""
     with st.container(border=False, height=600):
-        for i, doc in filtered_df.iterrows():
-            website_name = urlparse(doc.url).netloc.replace("www.", "").split(".")[0]
-            date = doc.timestamp.strftime("%A %d %b %Y")
-            snippet = doc.text[:150] + "..." if len(doc.text) > 150 else doc.text
+        for _, doc in filtered_df.iterrows():
+            website_name = get_website_name(doc.url)
+            date = doc.timestamp.strftime("%A %d %b %Y %H:%M:%S")
+            snippet = doc.text[:200] + "..." if len(doc.text) > 150 else doc.text
             
-            st.link_button(
-                f"*{website_name}*\n\n**{doc.title}**\n\n{date}\n\n{snippet}",
-                doc.url
-            )
-            st.write("")
+            content = f"""**{doc.title}**\n\n{date} | {'Unknown Source' if website_name == 'Unknown Source' else website_name}\n\n{snippet}"""
+            
+            if website_name != "Unknown Source":
+                st.link_button(content, doc.url)
+            else:
+                st.markdown(content)
+            st.divider()
 
 def display_new_documents():
     """Display new documents if remaining data is processed."""
@@ -294,7 +307,7 @@ def main():
     representative_df = representative_df.sort_values(by="timestamp", ascending=False)
 
     # Get unique sources
-    sources = representative_df['url'].apply(lambda x: urlparse(x).netloc.replace("www.", "").split(".")[0]).unique()
+    sources = representative_df['url'].apply(get_website_name).unique()
 
     # Multi-select for sources
     selected_sources = st.multiselect(
@@ -305,9 +318,7 @@ def main():
 
     # Filter the dataframe based on selected sources
     if 'Tous' not in selected_sources:
-        filtered_df = representative_df[representative_df['url'].apply(
-            lambda x: urlparse(x).netloc.replace("www.", "").split(".")[0] in selected_sources
-        )]
+        filtered_df = representative_df[representative_df['url'].apply(get_website_name).isin(selected_sources)]
     else:
         filtered_df = representative_df
 
@@ -315,7 +326,7 @@ def main():
     col1, col2 = st.columns([0.5, 0.5])
 
     with col1:
-        display_source_distribution(representative_df, selected_sources)
+        display_source_distribution(filtered_df)
 
     with col2:
         display_representative_documents(filtered_df)
