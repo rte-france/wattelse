@@ -14,9 +14,9 @@ import pandas as pd
 import tldextract
 from loguru import logger
 
+from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.summary.summarizer import Summarizer
 from wattelse.summary.abstractive_summarizer import AbstractiveSummarizer
-from wattelse.api.openai.client_openai_api import OpenAI_API
 from wattelse.api.prompts import (
     FR_USER_GENERATE_TOPIC_LABEL_TITLE,
     FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
@@ -31,20 +31,20 @@ os.umask(0o002)
 
 
 def generate_newsletter(
-    topic_model: BERTopic,
-    df: pd.DataFrame,
-    topics: List[int],
-    df_split: pd.DataFrame = None,
-    top_n_topics: int = 5,
-    top_n_docs: int = 3,
-    top_n_docs_mode: str = "cluster_probability",
-    newsletter_title: str = "Newsletter",
-    summarizer_class: Summarizer = AbstractiveSummarizer,
-    summary_mode: str = "document",
-    prompt_language: str = "fr",
-    improve_topic_description: bool = False,
-    openai_model_name: str = None,
-    nb_sentences: int = 3,
+        topic_model: BERTopic,
+        df: pd.DataFrame,
+        topics: List[int],
+        df_split: pd.DataFrame = None,
+        top_n_topics: int = 5,
+        top_n_docs: int = 3,
+        top_n_docs_mode: str = "cluster_probability",
+        newsletter_title: str = "Newsletter",
+        summarizer_class: Summarizer = AbstractiveSummarizer,
+        summary_mode: str = "document",
+        prompt_language: str = "fr",
+        improve_topic_description: bool = False,
+        openai_model_name: str = None,
+        nb_sentences: int = 3,
 ) -> Tuple[str, Any, Any]:
     """Generates a newsletter based on a trained BERTopic model.
 
@@ -70,7 +70,7 @@ def generate_newsletter(
         str: Newsletter in Markdown format
     """
     logger.debug("Generating newsletter...")
-    openai_api = OpenAI_API()
+    openai_api = OpenAI_Client()
     # Adapt language for date
     current_local = locale.getlocale()
     if prompt_language == "en":
@@ -92,7 +92,7 @@ def generate_newsletter(
 
     # Store each line in a list
     md_lines = [f"# {newsletter_title}"]
-    if prompt_language=="fr":
+    if prompt_language == "fr":
         md_lines.append(f"<div class='date_range'>du {date_min} au {date_max}</div>")
     else:
         md_lines.append(f"<div class='date_range'>from {date_min} to {date_max}</div>")
@@ -118,9 +118,9 @@ def generate_newsletter(
             article_list = ""
             for _, doc in sub_df.iterrows():
                 article_list += f"Titre : {doc.title}\nContenu : {doc.text}\n\n"
-            
+
             topic_summary = openai_api.generate(
-                (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language=='fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
+                (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language == 'fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
                     keywords=', '.join(topics_info['Representation'].iloc[i]),
                     article_list=article_list,
                     nb_sentences=nb_sentences,
@@ -128,7 +128,8 @@ def generate_newsletter(
                 model_name=openai_model_name,
             )
         else:
-            logger.error(f'{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter')
+            logger.error(
+                f'{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter')
             exit()
 
         # Improve topic description
@@ -137,8 +138,9 @@ def generate_newsletter(
 
             improved_topic_description_v2 = (
                 openai_api.generate(
-                    (FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES if prompt_language=='fr' else EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES).format(
-                        title_list=(" ; ".join(summaries) if summary_mode=='document' else topic_summary),
+                    (
+                        FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES if prompt_language == 'fr' else EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES).format(
+                        title_list=(" ; ".join(summaries) if summary_mode == 'document' else topic_summary),
                     ),
                     model_name=openai_model_name,
                 )
@@ -146,21 +148,21 @@ def generate_newsletter(
             )
 
             if improved_topic_description_v2.endswith("."):
-                improved_topic_description_v2 =  improved_topic_description_v2[:-1]
+                improved_topic_description_v2 = improved_topic_description_v2[:-1]
 
-            md_lines.append(f"## Sujet {i+1} : {improved_topic_description_v2}")
+            md_lines.append(f"## Sujet {i + 1} : {improved_topic_description_v2}")
 
             md_lines.append(
                 f"### {' '.join(['#' + keyword for keyword in topics_info['Representation'].iloc[i]])}"
             )
         else:
             md_lines.append(
-                f"## Sujet {i+1} : {', '.join(topics_info['Representation'].iloc[i])}"
+                f"## Sujet {i + 1} : {', '.join(topics_info['Representation'].iloc[i])}"
             )
 
         # Write summaries + documents
-        if summary_mode=='topic':
-                md_lines.append(topic_summary)
+        if summary_mode == 'topic':
+            md_lines.append(topic_summary)
         i = 0
         for _, doc in sub_df.iterrows():
             # Write newsletter
@@ -174,7 +176,7 @@ def generate_newsletter(
             md_lines.append(
                 f"<div class='timestamp'>{doc.timestamp.strftime('%A %d %b %Y')} | {domain}</div>"
             )
-            if summary_mode=='document':
+            if summary_mode == 'document':
                 md_lines.append(summaries[i])
             i += 1
 
@@ -224,13 +226,13 @@ def md2html(md: str, css_style: Path = None) -> str:
 
 
 def get_most_representative_docs(
-    topic_model,
-    df,
-    topics,
-    mode="cluster_probability",
-    df_split=None,
-    topic_number=0,
-    top_n_docs=3,
+        topic_model,
+        df,
+        topics,
+        mode="cluster_probability",
+        df_split=None,
+        topic_number=0,
+        top_n_docs=3,
 ):
     """
     Return most representative documents for a given topic.

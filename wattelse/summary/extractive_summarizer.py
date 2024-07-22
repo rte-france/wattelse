@@ -13,13 +13,12 @@ from sentence_transformers import SentenceTransformer, util
 from sentence_transformers.models import Transformer, Pooling
 from torch import Tensor
 
-from wattelse.api.openai.client_openai_api import OpenAI_API
+from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.api.prompts import FR_SYSTEM_SUMMARY_SENTENCES, EN_SYSTEM_SUMMARY_SENTENCES
 from wattelse.summary.lexrank import degree_centrality_scores
 from wattelse.summary.summarizer import (
     Summarizer,
     DEFAULT_MAX_SENTENCES,
-    DEFAULT_MAX_WORDS,
     DEFAULT_SUMMARIZATION_RATIO,
 )
 
@@ -29,6 +28,62 @@ DEFAULT_SUMMARIZER_MODEL = "camembert-base"
 DEFAULT_CHUNKS_NUMBER_SUMMARY = 6
 
 nltk.download("punkt")
+
+
+def _summarize_based_on_cos_scores(
+        cos_scores, summary_size: int
+) -> List[int]:
+    """Summarizes "something" on the basis of a cosine similarity matrix.
+    This approach may apply to text or a set of chunks.
+
+    Parameters
+    ----------
+    embeddings : Tensor
+        embeddings of 'what' we want to summarize, represented as a Tensor
+    summary_size : int
+        number of elements to keep in the summary
+
+    Returns
+    -------
+    List[int]
+        the list of indices of elements we want to keep in the summary
+
+    """
+    # Computation of centrality scores using the lexrank algorithm
+    centrality_scores = degree_centrality_scores(cos_scores, threshold=None)
+
+    # Argsort so that the first element is the sentence with the highest score
+    most_central_sentence_indices = np.argsort(-centrality_scores)
+
+    # Cut of results according to summary size
+    summary_indices = most_central_sentence_indices[:summary_size]
+
+    # Resort of the indices to avoid mixing the sentences order
+    summary_indices.sort()
+
+    return summary_indices
+
+
+def summarize_embeddings(embeddings: Tensor, summary_size: int) -> List[int]:
+    """Summarizes "something" on the basis of its embeddings representation.
+    This approach may apply to text or a set of chunks.
+
+    Parameters
+    ----------
+    embeddings : Tensor
+        embeddings of 'what' we want to summarize, represented as a Tensor
+    summary_size : int
+        number of elements to keep in the summary
+
+    Returns
+    -------
+    List[int]
+        the list of indices of elements we want to keep in the summary
+
+    """
+    # Compute the pair-wise cosine similarities
+    cos_scores = util.pytorch_cos_sim(embeddings, embeddings).cpu().numpy()
+    return _summarize_based_on_cos_scores(cos_scores, summary_size)
 
 
 class ExtractiveSummarizer(Summarizer):
@@ -50,26 +105,14 @@ class ExtractiveSummarizer(Summarizer):
         )
 
     def generate_summary(
-        self,
-        text,
-        max_sentences=DEFAULT_MAX_SENTENCES,
-        max_words=DEFAULT_MAX_WORDS,
-        max_length_ratio=DEFAULT_SUMMARIZATION_RATIO,
-        prompt_language = "fr"
+            self,
+            text: str,
+            max_sentences: int = DEFAULT_MAX_SENTENCES,
+            max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
+            **kwargs
     ) -> str:
         summary = self.summarize_text(text, max_sentences, max_length_ratio)
         return " ".join(summary)
-
-    def summarize_batch(
-        self,
-        article_texts: List[str],
-        max_sentences: int = DEFAULT_MAX_SENTENCES,
-        max_words=DEFAULT_MAX_WORDS,
-        max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
-        prompt_language = "fr"
-    ) -> List[str]:
-        return super().summarize_batch(article_texts, max_sentences=max_sentences, max_words=max_words,
-                                       max_length_ratio=max_length_ratio, prompt_language=prompt_language)
 
     def get_sentences_embeddings(self, sentences: List[str]) -> List[float]:
         """Compute the sentence embeddings"""
@@ -93,7 +136,7 @@ class ExtractiveSummarizer(Summarizer):
         """
         # filter text according to special tokens __<special>__
         if "__" in text:
-            text = text[text.rindex("__") + 2 :]
+            text = text[text.rindex("__") + 2:]
 
         if use_spacy:
             nlp_doc = self.nlp(text)
@@ -122,10 +165,10 @@ class ExtractiveSummarizer(Summarizer):
         return torch.stack(chunk_embeddings)
 
     def summarize_text(
-        self,
-        text: str,
-        max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
-        percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
+            self,
+            text: str,
+            max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
+            percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         """Summarizes a text using the maximum number of sentences given as parameter
 
@@ -160,16 +203,16 @@ class ExtractiveSummarizer(Summarizer):
         embeddings = self.get_sentences_embeddings(sentences)
 
         # Computes a summary based on these embeddings
-        summary_indices = self.summarize_embeddings(embeddings, summary_size)
+        summary_indices = summarize_embeddings(embeddings, summary_size)
 
         # Export summary as a list of sentences
         summary = [sentences[idx].strip() for idx in summary_indices]
         return summary
 
     def summarize_chunks(
-        self,
-        chunks: List[str],
-        max_nb_chunks: Optional[int] = DEFAULT_CHUNKS_NUMBER_SUMMARY,
+            self,
+            chunks: List[str],
+            max_nb_chunks: Optional[int] = DEFAULT_CHUNKS_NUMBER_SUMMARY,
     ) -> List[str]:
         """Summarizes a list of text chunks using their embedding representation
 
@@ -194,19 +237,19 @@ class ExtractiveSummarizer(Summarizer):
         embeddings = self.get_chunks_embeddings(chunks)
 
         # Computes a summary based on these embeddings
-        summary_indices = self.summarize_embeddings(embeddings, max_nb_chunks)
+        summary_indices = summarize_embeddings(embeddings, max_nb_chunks)
 
         # Export summary as a list of chunks
         summary = [chunks[idx] for idx in summary_indices]
         return summary
 
     def summarize_text_with_additional_embeddings(
-        self,
-        text: str,
-        function_to_compute_embeddings: Callable,
-        ratio_for_additional_embeddings: Optional[float] = 0.5,
-        max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
-        percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
+            self,
+            text: str,
+            function_to_compute_embeddings: Callable,
+            ratio_for_additional_embeddings: Optional[float] = 0.5,
+            max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
+            percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         """Summarizes a text using the maximum number of sentences given as parameter.
         The summary is based on the combination of two embeddings: the "standard" sentence embeddings obtained by
@@ -260,72 +303,18 @@ class ExtractiveSummarizer(Summarizer):
 
         # Combines the two cosine matrices
         new_cos_scores = (
-            ratio_for_additional_embeddings * cos_scores_additional
-            + (1 - ratio_for_additional_embeddings) * cos_scores
+                ratio_for_additional_embeddings * cos_scores_additional
+                + (1 - ratio_for_additional_embeddings) * cos_scores
         )
 
         # Computes a summary based on the sentence embeddings
-        summary_indices = self._summarize_based_on_cos_scores(
+        summary_indices = _summarize_based_on_cos_scores(
             new_cos_scores, summary_size
         )
 
         # Export summary as a list of sentences
         summary = [sentences[idx].strip() for idx in summary_indices]
         return summary
-
-    def _summarize_based_on_cos_scores(
-        self, cos_scores, summary_size: int
-    ) -> List[int]:
-        """Summarizes "something" on the basis of a cosine similarity matrix.
-        This approach may apply to text or a set of chunks.
-
-        Parameters
-        ----------
-        embeddings : Tensor
-            embeddings of 'what' we want to summarize, represented as a Tensor
-        summary_size : int
-            number of elements to keep in the summary
-
-        Returns
-        -------
-        List[int]
-            the list of indices of elements we want to keep in the summary
-
-        """
-        # Computation of centrality scores using the lexrank algorithm
-        centrality_scores = degree_centrality_scores(cos_scores, threshold=None)
-
-        # Argsort so that the first element is the sentence with the highest score
-        most_central_sentence_indices = np.argsort(-centrality_scores)
-
-        # Cut of results according to summary size
-        summary_indices = most_central_sentence_indices[:summary_size]
-
-        # Resort of the indices to avoid mixing the sentences order
-        summary_indices.sort()
-
-        return summary_indices
-
-    def summarize_embeddings(self, embeddings: Tensor, summary_size: int) -> List[int]:
-        """Summarizes "something" on the basis of its embeddings representation.
-        This approach may apply to text or a set of chunks.
-
-        Parameters
-        ----------
-        embeddings : Tensor
-            embeddings of 'what' we want to summarize, represented as a Tensor
-        summary_size : int
-            number of elements to keep in the summary
-
-        Returns
-        -------
-        List[int]
-            the list of indices of elements we want to keep in the summary
-
-        """
-        # Compute the pair-wise cosine similarities
-        cos_scores = util.pytorch_cos_sim(embeddings, embeddings).cpu().numpy()
-        return self._summarize_based_on_cos_scores(cos_scores, summary_size)
 
     def check_paraphrase(self, sentences: List[str]):
         """Given a list of sentences, returns a list of triplets with the format [score, id1, id2] indicating
@@ -344,34 +333,28 @@ class ExtractiveSummarizer(Summarizer):
 
 
 class EnhancedExtractiveSummarizer(ExtractiveSummarizer):
-    """Combination of extractive summarizer for quality of extraction and LLM for rephrasing and make the text more fluid"""
+    """Combination of extractive summarizer for quality of extraction and LLM for rephrasing and make the text more
+    fluid"""
 
-    def __init__(self, model_name=DEFAULT_SUMMARIZER_MODEL):
+    def __init__(self, api_key: str = None, endpoint: str = None, model_name=DEFAULT_SUMMARIZER_MODEL):
         super().__init__(model_name=model_name)
-        self.api = OpenAI_API()
+        self.api = OpenAI_Client(api_key=api_key, endpoint=endpoint)
 
     def generate_summary(
-        self,
-        text,
-        max_sentences=DEFAULT_MAX_SENTENCES,
-        max_words=DEFAULT_MAX_WORDS,
-        max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
-        prompt_language = "fr"
+            self,
+            text,
+            max_sentences=DEFAULT_MAX_SENTENCES,
+            max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
+            prompt_language="fr",
+            model_name: str = None,
     ) -> str:
-        base_summary = super().generate_summary(text, max_sentences, max_words, max_length_ratio, prompt_language)
+        base_summary = super().generate_summary(text=text, max_sentences=max_sentences, max_length_ratio=max_length_ratio)
         logger.debug(f"Base summary: {base_summary}")
         improved_summary = self.api.generate(
-            system_prompt=(FR_SYSTEM_SUMMARY_SENTENCES if prompt_language=="fr" else EN_SYSTEM_SUMMARY_SENTENCES).format(num_sentences=max_sentences),
+            system_prompt=(
+                FR_SYSTEM_SUMMARY_SENTENCES if prompt_language == "fr" else EN_SYSTEM_SUMMARY_SENTENCES).format(
+                num_sentences=max_sentences),
             user_prompt=base_summary,
+            model_name=model_name if model_name else self.api.model_name,
         )
         return improved_summary
-
-    def summarize_batch(
-        self,
-        article_texts: List[str],
-        max_sentences: int = DEFAULT_MAX_SENTENCES,
-        max_words=DEFAULT_MAX_WORDS,
-        max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
-        prompt_language = "fr"
-    ) -> List[str]:
-        return super().summarize_batch(article_texts, max_sentences, max_words, max_length_ratio, prompt_language)

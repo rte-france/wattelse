@@ -3,24 +3,22 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-import configparser
 import json
 import logging
 import os
-import typing
-from typing import List, Dict, BinaryIO
+from typing import BinaryIO, List, Dict, Union
 
-from fastapi.responses import StreamingResponse
 from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
-from langchain_community.chat_models import ChatOllama
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate ,PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate, \
+    PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from loguru import logger
+from starlette.responses import StreamingResponse
 
 from wattelse.chatbot.backend import DATA_DIR
 from wattelse.chatbot.backend.vector_database import format_docs, \
@@ -28,49 +26,39 @@ from wattelse.chatbot.backend.vector_database import format_docs, \
 
 from wattelse.api.prompts import FR_SYSTEM_RAG_LLAMA3, FR_USER_RAG_LLAMA3, \
     FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3, FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
-from wattelse.chatbot.backend import retriever_config, generator_config, FASTCHAT_LLM, CHATGPT_LLM, OLLAMA_LLM, \
-    LLM_CONFIGS, BM25, ENSEMBLE, MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD
+from wattelse.chatbot.backend import (retriever_config, generator_config, BM25, ENSEMBLE, MMR, SIMILARITY,
+                                      SIMILARITY_SCORE_THRESHOLD)
 from wattelse.indexer.document_splitter import split_file
-from wattelse.common.config_utils import parse_literal
 from wattelse.indexer.document_parser import parse_file
 
 logging.basicConfig()
 logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
+
+DEFAULT_TEMPERATURE = 0.1
+AZURE_API_VERSION = "2024-02-01"
 
 
 class RAGError(Exception):
     pass
 
 
-def get_chat_model(llm_api_name) -> BaseChatModel:
-    llm_config_file = LLM_CONFIGS.get(llm_api_name, None)
-    if llm_config_file is None:
-        raise RAGError(f"Unrecognized LLM API name {llm_api_name}")
-    config = configparser.ConfigParser(converters={"literal": parse_literal})
-    config.read(llm_config_file)
-    api_config = config["API_CONFIG"]
-    if llm_api_name == FASTCHAT_LLM:
-        llm_config = {"openai_api_key": api_config["openai_api_key"],
-                      "openai_api_base": api_config["openai_url"],
-                      "model_name": api_config["model_name"],
-                      "temperature": api_config["temperature"],
+def get_chat_model() -> BaseChatModel:
+    endpoint = generator_config["openai_endpoint"]
+    if "azure.com" not in endpoint:
+        llm_config = {"openai_api_key": generator_config["openai_api_key"],
+                      "openai_api_base": generator_config["openai_endpoint"],
+                      "model_name": generator_config["openai_default_model"],
+                      "temperature": DEFAULT_TEMPERATURE,
                       }
         return ChatOpenAI(**llm_config)
-    elif llm_api_name == CHATGPT_LLM:
-        llm_config = {"openai_api_key": os.getenv("OPENAI_API_KEY"),
-                      "model_name": api_config["model_name"],
-                      "temperature": api_config["temperature"],
-                      }
-        return ChatOpenAI(**llm_config)
-    elif llm_api_name == OLLAMA_LLM:
-        llm_config = {"base_url": api_config["base_url"],
-                      "model": api_config["model_name"],
-                      "temperature": api_config["temperature"],
-                      }
-        # TODO: check if other parameters are needed
-        return ChatOllama(**llm_config)
     else:
-        raise RAGError(f"Unrecognized LLM API name {llm_api_name}")
+        llm_config = {"openai_api_key": generator_config["openai_api_key"],
+                      "azure_endpoint": generator_config["openai_endpoint"],
+                      "azure_deployment": generator_config["openai_default_model"],
+                      "api_version": AZURE_API_VERSION,
+                      "temperature": DEFAULT_TEMPERATURE,
+                      }
+        return AzureChatOpenAI(**llm_config)
 
 
 def preprocess_streaming_data(streaming_data):
@@ -108,13 +96,11 @@ class RAGBackEnd:
         self.multi_query_mode = retriever_config["multi_query_mode"]
 
         # Generator parameters
-        self.llm_api_name = generator_config["llm_api_name"]
         self.expected_answer_size = generator_config["expected_answer_size"]
         self.remember_recent_messages = generator_config["remember_recent_messages"]
         self.temperature = generator_config["temperature"]
-
         # Generate llm config for langchain
-        self.llm = get_chat_model(self.llm_api_name)
+        self.llm = get_chat_model()
 
         # Prompts
         self.system_prompt = FR_SYSTEM_RAG_LLAMA3
@@ -178,7 +164,7 @@ class RAGBackEnd:
         else:
             return None
 
-    def get_doc_list(self, document_filter: Dict | None) -> Dict:
+    def get_doc_list(self, document_filter: Dict | None) -> list[Document]:
         """Returns the list of documents in the collection, using the current document filter"""
         data = self.document_collection.collection.get(include=["documents", "metadatas"],
                                                        where={} if not document_filter else document_filter)
@@ -209,7 +195,7 @@ class RAGBackEnd:
         pass
 
     def query_rag(self, message: str, history: List[dict[str, str]] = None,
-                  selected_files: List[str] = None, stream: bool = False) -> typing.Union[Dict, StreamingResponse]:
+                  selected_files: List[str] = None, stream: bool = False) -> Union[Dict, StreamingResponse]:
         """Query the RAG"""
         # Sanity check
         if self.document_collection is None:
@@ -261,9 +247,9 @@ class RAGBackEnd:
                                         ),
                                         HumanMessagePromptTemplate(
                                             prompt=PromptTemplate(
-                                                input_variables=['context', "history",'query'],
+                                                input_variables=['context', "history", 'query'],
                                                 template=self.user_prompt)
-                                    )])
+                                        )])
 
         # - RAG chain
         rag_chain_from_docs = (
@@ -279,7 +265,7 @@ class RAGBackEnd:
                 "history": (lambda _: get_history_as_text(history)),
                 "query": (lambda _: message),
                 "contextualized_query": RunnablePassthrough(),
-             }
+            }
         ).assign(answer=rag_chain_from_docs)
 
         # TODO: implement reranking (optional)
@@ -318,15 +304,15 @@ class RAGBackEnd:
             prompt = ChatPromptTemplate(input_variables=["history", "query"],
                                         messages=[
                                             SystemMessagePromptTemplate(
-                                            prompt=PromptTemplate(
-                                                input_variables=[],
-                                                template=self.system_prompt_query_contextualization)
-                                        ),
+                                                prompt=PromptTemplate(
+                                                    input_variables=[],
+                                                    template=self.system_prompt_query_contextualization)
+                                            ),
                                             HumanMessagePromptTemplate(
                                                 prompt=PromptTemplate(
                                                     input_variables=["history", "query"],
                                                     template=self.user_prompt_query_contextualization)
-                                        )])
+                                            )])
 
             chain = (prompt
                      | self.llm
@@ -349,6 +335,7 @@ def streamer(stream):
             yield ""
         else:
             yield json.dumps(chunk) + "\n"
+
 
 def get_history_as_text(history: List[dict[str, str]]) -> str:
     """Format conversation history as a text string"""
