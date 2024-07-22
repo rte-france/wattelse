@@ -175,7 +175,6 @@ class TempTopic:
             selection = documents.loc[documents.Timestamps == timestamp, :]
             # Aggressively preprocess text before vocabulary extraction through custom function for french language
             selection['Document'] = selection['Document'].apply(self._aggressive_text_preprocessing)
-            logger.debug(f"{selection.iloc[0]['Document']}")
 
             # Aggregate documents by topic to compute c-TF-IDF and collect embeddings
             topic_aggregated_docs_for_ctfidf = selection.groupby(['Topic'], as_index=False).agg({
