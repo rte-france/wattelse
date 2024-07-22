@@ -51,8 +51,8 @@ from wattelse.bertopic.app.app_utils import (
 
 def preprocess_text(text: str) -> str:
     """
-    Preprocess French text by replacing hyphens and similar characters with spaces,
-    removing specific prefixes, removing punctuations (excluding apostrophes, hyphens, and newlines),
+    Preprocess French text by normalizing apostrophes, replacing hyphens and similar characters with spaces,
+    removing specific prefixes, removing unwanted punctuations (excluding apostrophes, periods, commas, and specific other punctuation),
     replacing special characters with a space (preserving accented characters, common Latin extensions, and newlines),
     normalizing superscripts and subscripts,
     splitting words containing capitals in the middle (while avoiding splitting fully capitalized words), 
@@ -64,19 +64,20 @@ def preprocess_text(text: str) -> str:
     Returns:
         str: The preprocessed French text.
     """
+    # Normalize different apostrophe variations to a standard apostrophe
+    text = text.replace("’", "'")
+
     # Replace hyphens and similar characters with spaces
     text = re.sub(r'\b(-|/|;|:)', ' ', text)
     
-    # Remove specific prefixes
-    text = re.sub(r"\b(l'|L'|D'|d'|l’|L’|D’|d’)", ' ', text)
-        
-    # Replace special characters with a space (preserving accented characters, common Latin extensions, and newlines)
-    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
+    # Replace special characters with a space (preserving specified punctuation, accented characters, common Latin extensions, and newlines)
+    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ.,\'\"\(\)\[\]]', ' ', text)
     
-    # Normalize superscripts and subscripts
-    # Replace all superscripts and subscripts with their corresponding regular characters
-    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
-    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+    # Normalize superscripts and subscripts for both numbers and letters
+    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖᵠʳˢᵗᵘᵛʷˣʸᶻ",
+                                    "0123456789abcdefghijklmnopqrstuvwxyz")
+    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉ₐₑᵢₒᵣᵤᵥₓ",
+                                  "0123456789aeioruvx")
     text = text.translate(superscript_map)
     text = text.translate(subscript_map)
 
@@ -324,16 +325,23 @@ def train_model():
         coherence_score_type = "c_npmi"
         diversity_score_type = "puw"
         logger.info(f"Calculating {coherence_score_type} coherence and {diversity_score_type} diversity...")
-        coherence = get_coherence_value(
-            st.session_state["topic_model"],
-            st.session_state["topics"],
-            st.session_state["timefiltered_df"][TEXT_COLUMN],
-            coherence_score_type
-        )
-        diversity = get_diversity_value(st.session_state["topic_model"],
-                                        st.session_state["topics"],
-                                        st.session_state["timefiltered_df"][TEXT_COLUMN],
-                                        diversity_score_type="puw")
+        
+        try: 
+            coherence = get_coherence_value(
+                st.session_state["topic_model"],
+                st.session_state["topics"],
+                st.session_state["timefiltered_df"][TEXT_COLUMN],
+                coherence_score_type
+            )
+        except IndexError as e:
+            logger.error("Error while calculating coherence metric. This likely happens when you're using an LLM to represent the topics instead of keywords.") 
+        try: 
+            diversity = get_diversity_value(st.session_state["topic_model"],
+                                            st.session_state["topics"],
+                                            st.session_state["timefiltered_df"][TEXT_COLUMN],
+                                            diversity_score_type="puw")
+        except IndexError as e:
+            logger.error("Error while calculating diversity metric. This likely happens when you're using an LLM to represent the topics instead of keywords.") 
         
         logger.success(f"Coherence score [{coherence_score_type}]: {coherence}")
         logger.success(f"Diversity score [{diversity_score_type}]: {diversity}")

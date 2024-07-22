@@ -8,13 +8,10 @@ import streamlit as st
 from typing import Tuple
 from global_vars import DATA_PATH
 
-import re
-
-
 def preprocess_french_text(text: str) -> str:
     """
-    Preprocess French text by replacing hyphens and similar characters with spaces,
-    removing specific prefixes, removing punctuations (excluding apostrophes, hyphens, and newlines),
+    Preprocess French text by normalizing apostrophes, replacing hyphens and similar characters with spaces,
+    removing specific prefixes, removing unwanted punctuations (excluding apostrophes, periods, commas, and specific other punctuation),
     replacing special characters with a space (preserving accented characters, common Latin extensions, and newlines),
     normalizing superscripts and subscripts,
     splitting words containing capitals in the middle (while avoiding splitting fully capitalized words), 
@@ -26,22 +23,20 @@ def preprocess_french_text(text: str) -> str:
     Returns:
         str: The preprocessed French text.
     """
+    # Normalize different apostrophe variations to a standard apostrophe
+    text = text.replace("’", "'")
+
     # Replace hyphens and similar characters with spaces
     text = re.sub(r'\b(-|/|;|:)', ' ', text)
     
-    # Remove specific prefixes
-    text = re.sub(r"\b(l'|L'|D'|d'|l’|L’|D’|d’)", ' ', text)
+    # Replace special characters with a space (preserving specified punctuation, accented characters, common Latin extensions, and newlines)
+    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ.,\'\"\(\)\[\]]', ' ', text)
     
-    # Remove punctuations (excluding apostrophes, hyphens, and newlines)
-    # text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
-    
-    # Replace special characters with a space (preserving accented characters, common Latin extensions, and newlines)
-    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
-    
-    # Normalize superscripts and subscripts
-    # Replace all superscripts and subscripts with their corresponding regular characters
-    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
-    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+    # Normalize superscripts and subscripts for both numbers and letters
+    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖᵠʳˢᵗᵘᵛʷˣʸᶻ",
+                                    "0123456789abcdefghijklmnopqrstuvwxyz")
+    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉ₐₑᵢₒᵣᵤᵥₓ",
+                                  "0123456789aeioruvx")
     text = text.translate(superscript_map)
     text = text.translate(subscript_map)
 
@@ -54,22 +49,8 @@ def preprocess_french_text(text: str) -> str:
     return text
 
 
-def preprocess_french_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Preprocess French data in a DataFrame by applying the `preprocess_french_text` function
-    to the 'text' column.
-    
-    Args:
-        df (pd.DataFrame): The input DataFrame containing French data.
-    
-    Returns:
-        pd.DataFrame: The DataFrame with preprocessed French text in the 'text' column.
-    """
-    df['text'] = df['text'].apply(preprocess_french_text)
-    return df
 
-
-@st.cache_data
+# @st.cache_data
 def load_and_preprocess_data(selected_file: Tuple[str, str], language: str, min_chars: int, split_by_paragraph: bool) -> pd.DataFrame:
     """
     Load and preprocess data from a selected file.
@@ -94,6 +75,12 @@ def load_and_preprocess_data(selected_file: Tuple[str, str], language: str, min_
     elif file_ext == 'jsonl':
         df = pd.read_json(os.path.join(DATA_PATH, file_name), lines=True)
     
+    # Convert timestamp column to datetime
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    
+    # Drop rows with invalid timestamps
+    df = df.dropna(subset=['timestamp'])
+    
     df = df.sort_values(by='timestamp', ascending=True).reset_index(drop=True)
     df['document_id'] = df.index
     
@@ -104,7 +91,7 @@ def load_and_preprocess_data(selected_file: Tuple[str, str], language: str, min_
         df['url'] = None
     
     if language == "French":
-        df = preprocess_french_data(df)
+        df['text'] = df['text'].apply(preprocess_french_text)
     
     if split_by_paragraph:
         new_rows = []

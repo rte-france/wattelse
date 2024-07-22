@@ -56,6 +56,8 @@ from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
 from typing import List, Union, Tuple
+import re
+
 
 class TempTopic:
     
@@ -168,11 +170,15 @@ class TempTopic:
         previous_topics = None
 
         for index, timestamp in tqdm(enumerate(timestamps), desc="Processing timestamps"):
+            
             # Select documents for the current timestamp
             selection = documents.loc[documents.Timestamps == timestamp, :]
-            
+            # Aggressively preprocess text before vocabulary extraction through custom function for french language
+            selection['Document'] = selection['Document'].apply(self._aggressive_text_preprocessing)
+            logger.debug(f"{selection.iloc[0]['Document']}")
+
             # Aggregate documents by topic to compute c-TF-IDF and collect embeddings
-            documents_per_topic = selection.groupby(['Topic'], as_index=False).agg({
+            topic_aggregated_docs_for_ctfidf = selection.groupby(['Topic'], as_index=False).agg({
                 'Document': ' '.join,  # Combine documents for each topic
                 "Timestamps": "count",  # Count of documents per topic
                 "Document_Embeddings": lambda x: list(x),  # Collect embeddings in a list
@@ -181,24 +187,25 @@ class TempTopic:
             })
 
             # Compute c-TF-IDF for the current selection
-            c_tf_idf, words = self.topic_model._c_tf_idf(documents_per_topic, fit=False)
+            c_tf_idf, words = self.topic_model._c_tf_idf(topic_aggregated_docs_for_ctfidf, fit=False)
 
-            documents_per_topic_2 = selection.groupby('Topic', as_index=False).agg({
+            # Aggregate documents to calculate mean embeddings for each topic
+            detailed_topic_aggregated_docs = selection.groupby('Topic', as_index=False).agg({
                 'Document': lambda docs: list(docs),
                 'Document_Embeddings': lambda x: list(x),  # Collect embeddings in a list
                 'Token_Embeddings': lambda x: list(x),  # Collect token embeddings in a list
                 'Token_Strings': lambda x: list(x)  # Collect token strings in a list
             })
-            documents_per_topic_2['Timestamp'] = timestamp
+            detailed_topic_aggregated_docs['Timestamp'] = timestamp
 
             # Calculate mean embeddings for each topic
-            documents_per_topic_2['Embedding'] = documents_per_topic_2['Document_Embeddings'].apply(lambda x: np.mean(x, axis=0))
+            detailed_topic_aggregated_docs['Embedding'] = detailed_topic_aggregated_docs['Document_Embeddings'].apply(lambda x: np.mean(x, axis=0))
 
-            document_per_topic_list.append(documents_per_topic_2)
+            document_per_topic_list.append(detailed_topic_aggregated_docs)
 
             # Evolution tuning
             if self.evolution_tuning and index != 0 and previous_c_tf_idf is not None:
-                current_topics = sorted(list(documents_per_topic.Topic.values))
+                current_topics = sorted(list(topic_aggregated_docs_for_ctfidf.Topic.values))
                 overlapping_topics = sorted(list(set(previous_topics).intersection(set(current_topics))))
                 current_overlap_idx = [current_topics.index(topic) for topic in overlapping_topics]
                 previous_overlap_idx = [previous_topics.index(topic) for topic in overlapping_topics]
@@ -210,28 +217,31 @@ class TempTopic:
 
             # Global tuning
             if self.global_tuning:
-                selected_topics = [all_topics_indices[topic] for topic in documents_per_topic.Topic.values]
+                selected_topics = [all_topics_indices[topic] for topic in topic_aggregated_docs_for_ctfidf.Topic.values]
                 c_tf_idf = (global_c_tf_idf[selected_topics] + c_tf_idf) / 2.0
 
             # Extract the words per topic
-            words_per_topic = self.topic_model._extract_words_per_topic(words, selection, c_tf_idf, calculate_aspects=False)
-            topic_frequency = pd.Series(documents_per_topic.Timestamps.values,
-                                        index=documents_per_topic.Topic).to_dict()
+            # IMPORTANT: Pass only document and topic columns, other columns with nested data such as token_embeddings will
+            # result in a TypeError: unhashable type: 'numpy.ndarray' from Pandas
+            # Removing the other columns doesn't change anything, since they'll be used later in the code and not here
+            words_per_topic = self.topic_model._extract_words_per_topic(words, selection[['Document', 'Topic']], c_tf_idf, calculate_aspects=False)
+            topic_frequency = pd.Series(topic_aggregated_docs_for_ctfidf.Timestamps.values,
+                                        index=topic_aggregated_docs_for_ctfidf.Topic).to_dict()
 
             # Fill dataframe with results, now including document embeddings and the mean topic embedding
             topics_at_timestamp = [(topic,
                         ", ".join([word for word, _ in values]),
                         topic_frequency[topic],
                         timestamp,
-                        documents_per_topic_2.loc[documents_per_topic_2['Topic'] == topic, 'Document_Embeddings'].values[0],
-                        documents_per_topic_2.loc[documents_per_topic_2['Topic'] == topic, 'Embedding'].values[0],
-                        documents_per_topic_2.loc[documents_per_topic_2['Topic'] == topic, 'Token_Embeddings'].values[0],
-                        documents_per_topic_2.loc[documents_per_topic_2['Topic'] == topic, 'Token_Strings'].values[0])
+                        detailed_topic_aggregated_docs.loc[detailed_topic_aggregated_docs['Topic'] == topic, 'Document_Embeddings'].values[0],
+                        detailed_topic_aggregated_docs.loc[detailed_topic_aggregated_docs['Topic'] == topic, 'Embedding'].values[0],
+                        detailed_topic_aggregated_docs.loc[detailed_topic_aggregated_docs['Topic'] == topic, 'Token_Embeddings'].values[0],
+                        detailed_topic_aggregated_docs.loc[detailed_topic_aggregated_docs['Topic'] == topic, 'Token_Strings'].values[0])
                     for topic, values in words_per_topic.items()]
             
             topics_over_time.extend(topics_at_timestamp)
             
-            previous_topics = sorted(list(documents_per_topic.Topic.values))
+            previous_topics = sorted(list(topic_aggregated_docs_for_ctfidf.Topic.values))
             previous_c_tf_idf = c_tf_idf.copy()
 
         columns = ["Topic", "Words", "Frequency", "Timestamp", "Document_Embeddings", "Embedding", "Token_Embeddings", "Token_Strings"]
@@ -289,7 +299,22 @@ class TempTopic:
         - timestamp: The timestamp of the topic.
         - best_match: The best matched phrase.
         - best_score: The best score achieved.
+        
+        Due to the way the _extract_words_per_topic in BERTopic is coded, more specifically this part :
+            ...
+            # Get top 30 words per topic based on c-TF-IDF score
+            topics = {label: [(words[word_index], score)
+                            if word_index is not None and score > 0
+                            else ("", 0.00001)
+                            for word_index, score in zip(indices[index][::-1], scores[index][::-1])
+                            ]
+                    for index, label in enumerate(labels)}
+            ...
+        Sometimes, empty strings get returned as a representation of a topic at a specific timestamp, but  
+        is gracefully handled in the TempTopic class.
+        
         """
+        
         with open(self.debug_file, 'a', encoding='utf-8') as f:
             f.write(f"{'#'*50}\n")
             f.write(f"Failed match for Topic {topic_id} at Timestamp {timestamp}\n")
@@ -523,3 +548,49 @@ class TempTopic:
                                     break
         
         return similar_topic_pairs
+    
+
+    def _aggressive_text_preprocessing(self, text: str) -> str:
+        """
+        Aggressively preprocess French text by:
+        - Replacing hyphens and similar characters with spaces
+        - Removing specific prefixes
+        - Removing all punctuation
+        - Replacing special characters with spaces (preserving accented characters, common Latin extensions, and newlines)
+        - Normalizing superscripts and subscripts
+        - Splitting words containing capitals in the middle (while avoiding splitting fully capitalized words)
+        - Lowercasing all text
+        - Replacing multiple spaces with a single space
+        
+        Args:
+            text (str): The input French text to preprocess.
+        
+        Returns:
+            str: The aggressively preprocessed French text.
+        """
+        # Replace hyphens and similar characters with spaces
+        text = re.sub(r'\b(-|/|;|:)', ' ', text)
+        
+        # Remove specific prefixes
+        text = re.sub(r"\b(l'|L'|D'|d'|l’|L’|D’|d’)", ' ', text)
+        
+        # Remove all punctuation (excluding newlines)
+        text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ]', ' ', text)
+        
+        # Normalize superscripts and subscripts
+        # Replace all superscripts and subscripts with their corresponding regular characters
+        superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+        subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+        text = text.translate(superscript_map)
+        text = text.translate(subscript_map)
+
+        # Split words that contain capitals in the middle but avoid splitting fully capitalized words
+        text = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', text)
+        
+        # Lowercase all text
+        text = text.lower()
+        
+        # Replace multiple spaces with a single space
+        text = re.sub(r'[ \t]+', ' ', text)
+        
+        return text

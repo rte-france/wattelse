@@ -10,6 +10,7 @@ from loguru import logger
 from umap import UMAP
 from hdbscan import HDBSCAN
 from sklearn.metrics.pairwise import cosine_similarity
+from global_vars import *
 import streamlit as st
 
 def create_topic_model(docs: List[str], 
@@ -40,17 +41,21 @@ def create_topic_model(docs: List[str],
     Returns:
         BERTopic: A fitted BERTopic model.
     """
-    topic_model = BERTopic(
-        embedding_model=embedding_model,
-        umap_model=umap_model,
-        hdbscan_model=hdbscan_model,
-        vectorizer_model=vectorizer_model,
-        ctfidf_model=ClassTfidfTransformer(reduce_frequent_words=True, bm25_weighting=True),
-        representation_model=mmr_model,
-        # top_n_words=top_n_words,
-        zeroshot_topic_list=zeroshot_topic_list,
-        zeroshot_min_similarity=zeroshot_min_similarity,
-        ).fit(docs, embeddings)
+    # Handle scenario where user enters a bunch of white space characters or any scenario where we can't extract zeroshot topics
+    # BERTopic needs a "None" instead of an empty list, otherwise it'll attempt zeroshot topic modeling on an empty list
+    if len(zeroshot_topic_list) == 0:
+        zeroshot_topic_list = None
+        
+        topic_model = BERTopic(
+            embedding_model=embedding_model,
+            umap_model=umap_model,
+            hdbscan_model=hdbscan_model,
+            vectorizer_model=vectorizer_model,
+            ctfidf_model=ClassTfidfTransformer(reduce_frequent_words=True, bm25_weighting=False),
+            representation_model=mmr_model,
+            zeroshot_topic_list=zeroshot_topic_list,
+            zeroshot_min_similarity=zeroshot_min_similarity,
+            ).fit(docs, embeddings)
 
     return topic_model
 
@@ -95,10 +100,6 @@ def preprocess_model(topic_model: BERTopic, docs: List[str], embeddings: np.ndar
     })
 
     return topic_df
-
-
-
-
 
 def merge_models(df1: pd.DataFrame, df2: pd.DataFrame, min_similarity: float, timestamp: pd.Timestamp) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     merged_df = df1.copy()
@@ -165,13 +166,17 @@ def merge_models(df1: pd.DataFrame, df2: pd.DataFrame, min_similarity: float, ti
 def train_topic_models(grouped_data: Dict[pd.Timestamp, pd.DataFrame],
                        embedding_model: SentenceTransformer,
                        embeddings: np.ndarray,
-                       umap_model: UMAP,
-                       hdbscan_model: HDBSCAN,
-                       vectorizer_model: CountVectorizer,
-                       mmr_model,
+                       umap_n_components: int,
+                       umap_n_neighbors: int,
+                       hdbscan_min_cluster_size: int,
+                       hdbscan_min_samples: int,
+                       hdbscan_cluster_selection_method: str,
+                       vectorizer_ngram_range: Tuple[int, int],
+                       min_df: int,
                        top_n_words: int,
                        zeroshot_topic_list: List[str],
-                       zeroshot_min_similarity: float) -> Tuple[Dict[pd.Timestamp, BERTopic], Dict[pd.Timestamp, List[str]], Dict[pd.Timestamp, np.ndarray]]:
+                       zeroshot_min_similarity: float,
+                       language: str) -> Tuple[Dict[pd.Timestamp, BERTopic], Dict[pd.Timestamp, List[str]], Dict[pd.Timestamp, np.ndarray]]:
     """
     Train BERTopic models for each timestamp in the grouped data.
 
@@ -179,14 +184,18 @@ def train_topic_models(grouped_data: Dict[pd.Timestamp, pd.DataFrame],
         grouped_data (Dict[pd.Timestamp, pd.DataFrame]): Dictionary of grouped data by timestamp.
         embedding_model (SentenceTransformer): Sentence transformer model for embeddings.
         embeddings (np.ndarray): Precomputed document embeddings.
-        umap_model (UMAP): UMAP model for dimensionality reduction.
-        hdbscan_model (HDBSCAN): HDBSCAN model for clustering.
-        vectorizer_model (CountVectorizer): CountVectorizer model for creating the document-term matrix.
-        mmr_model (MaximalMarginalRelevance): MMR model for diverse topic representation.
+        umap_n_components (int): Number of components for UMAP.
+        umap_n_neighbors (int): Number of neighbors for UMAP.
+        hdbscan_min_cluster_size (int): Minimum cluster size for HDBSCAN.
+        hdbscan_min_samples (int): Minimum samples for HDBSCAN.
+        hdbscan_cluster_selection_method (str): Cluster selection method for HDBSCAN.
+        vectorizer_ngram_range (Tuple[int, int]): N-gram range for CountVectorizer.
+        min_df (int): Minimum document frequency for CountVectorizer.
         top_n_words (int): Number of top words to include in topic representations.
         zeroshot_topic_list (List[str]): List of topics for zero-shot classification.
         zeroshot_min_similarity (float): Minimum similarity threshold for zero-shot classification.
-
+        language (str); Used to determine the list of stopwords to use
+        
     Returns:
         Tuple[Dict[pd.Timestamp, BERTopic], Dict[pd.Timestamp, List[str]], Dict[pd.Timestamp, np.ndarray]]:
             - topic_models: Dictionary of trained BERTopic models for each timestamp.
@@ -208,8 +217,23 @@ def train_topic_models(grouped_data: Dict[pd.Timestamp, pd.DataFrame],
         embeddings_subset = embeddings[group.index]
 
         try:
-            topic_model = create_topic_model(docs, embedding_model, embeddings_subset, umap_model, hdbscan_model, vectorizer_model, mmr_model, top_n_words, zeroshot_topic_list, zeroshot_min_similarity)
-
+            umap_model = UMAP(n_components=umap_n_components, n_neighbors=umap_n_neighbors, min_dist=DEFAULT_UMAP_MIN_DIST, random_state=42, metric="cosine")
+            hdbscan_model = HDBSCAN(min_cluster_size=hdbscan_min_cluster_size, min_samples=hdbscan_min_samples, metric='euclidean', cluster_selection_method=hdbscan_cluster_selection_method, prediction_data=True)
+            
+            stopword_set = STOPWORDS if language=="French" else "english"
+            vectorizer_model = CountVectorizer(stop_words=stopword_set, min_df=min_df, ngram_range=vectorizer_ngram_range)
+            mmr_model = MaximalMarginalRelevance(diversity=DEFAULT_MMR_DIVERSITY)
+            topic_model = create_topic_model(docs, 
+                                             embedding_model, 
+                                             embeddings_subset, 
+                                             umap_model, 
+                                             hdbscan_model, 
+                                             vectorizer_model, 
+                                             mmr_model, 
+                                             top_n_words, 
+                                             zeroshot_topic_list, 
+                                             zeroshot_min_similarity)
+            
             doc_info_df = topic_model.get_document_info(docs=docs)
             doc_info_df = doc_info_df.rename(columns={"Document": "Paragraph"})
             doc_info_df = doc_info_df.merge(group[['text', 'document_id', 'source', 'url']], left_on='Paragraph', right_on='text', how='left')
@@ -233,14 +257,10 @@ def train_topic_models(grouped_data: Dict[pd.Timestamp, pd.DataFrame],
             doc_groups[period] = docs
             emb_groups[period] = embeddings_subset
 
-            # For debug purposes, every 5 iterations print the list of topics obtained
-            # if i % 5 == 0:
-            #     logger.debug(f"List of topics obtained at {period}: {topic_info_df['Representation'].tolist()}")
-
         except Exception as e:
             logger.debug(f"{e}")
-            logger.debug(f"There isn't enough data in the dataframe corresponding to the period {period}. Skipping...")
-            continue
+            # logger.debug(f"There isn't enough data in the dataframe corresponding to the period {period}. Skipping...")
+            # continue
         
         # Update progress bar
         progress = (i + 1) / len(non_empty_groups)
@@ -248,89 +268,3 @@ def train_topic_models(grouped_data: Dict[pd.Timestamp, pd.DataFrame],
         progress_text.text(f"Training BERTopic model for {period} ({i+1}/{len(non_empty_groups)})")
 
     return topic_models, doc_groups, emb_groups
-
-
-
-
-# def merge_models_old(df1: pd.DataFrame, df2: pd.DataFrame, min_similarity: float, timestamp: pd.Timestamp) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-#     """
-#     Merge two BERTopic models by comparing topic embeddings and combining similar topics.
-
-#     Args:
-#         df1 (pd.DataFrame): DataFrame with topic information from the first model.
-#         df2 (pd.DataFrame): DataFrame with topic information from the second model.
-#         min_similarity (float): Minimum similarity threshold for merging topics.
-#         timestamp (pd.Timestamp): Timestamp of the merge operation.
-
-#     Returns:
-#         Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-#             - merged_df: DataFrame with merged topic information.
-#             - merge_history_df: DataFrame with merge history.
-#             - new_topics_df: DataFrame with new topics added from the second model.
-#     """
-#     merged_df = df1.copy()
-#     merge_history = []
-#     new_topics = []
-
-#     embeddings1 = np.stack(df1['Embedding'].values)
-#     embeddings2 = np.stack(df2['Embedding'].values)
-
-#     similarities = cosine_similarity(embeddings1, embeddings2)
-#     max_similarities = np.max(similarities, axis=0)
-#     max_similar_topics = df1['Topic'].values[np.argmax(similarities, axis=0)]
-
-#     new_topics_mask = max_similarities < min_similarity
-#     new_topics_data = df2[new_topics_mask].copy()
-#     new_topics_data['Topic'] = np.arange(merged_df['Topic'].max() + 1, merged_df['Topic'].max() + 1 + len(new_topics_data))
-#     new_topics_data['Timestamp'] = timestamp
-
-#     merged_df = pd.concat([merged_df, new_topics_data], ignore_index=True)
-#     new_topics = new_topics_data.copy()
-
-#     merge_topics_mask = ~new_topics_mask
-#     for row in df2[merge_topics_mask].itertuples(index=False):
-#         topic2, count2, doc_count2, representation2, documents2, embedding2, doc_embeddings2, source2, urls2 = row
-#         max_similar_topic = max_similar_topics[topic2]
-#         similar_row = df1[df1['Topic'] == max_similar_topic].iloc[0]
-#         count1 = similar_row['Count']
-#         doc_count1 = similar_row['Document_Count']
-#         documents1 = similar_row['Documents']
-#         source1 = similar_row['Sources']
-#         urls1 = similar_row['URLs']
-
-#         merged_count = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'Count'].values[0] + count2
-#         merged_doc_count = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'Document_Count'].values[0] + doc_count2
-#         merged_documents = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'Documents'].values[0] + documents2
-#         merged_source = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'Sources'].values[0] + source2
-#         merged_urls = merged_df.loc[merged_df['Topic'] == max_similar_topic, 'URLs'].values[0] + urls2
-
-#         index = merged_df[merged_df['Topic'] == max_similar_topic].index[0]
-#         merged_df.at[index, 'Count'] = merged_count
-#         merged_df.at[index, 'Document_Count'] = merged_doc_count
-#         merged_df.at[index, 'Documents'] = merged_documents
-#         merged_df.at[index, 'Sources'] = merged_source
-#         merged_df.at[index, 'Embedding'] = similar_row['Embedding']
-#         merged_df.at[index, 'URLs'] = merged_urls
-
-#         merge_history.append({
-#             'Timestamp': timestamp,
-#             'Topic1': max_similar_topic,
-#             'Topic2': topic2,
-#             'Representation1': similar_row['Representation'],
-#             'Representation2': representation2,
-#             'Embedding1': similar_row['Embedding'],
-#             'Embedding2': embedding2,
-#             'Similarity': max_similarities[topic2],
-#             'Count1': count1,
-#             'Count2': count2,
-#             'Document_Count1': doc_count1,
-#             'Document_Count2': doc_count2,
-#             'Documents1': documents1,
-#             'Documents2': documents2,
-#             'Source1': source1,
-#             'Source2': source2,
-#             'URLs1': urls1,
-#             'URLs2': urls2,
-#         })
-
-#     return merged_df, pd.DataFrame(merge_history), new_topics
