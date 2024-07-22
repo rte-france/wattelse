@@ -225,7 +225,7 @@ def options():
 
         st.slider("Longueur des synthèses (# phrases)", min_value=1, max_value=10, value=4, key="nb_sentences")
 
-        st.selectbox("Moteur de résumé", ("gpt-4o", "gpt-3.5-turbo"), key="openai_model_name")
+        st.selectbox("Moteur de résumé", ("gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"), key="openai_model_name")
 
 
 def main():
