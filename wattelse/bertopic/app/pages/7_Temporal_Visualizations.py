@@ -23,21 +23,22 @@ st.set_page_config(page_title="Wattelse® topic", layout="wide")
 
 # TempTopic output visualization functions
 def plot_topic_evolution(temptopic, granularity, topics_to_show=None, n_neighbors=15, min_dist=0.1, metric='cosine', color_palette='Plotly'):
-    all_topics = temptopic.final_df['Topic'].unique()
-    topics_to_include = topics_to_show if topics_to_show else all_topics
+    topic_counts = temptopic.final_df.groupby('Topic')['Timestamp'].nunique()
+    valid_topics = set(topic_counts[topic_counts > 1].index.tolist())
+    all_topics = sorted(set(temptopic.final_df['Topic'].unique()) & set(valid_topics))
+    topics_to_include = sorted(set(topics_to_show or all_topics) & set(valid_topics))
 
     topic_data = {}
     for topic_id in topics_to_include:
         topic_df = temptopic.final_df[temptopic.final_df['Topic'] == topic_id]
         
-        # Parse timestamps correctly
-        timestamps = pd.to_datetime(topic_df['Timestamp'], format='%Y-%m-%d %H:%M:%S')
-
-        topic_data[topic_id] = {
-            'embeddings': topic_df['Embedding'].tolist(),
-            'timestamps': timestamps,
-            'words': topic_df['Words'].tolist()
-        }
+        if len(topic_df['Timestamp'].unique()) > 1:
+            timestamps = pd.to_datetime(topic_df['Timestamp'], format='%Y-%m-%d %H:%M:%S')
+            topic_data[topic_id] = {
+                'embeddings': topic_df['Embedding'].tolist(),
+                'timestamps': timestamps,
+                'words': topic_df['Words'].tolist()
+            }
 
     if not topic_data:
         fig = go.Figure()
@@ -87,8 +88,10 @@ def plot_temporal_stability_metrics(temptopic, metric, darkmode=True, topics_to_
     else:
         fig = go.Figure()
 
-    all_topics = temptopic.final_df['Topic'].unique()
-    topics_to_include = topics_to_show if topics_to_show else all_topics
+    topic_counts = temptopic.final_df.groupby('Topic')['Timestamp'].nunique()
+    valid_topics = set(topic_counts[topic_counts > 1].index.tolist())
+    all_topics = sorted(set(temptopic.final_df['Topic'].unique()) & valid_topics)
+    topics_to_include = sorted(set(topics_to_show or all_topics) & valid_topics)
 
     if metric == 'topic_stability':
         df = temptopic.topic_stability_scores_df
@@ -134,6 +137,7 @@ def plot_temporal_stability_metrics(temptopic, metric, darkmode=True, topics_to_
     if not fig.data:
         fig.add_annotation(text="No topics to display", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
 
+    fig.data = sorted(fig.data, key=lambda trace: int(trace.name.split('_')[0]))
     fig.update_layout(
         title=title,
         xaxis_title='Timestamp',
@@ -312,72 +316,50 @@ def select_time_granularity(max_granularity):
 
 def calculate_max_granularity(df):
     """Calculate the maximum allowed granularity based on the timestamp range."""
-    time_range = df[TIMESTAMP_COLUMN].max() - df[TIMESTAMP_COLUMN].min()
+    max_timestamp, min_timestamp = df[TIMESTAMP_COLUMN].max(), df[TIMESTAMP_COLUMN].min()
+    time_range = max_timestamp - min_timestamp
     max_granularity = time_range / 2
     return max_granularity
 
-# def process_data_and_fit_temptopic(time_granularity):
-#     """Process data and fit TempTopic if parameters changed."""
-#     df = st.session_state['timefiltered_df'].copy()
-#     df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-#     if time_granularity == "Day":
-#         df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d')
-#     elif time_granularity == "Week":
-#         df['timestamp'] = df['timestamp'].dt.strftime('%Y-%W')
-#     elif time_granularity == "Month":
-#         df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m')
-#     elif time_granularity == 'Year':
-#         df['timestamp'] = df['timestamp'].dt.strftime('%Y')
-
-#     aggregated_df = df.groupby('timestamp').agg({TEXT_COLUMN: list, 'index': list}).reset_index()
-
-#     indices = st.session_state["timefiltered_df"]["index"]
-#     docs = [st.session_state["split_df"][TEXT_COLUMN][i] for i in indices]
-
-#     index_to_timestamp = {idx: timestamp for timestamp, idx_sublist in zip(aggregated_df['timestamp'], aggregated_df['index']) for idx in idx_sublist}
-#     timestamps_repeated = [index_to_timestamp[idx] for idx in indices]
+def group_timestamps(timestamps, granularity):
+    """
+    Group timestamps based on a custom granularity.
     
-#     # Initialize and fit TempTopic
-#     with st.spinner("Fitting TempTopic..."):
-#         temptopic = TempTopic(
-#             st.session_state['topic_model'],
-#             docs,
-#             st.session_state['embeddings'],
-#             st.session_state['token_embeddings'],
-#             st.session_state['token_strings'],
-#             timestamps_repeated,
-#             evolution_tuning=st.session_state.evolution_tuning,
-#             global_tuning=st.session_state.global_tuning
-#         )
-#         temptopic.fit(
-#             window_size=st.session_state.window_size,
-#             k=st.session_state.k,
-#             double_agg=st.session_state.double_agg,
-#             doc_agg=st.session_state.doc_agg,
-#             global_agg=st.session_state.global_agg
-#         )
-
-#     # Store the fitted TempTopic object and current parameter values
-#     st.session_state.temptopic = temptopic
-#     st.session_state.aggregated_df = aggregated_df
-#     for param in ['window_size', 'k', 'alpha', 'double_agg', 'doc_agg', 'global_agg', 'evolution_tuning', 'global_tuning', 'granularity']:
-#         st.session_state[f'prev_{param}'] = st.session_state.get(param)
+    :param timestamps: Series of timestamps to group
+    :param granularity: Timedelta object representing the granularity
+    :return: Series of grouped timestamps
+    """
+    # Find the minimum timestamp
+    min_timestamp = timestamps.min()
+    
+    # Calculate the difference from the minimum timestamp
+    diff = timestamps - min_timestamp
+    
+    # Integer divide the difference by the granularity
+    groups = diff // granularity
+    
+    # Calculate the new timestamps
+    return min_timestamp + groups * granularity
 
 def process_data_and_fit_temptopic(time_granularity):
     """Process data and fit TempTopic with custom time granularity."""
     df = st.session_state['timefiltered_df'].copy()
     df['timestamp'] = pd.to_datetime(df['timestamp'])
+    
+    # Convert time_granularity to timedelta if it's not already
+    if not isinstance(time_granularity, timedelta):
+        time_granularity = pd.Timedelta(time_granularity)
+    
+    # Group timestamps using the custom function
+    df['grouped_timestamp'] = group_timestamps(df['timestamp'], time_granularity)
 
-    # Group timestamps based on the custom granularity
-    df['timestamp'] = df['timestamp'].dt.floor(time_granularity)
-
-    aggregated_df = df.groupby('timestamp').agg({TEXT_COLUMN: list, 'index': list}).reset_index()
-
+    aggregated_df = df.groupby('grouped_timestamp').agg({TEXT_COLUMN: list, 'index': list}).reset_index()
+    logger.debug(f"{aggregated_df}")
     indices = st.session_state["timefiltered_df"]["index"]
     docs = [st.session_state["split_df"][TEXT_COLUMN][i] for i in indices]
 
-    index_to_timestamp = {idx: timestamp for timestamp, idx_sublist in zip(aggregated_df['timestamp'], aggregated_df['index']) for idx in idx_sublist}
+    index_to_timestamp = {idx: timestamp for timestamp, idx_sublist in zip(aggregated_df['grouped_timestamp'], aggregated_df['index']) for idx in idx_sublist}
     timestamps_repeated = [index_to_timestamp[idx].strftime('%Y-%m-%d %H:%M:%S') for idx in indices]
     
     # Initialize and fit TempTopic
@@ -426,7 +408,24 @@ def display_documents_per_date_dataframe():
 def display_temptopic_visualizations():
     """Display TempTopic Visualizations."""
     with st.expander("TempTopic Visualizations"):
-        topics_to_show = st.multiselect("Topics to Show", options=list(st.session_state.temptopic.final_df["Topic"].unique()), default=None)
+        # Create a list of topics with their representations
+        topic_options = sorted([
+            (topic, ', '.join(st.session_state.temptopic.final_df[st.session_state.temptopic.final_df['Topic'] == topic]['Words'].iloc[0].split(', ')[:3]))
+            for topic in st.session_state.temptopic.final_df["Topic"].unique()
+        ])
+        
+        # Create a dictionary for streamlit multiselect
+        topic_dict = {f"Topic {topic}: {repr}": topic for topic, repr in topic_options}
+        
+        selected_topics = st.multiselect(
+            "Topics to Show",
+            options=list(topic_dict.keys()),
+            format_func=lambda x: x,
+            default=None
+        )
+        
+        # Convert selected topics back to topic numbers
+        topics_to_show = [topic_dict[topic] for topic in selected_topics]
 
         display_topic_evolution(topics_to_show)
         display_overall_topic_stability(topics_to_show)

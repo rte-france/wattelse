@@ -18,6 +18,7 @@ from wattelse.bertopic.app.app_utils import (
     plot_topics_over_time,
     compute_topics_over_time,
 )
+import base64
 
 # Set locale for French date names
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
@@ -89,6 +90,11 @@ def create_treemap():
     fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
     fig.update_traces(marker=dict(cornerradius=10))
     return fig
+
+def get_binary_file_downloader_html(bin_file, file_label='File'):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return data
 
 def calculate_document_lengths(documents):
     """Calculate the length of each document in terms of word count."""
@@ -193,14 +199,32 @@ with st.expander("Topics Treemap", expanded=False):
         treemap_plot = create_treemap()
         st.plotly_chart(treemap_plot, use_container_width=True)
 
+
 # Data Map
 with st.expander("Data Map", expanded=True):
     with st.spinner("Loading Data-map plot..."):
         datamap_html = create_datamap(include_outliers)
         if datamap_html is not None:
-            components.html(datamap_html, width=1500, height=1000, scrolling=True)
+            # Using st.html does fix the width and height issue by making it adaptive, but the html never loads (it loops indefinitely)
+            # This is the best solution so far, with a button to save the html and view it in fullscreen later.
+            components.html(datamap_html, width=1200, height=1000, scrolling=True)
+            
+            # Add the fullscreen button
+            save_path = Path(__file__).parent.parent / 'datamapplot.html'
+            
+            # Create a download button
+            st.download_button(
+                label="View in fullscreen",
+                data=get_binary_file_downloader_html(save_path),
+                file_name="datamapplot.html",
+                mime="text/html",
+                use_container_width=True,
+                type="secondary"
+            )
         else:
             st.warning("No valid topics to visualize. All documents might be classified as outliers.")
+
+
 
 # FIXME: cluster_boundary_polygons=True causes a "pop from an empty set" error in the data map plot's generation process. 
 # It's not urgent, but should be looked into to see what's causing the problem and potentially get a better visualization where clusters are delimitted with contours.

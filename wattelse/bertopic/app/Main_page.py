@@ -149,7 +149,7 @@ def save_model_interface():
     if st.button("Save Model", key="save_model_button"):
         if "topic_model" in st.session_state:
             dynamic_model_name = generate_model_name(base_model_name if base_model_name else "topic_model")            
-            model_save_path = Path(__file__) / "saved_models" / {dynamic_model_name}
+            model_save_path = Path(__file__).parent / "saved_models" / dynamic_model_name
             logger.debug(f"Saving the model in the following directory: {model_save_path}")
             try:
                 st.session_state['topic_model'].save(model_save_path, serialization="safetensors", save_ctfidf=True, save_embedding_model=True)
