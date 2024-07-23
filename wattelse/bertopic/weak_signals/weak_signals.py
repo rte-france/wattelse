@@ -7,10 +7,12 @@ import pickle
 from collections import defaultdict
 import streamlit as st
 from loguru import logger
-from pprint import pprint
-from tqdm import tqdm  # Import the tqdm library
+from tqdm import tqdm
 import scipy
-from pathlib import Path 
+from pathlib import Path
+from prompts import get_prompt
+from openai import OpenAI 
+from global_vars import GPT_MODEL, GPT_TEMPERATURE, GPT_SYSTEM_MESSAGE
 
 def detect_weak_signals_zeroshot(topic_models: Dict[pd.Timestamp, BERTopic], zeroshot_topic_list: List[str], granularity: int, decay_factor: float = 0.01, decay_power: float = 2) -> Dict[str, Dict[pd.Timestamp, Dict[str, any]]]:
     """
@@ -404,3 +406,57 @@ def group_and_delete_dataframes(save_path: str) -> None:
     # Delete the individual dataframes
     for file in noise_files + weak_signal_files + strong_signal_files:
         os.remove(os.path.join(save_path, file))
+
+
+
+def analyze_signal(topic_number, current_date, all_merge_histories_df, granularity, language):
+    with st.expander("Signal Analysis", expanded=True):
+        with st.spinner("Analyzing signal..."):
+            topic_merge_rows = all_merge_histories_df[all_merge_histories_df['Topic1'] == topic_number].sort_values('Timestamp')
+            topic_merge_rows_filtered = topic_merge_rows[topic_merge_rows['Timestamp'] <= current_date]
+
+            if not topic_merge_rows_filtered.empty:
+                content_summary = "\n".join([
+                    f"Timestamp: {row.Timestamp.strftime('%Y-%m-%d')}\n"
+                    f"Topic representation: {row.Representation1}\n"
+                    f"{' '.join(f'- {doc}' for doc in row.Documents1 if isinstance(doc, str))}\n"
+                    f"Timestamp: {(row.Timestamp + pd.Timedelta(days=granularity)).strftime('%Y-%m-%d')}\n"
+                    f"Topic representation: {row.Representation2}\n"
+                    f"{' '.join(f'- {doc}' for doc in row.Documents2 if isinstance(doc, str))}\n"
+                    for row in topic_merge_rows_filtered.itertuples()
+                ])
+
+                # First prompt: Generate summary
+                summary_prompt = get_prompt(language, "topic_summary", topic_number=topic_number, content_summary=content_summary)
+                try:
+                    client = OpenAI()
+                    completion = client.chat.completions.create(
+                        model=GPT_MODEL,
+                        messages=[
+                            {"role": "system", "content": GPT_SYSTEM_MESSAGE},
+                            {"role": "user", "content": summary_prompt}
+                        ],
+                        temperature=GPT_TEMPERATURE,
+                    )
+                    summary = completion.choices[0].message.content
+                    st.markdown(summary)
+                    st.divider()
+
+                    # Second prompt: Analyze weak signal
+                    weak_signal_prompt = get_prompt(language, "weak_signal", topic_number=topic_number, summary_from_first_prompt=summary)
+                    with st.spinner("Analyzing weak signal..."):
+                        completion = client.chat.completions.create(
+                            model=GPT_MODEL,
+                            messages=[
+                                {"role": "system", "content": GPT_SYSTEM_MESSAGE},
+                                {"role": "user", "content": weak_signal_prompt}
+                            ],
+                            temperature=GPT_TEMPERATURE,
+                        )
+                        weak_signal_analysis = completion.choices[0].message.content
+                        st.markdown(weak_signal_analysis)
+
+                except Exception as e:
+                    st.error(f"An error occurred while generating the analysis: {str(e)}")
+            else:
+                st.warning(f"No data available for topic {topic_number} within the specified date range.")

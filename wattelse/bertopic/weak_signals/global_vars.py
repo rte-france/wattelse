@@ -73,6 +73,7 @@ GRANULARITY_FILE = 'granularity.pkl'
 HYPERPARAMS_FILE = 'hyperparams.pkl'
 DOC_INFO_DF_FILE = 'doc_info_df.pkl'
 TOPIC_INFO_DF_FILE = 'topic_info_df.pkl'
+MODELS_TRAINED_FILE = 'models_trained_flag.pkl'
 
 # Model file names
 ZEROSHOT_TOPICS_DATA_FILE = 'zeroshot_topics_data.json'
@@ -103,19 +104,19 @@ DEFAULT_MMR_DIVERSITY = 0.3
 DEFAULT_UMAP_MIN_DIST = 0.0
 
 # Embedding Settings
-EMBEDDING_DTYPES = ["Default (float)", "float16", "bfloat16"]
+EMBEDDING_DTYPES = ["float32", "float16", "bfloat16"]
 EMBEDDING_BATCH_SIZE = 5000
 EMBEDDING_MAX_SEQ_LENGTH = 512
 EMBEDDING_DEVICE = "cuda"
 
 # Other constants
-LANGUAGES = ["English", "French"]
+LANGUAGES = ["French", "English"]
 HDBSCAN_CLUSTER_SELECTION_METHODS = ["leaf", "eom"]
 VECTORIZER_NGRAM_RANGES = [(1, 2), (1, 1), (2, 2)]
 
 # GPT Model Settings
 GPT_MODEL = "gpt-4o-mini"
-GPT_TEMPERATURE = 0.1
+GPT_TEMPERATURE = 0.0
 GPT_SYSTEM_MESSAGE = "You are a helpful assistant, skilled in detailing topic evolution over time for the detection of emerging trends and signals."
 
 # Data Processing
