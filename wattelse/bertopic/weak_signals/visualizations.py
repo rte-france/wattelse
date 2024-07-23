@@ -196,9 +196,10 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         topic_last_update = st.session_state.topic_last_update
 
         window_size_timedelta = pd.Timedelta(days=window_size)
+        granularity_timedelta = pd.Timedelta(granularity)
 
-        window_end = pd.to_datetime(current_date)
-        window_start = window_end - window_size_timedelta
+        window_end = pd.to_datetime(current_date) + granularity_timedelta
+        window_start = window_end - granularity_timedelta - window_size_timedelta
 
         logger.debug(f"WINDOW SPAN: {window_start} to {window_end}")
         
