@@ -1,0 +1,588 @@
+##################################################
+Failed match for Topic 11 at Timestamp 2024-07-22 16:22:21
+Phrase to match: 'km zone'
+Best match: 'en zone' with score 73
+
+Documents for this topic and timestamp:
+Document 0:
+Le client souhaite une alimentation principale. La deuxième alimentation n'est pas nécessaire mais peut être retenue si elle est à moindres couts. Un fonctionnement en bascule ou avec une alimentation complémentaire n'est pas décidé par le client.
+
+Document 1:
+De même, la liaison oléostatique Harcourt Javel 1 est à renouveler d'ici 2030. Le cout de dépollution est commun à toutes les solutions. En considérant un cout kilométrique de 200 k km, le cout de la dépollution est évaluée à 450 k pour la liaison Harcourt Javel 1. 8.1.1.1 Solution A1 Reconstruction en lieu et place
+
+Document 2:
+La parade consiste à boucler à Chevilly puis Crétaine. Au vu du faible écart de cout entre la stratégie d'alimentation du transformateur de Castagnary depuis Javel et celle depuis Harcourt, la meilleure stratégie d'investissement pourra être réinterrogée en fonction des faisabilités réalisées en phase DE. La première stratégie étant intimement liée à la reconstruction du poste de Javel, son cout pourrait être amené à dériver à cause des difficultés à reconstruire ce poste dans un environnement très contraint. De plus, la volonté d'éliminer la jonction d'Arrêt Mixte sur la liaison Castagnary Harcourt actuelle sera considérée dans la réflexion globale afin de rechercher un traitement prioritaire au sein de l'enchainement des chantiers à réaliser.
+
+Document 3:
+5 5 2022 LA Orpheline ARRIGL61CHEVI 13,5 Réhabilitation LA 225k V Réhabilitation de la liaison 13,5 0,9 2022 Poste Harcourt ALESIP6 Fin de vie PSEM 225k V Reconstruction PSEM 8 2025 2030 Poste Harcourt CRETAP6 Fin de vie PSEM 225k V Reconstruction PSEM 15 2025 2030 Poste Harcourt JAVELP6 Fin de vie PSEM 225k V Reconstruction PSEM 8 2025 2030 Poste Aqueducs VLERSP3 Fin de vie poste aérien 63k V Dépose du poste 0,4 2025
+
+Document 4:
+2 M à fin 2018, l'amortissement est budgété jusqu'en 2048 sur les tronçons en 630 Al renouvelé dans les années 2000. Figure 2 Représentation des tronçons des liaisons Billancourt Porchefontaine 1 et 2 en fonction de la technologie du câble utilisée (En rouge, les tronçons en PI, en jaune les tronçons en 240Al ou 400Al et en vert, le tronçon en 800 Al)
+
+Document 5:
+Suite à l'étude de faisabilité, la liaison serait en 630Al sur une longueur de 2.9 km en zone urbaine dense et 1.2 km en galerie pour un cout de 6 M . La liaison Castagnary Harcourt emprunte une galerie RTE sur une partie de son tracé d'où un cout assez faible malgré la longueur. La liaison Harcourt Javel 2 emprunte aussi cette galerie. 8.1.2.2 Solution B2 Alimentation depuis Javel Cette solution consiste à créer une nouvelle liaison synthétique 225 k V Castagnary Javel. Suite à l'étude de faisabilité, la liaison serait en 630 Al sur une longueur de 3.1 km en zone urbaine dense pour un cout de 5.4M .
+
+Document 6:
+Afin de mieux mailler le réseau, cette solution consiste à créer une liaison Billancourt Vanves au lieu de relever une liaison Harcourt Vanves. La deuxième liaison Harcourt Vanves à relever serait abandonnée. Cette solution prend comme hypothèse la possibilité de disposer de la cellule de réserve au poste de Billancourt. Suite à l'étude de faisabilité, la liaison sera en 630Al sur une longueur de 5.4 km en zone urbaine dense pour un cout de 7.6 M . Cette solution permet de mieux mailler le réseau mais ne permet toujours pas de tenir le N1 consignation ce qui laisse l'alimentation du poste source de Vanves précaire.
+
+Document 7:
+Opération Caractéristiques HMO MO LS Création d'une LS double 225 k V sur 2 km en 630 Al Zone urbaine 8,8 M 1 M Poste Extension de deux cellules lignes PSEM (Dont risques 30 ) 2 M 0,3 M Renforcement Dépose Renouvellement ARRIGHI VITRY NORD en 2500 Al 10,4 M 1,2 M TOTAL 23,7 M 21,2 M 2,5 M
+
+Document 8:
+Opération Caractéristiques HMO MO LS Création d'une LS simple 225 k V sur 2 km en 630 Al Zone urbaine 4,9 M 0,6 M Création d'une LS simple 225 k V sur 2,6 km en 630 Al Zone urbaine 6,3 M 0,8 M Poste Equipement de la cellule à MALASSIS 225 k V et création d'un départ à VINCENNES 225 k V (Dont risques 30 ) 2 M 0,3 M TOTAL 14,9 M 13,2 M 1,7 M
+
+Document 9:
+Elle sert à alimenter en antenne le TR 611 d'Enedis qui est pérenne. Un abandon de cette liaison n'est donc pas envisageable. Le cout de dépollution est commun à toutes les solutions. En considérant un cout kilométrique de 200 k km, le cout de la dépollution est évaluée à 750 k pour la liaison Castagnary Harcourt.
+
+Document 10:
+Si la relève partielle se focalise que sur les tronçons en PI alors le budget de la stratégie est réduit à 12M . Saint Aubin Versailles Porchefontaine Billancourt
+
+Document 11:
+La stratégie consistant à ne pas relever les deux liaisons Harcourt Vanves 1 et 2 qui seront en fin de vie en 2035, n'est pas envisageable car le poste de Vanves et la sous station SNCF Les Suisses ne seraient alimentés que par la liaison Harcourt Vanves n 3. Cette solution n'est pas robuste au N 1 et donc pas acceptable pour les clients ayant contractualisés une alimentation de secours.
+
+Document 12:
+Cette solution permet de mieux mailler le réseau mais ne permet toujours pas de tenir le N1 consignation ce qui laisse l'alimentation du poste source de Vanves précaire. Cette stratégie entraine de l'END en cas de N 1 consignation pour un montant de 10 k an. Les Suisses Vanves 1 2 1 2 3 Billancourt Puteaux Harcourt Les Suisses Vanves 1 2 3 Billancourt Puteaux Harcourt
+
+Document 13:
+Cette solution répond bien à la doctrine de développement mais elle ne permet pas de tenir le N 1 consignation, point essentiel pour l'exploitation. Cette stratégie entraine de l'END en cas de N 1 consignation pour un montant de 10 k an. Suite à l'étude de faisabilité, la liaison sera en 630 Al sur une longueur de 4 km en zone urbaine dense pour un cout de 4.5 M . 8.5.4 Solution F4 Combinaison des solutions F2 et F3 Cette solution consiste à créer une liaison Billancourt Vanves et à relever une des deux liaisons Harcourt Vanves. Cette stratégie prend comme hypothèse la possibilité de disposer de la cellule de réserve au poste de Billancourt.
+
+Document 14:
+Il ne réside pas d'opportunité de restructuration différente du fait d'une consommation plus faible sur la zone Sud de la coupe GPU. La plupart des dimensionnements des liaisons ayant été proposés en 630 Al, un potentiel gain de section avec le scénario bas de consommation n'a pas lieu d'être dans ces cas de figure.
+
+Document 15:
+2.1.1.2 Zone Harcourt 63 k V Les liaisons 63 k V Harcourt Vanves 1 et 2 possèdent 2.6 km sur les 3.8 km du tracé en papier imprégné. Figure 3 Représentation des tronçons PI des liaisons 63 k V Porchefontaine Versailles 1 et 2
+
+Document 16:
+En outre, cela permet d'alimenter la gare Montparnasse depuis une injection différente de celles d'Harcourt et Billancourt. Les liaisons Billancourt Porchefontaine sont alors abandonnées et les tronçons non amortis à hauteur de 3 M .
+
+Document 17:
+Les liaisons Billancourt Porchefontaine sont alors abandonnées et les tronçons non amortis à hauteur de 3 M . La stratégie consiste à Créer une seconde liaison 63 k V Saint Aubin Versailles en 630 Al pour un cout de 7.9 M Ajouter une cellule ligne au poste de Saint Aubin 63 k V pour 500 k Réaliser des chambres de jonction entre les liaisons Saint Aubin Versailles et Versailles Porchefontaine puis relever les tronçons papier imprégné de ces liaisons pour un cout de 1.2 M Déposer les actifs 63 k V et étendre le PSEM 225 k V pour raccorder le nouveau transformateur Enedis.
+
+Document 18:
+Les arrivées aux postes sont en tronçons synthétiques et seront donc conservés. Le tronçon de 200 m situé au milieu de la liaison sera a priori abandonné. Suite à l'étude de faisabilité, les liaisons seraient en 630 Al et en fourreau double sur une longueur de 4km en zone urbaine dense pour un cout de 7.2 M . 8.5.2 Solution F2 Création d'une liaison Billancourt Vanves L'incendie du poste d'Harcourt a mis en exergue le fait que toute l'alimentation de la poche 63 k V repose en grande partie sur ce poste. Afin de mieux mailler le réseau, cette solution consiste à créer une liaison Billancourt Vanves au lieu de relever une liaison Harcourt Vanves.
+
+Document 19:
+Cependant, le critère de la perte totale d'un poste n'étant pas prise en compte dans la doctrine, le surcoût ne peut être justifié avec la doctrine en vigueur. Le cout de cette solution est donc évaluée à 13.5M . Les Suisses Vanves 3 Billancourt Puteaux Harcourt Les Suisses Vanves 3 Billancourt Puteaux Harcourt
+
+Document 20:
+Début 2019, ce non amortissement est évalué à 5.4 M . Toutefois, cette perte diminuera en fonction de la date de mise en service du nouvel ouvrage car l'amortissement sera plus important. En 2035, ce non amortissement sera de 3 M . Le cout total de cette solution est évaluée à 22.3M . Saint Aubin Versailles Porchefontaine Billancourt
+
+Document 21:
+La deuxième liaison Harcourt Vanves à relever serait abandonnée. Cette solution prend comme hypothèse la possibilité de disposer de la cellule de réserve au poste de Billancourt. Suite à l'étude de faisabilité, la liaison sera en 630Al sur une longueur de 8.4 km en zone urbaine dense pour un cout de 9 M . Cette solution permet de mieux mailler le réseau mais ne permet toujours pas de tenir le N1 consignation ce qui laisse l'alimentation du poste source de Vanves précaire. Cette stratégie entraine de l'END en cas de N 1 consignation pour un montant de 10 k an.
+
+##################################################
+
+##################################################
+Failed match for Topic 28 at Timestamp 2024-07-22 16:22:21
+Phrase to match: 'estimé rcd'
+Best match: 'estimé au' with score 77
+
+Documents for this topic and timestamp:
+Document 0:
+Le montant probable de cette stratégie est estimé aux RCD 2023 ( P70) à un total de 15,39 M dont 1,62 M de main d'œuvre.
+
+Document 1:
+Voyons maintenant quels sont les coûts et délais de chacune des solutions envisagées. Les coûts donnés sont issus du RCD 2023 et prennent en compte la majoration P70.
+
+Document 2:
+Nous considérons que le projet du client (poste, TR) nous conduira à être soumis à une étude d'impact et enquête publique considérant la notion de projet global , le délai de mise à disposition est estimé au plus court à 54 mois après signature de la PTF dont 30 mois de procédures administratives.
+
+Document 3:
+Pour éviter des investissements couteux et non nécessaires sur le moyen terme, deux scénarios ont été étudiés
+
+##################################################
+
+##################################################
+Failed match for Topic 28 at Timestamp 2024-07-22 16:22:21
+Phrase to match: 'coûts délais'
+Best match: 'les coûts' with score 78
+
+Documents for this topic and timestamp:
+Document 0:
+Le montant probable de cette stratégie est estimé aux RCD 2023 ( P70) à un total de 15,39 M dont 1,62 M de main d'œuvre.
+
+Document 1:
+Voyons maintenant quels sont les coûts et délais de chacune des solutions envisagées. Les coûts donnés sont issus du RCD 2023 et prennent en compte la majoration P70.
+
+Document 2:
+Nous considérons que le projet du client (poste, TR) nous conduira à être soumis à une étude d'impact et enquête publique considérant la notion de projet global , le délai de mise à disposition est estimé au plus court à 54 mois après signature de la PTF dont 30 mois de procédures administratives.
+
+Document 3:
+Pour éviter des investissements couteux et non nécessaires sur le moyen terme, deux scénarios ont été étudiés
+
+##################################################
+
+##################################################
+Failed match for Topic 30 at Timestamp 2024-07-22 16:22:21
+Phrase to match: 'colt liaisons'
+Best match: 'les liaisons' with score 80
+
+Documents for this topic and timestamp:
+Document 0:
+A la lumière de ces résultats, la solution de raccordement préférentielle sous critère technico économique est l'antenne à Loges 90 k V. La solution technique consiste en une création de deux LS de raccordement propre du client au poste de Loges 90 k V.
+
+Document 1:
+3.2 Stratégies écartées Compte tenu de la proximité du poste de Courtry au Pd L du client, aucune autre stratégie de raccordement n'a été étudiée. 3.3 Stratégie de raccordement retenue La stratégie retenue est le raccordement en antenne sur le poste 225 k V de Courtry avec une liaison souterraine de 500 m selon le schéma de principe suivant Le poste de Courtry 225 k V est un poste aérien non normalisé à double jeu de barres basses. Il possède actuellement un emplacement de réserve sur le jeu de barre en section 1, mais la présence du TR634 devant le pas de cellule empèche l'implantation d'une nouvelle cellule.
+
+Document 2:
+envisagerons des solutions de raccordement en 225 k V. Ainsi, les différentes stratégies de raccordement examinées au cours de cette étude exploratoire sont les suivantes
+
+Document 3:
+Raccordement au poste 225 KV de Rungis , la reconstruction du poste est encore incertaine et ne serait pas suffisante pour raccorder le client Goodman les liaisons Chevilly Rungis sont aujourd'hui au maximum de leur capacités, il n'est donc pas possible d'ajouter de la consommation sous Rungis actuellement. Une solution en aérien est directement écartée compte tenu des zone industrielles et résidentielles traversées. Deux stratégies de raccordement ont été étudiées dans la note NT DI CDI PAR SED22 30115 Entrée en coupure sur la liaison 225 k V Chevilly Villejust ZCyrus One 1 (28 M ), Double antenne sur le poste 225 k V de Chevilly (24 M ).
+
+Document 4:
+pour le raccordement du SEDIF à 40 MW depuis le poste de Chevilly 225 k V PTF ADP, pour le raccordement d'ADP Orly à 55 MW depuis le poste de Chevilly 225 k V PTF Nozay, pour le raccordement d'un DC de 120 MW depuis le futur poste d'Escargot 225 k V 3.1 Comparaison des stratégies de raccordement Deux stratégies de raccordement sont étudiées en phase exploratoire Un raccordement en antenne au poste de Courtry 225 k V une double antenne doit être considérée (plutôt qu'une antenne simple avec deux tricâbles jumelés) pour l'exigence du client. Cette stratégie n'est pas envisageable.
+
+Document 5:
+Une stratégie de raccordement en double antenne sur Choisy le Roi 63 k V avait été écartée au vu de son cout plus important. De même, la stratégie de raccordement par création d'un poste en entrée en coupure sur la liaison Chevilly
+
+Document 6:
+Une stratégie de raccordement sur Arrighi 63 k V avait été écartée au vu de son cout plus important.
+
+Document 7:
+En effet, les raccordements préférentiels concluent tous à un raccordement en double antenne sur Chevilly 225 k V. Toutefois, les sites proposés par les clients sont tous plus proches du poste 225 k V de Rungis. Or ce poste est de type D' ce qui ne permet pas de raccorder l'ensemble des clients.
+
+Document 8:
+Augmenter l'IST des liaisons Chevilly Rungis actuelles ou mettre en souterrain ces liaisons avec une IST plus importante
+
+Document 9:
+Note de synthèse PTF Goodman Rungis (Datacenter) Page 2 54 Puissance de raccordement 55 MW Solution de raccordement Double Antenne en Liaison Souterraine depuis le poste 225 k V de Chevilly comprenant une alimentation principale et une secours, pouvant transiter chacune 55 MW. Consistance technique Création de 2 LS entre le poste de Chevilly et le site client, en 630mm2 Aluminium, d'environ 9,6 kms, pose en bloc double PVC béton et avec franchissements carrefours, autoroutes et Orlyval. Création des 2 cellules lignes sur des emplacements de réserves et de sections différentes au poste de Chevilly 225 k V.
+
+Document 10:
+Ainsi, même en ayant un linéaire quasi doublé par rapport à l'étude exploratoire, le raccordement en 225 k V sur Chevilly reste la meilleure stratégie dans cette zone. Copyright RTE. Ce document est la propriété de RTE. Toute communication, reproduction, publication même partielle est interdite sauf autorisation écrite du Gestionnaire du Réseau de Transport d'Electricité (RTE)
+
+Document 11:
+Le raccordement en double antenne depuis Chevilly est celui qui avait été présenté au client HSBC et Cyrus One lors des deux études exploratoires dans la même zone.
+
+Document 12:
+Cette structure de raccordement arrive toutefois à épuisement puisqu'avec les deux demandes de PTF de Digital Realty et COLT, quatre liaisons 225 k V vont être piquées. La situation est alors la suivante Les liaisons rouges comportent déjà un piquage Les liaisons vertes sont piquées pour la PTF COLT Les liaisons bleues sont piquées pour la PTF Digital Realty Les liaisons jaunes (3.2) et (4) sont des antennes alimentant les postes de Massy et Chatillon, ce qui n'est pas optimal en termes de Qd E Les liaisons jaunes (7) Chevilly Villejust 1 et 2 sont des liaisons utilisées pour des files de renvoi de tension
+
+Document 13:
+Le pylône 40 de la liaison Arrighi Chevilly est situé sur la parcelle d'une entreprise ce qui rendra d'autant plus difficile l'adaptation de ce pylône en aérosouterrain. Un risque a été pris en compte dans le chiffrage pour ce pylône.
+
+Document 14:
+envisagerons des solutions de raccordement en 225 k V. Ainsi, les différentes stratégies de raccordement examinées au cours de cette étude exploratoire sont les suivantes
+
+##################################################
+
+##################################################
+Failed match for Topic 9 at Timestamp 2024-07-22 16:26:55
+Phrase to match: 'pont mée'
+Best match: 'point de' with score 80
+
+Documents for this topic and timestamp:
+Document 0:
+Les deux stratégies envisageables sont donc un raccordement en antenne depuis le poste de Villeras et une entrée en coupure sur une liaison du couloir passant entre Robinson et Clamart. Entrée en coupure RTE dispose d'un terrain dans la zone (ancien poste), mais les premiers échanges avec la mairie n'étaient pas positifs la mairie ne souhaitait pas modifier le PLU et avait des projets de développement dans la zone. Pour la construction d'un poste, PSEM en bâtiment, on affiche actuellement des délais de 5,5 ans, ce qui induirait un raccordement pour mi 2028. Ces délais ne sont pas compatibles avec les délais demandés par le client.
+
+Document 1:
+Un raccordement depuis Aqueducs se ferait via une liaison souterraine au vu de l'environnement urbain. Cette stratégie consiste à créer une liaison souterraine entre Aqueducs et Ris Orangis et à déposer la liaison Epinay Ris Orangis.
+
+Document 2:
+De plus, la réhabilitation de la liaison Chevilly Villeneuve Saint Georges à l'horizon 2030 se fera plus vraisemblablement en liaison souterraine car cette dernière est située dans un environnement urbain dense. Cela pose la question de la reconduction du piquage à cet horizon.
+
+Document 3:
+une PTF Enedis a été demandée afin d'entrer le poste de Robinson en coupure sur la liaison 225 k V Harcourt Villejust 2. Ce projet a pour objectif de sécuriser l'alimentation du poste de Robinson et de décorréler son alimentation de celle de Chatillon (les deux postes sources se secourant mutuellement l'un l'autre par le réseau HTA). Poste Pmax 2030 Ptmb 2030 Robinson 225k V 118 144
+
+Document 4:
+Cette étude conclue à la nécessité de réhabiliter la liaison 63 k V Epinay Ris Orangis. Ce paragraphe résume les grandes lignes de l'étude menée courant 2016 2017. 12.2.1 Stratégie 1 Réhabilitation en lieu et place Cette stratégie consiste à réhabiliter en lieu et place cette liaison. Le coût est estimé à 5 M . Si cette liaison devait être reconstruite en souterrain pour des raisons de concertation, le coût est estimé à 7 M . 12.2.2 Stratégie 2 Raccordement depuis Aqueducs Le poste d'Aqueducs 63 k V est situé à environ 7 km à vol d'oiseau de la sousstation Ris Orangis.
+
+Document 5:
+Cette liaison étant située en zone corrosive, la nouvelle politique corrosion préconise une reconstruction complète de l'ouvrage. Cette zone électrique a largement été étudiée dans le cadre de l'étude commune avec Enedis en 2016 pour la création d'un poste source Bâtisseurs 225 k V, qui venait à décharger le poste d'Epinay 63 k V. Suite à la mise en service de ce poste 225 k V, le poste d'Epinay peut être reconstruit avec un schéma enveloppe simplifié et la dépose de deux liaisons aériennes Epinay Lesurcq et Epinay Lesurcq Lieusaint peut être actée. Cette étude conclue à la nécessité de réhabiliter la liaison 63 k V Epinay Ris Orangis.
+
+Document 6:
+Le pylône 40 de la liaison Chevilly Villeneuve Saint Georges est facile d'accès et doit pouvoir faire l'objet d'une adaptation en aérosouterrain.
+
+Document 7:
+2.2 Politique GAELA Liaisons Aériennes Les seules liaisons aériennes éligibles à un remplacement des conducteurs sont celles appartenant à la zone Chartreux Villejust Loges 90 k V et la liaison 63 k V Epinay Ris Orangis. La liaison Arrighi Chevilly 225 k V possède un tronçon de conducteur en alu acier de 1941. Aujourd'hui, aucune expertise ni avis du GMR indique un état dégradé Figure 7 Représentation géographique de la liaison Epinay Ris Orangis 63 k V et des liaisons 90 k V entre Villejust et les Loges 90 k V
+
+Document 8:
+Hormis ces quelques travaux, une réhabilitation n'est pas prévue à court terme. La liaison Pont du Mée Villers 63 k V constitue le secours à bien plaire de la sous station SNCF Villers. Cette liaison nécessitant une réhabilitation, RTE a informé la SNCF de son intention de la déposer à moins que la SNCF ne souhaite payer pour disposer de cette alimentation de secours. Des discussions sont actuellement en cours pour déterminer le planning de cette dépose. Figure 8 Représentation géographique de la liaison aérienne entre Arrighi et Chevilly 225 k V
+
+Document 9:
+Cette stratégie consiste à abandonner la liaison Harcourt Robinson qui comporte une partie oléostatique (Harcourt Raie Tortue 2). Le poste de Robinson sera alors alimenté par le poste de Chatillon (si le bouclage est possible en N) et par Villejust pour respecter la PTF d'ENEDIS demandant une double alimentation pour ce poste. Cette stratégie implique l'abandon de la liaison souterraine posée dans le cadre du MESIL entre le poste de Robinson et Petit Clamart (non amortissement de ces câbles). 2 2 1 1 Harcourt Moulineaux Clamart Robi Chati
+
+Document 10:
+Une première partie Harcourt Moulineaux en même temps que la Berthollet Robinson afin de sécuriser l'alimentation d'Harcourt le plus rapidement possible. La seconde partie entre Harcourt et Javel sera fait a posteriori lorsque la reconstruction du poste de Javel sera terminée. Ce séquencement permet de s'affranchir de la contrainte de temps liée à la reconstruction du PSEM de Javel.
+
+Document 11:
+Cette file de liaison est une ancienne file SNCF composée principalement de supports treillis et de pylônette. Des visites montées ont également mis en avant l'état de dégradation avancé de certains supports. Le schéma ci dessous récapitule les tronçons de liaisons aériennes concernés (bleu) En 2015, une première étude a mis en évidence plusieurs stratégies de restructuration en technologie souterraine uniquement. Suite au passage en CEP en 2016 pour validation, il a été demandé de regarder en phase DE la possibilité de conserver certains couloirs aériens et d'en estimer la compatibilité avec les stratégies de restructuration envisagées, et de statuer sur la meilleure stratégie de restructuration.
+
+Document 12:
+Envisager un remplacement de conducteur supérieur n'est peut être pas la solution la plus efficace pour gain minime de transit sur le réseau. En effet sur une vision long termiste, la dynamique de raccordement est en augmentation, ajuster le remplacement de la LS au strict besoin de cette étude ne serait pas viable comme cela a été analysé dans l'Ed Z de Paris Oise.
+
+Document 13:
+3. Justification du projet de la stratégie retenue 3.1 Stratégies écartées La source d'alimentation la plus proche (tout poste et liaison compris) est le poste de Sénart. Une solution avec piquage est à exclure compte tenu du niveau de puissance demandée. Le raccordement depuis Aqueducs 225k V a été écarté pour des raisons de coûts. Néanmoins, en termes de Qd E, cette solution présentait une meilleure garantie pour le client, le poste de Sénart étant alimenté par deux liaisons 225 k V, alors que le réseau à Aqueducs est plus maillé.
+
+Document 14:
+Depuis les années 1970, le site appartenait à CITROEN, puis à PEUGEOT CITROËN AUTOMOBILE. Des travaux de dépollution ont rendu l'exploitation du site compatible avec le tertiaire.
+
+Document 15:
+La dépose de la liaison Pont du Mée Villers et du poste d'aiguillage de Saint Fargeau est proposée. Le poste de Villers sert à alimenter un seul TR SNCF, cette stratégie consiste à alimenter ce transformateur en antenne depuis Aqueducs dont la partie aérienne a été réhabilitée en 2014.
+
+Document 16:
+Vanves conserve trois alimentations. Le poste de Vanves 63 k V est un poste PIM qui a été mis en service en 2013. Lors des échanges avec ENEDIS suite à l'incendie du poste d'Harcourt 63 k V, ENEDIS a indiqué à RTE vouloir conserver la même alimentation qu'avant l'incendie. Le poste 63 k V est donc pérenne et ENEDIS souhaite donc conserver 3 liaisons d'alimentations. Toute solution dégradant fortement l'alimentation du poste source de Vanves en ne conservant que deux alimentations dégrade aussi l'alimentation de la sousstation SNCF Les Suisses. Or une étude commune avec la SNCF est en cours afin de sécuriser l'alimentation des Suisses.
+
+Document 17:
+67 12.1 (O1 O2) Poste de Villers 63 k V et ses liaisons d'alimentation . 67 12.1.1 Contexte et service rendu . 67 12.1.2 Schéma électrique . 68 12.1.3 Stratégie n 1 Reconstruction en lieu et place . 68 12.1.4 Stratégie n 2 Alimentation en antenne de Villers . 69 12.1.5 Conclusion . 69 12.2 O3 Liaison 63 k V Epinay Ris Orangis . 70 12.2.1 Stratégie 1 Réhabilitation en lieu et place . 70 12.2.2 Stratégie 2 Raccordement depuis Aqueducs . 70 12.2.
+
+Document 18:
+Quant aux liaisons Chatillon ZRobinson, elles servent à alimenter le poste source de Chatillon qui est le second poste source le plus important en termes de charge pour Enedis. Suite à une agression tiers sur un des deux câbles, une réparation a été faite pour une durée estimée à 5 ans maximum. Au vu des bonnes relations avec les collectivités dans le cadre du projet de MESIL Clamart Plessis Robinson, une décision d'engagement a été prise fin 2019 pour relever ces deux liaisons en lieu et place.
+
+Document 19:
+Il existe des recommandations concernant les travaux à effectuer à proximité des lignes à haute et très haute tension. Il convient d'éviter à proximité de ces ouvrages, la construction ou l'aménagement de bâtiments à usage d'habitation, d'aire d'accueil des gens du voyage, d'établissement recevant du public, de cours d'école, etc Concernant le transport d'électricité, l'AFSSET (Agence française de sécurité sanitaire de l'environnement et du travail) incite au principe de précaution en n'augmentant pas le nombre de personnes sensibles exposées autour des lignes à très haute tension et propose la création de zones d'exclusion Copyright RTE. Ce document est la propriété de RTE.
+
+Document 20:
+Les stratégies de restructuration de la zone sont dépendantes des stratégies de renouvellement des actifs Enedis 63 k V au poste de Versailles et SNCF à la sous station Porchefontaine 63 k V. La SNCF a confirmé que cette sous station est pérenne. Ces deux liaisons ne sont pas des secours à bien plaire. La sous station SNCF de Porchefontaine doit donc conserver deux alimentations en 63 k V. Une stratégie tout en 225 k V n'est donc pas envisageable. Enedis a indiqué ne pas être opposé à un renouvellement de leurs transformateurs 63 HTA en un transformateur 225 HTA. De plus, le site de Versailles ne possède pas un foncier suffisant pour créer un poste 63 k V.
+
+Document 21:
+Il a été retenu de conserver ces trois alimentations pour ne pas dégrader la qualité d'alimentation de la zone. Harcourt conserve trois alimentations D'un point de vue technico économique, la création d'une troisième source (depuis Moulineaux par exemple) n'est pas justifiée. En effet, le bilan de cette stratégie est plus faible que la stratégie de référence consistant à ne rien faire, et les indicateurs RBC et BEI ne remplissent pas les critères. Cependant, d'un point de vue Qd E, la création de cette liaison est indispensable. La consommation du poste d'Harcourt 225k V en été est d'environ 300 MW ce qui
+
+Document 22:
+Il n'est pas possible de reporter en préventif de la charge sur la poche de Puteaux car cela génèrerait des contraintes en cas de N 1 sur cette poche. La création d'une troisième source d'alimentation d'Harcourt est donc nécessaire afin de conserver une bonne Qd E dans la zone. Mode commun RATP Alésia La reconstruction du poste d'Alésia avec deux jeux de barres accueillant les deux transformateurs RATP entrainerait un mode commun PSEM avec une alimentation mutualisée. Pour rappel, à l'heure actuelle, les alimentations des bases RATP sont séparées avec deux demi PSEM entre Alésia et Crétaine.
+
+Document 23:
+Aujourd'hui, aucune expertise ni avis du GMR indique un état dégradé des conducteurs. Cependant, quelques supports sont dans un état dégradé et nécessitent une réhabilitation limitée afin de garantir la sécurité des tiers (surplomb du TGV Sud Est). Hormis ces quelques travaux, une réhabilitation n'est pas prévue à court terme. Une décision d'ouverture a été prise en ce sens en septembre 2019. L'étude de zone n'a pas mis en évidence d'opportunité sur le court terme d'une stratégie différente pour traiter cette situation patrimoniale.
+
+##################################################
+
+##################################################
+Failed match for Topic 16 at Timestamp 2024-07-22 16:26:55
+Phrase to match: 'poste saint'
+Best match: 'de Saint' with score 77
+
+Documents for this topic and timestamp:
+Document 0:
+Toutefois, l'augmentation de puissance du client ne génère pas de contraintes sur le N 1 réciproque de la transformation de Saint Aubin. Ceci s'explique par la mise en place du bouclage au poste de Mérantais avec la poche électrique d'Elancourt qui permet d'apporter de la puissance via les transformateurs 225 63 k V d'Elancourt. ENEDIS a fait une demande d'étude d'insertion afin d'augmenter la puissance au poste source de Mérantais. Cette augmentation entraine une contrainte en cas de défaut barre au poste de St Aubin 225 k V.
+
+Document 1:
+Il se situe à environ 10 km à vol d'oiseau du poste d'Elancourt 225 63 k V, 4 km de Saules 225 k V et 6 km de Saint Aubin 225 63 k V. Le profil de consommation sera de type industriel.
+
+Document 2:
+L'ouvrage est une LS de plus de 12.7 km en 20002 Alu avec un départ existant au poste d'Elancourt seulement.
+
+Document 3:
+Nous prendrons les coûts références du RCD à P 70 qui seront supérieurs à ceux estimés de l'Ed Z. Avec une actualisation au coût RCD à P 70, le renforcement atteint 46.3 M comprenant le coût de la LS 225 k V Elancourt Yvelines Ouest (tracé plus court que l'Ed Z), du banc de transformation 225k V 400 k V au poste d'Yvelines Ouest ainsi que les coûts postes (création du poste 225 k V à Yvelines Ouest et de la cellule à Elancourt 225 k V).
+
+Document 4:
+Avec l'ajout du raccordement du client en régime normal pointe hivernale, la liaison 225 k V Elancourt Yvelines est surchargée (ouvrage du réseau d'extension), aucune parade topologique ne peut résorber cette surcharge, par conséquent un renforcement est à calculer.
+
+Document 5:
+Vu la longueur cumulée des deux liaisons souterraines d'alimentation client ( 8km cumulé), l'installation de deux selfs est nécessaire au poste d'Elancourt pour compenser le réactif du câble. Le coût de la mise en place de des ouvrages atteint 11 M .
+
+Document 6:
+Travaux Coût (M ) LS double de raccordement 35 M Ajout deux cellules et un couplage à Seine 63 k V 4 M Renouvellement de la liaison Bourget Sausset 225 k V 60 M Total 99 M
+
+Document 7:
+Vu la longueur cumulée des deux liaisons souterraines d'alimentation client ( 8km cumulé), l'installation d'une self est nécessaire au poste de Saint Aubin pour compenser le réactif du câble. Le coût de la mise en place de l'ouvrage atteint 5,5 M .
+
+Document 8:
+Dans un premier temps, le client est séparé à vol d'oiseau de 10 km du site 225 k V 63 k V de Elancourt et de 6 km du poste de Saint Aubin 225 k V. Ces distances seront supérieures dans la réalité car le tracé certain n'est pas défini dans cette étude. Quel que soit le raccordement envisagé, le tracé de la liaison souterraine sera dans un milieu urbain contournant le plus possible le parc naturel régional de Haute Vallée de Chevreuse.
+
+Document 9:
+La liaison Elancourt Yvelines ouest 225 k V est une liaison souterraine en surcharge en régime normal pour les deux solutions de raccordement. L'END générée est de fait valorisé par la continuité présentielle de la contrainte tout au long de l'année selon une analyse statique. Cette contrainte concerne les deux solutions de raccordements proposées.
+
+Document 10:
+L'ouvrage est une LS de plus de 12.7 km en 20002 Alu avec un départ existant au poste d'Elancourt seulement.
+
+Document 11:
+Nous étudions la perte de la liaison 63 k V Elancourt Mérantais, qui entraine une contrainte sur la liaison Saint Aubin Technocentre Mérantais 63 k V non solvable par parade non coûteuse. Des travaux sont alors nécessaires sur la LIT Saint Aubin Ztechnocentre qui est une aéro souterraine exploitée à 45 avec du AM 288 sur 3.5 km d'aérien et de l'AL 800 sur 3.6 km de souterrain, dont la partie LA est limitante. Pour dimensionner le matériel, le besoin en transit maximum utilisé pour lever la contrainte est de 425 A.
+
+Document 12:
+Nota à N 6, le point d'été regroupe les mêmes contraintes perçues à N 12 ans. Ce seront les valeurs N 6 qui seront utilisées pour la valorisation de Saint Aubin Technocentre Mérantais 63 k V. Le coût END calculé sur 17 ans est de 2 100 k .
+
+Document 13:
+Un projet en cours est prévue sur la LIT Saint Aubin ZMagny Les Hameaux 63 k V permettant la mise en souterrain de la partie aérienne de l'ouvrage, augmentant ainsi l'IST. Les travaux sont prévus pour novembre 2024, le projet a atteint le stade de DI DCT depuis juin 2023. Notre étude a calculé sans cette modification de valeur IST afin d'être dans la situation la plus contraignante.
+
+Document 14:
+Le coût de la réhabilitation de la partie aérienne de Elancourt Saint Aubin 225 k V s'élèverait à 5 M environ.
+
+Document 15:
+Pour des contraintes de délai de réponse de cette étude, la valorisation d'une installation d'un disjoncteur de tronçonnement n'a pas été analysé pour le poste d'Elancourt 225 k V et de Saint Aubin 225 k V.
+
+Document 16:
+La liaison Seine Saint Ouen n 3 est déjà en contrainte avant raccordement et celle ci n'est pas aggravée par le raccordement.
+
+Document 17:
+L'ouvrage est une liaison aéro souterraine de 18.6 km dont le câble souterrain présent qu'au poste de Saint Aubin n'est pas limitant.
+
+##################################################
+
+##################################################
+Failed match for Topic 18 at Timestamp 2024-07-22 16:26:55
+Phrase to match: 'at766'
+Best match: 'l'AT761' with score 67
+
+Documents for this topic and timestamp:
+Document 0:
+Celle ci est raccordée, via un caniveau collecteur, à une fosse déportée dont le volume du bac récupérateur est de 80m3. Tertiaire et neutre La réactance shunt N1 2 était raccordée initialement conjointement aux tertiaires de l'AT761 et de l'AT762. Suite à l'incendie, la réactance a été déconnectée de l'AT761. Le neutre côté primaire de l'AT761 était mis à la terre via une inductance monophasée de neutre. Il était protégé par un parafoudre de neutre. Le parafoudre a été déposé. L'inductance est toujours en place. La connexion avec le neutre de l'AT a été déposée.
+
+Document 1:
+Date d'approbation 18 05 2021 Date d'applicabilité 18 05 2021 Date de fin de validité NT DI CDI PAR SP 2 21 11042 Indice 1 Projet de sécurisation des UA 225 90k V et de ferraillage de l'AT761 sur le site de 31 Pages 4 annexes Documents annulés Sans objet Documents de référence D DI CDI PAR SED 20 00047 DO Non renouvellement AT 761 Villejust et Demande ressource DI_Sécurisation UA225 Villejust Référence fonctionnelle Sans objet Résumé Ce document présente l'étude technique poste (HT et BT) réalisée suite à la DO indiquée en document de référence.
+
+Document 2:
+En juillet 2020, SED informe de la faible probabilité du remplacement de l'AT761. Il devient donc nécessaire de sécuriser définitivement la seconde source des UA B2 n A. Service rendu La sécurisation de l'alimentation des unités auxiliaires B2 n A du site de VILLEJUST est nécessaire.
+
+Document 3:
+Les papiers des enroulements sont noircis et fortement détériorés Les aéroréfrigérants ont été fortement endommagés côté 245 k V Les moteurs des aéroréfrigérants et le coffret BT ont fondu Le béton de la cellule AT a été fortement endommagé La cause la plus probable du défaut est un amorçage interne qui a pris naissance dans la partie supérieure de la traversée 245 k V phase B. L'expertise réalisée par le CNER et la maintenance a conclu à la nonréparabilité de l'AT 761 de Villejust (Rapport R MAIN CNER DP TCC 19 00291).
+
+Document 4:
+Un risque de 75 k est compté en cas de présence de sol pollué qu'il faudrait traiter. 4.1.10.1 Travaux postes encadrants Sans objet. 4.1.10.2 Travaux provisoires Sans objet. 4.1.10.3 Travaux Sous Tension (TST) Sans objet. 4.1.10.1 Travaux sur bâtiments Sans objet. Copyright RTE. Ce document est la propriété de RTE. Toute communication, reproduction, publication même partielle est interdite sauf autorisation écrite du Gestionnaire du Réseau de Transport d'Electricité (RTE)
+
+Document 5:
+2.3 Situation existante Caractéristique de l'AT (source IPSAM) Date de fabrication 1984 Date de mise en service 1992 Masse totale sans huile 203,5 T Masse totale de l'huile 44,5 T Mode de refroidissement ODAF Aéroréfrigérants associés à la cuve Raccordement Copyright RTE. Ce document est la propriété de RTE. Toute communication, reproduction, publication même partielle est interdite sauf autorisation écrite du Gestionnaire du Réseau de Transport d'Electricité (RTE)
+
+##################################################
+
+##################################################
+Failed match for Topic 24 at Timestamp 2024-07-22 16:26:55
+Phrase to match: 'mm2 cu'
+Best match: 'Code Immo' with score 53
+
+Documents for this topic and timestamp:
+Document 0:
+Longueur du tronçon Type d'isolant Section de l'âme Matériau de l'âme Tronçon de puissance Code Immo 402 Synthétique PR 240 Aluminium HARC7 P31 L31VANVE JP0N 17 Synthétique PR 240 Aluminium JP0 N J1 560 Synthétique PR 630 Aluminium J1 J5 500 Papier imprégné 155 Cuivre J5 J8 200 Synthétique PR 630 Aluminium J8 J9 195 Papier imprégné 155 Cuivre J9 J11 298 Papier imprégné 155 Cuivre J11 J14 423 Papier imprégné 155 Cuivre J14 J18 307,3 Papier imprégné 155 Cuivre J18 J21 472,
+
+Document 1:
+3 Papier imprégné 155 Cuivre J18 J21 472,8 Papier imprégné 155 Cuivre J21 J23 389,4 Papier imprégné 155 Cuivre J23 J25 290 Synthétique PR 630 Aluminium J25 POSTE DE VANVES 221173,65 La liaison Harcourt Vanves 2 possède à fin 2019 425 k d'immobilisé sur les tronçons en synthétique. Longueur du tronçon Type d'isolant Section de l'âme Matériau de l'âme Tronçon de puissance Code Immo 79 Synthétique PR 240 Aluminium POSTE D' HARCOURT J1 222 955,
+
+Document 2:
+PR 800 Aluminium J19 J22 895 Papier imprégné 150 Cuivre J22 J25N 566 Synthétique PR 630 Aluminium J25N J28N 450 398 452 511 897 Papier imprégné 150 Cuivre J28N J31N 241 Synthétique PR 630 Aluminium J31N J32N 178 865 180 039 1455 Papier imprégné 150 Cuivre J32N J38 800 Synthétique PEHD 240 Aluminium J38 J42 267 Papier imprégné 150 Cuivre J42 POSTE DE PORCHEFONTAINE Figure 1 Coupe d'une liaison Papier Imprégné
+
+Document 3:
+Le tracé de ces liaisons est représenté sur la cartographie ci dessous Dans la continuité du réseau 63 k V de Billancourt Porchefontaine, les liaisons Porchefontaine Versailles 1 et 2 possèdent 356m en technologie papier imprégné. Longueur du tronçon Type d'isolant Section de l'âme Matériau de l'âme Tronçon de puissance Code Immo liaison 1 Immo liaison 2 325 Papier imprégné 155 Cuivre Poste de PORCHEFONTAINE J1 0 0 430 Synthétique PR 630 Aluminium J1 J3 91614,16 91614,11 680 Synthétique PR 630 Aluminium J3 J5bis 0,58 0,58 624,
+
+Document 4:
+elle même en technologie papier imprégné sur 1.2 km en sortie du poste de Villers. Longueur du tronçon Type d'isolant Section de l'âme Matériau de l'âme Tronçon de puissance Code 20,1 Papier imprégné 150 Cuivre P.A.S Saint Fargeau J1 464,6 Papier imprégné 150 Cuivre J1 JRA du 02 07 2015 10 Papier imprégné 150 Cuivre JRA du 02 07 2015 JRB du 02 07 2015 465,6 Papier imprégné 150 Cuivre JRB du 02 07 2015 J2 235,6 Papier imprégné 150 Cuivre J2 J3 285,
+
+Document 5:
+16 91614,11 680 Synthétique PR 630 Aluminium J3 J5bis 0,58 0,58 624,64 Synthétique PR 630 Aluminium J5bis J8 816220,37 145718,24 40 Synthétique 630 Aluminium J8 J9 0 0 31,2 Papier imprégné 155 Cuivre J9 POSTE DE VERSAILLES L'immobilisation des deux liaisons est d'environ 1.2 M à fin 2018, l'amortissement est budgété jusqu'en 2048 sur les tronçons en 630 Al renouvelé dans les années 2000.
+
+Document 6:
+2 Papier imprégné 155 Cuivre J19 J21 446,7 Papier imprégné 155 Cuivre J21 J23 397,6 Papier imprégné 155 Cuivre J23 J25 290 Synthétique PR 630 Aluminium J25 POSTE DE VANVES 200667,4 2.1.1.3 Zone 63 k V Aqueducs Cossigny Courtry La liaison Villers ZDavid possède une partie de sa longueur (1.2km) en papier imprégné. Cette partie est située entre le poste de Villers et le poste d'aiguillage de Saint Fargeau. Cette liaison sert à alimenter le poste de Villers qui comporte une sous station SNCF.
+
+Document 7:
+38 560 Synthétique PR 630 Aluminium J1 J5 500 Papier imprégné 155 Cuivre J5 ISSY( LESMOULINEAUX) 500 Papier imprégné 155 Cuivre ISSY( LES MOULINEAUX) J8 200 Synthétique PR 630 Aluminium J8 J9 0,66 195 Papier imprégné 155 Cuivre J9 J11 320,8 Papier imprégné 155 Cuivre J11 J14 401,5 Papier imprégné 155 Cuivre J14 J18 20 Papier imprégné 155 Cuivre J18 J19 310,2 Papier imprégné 155 Cuivre J19 J21 446,7 Papier imprégné 155 Cuivre J21 J23 397,
+
+##################################################
+
+##################################################
+Failed match for Topic 24 at Timestamp 2024-07-22 16:26:55
+Phrase to match: 'oléostatique'
+Best match: 'Synthétique' with score 67
+
+Documents for this topic and timestamp:
+Document 0:
+Longueur du tronçon Type d'isolant Section de l'âme Matériau de l'âme Tronçon de puissance Code Immo 402 Synthétique PR 240 Aluminium HARC7 P31 L31VANVE JP0N 17 Synthétique PR 240 Aluminium JP0 N J1 560 Synthétique PR 630 Aluminium J1 J5 500 Papier imprégné 155 Cuivre J5 J8 200 Synthétique PR 630 Aluminium J8 J9 195 Papier imprégné 155 Cuivre J9 J11 298 Papier imprégné 155 Cuivre J11 J14 423 Papier imprégné 155 Cuivre J14 J18 307,3 Papier imprégné 155 Cuivre J18 J21 472,
+
+Document 1:
+3 Papier imprégné 155 Cuivre J18 J21 472,8 Papier imprégné 155 Cuivre J21 J23 389,4 Papier imprégné 155 Cuivre J23 J25 290 Synthétique PR 630 Aluminium J25 POSTE DE VANVES 221173,65 La liaison Harcourt Vanves 2 possède à fin 2019 425 k d'immobilisé sur les tronçons en synthétique. Longueur du tronçon Type d'isolant Section de l'âme Matériau de l'âme Tronçon de puissance Code Immo 79 Synthétique PR 240 Aluminium POSTE D' HARCOURT J1 222 955,
+
+Document 2:
+PR 800 Aluminium J19 J22 895 Papier imprégné 150 Cuivre J22 J25N 566 Synthétique PR 630 Aluminium J25N J28N 450 398 452 511 897 Papier imprégné 150 Cuivre J28N J31N 241 Synthétique PR 630 Aluminium J31N J32N 178 865 180 039 1455 Papier imprégné 150 Cuivre J32N J38 800 Synthétique PEHD 240 Aluminium J38 J42 267 Papier imprégné 150 Cuivre J42 POSTE DE PORCHEFONTAINE Figure 1 Coupe d'une liaison Papier Imprégné
+
+Document 3:
+Le tracé de ces liaisons est représenté sur la cartographie ci dessous Dans la continuité du réseau 63 k V de Billancourt Porchefontaine, les liaisons Porchefontaine Versailles 1 et 2 possèdent 356m en technologie papier imprégné. Longueur du tronçon Type d'isolant Section de l'âme Matériau de l'âme Tronçon de puissance Code Immo liaison 1 Immo liaison 2 325 Papier imprégné 155 Cuivre Poste de PORCHEFONTAINE J1 0 0 430 Synthétique PR 630 Aluminium J1 J3 91614,16 91614,11 680 Synthétique PR 630 Aluminium J3 J5bis 0,58 0,58 624,
+
+Document 4:
+elle même en technologie papier imprégné sur 1.2 km en sortie du poste de Villers. Longueur du tronçon Type d'isolant Section de l'âme Matériau de l'âme Tronçon de puissance Code 20,1 Papier imprégné 150 Cuivre P.A.S Saint Fargeau J1 464,6 Papier imprégné 150 Cuivre J1 JRA du 02 07 2015 10 Papier imprégné 150 Cuivre JRA du 02 07 2015 JRB du 02 07 2015 465,6 Papier imprégné 150 Cuivre JRB du 02 07 2015 J2 235,6 Papier imprégné 150 Cuivre J2 J3 285,
+
+Document 5:
+16 91614,11 680 Synthétique PR 630 Aluminium J3 J5bis 0,58 0,58 624,64 Synthétique PR 630 Aluminium J5bis J8 816220,37 145718,24 40 Synthétique 630 Aluminium J8 J9 0 0 31,2 Papier imprégné 155 Cuivre J9 POSTE DE VERSAILLES L'immobilisation des deux liaisons est d'environ 1.2 M à fin 2018, l'amortissement est budgété jusqu'en 2048 sur les tronçons en 630 Al renouvelé dans les années 2000.
+
+Document 6:
+2 Papier imprégné 155 Cuivre J19 J21 446,7 Papier imprégné 155 Cuivre J21 J23 397,6 Papier imprégné 155 Cuivre J23 J25 290 Synthétique PR 630 Aluminium J25 POSTE DE VANVES 200667,4 2.1.1.3 Zone 63 k V Aqueducs Cossigny Courtry La liaison Villers ZDavid possède une partie de sa longueur (1.2km) en papier imprégné. Cette partie est située entre le poste de Villers et le poste d'aiguillage de Saint Fargeau. Cette liaison sert à alimenter le poste de Villers qui comporte une sous station SNCF.
+
+Document 7:
+38 560 Synthétique PR 630 Aluminium J1 J5 500 Papier imprégné 155 Cuivre J5 ISSY( LESMOULINEAUX) 500 Papier imprégné 155 Cuivre ISSY( LES MOULINEAUX) J8 200 Synthétique PR 630 Aluminium J8 J9 0,66 195 Papier imprégné 155 Cuivre J9 J11 320,8 Papier imprégné 155 Cuivre J11 J14 401,5 Papier imprégné 155 Cuivre J14 J18 20 Papier imprégné 155 Cuivre J18 J19 310,2 Papier imprégné 155 Cuivre J19 J21 446,7 Papier imprégné 155 Cuivre J21 J23 397,
+
+##################################################
+
+##################################################
+Failed match for Topic 25 at Timestamp 2024-07-22 16:26:55
+Phrase to match: 'taux charge'
+Best match: 'de charge' with score 80
+
+Documents for this topic and timestamp:
+Document 0:
+En N, dans la variante médiane, pour les points caractéristique juin 4h et juin 10h, pour un taux de démarrage des En R à 100 avec CRNA, aucune contrainte n'apparait à la suite du raccordement de la batterie de 100MW.
+
+Document 1:
+En N 1, et selon l'hypothèse structurelle vue plus haut, les 100 MW injectés par la batterie engendrent des deltas de taux de charge suivants en juin 4h (point le plus contraignant)
+
+Document 2:
+L'étude de transit est menée avec les IST et IT en fonction des différentes saisons (et ISTmin si nécessaire).
+
+Document 3:
+A N 12, en hiver (et même à Ptmb), l'augmentation de la consommation ne crée pas de contrainte et est sans impact sur les contraintes existantes. Ce qui n'est pas le cas en période été
+
+Document 4:
+Concernant les résultats en régime normal, à N 12 aussi bien en été qu'en hiver à forte charge, la présente augmentation de puissance de raccordement ne crée aucune contrainte N.
+
+Document 5:
+En N 1, dans la variante médiane, pour les points caractéristiques janv 9h et juin 10h, pour un taux de démarrage des En R à 0 et à P max, des contraintes apparaissent à la suite du raccordement de la batterie de 100MW. De l'effacement curatif à la charge du client sera requis.
+
+Document 6:
+En N 1, dans la variante médiane, pour les points caractéristiques juin 4h et juin 10h, pour un taux de démarrage des En R à 100 avec CRNA, aucune contrainte sur le réseau d'extension n'apparait à la suite du raccordement de la batterie de 100MW. Sur le réseau amont, des parades permettent de lever les contraintes observées en situation de N 1.
+
+Document 7:
+En N, l'étude est réalisée à Ptmb sans démarrage En R. Dans la variante médiane, il n'y a pas de liaison en contrainte dans la zone d'influence de la batterie lorsque l'En R n'est pas démarré, ni avant ni après le raccordement.
+
+Document 8:
+En N 1, et selon l'hypothèse structurelle vue plus haut, les 100 MW consommés par la batterie engendrent des deltas de taux de charge suivants en janv 9h (le point horaire juin 10h étant moins contraignant, les résultats de ce point ne sont pas présentés dans le rapport)
+
+Document 9:
+Afin de se placer dans les conditions les plus défavorables de Pcc et de transit, les productions éoliennes, cogénérations et photovoltaïques de la zone sont considérées avec un taux de démarrage nul. Les productions biogaz sont mises à leur valeur minimale constatée pour celles en service et à 0 pour celles en file d'attente.
+
+Document 10:
+L'étude a été réalisée sur les points horaires suivants janvier 9h (pointe hiver) et juin 10h (pointe) pour l'analyse des contraintes de transit. L'étude est réalisée avec un échange N S et une variante médiane, cette dernière n'est pas la plus contraignante, mais elle est la plus représentative. C'est cette variante qui est retenue pour les études de raccordement.
+
+##################################################
+
+##################################################
+Failed match for Topic 28 at Timestamp 2024-07-22 16:26:55
+Phrase to match: 'p70'
+Best match: 'P50.' with score 67
+
+Documents for this topic and timestamp:
+Document 0:
+Le cout de cette stratégie est évaluée à 12 M pour un délai de 3 ans après la signature de la PTF et sans les éventuelles procédures administratives et la concertation.
+
+Document 1:
+Le cout de cette stratégie est évaluée à 12 M pour un délai de 3 ans après la signature de la PTF et sans les éventuelles procédures administratives et la concertation.
+
+Document 2:
+Si le projet du client n'est pas soumis à étude d'impact, un gain de 10 mois est possible sur les délais administratifs.
+
+Document 3:
+L'ensemble des travaux est estimé à 99 M et un délai de 59 mois à compter de la signature de la PTF (outils délais).
+
+Document 4:
+La conséquence première est une durée de mise à disposition des ouvrages au besoin du projet client atteignant minimum 6 ans.
+
+Document 5:
+Nous considérons que le projet du client (poste, TR) nous conduira à être soumis à une étude d'impact et enquête publique considérant la notion de projet global , le délai de mise à disposition est estimé au plus court à 59 mois après signature de la PTF dont 30 mois de procédures administratives.
+
+Document 6:
+Les délais de raccordement d'une telle stratégie sont de 3 ans environ après la signature de la PTF et sans prendre en compte les éventuelles procédures administratives. (délais pris en compte dans l'étude exploratoire Cloud HQ dont la consistance est sensiblement identique)
+
+Document 7:
+Voyons maintenant quels sont les coûts et délais de chacune des solutions envisagées. Les coûts donnés sont issus du RCD 2024 et prennent en compte la majoration P50.
+
+Document 8:
+Cependant, un aléa existe sur la prise en charge de ces coûts par Telamon. En effet Les envois des PTF dans les zones de contrainte sont gérés en file d'attente, c'est à dire que les PTF sont envoyées en respectant l'ordre d'arrivée des demandes et avec un délai de 15 jours entre chaque envoi. Même si le client déclare être pressé pour l'obtention de sa PTF, DCR a rappelé le principe de respect de la file d'attente et son principe matriciel d'égalité de traitement des utilisateurs du RPT. Copyright RTE. Ce document est la propriété de RTE.
+
+##################################################
+
+##################################################
+Failed match for Topic 8 at Timestamp 2024-07-22 16:31:29
+Phrase to match: 'esca5l61zlina'
+Best match: 'CIROLL63LOGES' with score 31
+
+Documents for this topic and timestamp:
+Document 0:
+1172 12 7 5 VLEJUY642 620 45 48 3 VLEJUY643 1090 25 27 2 VLEJUY641 601 66 67 2 CIROLL63LOGES 933 95 94 1
+
+##################################################
+
+##################################################
+Failed match for Topic 8 at Timestamp 2024-07-22 16:31:29
+Phrase to match: 'elancl61yve'
+Best match: 'CIROLL63LOGES' with score 33
+
+Documents for this topic and timestamp:
+Document 0:
+1172 12 7 5 VLEJUY642 620 45 48 3 VLEJUY643 1090 25 27 2 VLEJUY641 601 66 67 2 CIROLL63LOGES 933 95 94 1
+
+##################################################
+
+##################################################
+Failed match for Topic 8 at Timestamp 2024-07-22 16:31:29
+Phrase to match: 'fr'
+Best match: 'CIROLL63LOGES' with score 13
+
+Documents for this topic and timestamp:
+Document 0:
+1172 12 7 5 VLEJUY642 620 45 48 3 VLEJUY643 1090 25 27 2 VLEJUY641 601 66 67 2 CIROLL63LOGES 933 95 94 1
+
+##################################################
+
+##################################################
+Failed match for Topic 8 at Timestamp 2024-07-22 16:31:29
+Phrase to match: '50'
+Best match: '5' with score 67
+
+Documents for this topic and timestamp:
+Document 0:
+1172 12 7 5 VLEJUY642 620 45 48 3 VLEJUY643 1090 25 27 2 VLEJUY641 601 66 67 2 CIROLL63LOGES 933 95 94 1
+
+##################################################
+
+##################################################
+Failed match for Topic 10 at Timestamp 2024-07-22 16:31:29
+Phrase to match: 'patisy632'
+Best match: 'variations' with score 42
+
+Documents for this topic and timestamp:
+Document 0:
+Les variations de transits 1 avec une charge supérieure à 90 liées à l'ajout du client sont les suivantes à P max
+
+Document 1:
+Quadripôle Ouvrage perturbant IST IN(A) Surcharge( ) IST Avant Client Surcharge( ) IST DELTA Surch( ) Parade
+
+##################################################
+
+##################################################
+Failed match for Topic 12 at Timestamp 2024-07-22 16:31:29
+Phrase to match: '100 pracc'
+Best match: 'sa Pracc.' with score 77
+
+Documents for this topic and timestamp:
+Document 0:
+Ensuite, les contraintes réseaux sur l'axe Dambron Verger 400 k V sont aggravées par ce raccordement. En conséquence, des limitations temporaires à la charge du client seront nécessaires en attendant la réalisation de travaux de renforcements 400 k V, dont la mise en service est prévue en 2030. La fréquence de ces limitations préventives est de 1450h par an avec une profondeur de 100 de sa Pracc. De plus, des effacements curatifs du client en cas de défaut sur l'axe Dambron Verger seront également nécessaires.
+
+##################################################
+
+##################################################
+Failed match for Topic 12 at Timestamp 2024-07-22 16:31:29
+Phrase to match: 'cas défaut'
+Best match: 'défaut sur' with score 78
+
+Documents for this topic and timestamp:
+Document 0:
+Ensuite, les contraintes réseaux sur l'axe Dambron Verger 400 k V sont aggravées par ce raccordement. En conséquence, des limitations temporaires à la charge du client seront nécessaires en attendant la réalisation de travaux de renforcements 400 k V, dont la mise en service est prévue en 2030. La fréquence de ces limitations préventives est de 1450h par an avec une profondeur de 100 de sa Pracc. De plus, des effacements curatifs du client en cas de défaut sur l'axe Dambron Verger seront également nécessaires.
+
+##################################################
+
+##################################################
+Failed match for Topic 21 at Timestamp 2024-07-22 16:31:29
+Phrase to match: 'mois'
+Best match: 'MOP' with score 57
+
+Documents for this topic and timestamp:
+Document 0:
+4.1.3 Consignations La liste des retraits identifiés à ce stade et qui seront confirmés en fonction du MOP des entreprises travaux et de l'articulation avec le planning du client. Travaux LA liaison Cirolliers Malecot 225 k V o Consignation liaison 400 k V Chesnoy Cirolliers pour proximité pendant 4 semaines (si deux équipes). o Consignation liaison 225 k V Cirolliers Malecot pour remplacer les supports et riper les liaisons sur les nouveaux supports pendant 4 semaines (si deux équipes). o Consignation liaison 225 k V 225 k V Chenet Senart pour remplacer les supports et riper les liaisons sur les nouveaux supports pendant 4 semaines (si deux équipes).
+
+##################################################
+
+##################################################
+Failed match for Topic 26 at Timestamp 2024-07-22 16:31:29
+Phrase to match: 'client régime'
+Best match: 'du client' with score 80
+
+Documents for this topic and timestamp:
+Document 0:
+Avec l'ajout du raccordement du client en régime normal en tout saison, le raccordement est acceptable.
+
+##################################################
+
+##################################################
+Failed match for Topic 26 at Timestamp 2024-07-22 16:31:29
+Phrase to match: 'renforcement réseau'
+Best match: 'du raccordement' with score 48
+
+Documents for this topic and timestamp:
+Document 0:
+Avec l'ajout du raccordement du client en régime normal en tout saison, le raccordement est acceptable.
+
+##################################################
+

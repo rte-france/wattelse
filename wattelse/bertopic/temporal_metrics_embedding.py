@@ -113,7 +113,7 @@ class TempTopic:
         self.representation_embeddings_df = None
         self.stemmer = PorterStemmer()
         
-        self.debug_file = Path(__file__).parent / 'app' / 'match_debugging.txt'
+        self.debug_file = Path(__file__).parent.parent / 'match_debugging.txt'
         open(self.debug_file, 'w').close()
         
 
@@ -325,6 +325,50 @@ class TempTopic:
                 f.write(' '.join(doc) + "\n\n")
             f.write(f"{'#'*50}\n\n")
 
+    # def _calculate_representation_embeddings(self, double_agg: bool = True, doc_agg: str = "mean", global_agg: str = "max", window_size: int = 10):
+    #     """
+    #     Calculates embeddings for topic representations using fuzzy matching.
+
+    #     Parameters:
+    #     - double_agg: Boolean to apply double aggregation.
+    #     - doc_agg: Aggregation method for document embeddings.
+    #     - global_agg: Aggregation method for global embeddings.
+    #     - window_size: The size of the window for fuzzy matching.
+    #     """
+    #     representation_embeddings = []
+
+    #     for _, row in self.final_df.iterrows():
+    #         topic_id = row['Topic']
+    #         timestamp = row['Timestamp']
+    #         representation = [phrase.lower() for phrase in row['Words'].split(', ')]
+            
+    #         token_strings = row['Token_Strings']
+    #         token_embeddings = row['Token_Embeddings']
+            
+    #         embedding_list = []
+    #         updated_representation = []
+
+    #         for phrase in representation:
+    #             matched_phrase, embedding = self._fuzzy_match_and_embed(
+    #                 phrase, token_strings, token_embeddings, topic_id, timestamp, window_size
+    #             )
+    #             if embedding is not None:
+    #                 embedding_list.append(embedding)
+    #                 updated_representation.append(matched_phrase)
+    #             else:
+    #                 logger.warning(f"No embedding found for '{phrase}' in topic {topic_id} at timestamp {timestamp}")
+
+    #         representation_embeddings.append({
+    #             'Topic ID': topic_id,
+    #             'Timestamp': timestamp,
+    #             'Representation': ', '.join(updated_representation),
+    #             'Representation Embeddings': embedding_list
+    #         })
+
+    #     self.representation_embeddings_df = pd.DataFrame(representation_embeddings)
+    #     logger.info(f"Created representation_embeddings_df with shape {self.representation_embeddings_df.shape}")
+    #     logger.info(f"Detailed debugging information for failed matches has been written to {self.debug_file}")
+
     def _calculate_representation_embeddings(self, double_agg: bool = True, doc_agg: str = "mean", global_agg: str = "max", window_size: int = 10):
         """
         Calculates embeddings for topic representations using fuzzy matching.
@@ -358,6 +402,11 @@ class TempTopic:
                 else:
                     logger.warning(f"No embedding found for '{phrase}' in topic {topic_id} at timestamp {timestamp}")
 
+            if not embedding_list:
+                logger.warning(f"No valid embeddings found for topic {topic_id} at timestamp {timestamp}. Using zero embedding and empty representation.")
+                embedding_list = [np.zeros(self.embeddings[0].shape)]  # Add a zero embedding
+                updated_representation = ['']  # Add an empty representation
+
             representation_embeddings.append({
                 'Topic ID': topic_id,
                 'Timestamp': timestamp,
@@ -369,6 +418,94 @@ class TempTopic:
         logger.info(f"Created representation_embeddings_df with shape {self.representation_embeddings_df.shape}")
         logger.info(f"Detailed debugging information for failed matches has been written to {self.debug_file}")
 
+        # Consistency check
+        topics_in_final_df = set(self.final_df['Topic'].unique())
+        topics_in_repr_df = set(self.representation_embeddings_df['Topic ID'].unique())
+        
+        if topics_in_final_df != topics_in_repr_df:
+            missing_topics = topics_in_final_df - topics_in_repr_df
+            extra_topics = topics_in_repr_df - topics_in_final_df
+            logger.warning(f"Discrepancy in topics: {len(missing_topics)} topics missing from representation_embeddings_df, {len(extra_topics)} extra topics in representation_embeddings_df")
+            logger.warning(f"Missing topics: {missing_topics}")
+            logger.warning(f"Extra topics: {extra_topics}")
+
+
+    # def calculate_temporal_representation_stability(self, window_size: int = 2, k: int = 1) -> Tuple[pd.DataFrame, float]:
+    #     """
+    #     Calculates the Temporal Representation Stability (TRS) scores for each topic.
+
+    #     Parameters:
+    #     - window_size: Size of the window for temporal analysis.
+    #     - k: Number of nearest neighbors for stability calculation.
+
+    #     Returns:
+    #     - Tuple containing a DataFrame with TRS scores and the average TRS score.
+    #     """
+    #     if window_size < 2:
+    #         raise ValueError("window_size must be 2 or above.")
+
+    #     stability_scores = []
+    #     grouped_topics = self.representation_embeddings_df.groupby('Topic ID')
+    #     all_topics = set(self.final_df['Topic'].unique())
+    #     processed_topics = set()
+
+    #     for topic_id, group in grouped_topics:
+    #         processed_topics.add(topic_id)
+    #         sorted_group = group.sort_values('Timestamp')
+            
+    #         for i in range(len(sorted_group) - window_size + 1):
+    #             start_row = sorted_group.iloc[i]
+    #             end_row = sorted_group.iloc[i + window_size - 1]
+
+    #             start_embeddings = start_row['Representation Embeddings']
+    #             end_embeddings = end_row['Representation Embeddings']
+
+    #             if len(start_embeddings) == 0 or len(end_embeddings) == 0:
+    #                 logger.warning(f"Skipping topic {topic_id} for timestamps {start_row['Timestamp']} to {end_row['Timestamp']} due to empty embeddings.")
+    #                 continue
+
+    #             similarity_scores = []
+    #             for start_embedding in start_embeddings:
+    #                 start_embedding = np.array(start_embedding).reshape(1, -1)
+    #                 end_embeddings_2d = np.array(end_embeddings).reshape(len(end_embeddings), -1)
+                    
+    #                 cosine_similarities = cosine_similarity(start_embedding, end_embeddings_2d)[0]
+    #                 top_k_indices = cosine_similarities.argsort()[-k:][::-1]
+    #                 top_k_similarities = cosine_similarities[top_k_indices]
+    #                 similarity_scores.extend(top_k_similarities)
+
+    #             avg_similarity = np.mean(similarity_scores)
+
+    #             stability_scores.append({
+    #                 'Topic ID': topic_id,
+    #                 'Start Timestamp': start_row['Timestamp'],
+    #                 'End Timestamp': end_row['Timestamp'],
+    #                 'Start Representation': start_row['Representation'],
+    #                 'End Representation': end_row['Representation'],
+    #                 'Representation Stability Score': avg_similarity
+    #             })
+
+    #     # Add empty entries for topics with no representation stability scores
+    #     missing_topics = all_topics - processed_topics
+    #     for topic_id in missing_topics:
+    #         logger.warning(f"Topic {topic_id} has no representation stability scores. Adding empty entry.")
+    #         stability_scores.append({
+    #             'Topic ID': topic_id,
+    #             'Start Timestamp': None,
+    #             'End Timestamp': None,
+    #             'Start Representation': None,
+    #             'End Representation': None,
+    #             'Representation Stability Score': 0.0  # or np.nan if you prefer
+    #         })
+
+    #     self.representation_stability_scores_df = pd.DataFrame(stability_scores)
+    #     self.avg_representation_stability_score = self.representation_stability_scores_df['Representation Stability Score'].mean()
+
+    #     logger.info(f"Calculated representation stability for {len(processed_topics)} topics. {len(missing_topics)} topics had no scores.")
+
+    #     return self.representation_stability_scores_df, self.avg_representation_stability_score
+
+    
 
     def calculate_temporal_representation_stability(self, window_size: int = 2, k: int = 1) -> Tuple[pd.DataFrame, float]:
         """
@@ -385,9 +522,14 @@ class TempTopic:
             raise ValueError("window_size must be 2 or above.")
 
         stability_scores = []
-        grouped_topics = self.representation_embeddings_df.groupby('Topic ID')
+        topic_counts = self.final_df.groupby('Topic')['Timestamp'].nunique()
+        valid_topics = set(topic_counts[topic_counts > 1].index.tolist())
+        grouped_topics = self.representation_embeddings_df[self.representation_embeddings_df['Topic ID'].isin(valid_topics)].groupby('Topic ID')
+        all_topics = set(self.final_df['Topic'].unique())
+        processed_topics = set()
 
         for topic_id, group in grouped_topics:
+            processed_topics.add(topic_id)
             sorted_group = group.sort_values('Timestamp')
             
             for i in range(len(sorted_group) - window_size + 1):
@@ -398,13 +540,12 @@ class TempTopic:
                 end_embeddings = end_row['Representation Embeddings']
 
                 if len(start_embeddings) == 0 or len(end_embeddings) == 0:
+                    logger.warning(f"Skipping topic {topic_id} for timestamps {start_row['Timestamp']} to {end_row['Timestamp']} due to empty embeddings.")
                     continue
 
                 similarity_scores = []
                 for start_embedding in start_embeddings:
-                    # Ensure start_embedding is 2D
                     start_embedding = np.array(start_embedding).reshape(1, -1)
-                    # Ensure end_embeddings is 2D
                     end_embeddings_2d = np.array(end_embeddings).reshape(len(end_embeddings), -1)
                     
                     cosine_similarities = cosine_similarity(start_embedding, end_embeddings_2d)[0]
@@ -423,11 +564,67 @@ class TempTopic:
                     'Representation Stability Score': avg_similarity
                 })
 
+        # Add empty entries for topics with no representation stability scores
+        missing_topics = all_topics - processed_topics
+        for topic_id in missing_topics:
+            logger.warning(f"Topic {topic_id} has no representation stability scores. Adding empty entry.")
+            stability_scores.append({
+                'Topic ID': topic_id,
+                'Start Timestamp': None,
+                'End Timestamp': None,
+                'Start Representation': None,
+                'End Representation': None,
+                'Representation Stability Score': 0.0  # or np.nan if you prefer
+            })
+
         self.representation_stability_scores_df = pd.DataFrame(stability_scores)
         self.avg_representation_stability_score = self.representation_stability_scores_df['Representation Stability Score'].mean()
 
-        return self.representation_stability_scores_df, self.avg_representation_stability_score
+        logger.info(f"Calculated representation stability for {len(processed_topics)} topics. {len(missing_topics)} topics had no scores.")
 
+        return self.representation_stability_scores_df, self.avg_representation_stability_score
+    
+    
+
+    # def calculate_topic_embedding_stability(self, window_size: int = 2) -> Tuple[pd.DataFrame, float]:
+    #     """
+    #     Calculates the Temporal Topic Embedding Stability (TTES) scores for each topic.
+
+    #     Parameters:
+    #     - window_size: Size of the window for temporal analysis.
+
+    #     Returns:
+    #     - Tuple containing a DataFrame with TTES scores and the average TTES score.
+    #     """
+    #     if window_size < 2:
+    #         raise ValueError("window_size must be 2 or above.")
+
+    #     stability_scores = []
+    #     grouped_topics = self.final_df.groupby('Topic')
+
+    #     for topic_id, group in grouped_topics:
+    #         sorted_group = group.sort_values('Timestamp')
+            
+    #         for i in range(len(sorted_group) - window_size + 1):
+    #             start_row = sorted_group.iloc[i]
+    #             end_row = sorted_group.iloc[i + window_size - 1]
+
+    #             start_embedding = start_row['Embedding']
+    #             end_embedding = end_row['Embedding']
+
+    #             similarity = cosine_similarity([start_embedding], [end_embedding])[0][0]
+
+    #             stability_scores.append({
+    #                 'Topic ID': topic_id,
+    #                 'Start Timestamp': start_row['Timestamp'],
+    #                 'End Timestamp': end_row['Timestamp'],
+    #                 'Topic Stability Score': similarity
+    #             })
+
+    #     self.topic_stability_scores_df = pd.DataFrame(stability_scores)
+    #     self.avg_topic_stability_score = self.topic_stability_scores_df['Topic Stability Score'].mean()
+
+    #     return self.topic_stability_scores_df, self.avg_topic_stability_score
 
     def calculate_topic_embedding_stability(self, window_size: int = 2) -> Tuple[pd.DataFrame, float]:
         """
@@ -443,9 +640,14 @@ class TempTopic:
             raise ValueError("window_size must be 2 or above.")
 
         stability_scores = []
-        grouped_topics = self.final_df.groupby('Topic')
+        topic_counts = self.final_df.groupby('Topic')['Timestamp'].nunique()
+        valid_topics = set(topic_counts[topic_counts > 1].index.tolist())
+        grouped_topics = self.final_df[self.final_df['Topic'].isin(valid_topics)].groupby('Topic')
+        all_topics = set(self.final_df['Topic'].unique())
+        processed_topics = set()
 
         for topic_id, group in grouped_topics:
+            processed_topics.add(topic_id)
             sorted_group = group.sort_values('Timestamp')
             
             for i in range(len(sorted_group) - window_size + 1):
@@ -454,6 +656,10 @@ class TempTopic:
 
                 start_embedding = start_row['Embedding']
                 end_embedding = end_row['Embedding']
+
+                if start_embedding is None or end_embedding is None:
+                    logger.warning(f"Skipping topic {topic_id} for timestamps {start_row['Timestamp']} to {end_row['Timestamp']} due to missing embeddings.")
+                    continue
 
                 similarity = cosine_similarity([start_embedding], [end_embedding])[0][0]
 
@@ -464,8 +670,21 @@ class TempTopic:
                     'Topic Stability Score': similarity
                 })
 
+        # Add empty entries for topics with no embedding stability scores
+        missing_topics = all_topics - processed_topics
+        for topic_id in missing_topics:
+            logger.warning(f"Topic {topic_id} has no embedding stability scores. Adding empty entry.")
+            stability_scores.append({
+                'Topic ID': topic_id,
+                'Start Timestamp': None,
+                'End Timestamp': None,
+                'Topic Stability Score': 0.0  # or np.nan if you prefer
+            })
+
         self.topic_stability_scores_df = pd.DataFrame(stability_scores)
         self.avg_topic_stability_score = self.topic_stability_scores_df['Topic Stability Score'].mean()
+
+        logger.info(f"Calculated topic embedding stability for {len(processed_topics)} topics. {len(missing_topics)} topics had no scores.")
 
         return self.topic_stability_scores_df, self.avg_topic_stability_score
 
