@@ -16,7 +16,8 @@ from wattelse.bertopic.utils import (
     CITATION_COUNT_COL, BASE_CACHE_PATH, load_data
 )
 from wattelse.common.cache_utils import load_embeddings
-
+from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
+from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
 # Default configuration parameters for the application
 DEFAULT_PARAMETERS = {
     "embedding_model_name": "OrdalieTech/Solon-embeddings-base-0.1",
@@ -370,7 +371,7 @@ def plot_docs_reparition_over_time(df, freq):
     count["timestamp"] = count["timestamp"].dt.strftime('%Y-%m-%d')
 
     fig = px.bar(count, x="timestamp", y="size")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
 def plot_remaining_docs_repartition_over_time(df_base, df_remaining, freq):
     """
@@ -399,7 +400,7 @@ def plot_remaining_docs_repartition_over_time(df_base, df_remaining, freq):
             "Remaining": "orange",
         }
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
     
 # TODO: Remove "put embeddings in cache" option since it's unadvised due to the large size of embeddings returned by embedding model (sentence and token embeddings)
 # TODO: Make the parameters of different representation models appear and disappear based on what was selected in the multi-select box.

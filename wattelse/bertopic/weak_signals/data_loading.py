@@ -7,48 +7,12 @@ from typing import Dict
 import streamlit as st
 from typing import Tuple
 from global_vars import DATA_PATH
-
-def preprocess_french_text(text: str) -> str:
-    """
-    Preprocess French text by normalizing apostrophes, replacing hyphens and similar characters with spaces,
-    removing specific prefixes, removing unwanted punctuations (excluding apostrophes, periods, commas, and specific other punctuation),
-    replacing special characters with a space (preserving accented characters, common Latin extensions, and newlines),
-    normalizing superscripts and subscripts,
-    splitting words containing capitals in the middle (while avoiding splitting fully capitalized words), 
-    and replacing multiple spaces with a single space.
-    
-    Args:
-        text (str): The input French text to preprocess.
-    
-    Returns:
-        str: The preprocessed French text.
-    """
-    # Normalize different apostrophe variations to a standard apostrophe
-    text = text.replace("’", "'")
-
-    # Replace hyphens and similar characters with spaces
-    text = re.sub(r'\b(-|/|;|:)', ' ', text)
-    
-    # Replace special characters with a space (preserving specified punctuation, accented characters, common Latin extensions, and newlines)
-    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ.,\'\"\(\)\[\]]', ' ', text)
-    
-    # Normalize superscripts and subscripts for both numbers and letters
-    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖᵠʳˢᵗᵘᵛʷˣʸᶻ",
-                                    "0123456789abcdefghijklmnopqrstuvwxyz")
-    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉ₐₑᵢₒᵣᵤᵥₓ",
-                                  "0123456789aeioruvx")
-    text = text.translate(superscript_map)
-    text = text.translate(subscript_map)
-
-    # Split words that contain capitals in the middle but avoid splitting fully capitalized words
-    text = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', text)
-    
-    # Replace multiple spaces with a single space
-    text = re.sub(r'[ \t]+', ' ', text)
-    
-    return text
-
-
+from wattelse.bertopic.utils import (
+    preprocess_french_text,
+    TEXT_COLUMN,
+    TIMESTAMP_COLUMN,
+    URL_COLUMN,
+)
 
 # @st.cache_data
 def load_and_preprocess_data(selected_file: Tuple[str, str], language: str, min_chars: int, split_by_paragraph: bool) -> pd.DataFrame:
@@ -76,41 +40,41 @@ def load_and_preprocess_data(selected_file: Tuple[str, str], language: str, min_
         df = pd.read_json(os.path.join(DATA_PATH, file_name), lines=True)
     
     # Convert timestamp column to datetime
-    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN], errors='coerce')
     
     # Drop rows with invalid timestamps
-    df = df.dropna(subset=['timestamp'])
+    df = df.dropna(subset=[TIMESTAMP_COLUMN])
     
-    df = df.sort_values(by='timestamp', ascending=True).reset_index(drop=True)
+    df = df.sort_values(by=TIMESTAMP_COLUMN, ascending=True).reset_index(drop=True)
     df['document_id'] = df.index
     
-    if 'url' in df.columns:
-        df['source'] = df['url'].apply(lambda x: x.split('/')[2] if pd.notna(x) else None)
+    if URL_COLUMN in df.columns:
+        df['source'] = df[URL_COLUMN].apply(lambda x: x.split('/')[2] if pd.notna(x) else None)
     else:
         df['source'] = None
-        df['url'] = None
+        df[URL_COLUMN] = None
     
     if language == "French":
-        df['text'] = df['text'].apply(preprocess_french_text)
+        df[TEXT_COLUMN] = df[TEXT_COLUMN].apply(preprocess_french_text)
     
     if split_by_paragraph:
         new_rows = []
         for _, row in df.iterrows():
             # Attempt splitting by \n\n first
-            paragraphs = re.split(r'\n\n', row['text'])
+            paragraphs = re.split(r'\n\n', row[TEXT_COLUMN])
             if len(paragraphs) == 1:  # If no split occurred, attempt splitting by \n
-                paragraphs = re.split(r'\n', row['text'])
+                paragraphs = re.split(r'\n', row[TEXT_COLUMN])
             for paragraph in paragraphs:
                 new_row = row.copy()
-                new_row['text'] = paragraph
+                new_row[TEXT_COLUMN] = paragraph
                 new_row['source'] = row['source']
                 new_rows.append(new_row)
         df = pd.DataFrame(new_rows)
     
     if min_chars > 0:
-        df = df[df['text'].str.len() >= min_chars]
+        df = df[df[TEXT_COLUMN].str.len() >= min_chars]
     
-    df = df[df['text'].str.strip() != ''].reset_index(drop=True)
+    df = df[df[TEXT_COLUMN].str.strip() != ''].reset_index(drop=True)
     
     return df
 
@@ -119,13 +83,13 @@ def group_by_days(df: pd.DataFrame, day_granularity: int = 1) -> Dict[pd.Timesta
     Group a DataFrame by a specified number of days.
     
     Args:
-        df (pd.DataFrame): The input DataFrame containing a 'timestamp' column.
+        df (pd.DataFrame): The input DataFrame containing a TIMESTAMP_COLUMN column.
         day_granularity (int): The number of days to group by (default is 1).
     
     Returns:
         Dict[pd.Timestamp, pd.DataFrame]: A dictionary where each key is the timestamp group and the value is the corresponding DataFrame.
     """
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    grouped = df.groupby(pd.Grouper(key='timestamp', freq=f'{day_granularity}D'))
+    df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
+    grouped = df.groupby(pd.Grouper(key=TIMESTAMP_COLUMN, freq=f'{day_granularity}D'))
     dict_of_dfs = {name: group for name, group in grouped}
     return dict_of_dfs

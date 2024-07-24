@@ -1,203 +1,155 @@
-# def get_prompt(language, topic_number, content_summary):
-#     en_prompt = f"""
-#     Please provide a summary for the evolution of Topic {topic_number} over time based on the following information:
-    
-#     {content_summary}
-    
-#     For each timestamp, generate a title describing the content based on the topic representation and documents. Then provide a summary of the documents in bullet points.
-    
-#     For each timestamp except the first one, also include a section titled "What's New?" that highlights the changes and new information in the topic compared to the previous timestamp.
-    
-#     Base your summary solely on the provided information and do not include any external knowledge or assumptions.
-    
-#     Format the output as follows:
-    
-#     ## Title: [Generated title based on topic representation and documents]
-#     ### Date: [Timestamp]
-#     ### Summary : Paragraph summarizing the documents
-#     ---
-#     ## Title: [Generated title based on topic representation and documents]
-#     ### Date: [Timestamp]
-#     ### Summary : Paragraph summarizing the documents
-#     ### What's New?
-#     [Paragraph describing the changes and new information compared to 1st timestamp]
-#     ---
-#     ## Title: [Generated title based on topic representation and documents]
-#     ### Date: [Timestamp]
-#     ### Summary : Paragraph summarizing the documents
-#     ### What's New?
-#     [Paragraph describing the changes and new information compared to 2nd timestamp]
-#     ---
-#     ...
-#     """
+# Global variables for prompts
+SIGNAL_INTRO = {
+    'en': """As an elite strategic foresight analyst with extensive expertise across multiple domains and industries, your task is to conduct a comprehensive evaluation of a potential signal derived from the following topic summary:
 
+{summary_from_first_prompt}
 
+Leverage your knowledge and analytical skills to provide an in-depth analysis of this signal's potential impact and evolution:
+""",
+    'fr': """En tant qu'analyste de prospective stratégique d'élite avec une expertise étendue dans de multiples domaines et industries, votre tâche est de mener une évaluation complète d'un signal potentiel dérivé du résumé de sujet suivant :
 
+{summary_from_first_prompt}
 
-#     fr_prompt = f"""
-#     Veuillez fournir un résumé de l'évolution du Sujet {topic_number} au fil du temps en vous basant sur les informations suivantes:
-    
-#     {content_summary}
-    
-#     Pour chaque Date, générez un titre décrivant le contenu en fonction de la représentation du sujet et des documents. Ensuite, fournissez un résumé des documents sous forme de points.
-    
-#     Pour chaque Date, à l'exception de la première, incluez également une section intitulée "Quelles sont les nouveautés ?" qui met en évidence les changements et les nouvelles informations dans le sujet par rapport à la date précédente.
-    
-#     Basez votre résumé uniquement sur les informations fournies et n'incluez aucune connaissance ou hypothèse externe.
-    
-#     Formatez la sortie comme suit:
-    
-#     ## Titre: [Titre généré en fonction de la représentation du sujet et des documents]
-#     ### Date: [Date]
-#     ### Résumé
-#     - [Point 1]
-#     - [Point 2]
-#     - ...
-#     ---
-#     ## Titre: [Titre généré en fonction de la représentation du sujet et des documents]
-#     ### Date: [Date]
-#     ### Résumé
-#     - [Point 1]
-#     - [Point 2]
-#     - ...
-#     ### Quelles sont les nouveautés ?
-#     [Paragraphe décrivant les changements et les nouvelles informations par rapport à la 1ere Date]
-#     ---
-#     ## Titre: [Titre généré en fonction de la représentation du sujet et des documents]
-#     ### Date: [Date]
-#     ### Résumé
-#     - [Point 1]
-#     - [Point 2]
-#     - ...
-#     ### Quelles sont les nouveautés ?
-#     [Paragraphe décrivant les changements et les nouvelles informations par rapport à la 2ème Date]
-#     ---
-#     ...
-#     """
+Utilisez vos connaissances et compétences analytiques pour fournir une analyse approfondie de l'impact potentiel et de l'évolution de ce signal :
+"""
+}
 
-#     if language == "English":
-#         return en_prompt
-#     elif language == "French":
-#         return fr_prompt
-#     else:
-#         raise ValueError(f"Unsupported language: {language}")
+SIGNAL_INSTRUCTIONS = {
+    'en': """
+1. Potential Impact Analysis:
+   - Examine the potential effects of this signal on various sectors, industries, and societal aspects.
+   - Consider both short-term and long-term implications.
+   - Analyze possible ripple effects and second-order consequences.
 
+2. Evolution Scenarios:
+   - Describe potential ways this signal could develop or manifest in the future.
+   - Consider various factors that could influence its trajectory.
+   - Explore both optimistic and pessimistic scenarios.
+
+3. Interconnections and Synergies:
+   - Identify how this signal might interact with other current trends or emerging phenomena.
+   - Discuss potential synergies or conflicts with existing systems or paradigms.
+
+4. Drivers and Inhibitors:
+   - Analyze factors that could accelerate or amplify this signal.
+   - Examine potential barriers or resistances that might hinder its development.
+
+Your analysis should be thorough and nuanced, going beyond surface-level observations. Draw upon your expertise to provide insights that capture the complexity and potential significance of this signal. Don't hesitate to make well-reasoned predictions about its potential trajectory and impact.
+
+Focus on providing a clear, insightful, and actionable analysis that can inform strategic decision-making and future planning.
+""",
+    'fr': """
+1. Analyse de l'Impact Potentiel :
+   - Examinez les effets potentiels de ce signal sur divers secteurs, industries et aspects sociétaux.
+   - Considérez les implications à court et à long terme.
+   - Analysez les effets d'entraînement possibles et les conséquences de second ordre.
+
+2. Scénarios d'Évolution :
+   - Décrivez les façons potentielles dont ce signal pourrait se développer ou se manifester à l'avenir.
+   - Considérez divers facteurs qui pourraient influencer sa trajectoire.
+   - Explorez des scénarios optimistes et pessimistes.
+
+3. Interconnexions et Synergies :
+   - Identifiez comment ce signal pourrait interagir avec d'autres tendances actuelles ou phénomènes émergents.
+   - Discutez des synergies ou conflits potentiels avec les systèmes ou paradigmes existants.
+
+4. Moteurs et Inhibiteurs :
+   - Analysez les facteurs qui pourraient accélérer ou amplifier ce signal.
+   - Examinez les obstacles ou résistances potentiels qui pourraient entraver son développement.
+
+Votre analyse doit être approfondie et nuancée, allant au-delà des observations superficielles. Appuyez-vous sur votre expertise pour fournir des insights qui capturent la complexité et l'importance potentielle de ce signal. N'hésitez pas à faire des prédictions bien raisonnées sur sa trajectoire et son impact potentiels.
+
+Concentrez-vous sur la fourniture d'une analyse claire, perspicace et exploitable qui peut éclairer la prise de décision stratégique et la planification future.
+"""
+}
+
+TOPIC_SUMMARY_PROMPT = {
+    'en': """
+As an expert analyst specializing in trend analysis and strategic foresight, your task is to provide a comprehensive evolution summary of Topic {topic_number}. Use only the information provided below:
+
+{content_summary}
+
+Structure your analysis as follows:
+
+For the first timestamp:
+
+## [Concise yet impactful title capturing the essence of the topic at this point]
+### Date: [Relevant date or time frame]
+### Key Developments
+- [Bullet point summarizing a major development or trend]
+- [Additional bullet points as needed]
+
+### Analysis
+[2-3 sentences providing deeper insights into the developments, their potential implications, and their significance in the broader context of the topic's evolution]
+
+For all subsequent timestamps:
+
+## [Concise yet impactful title capturing the essence of the topic at this point]
+### Date: [Relevant date or time frame]
+### Key Developments
+- [Bullet point summarizing a major development or trend]
+- [Additional bullet points as needed]
+
+### Analysis
+[2-3 sentences providing deeper insights into the developments, their potential implications, and their significance in the broader context of the topic's evolution]
+
+### What's New
+[1-2 sentences highlighting how this period differs from the previous one, focusing on new elements or significant changes]
+
+Provide your analysis using only this format, based solely on the information given. Do not include any additional summary or overview sections beyond what is specified in this structure.
+""",
+    'fr': """
+En tant qu'analyste expert spécialisé dans l'analyse des tendances et la prospective stratégique, votre tâche est de fournir un résumé complet de l'évolution du Sujet {topic_number}. Utilisez uniquement les informations fournies ci-dessous :
+
+{content_summary}
+
+Structurez votre analyse comme suit :
+
+Pour le premier timestamp :
+
+## [Titre concis mais percutant capturant l'essence du sujet à ce moment]
+### Date : [Date ou période pertinente]
+### Développements Clés
+- [Point résumant un développement majeur ou une tendance]
+- [Points supplémentaires si nécessaire]
+
+### Analyse
+[2-3 phrases fournissant des insights plus profonds sur les développements, leurs implications potentielles et leur importance dans le contexte plus large de l'évolution du sujet]
+
+Pour tous les timestamps suivants :
+
+## [Titre concis mais percutant capturant l'essence du sujet à ce moment]
+### Date : [Date ou période pertinente]
+### Développements Clés
+- [Point résumant un développement majeur ou une tendance]
+- [Points supplémentaires si nécessaire]
+
+### Analyse
+[2-3 phrases fournissant des insights plus profonds sur les développements, leurs implications potentielles et leur importance dans le contexte plus large de l'évolution du sujet]
+
+### Nouveautés
+[1-2 phrases soulignant en quoi cette période diffère de la précédente, en se concentrant sur les nouveaux éléments ou les changements significatifs]
+
+Fournissez votre analyse en utilisant uniquement ce format, basé uniquement sur les informations données. N'incluez pas de sections de résumé ou d'aperçu supplémentaires au-delà de ce qui est spécifié dans cette structure.
+"""
+}
 
 def get_prompt(language, prompt_type, topic_number=None, content_summary=None, summary_from_first_prompt=None):
-    if language == "English":
-        if prompt_type == "topic_summary":
-            return f"""
-            Analyze the evolution of Topic {topic_number} based solely on the information provided below:
+    lang = 'en' if language == 'English' else 'fr'
 
-            {content_summary}
-
-            For each period, structure your response as follows:
-
-            ## [Concise and impactful title reflecting the essence of the topic for this period]
-            ### Date: [Date]
-            ### Summary
-            [List of key points summarizing the content of the topic for this period]
-
-            ### Evolution from previous date (except for the first period)
-            [2-3 sentences describing significant changes compared to the previous period]
-
-            ---
-
-            After analyzing all periods, conclude with:
-
-            ## Conclusion
-            [3-4 sentences summarizing the overall evolution of the topic]
-
-            Important guidelines:
-            1. Base your analysis solely on the provided information, without adding external knowledge.
-            2. Be concise but precise in your summaries and analyses.
-            3. Highlight important changes and trends observed over time.
-            """
-        elif prompt_type == "weak_signal":
-            return f"""
-            You are an expert analyst with extensive knowledge across various domains and a keen ability to foresee potential future developments. Your task is to analyze the following summary of Topic {topic_number} and determine if it represents a weak signal:
-
-            {summary_from_first_prompt}
-
-            Guidelines:
-            1. A weak signal is an early indicator of a potentially significant change that is not yet widely recognized. Examples include emerging technologies, subtle societal shifts, or nascent security threats.
-            2. Use your broad knowledge and foresight to evaluate the topic's potential to become a major issue.
-            3. Distinguish between weak signals and ephemeral trends or popular topics with no long-term significance.
-            4. While basing your primary analysis on the provided summary, feel free to draw connections to your wider knowledge base.
-            5. Be objective in your analysis, but don't hesitate to make informed predictions based on your expertise.
-
-            Provide your analysis strictly according to the following format:
-
-            ## Weak Signal Analysis
-
-            ### Score: [0-10]
-
-            ### Justification
-            [3-4 sentences]
-
-            ### Potential Impact
-            [2-3 sentences]
-
-            ### Recommendations
-            [2-3 recommendations]
-            """
-
-    elif language == "French":
-        if prompt_type == "topic_summary":
-            return f"""
-            Analysez l'évolution du Sujet {topic_number} en vous basant uniquement sur les informations fournies ci-dessous :
-
-            {content_summary}
-
-            Pour chaque période, structurez votre réponse comme suit :
-
-            ## [Titre concis et percutant reflétant l'essence du sujet à cette période]
-            ### Date : [Date]
-            ### Résumé
-            [Liste de points clés résumant le contenu du sujet pour cette période]
-
-            ### Évolution par rapport à la date précédente (sauf pour la première période)
-            [2-3 phrases décrivant les changements significatifs par rapport à la période précédente]
-
-            ---
-
-            Après avoir analysé toutes les périodes, concluez avec :
-
-            ## Conclusion
-            [3-4 phrases résumant l'évolution globale du sujet]
-
-            Consignes importantes :
-            1. Basez votre analyse uniquement sur les informations fournies, sans ajouter de connaissances externes.
-            2. Soyez concis mais précis dans vos résumés et analyses.
-            3. Mettez en évidence les changements importants et les tendances observées au fil du temps.
-            """
-        elif prompt_type == "weak_signal":
-            return f"""
-            Vous êtes un analyste expert doté d'une vaste connaissance dans divers domaines et d'une capacité aiguë à anticiper les développements futurs potentiels. Votre tâche est d'analyser le résumé suivant du Sujet {topic_number} et de déterminer s'il représente un signal faible :
-
-            {summary_from_first_prompt}
-
-            Consignes :
-            1. Un signal faible est un indicateur précoce d'un changement potentiellement important, mais pas encore largement reconnu. Exemples : technologies émergentes, changements sociétaux subtils, menaces de sécurité naissantes.
-            2. Utilisez votre large connaissance et votre capacité d'anticipation pour évaluer le potentiel du sujet à devenir un enjeu majeur.
-            3. Distinguez les signaux faibles des tendances éphémères ou des sujets populaires sans importance à long terme.
-            4. Tout en basant votre analyse principale sur le résumé fourni, n'hésitez pas à établir des liens avec votre base de connaissances plus large.
-            5. Soyez objectif dans votre analyse, mais n'hésitez pas à faire des prédictions éclairées basées sur votre expertise.
-
-            Fournissez votre analyse strictement selon le format suivant :
-
-            ## Analyse du signal
-
-            ### Score : [0-10]
-
-            ### Justification
-            [3-4 phrases]
-
-            ### Potentiel d'impact
-            [2-3 phrases]
-
-            ### Recommandations
-            [2-3 recommandations]
-            """
+    if prompt_type == "weak_signal":
+        prompt = (
+            SIGNAL_INTRO[lang].format(summary_from_first_prompt=summary_from_first_prompt) +
+            SIGNAL_INSTRUCTIONS[lang]
+        )
+    
+    elif prompt_type == "topic_summary":
+        prompt = TOPIC_SUMMARY_PROMPT[lang].format(
+            topic_number=topic_number,
+            content_summary=content_summary
+        )
+    
     else:
-        raise ValueError(f"Unsupported language: {language}")
+        raise ValueError(f"Unsupported prompt type: {prompt_type}")
+
+    return prompt

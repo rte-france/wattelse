@@ -3,7 +3,7 @@ from statistics import StatisticsError
 
 from wattelse.bertopic.metrics import TopicMetrics, TIME_WEIGHT
 from state_utils import register_widget, save_widget_state, restore_widget_state
-from wattelse.bertopic.utils import TIMESTAMP_COLUMN
+from wattelse.bertopic.utils import TIMESTAMP_COLUMN, PLOTLY_BUTTON_SAVE_CONFIG
 from wattelse.bertopic.app.app_utils import compute_topics_over_time
 
 # Restore widget state
@@ -37,7 +37,7 @@ st.slider("Time weight", min_value=0.0, max_value=0.1, step=0.005, key="tw", on_
 # Main visualization
 topic_metrics = TopicMetrics(st.session_state["topic_model"], st.session_state["topics_over_time"])
 try:
-    st.plotly_chart(topic_metrics.plot_TEM_map(st.session_state["tw"]), use_container_width=True)
+    st.plotly_chart(topic_metrics.plot_TEM_map(st.session_state["tw"]), config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 except StatisticsError as se:
     st.warning(f"Try to change the Time Weight value: {se}", icon="⚠️")
     st.stop()

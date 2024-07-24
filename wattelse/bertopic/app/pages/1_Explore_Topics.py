@@ -8,13 +8,14 @@ import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
 import re
-import html
+import zipfile
+import io
 
-from wattelse.bertopic.utils import TIMESTAMP_COLUMN
 from wattelse.bertopic.newsletter_features import get_most_representative_docs
 from app_utils import print_docs_for_specific_topic, plot_topics_over_time, load_data
 from state_utils import register_widget, save_widget_state, restore_widget_state
 from wattelse.bertopic.app.app_utils import compute_topics_over_time
+from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG, TEXT_COLUMN, TIMESTAMP_COLUMN
 
 from openai import OpenAI
 from loguru import logger
@@ -134,6 +135,7 @@ def plot_topic_over_time():
                     str(st.session_state["selected_topic_number"]),
                     st.session_state["topic_model"],
                 ),
+                config=PLOTLY_BUTTON_SAVE_CONFIG,
                 use_container_width=True,
             )
         else:
@@ -144,6 +146,7 @@ def plot_topic_over_time():
                     st.session_state["topic_model"],
                     time_split=st.session_state["timefiltered_df"][TIMESTAMP_COLUMN].max(),
                 ),
+                config=PLOTLY_BUTTON_SAVE_CONFIG,
                 use_container_width=True,
             )
 
@@ -181,17 +184,28 @@ def get_representative_documents(top_n_docs):
 import plotly.graph_objects as go
 import streamlit as st
 
-def display_source_distribution(representative_df):
+def display_source_distribution(representative_df, selected_sources):
     """Display the distribution of sources in a pie chart."""
+
     source_counts = representative_df['url'].apply(get_website_name).value_counts()
     
+    # Create a list to store the 'pull' values for each slice
+    pull = []
+    
+    # Determine which slices should be pulled out
+    for source in source_counts.index:
+        if source in selected_sources and 'Tous' not in selected_sources:
+            pull.append(0.2)
+        else:
+            pull.append(0)
+
     fig = go.Figure(data=[go.Pie(
         labels=source_counts.index,
         values=source_counts.values,
+        pull=pull,
         textposition='inside',
         textinfo='percent+label',
         hole=0.3,
-        marker=dict(colors=['red' if label == "Unknown Source" else 'lightblue' for label in source_counts.index])
     )])
     
     fig.update_layout(
@@ -201,7 +215,7 @@ def display_source_distribution(representative_df):
         margin=dict(t=0, b=0, l=0, r=0)
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
 def get_website_name(url):
     """Extract website name from URL, handling None, NaN, and invalid URLs."""
@@ -234,58 +248,45 @@ def display_new_documents():
         st.write("## New documents")
         print_docs_for_specific_topic(st.session_state["remaining_df"], st.session_state["new_topics"], st.session_state["selected_topic_number"])
 
-def export_topic_documents(topic_docs, granularity_days, export_base_folder, topic_number, topic_words):
-    """Export documents for a specific topic grouped by a given time granularity."""
-    folder_name = f"topic_{topic_number}_{' '.join(topic_words[:3])}_{granularity_days}days"
-    folder_name = re.sub(r'[^\w\-_\. ]', '_', folder_name)
-    export_folder = export_base_folder / folder_name
-    export_folder.mkdir(parents=True, exist_ok=True)
-    
-    topic_docs = topic_docs.sort_values('timestamp')
-    start_date = topic_docs['timestamp'].min()
-    end_date = topic_docs['timestamp'].max()
-    current_date = start_date
-    
-    while current_date <= end_date:
-        next_date = current_date + timedelta(days=granularity_days)
-        period_docs = topic_docs[(topic_docs['timestamp'] >= current_date) & (topic_docs['timestamp'] < next_date)]
-        
-        if not period_docs.empty:
-            file_name = f"{current_date.strftime('%Y%m%d')}-{(next_date - timedelta(days=1)).strftime('%Y%m%d')}.txt"
-            file_path = export_folder / file_name
-            
-            with open(file_path, 'w', encoding='utf-8') as f:
-                for _, doc in period_docs.iterrows():
-                    f.write(f"{doc['text']}\n\n")
-        
-        current_date = next_date
-    
-    return export_folder
 
-def display_export_functionality(filtered_df):
-    """Display the export functionality for topic documents."""
-    st.write("## Export Topic Documents")
-    granularity_days = st.number_input("Granularity (number of days)", min_value=1, value=3, step=1)
+import streamlit as st
+import pandas as pd
+from datetime import datetime, timedelta
+import re
+import zipfile
+import io
+from pathlib import Path
 
-    if st.button("Export Topic Documents"):
-        topic_docs = filtered_df.sort_values(by='timestamp')
+def create_topic_documents(filtered_df, topic_model, granularity_days, TIMESTAMP_COLUMN, TEXT_COLUMN):
+    """Create topic documents grouped by a given time granularity."""
+    topic_docs = filtered_df.sort_values(by=TIMESTAMP_COLUMN)
+    documents = []
+    
+    if not topic_docs.empty:
+        topic_number = st.session_state["selected_topic_number"]
+        topic_words = [word for word, _ in topic_model.get_topic(topic_number)]
         
-        if not topic_docs.empty:
-            topic_number = st.session_state["selected_topic_number"]
-            topic_words = [word for word, _ in st.session_state["topic_model"].get_topic(topic_number)]
+        folder_name = f"topic_{topic_number}_{' '.join(topic_words[:3])}_{granularity_days}days"
+        folder_name = re.sub(r'[^\w\-_\. ]', '_', folder_name)
+        
+        start_date = topic_docs[TIMESTAMP_COLUMN].min()
+        end_date = topic_docs[TIMESTAMP_COLUMN].max()
+        current_date = start_date
+        
+        while current_date <= end_date:
+            next_date = current_date + timedelta(days=granularity_days)
+            period_docs = topic_docs[(topic_docs[TIMESTAMP_COLUMN] >= current_date) & (topic_docs[TIMESTAMP_COLUMN] < next_date)]
             
-            exported_folder = export_topic_documents(
-                topic_docs, 
-                granularity_days, 
-                EXPORT_BASE_FOLDER,
-                topic_number,
-                topic_words
-            )
+            if not period_docs.empty:
+                file_name = f"{current_date.strftime('%Y%m%d')}-{(next_date - timedelta(days=1)).strftime('%Y%m%d')}.txt"
+                content = "\n\n".join(period_docs[TEXT_COLUMN])
+                documents.append((file_name, content))
             
-            st.success(f"Successfully exported documents to folder: {exported_folder}")
-            st.write("You can find the exported files in this folder.")
-        else:
-            st.warning("No documents found for the selected topic.")
+            current_date = next_date
+    
+    return folder_name, documents
+
+
 
 def main():
     """Main function to run the Streamlit app."""
@@ -326,9 +327,15 @@ def main():
     col1, col2 = st.columns([0.5, 0.5])
 
     with col1:
-        display_source_distribution(filtered_df)
+        # Pass the full representative_df to display_source_distribution
+        display_source_distribution(representative_df, selected_sources)
 
     with col2:
+        # Filter the dataframe only for document display
+        if 'Tous' not in selected_sources:
+            filtered_df = representative_df[representative_df['url'].apply(get_website_name).isin(selected_sources)]
+        else:
+            filtered_df = representative_df
         display_representative_documents(filtered_df)
 
     display_new_documents()
@@ -338,7 +345,6 @@ def main():
     # GPT description button
     if st.button("Générer une description courte du thème", type="primary", use_container_width=True):
         with st.spinner("Génération de la description en cours..."):
-
             gpt_description = generate_topic_description(
                 st.session_state["topic_model"],
                 st.session_state["selected_topic_number"],
@@ -348,9 +354,55 @@ def main():
             st.markdown(gpt_description)
     
     st.divider()
-     
-    display_export_functionality(filtered_df)
     
+    # Export configuration
+    st.subheader("Export Configuration")
+    export_method = st.radio(
+        "Choose export method:",
+        ("Download as ZIP", "Save to folder"),
+        index=0,
+        help="Select whether to download documents as a ZIP file or save them directly to a folder on the server."
+    )
+    
+    granularity_days = st.number_input("Granularity (number of days)", min_value=1, value=3, step=1)
+
+    if export_method == "Download as ZIP":
+        # Prepare ZIP file
+        folder_name, documents = create_topic_documents(filtered_df, st.session_state["topic_model"], granularity_days, TIMESTAMP_COLUMN, TEXT_COLUMN)
+        
+        if documents:
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                for file_name, content in documents:
+                    zip_file.writestr(file_name, content)
+            
+            zip_buffer.seek(0)
+            zip_filename = f"{folder_name}.zip"
+            
+            st.download_button(
+                label="Export Topic Documents",
+                data=zip_buffer,
+                file_name=zip_filename,
+                mime="application/zip"
+            )
+        else:
+            st.warning("No documents found for the selected topic.")
+    else:
+        if st.button("Export Topic Documents"):
+            folder_name, documents = create_topic_documents(filtered_df, st.session_state["topic_model"], granularity_days, TIMESTAMP_COLUMN, TEXT_COLUMN)
+            
+            if documents:
+                export_folder = EXPORT_BASE_FOLDER / folder_name
+                export_folder.mkdir(parents=True, exist_ok=True)
+                
+                for file_name, content in documents:
+                    file_path = export_folder / file_name
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                
+                st.success(f"Successfully exported documents to folder: {export_folder}")
+            else:
+                st.warning("No documents found for the selected topic.")
 
 if __name__ == "__main__":
     main()

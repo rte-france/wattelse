@@ -12,7 +12,10 @@ from pathlib import Path
 
 from wattelse.bertopic.app.app_utils import plot_docs_reparition_over_time
 from wattelse.bertopic.app.state_utils import register_widget, save_widget_state
-
+from wattelse.bertopic.utils import (
+    TEXT_COLUMN,
+    TIMESTAMP_COLUMN
+)
 
 def data_overview(df: pd.DataFrame):
 
@@ -35,7 +38,7 @@ def data_overview(df: pd.DataFrame):
         with col1:
             plot_docs_reparition_over_time(df, freq)
         with col2: 
-            st.dataframe(st.session_state['timefiltered_df'][['index', 'text', 'timestamp']], use_container_width=True)
+            st.dataframe(st.session_state['timefiltered_df'][['index', TEXT_COLUMN, TIMESTAMP_COLUMN]], use_container_width=True)
 
 
 
