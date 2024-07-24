@@ -340,7 +340,8 @@ def main():
 
             if not SessionStateManager.get('models_trained', False):
                 st.stop()
-            else:    
+            else:
+
                 if st.button("Merge Models"):
                     with st.spinner("Merging models..."):
                         topic_dfs = {period: preprocess_model(model, SessionStateManager.get('doc_groups')[period], SessionStateManager.get('emb_groups')[period])
@@ -352,7 +353,8 @@ def main():
                         all_new_topics = []
                         
                         progress_bar = st.progress(0)
-                        merge_df_size_over_time = []
+                        SessionStateManager.set('merge_df_size_over_time', [])
+
 
                         for i, (current_timestamp, next_timestamp) in enumerate(zip(timestamps[:-1], timestamps[1:])):
                             df1 = topic_dfs[current_timestamp][topic_dfs[current_timestamp]['Topic'] != -1]
@@ -372,8 +374,10 @@ def main():
                                             
                             all_merge_histories.append(merge_history)
                             all_new_topics.append(new_topics)
+                            merge_df_size_over_time = SessionStateManager.get('merge_df_size_over_time')
                             merge_df_size_over_time.append((current_timestamp, merged_df_without_outliers['Topic'].max() + 1))
-                            
+                            SessionStateManager.update('merge_df_size_over_time', merge_df_size_over_time)
+
                             progress_bar.progress((i + 1) / len(timestamps))
                         
                         all_merge_histories_df = pd.concat(all_merge_histories, ignore_index=True)
@@ -540,23 +544,28 @@ def main():
 
                 if st.button("Retrieve Topic Counts"):
                     with st.spinner("Retrieving topic counts..."):
-                        topic_counts = [(timestamp, model.topic_info_df['Topic'].max() + 1) 
-                                        for timestamp, model in SessionStateManager.get('topic_models').items()]
-                        df = pd.DataFrame(topic_counts, columns=['timestamp', 'num_topics'])
-                        df2 = pd.DataFrame(SessionStateManager.get('merge_df_size_over_time', []), columns=['timestamp', 'num_topics'])
+                        # Number of topics per individual topic model
+                        individual_model_topic_counts = [(timestamp, model.topic_info_df['Topic'].max() + 1) 
+                                                        for timestamp, model in SessionStateManager.get('topic_models').items()]
+                        df_individual_models = pd.DataFrame(individual_model_topic_counts, columns=['timestamp', 'num_topics'])
 
-                        json_data = df.to_json(orient='records', date_format='iso', indent=4)
-                        json_data_2 = df2.to_json(orient='records', date_format='iso', indent=4)
+                        # Number of topics per cumulative merged model
+                        cumulative_merged_topic_counts = SessionStateManager.get('merge_df_size_over_time', [])
+                        df_cumulative_merged = pd.DataFrame(cumulative_merged_topic_counts, columns=['timestamp', 'num_topics'])
 
-                        json_file_path = SIGNAL_EVOLUTION_DATA_DIR / SIGNAL_EVOLUTION_DATA_FILE
+                        # Convert to JSON
+                        json_individual_models = df_individual_models.to_json(orient='records', date_format='iso', indent=4)
+                        json_cumulative_merged = df_cumulative_merged.to_json(orient='records', date_format='iso', indent=4)
+
+                        # Save individual model topic counts
+                        json_file_path = SIGNAL_EVOLUTION_DATA_DIR
                         json_file_path.mkdir(parents=True, exist_ok=True)
-                        (json_file_path).write_text(json_data)
+                        (json_file_path / INDIVIDUAL_MODEL_TOPIC_COUNTS_FILE).write_text(json_individual_models)
 
-                        json_file_path = SIGNAL_EVOLUTION_DATA_DIR / SIGNAL_EVOLUTION_DATA_FILE_2
-                        json_file_path.mkdir(parents=True, exist_ok=True)
-                        (json_file_path).write_text(json_data_2)
+                        # Save cumulative merged model topic counts
+                        (json_file_path / CUMULATIVE_MERGED_TOPIC_COUNTS_FILE).write_text(json_cumulative_merged)
 
-                        st.success(f"Topic and signal counts saved to {json_file_path}")
+                        st.success(f"Topic counts for individual and cumulative merged models saved to {json_file_path}")
 
 if __name__ == "__main__":
     # st.set_page_config(page_title=PAGE_TITLE, layout=LAYOUT) 
