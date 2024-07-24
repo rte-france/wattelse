@@ -159,12 +159,12 @@ def to_short_feedback(feedback: str) -> str:
     Function that converts the identifiers of the short feedback sent from the user interface into
     another identifier stored in the database.
     """
-    if feedback == "rating-great":
+    if "rating-great" in feedback:
         return GREAT
-    if feedback == "rating-ok":
+    if "rating-ok" in feedback:
         return OK
-    if feedback == "rating-missing":
+    if "rating-missing" in feedback:
         return MISSING
-    if feedback == "rating-wrong":
+    if "rating-wrong" in feedback:
         return WRONG
     return feedback
