@@ -106,7 +106,7 @@ def create_topic_size_evolution_figure(topic_ids=None):
 
     # Create traces for each selected topic
     for topic, data in sorted_topics:
-        fig.add_trace(go.Scattergl(
+        fig.add_trace(go.Scatter(
             x=data['Timestamps'],
             y=data['Popularity'],
             mode='lines+markers',
@@ -114,6 +114,7 @@ def create_topic_size_evolution_figure(topic_ids=None):
             hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
             text=[f"Topic {topic}"] * len(data['Timestamps']),
             customdata=[rep for rep in data['Representations']],
+            line_shape='spline'
         ))
 
     fig.update_layout(
@@ -122,58 +123,8 @@ def create_topic_size_evolution_figure(topic_ids=None):
         yaxis_title="Popularity",
         hovermode="closest"
     )
-
     return fig
 
-
-def create_topic_size_evolution_figure_labeled(topic_labels):
-    fig = go.Figure()
-
-    topic_sizes = st.session_state.topic_sizes
-
-    weak_signal_color = 'rgba(255, 0, 0, 0.8)'  # Intense red color for weak signals
-    strong_signal_color = 'rgba(0, 255, 0, 0.3)'  # Light green color for strong signals
-
-    for topic_label in topic_labels:
-        topic_id = int(topic_label[:-1])
-        label = topic_label[-1].lower()
-
-        if topic_id in topic_sizes:
-            data = topic_sizes[topic_id]
-            timestamps = data['Timestamps']
-            popularity = data['Popularity']
-            representations = data['Representations']
-
-            if label == 'w':
-                trace_color = weak_signal_color
-                trace_name = f"Weak Signal - Topic {topic_id}"
-            elif label == 's':
-                trace_color = strong_signal_color
-                trace_name = f"Strong Signal - Topic {topic_id}"
-            else:
-                continue
-
-            fig.add_trace(go.Scattergl(
-                x=timestamps,
-                y=popularity,
-                mode='lines+markers',
-                name=f"Topic {topic_id} : {data['Representations'][0].split('_')[:5]}",
-                hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
-                text=[f"Topic {topic_id}"] * len(timestamps),
-                customdata=[rep[:5] for rep in representations],
-                line=dict(color=trace_color),
-                marker=dict(color=trace_color),
-                line_shape='spline'
-            ))
-
-    fig.update_layout(
-        title="Signal Evolution",
-        xaxis_title="Timestamp",
-        yaxis_title="Popularity",
-        hovermode="closest"
-    )
-
-    return fig
 
 
 def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_date, min_datetime, max_datetime) -> Tuple[float, float]:
@@ -219,6 +170,9 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
     st.write(f"### Noise Threshold : {'{:.3f}'.format(q1)}")
     st.write(f"### Strong Signal Threshold : {'{:.3f}'.format(q3)}")
 
+    # Add colored overlays for signal regions
+    y_max = max(all_popularity_values) if all_popularity_values else 1
+
     # Update the figure layout
     fig.update_layout(
         title='Popularity Evolution',
@@ -226,12 +180,14 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         yaxis_title='Popularity',
         hovermode='closest',
         xaxis_range=[window_start, window_end],
+        yaxis_range=[0, y_max],
         xaxis=dict(
             type='date',
             tickformat='%Y-%m-%d'
-        )
+        ),
+        
     )
-    
+
     # Add vertical line for current date
     fig.add_shape(
         type="line",
@@ -254,18 +210,16 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         yanchor="bottom",
         bgcolor="rgba(255, 255, 255, 0.8)"
     )
-    
-    # Add colored overlays for signal regions
-    y_max = max(all_popularity_values) if all_popularity_values else 1
+
     
     # Noise region (grey)
-    fig.add_hrect(y0=0, y1=q1, fillcolor="rgba(128, 128, 128, 0.2)", line_width=0)
+    fig.add_hrect(y0=-100*y_max, y1=q1, fillcolor="rgba(128, 128, 128, 0.2)", line_width=0)
     
     # Weak signal region (orange)
     fig.add_hrect(y0=q1, y1=q3, fillcolor="rgba(255, 165, 0, 0.2)", line_width=0)
     
     # Strong signal region (green)
-    fig.add_hrect(y0=q3, y1=y_max, fillcolor="rgba(0, 255, 0, 0.2)", line_width=0)
+    fig.add_hrect(y0=q3, y1=y_max*100, fillcolor="rgba(0, 255, 0, 0.2)", line_width=0)
     
     st.plotly_chart(fig, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
     

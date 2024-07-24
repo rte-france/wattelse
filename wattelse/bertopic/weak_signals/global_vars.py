@@ -77,8 +77,8 @@ MODELS_TRAINED_FILE = 'models_trained_flag.pkl'
 
 # Model file names
 ZEROSHOT_TOPICS_DATA_FILE = 'zeroshot_topics_data.json'
-SIGNAL_EVOLUTION_DATA_FILE = 'topics_signal_counts.json'
-SIGNAL_EVOLUTION_DATA_FILE_2 = 'topic_signal_counts_2.json'
+INDIVIDUAL_MODEL_TOPIC_COUNTS_FILE = 'individual_topic_counts.json'
+CUMULATIVE_MERGED_TOPIC_COUNTS_FILE = 'cumulative_topic_counts.json'
 
 # Embedding models
 ENGLISH_EMBEDDING_MODELS = ["all-mpnet-base-v2", 
