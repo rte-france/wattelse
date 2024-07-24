@@ -23,6 +23,7 @@ from wattelse.bertopic.utils import (
     split_df_by_paragraphs,
     DATA_DIR,
     TEXT_COLUMN,
+    preprocess_french_text,
 )
 
 from wattelse.bertopic.app.state_utils import (
@@ -46,47 +47,6 @@ from wattelse.bertopic.app.app_utils import (
     load_data_wrapper,
 )
 
-
-
-def preprocess_text(text: str) -> str:
-    """
-    Preprocess French text by normalizing apostrophes, replacing hyphens and similar characters with spaces,
-    removing specific prefixes, removing unwanted punctuations (excluding apostrophes, periods, commas, and specific other punctuation),
-    replacing special characters with a space (preserving accented characters, common Latin extensions, and newlines),
-    normalizing superscripts and subscripts,
-    splitting words containing capitals in the middle (while avoiding splitting fully capitalized words), 
-    and replacing multiple spaces with a single space.
-    
-    Args:
-        text (str): The input French text to preprocess.
-    
-    Returns:
-        str: The preprocessed French text.
-    """
-    # Normalize different apostrophe variations to a standard apostrophe
-    text = text.replace("’", "'")
-
-    # Replace hyphens and similar characters with spaces
-    text = re.sub(r'\b(-|/|;|:)', ' ', text)
-    
-    # Replace special characters with a space (preserving specified punctuation, accented characters, common Latin extensions, and newlines)
-    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ.,\'\"\(\)\[\]]', ' ', text)
-    
-    # Normalize superscripts and subscripts for both numbers and letters
-    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖᵠʳˢᵗᵘᵛʷˣʸᶻ",
-                                    "0123456789abcdefghijklmnopqrstuvwxyz")
-    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉ₐₑᵢₒᵣᵤᵥₓ",
-                                  "0123456789aeioruvx")
-    text = text.translate(superscript_map)
-    text = text.translate(subscript_map)
-
-    # Split words that contain capitals in the middle but avoid splitting fully capitalized words
-    text = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', text)
-    
-    # Replace multiple spaces with a single space
-    text = re.sub(r'[ \t]+', ' ', text)
-    
-    return text
 
 
 def split_dataframe(split_option, enhanced):
@@ -265,7 +225,7 @@ def select_data():
             st.session_state["split_by_paragraphs"] = False
 
         # Preprocess the text
-        st.session_state["split_df"][TEXT_COLUMN] = st.session_state["split_df"][TEXT_COLUMN].apply(preprocess_text)
+        st.session_state["split_df"][TEXT_COLUMN] = st.session_state["split_df"][TEXT_COLUMN].apply(preprocess_french_text)
 
         # Remove unwanted rows from split_df
         st.session_state["split_df"] = st.session_state["split_df"][

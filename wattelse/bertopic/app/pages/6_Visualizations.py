@@ -19,6 +19,7 @@ from wattelse.bertopic.app.app_utils import (
     compute_topics_over_time,
 )
 import base64
+from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
 
 # Set locale for French date names
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
@@ -188,7 +189,7 @@ with st.sidebar:
 with st.expander("Overall Results", expanded=False):
     overall_results_plot = overall_results()
     if overall_results_plot is not None:
-        st.plotly_chart(overall_results_plot, use_container_width=True)
+        st.plotly_chart(overall_results_plot, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
     else:
         st.error("Cannot display overall results", icon="🚨")
         st.warning("Try to change the UMAP parameters", icon="⚠️")
@@ -197,7 +198,7 @@ with st.expander("Overall Results", expanded=False):
 with st.expander("Topics Treemap", expanded=False):
     with st.spinner("Computing topics treemap..."):
         treemap_plot = create_treemap()
-        st.plotly_chart(treemap_plot, use_container_width=True)
+        st.plotly_chart(treemap_plot, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
 
 # Data Map

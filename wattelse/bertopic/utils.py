@@ -41,6 +41,15 @@ CITATION_COUNT_COL = "citation_count"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+PLOTLY_BUTTON_SAVE_CONFIG = {
+  'toImageButtonOptions': {
+    'format': 'svg',
+    # 'height': 500,
+    # 'width': 1500,
+    'scale': 1,
+  }
+}
+
 def load_data(full_data_name: Path) -> pd.DataFrame:
     """
     Load data from a file into a pandas DataFrame.
@@ -123,8 +132,8 @@ def split_df_by_paragraphs(dataset: pd.DataFrame, enhanced: bool = False, tokeni
     new_rows = []
 
     for _, row in df.iterrows():
-        doc = row['text']
-        timestamp = row['timestamp']
+        doc = row[TEXT_COLUMN]
+        timestamp = row[TIMESTAMP_COLUMN]
 
         paragraphs = re.split(r'\n+', doc)
 
@@ -139,7 +148,7 @@ def split_df_by_paragraphs(dataset: pd.DataFrame, enhanced: bool = False, tokeni
                     sentence_chunks = [sentence[i:i+max_length] for i in range(0, len(sentence), max_length)]
                     for chunk in sentence_chunks:
                         new_row = row.copy()
-                        new_row['text'] = chunk
+                        new_row[TEXT_COLUMN] = chunk
                         new_row['is_split'] = True
                         new_row['num_tokens'] = len(tokenizer.encode(chunk, padding=False, truncation=False, add_special_tokens=False))
                         new_rows.append(new_row)
@@ -152,7 +161,7 @@ def split_df_by_paragraphs(dataset: pd.DataFrame, enhanced: bool = False, tokeni
                     else:
                         if current_doc.strip():
                             new_row = row.copy()
-                            new_row['text'] = current_doc.strip()
+                            new_row[TEXT_COLUMN] = current_doc.strip()
                             new_row['is_split'] = True
                             new_row['num_tokens'] = len(tokenizer.encode(current_doc.strip(), padding=False, truncation=False, add_special_tokens=False))
                             new_rows.append(new_row)
@@ -160,9 +169,50 @@ def split_df_by_paragraphs(dataset: pd.DataFrame, enhanced: bool = False, tokeni
 
             if current_doc.strip():
                 new_row = row.copy()
-                new_row['text'] = current_doc.strip()
+                new_row[TEXT_COLUMN] = current_doc.strip()
                 new_row['is_split'] = True
                 new_row['num_tokens'] = len(tokenizer.encode(current_doc.strip(), padding=False, truncation=False, add_special_tokens=False))
                 new_rows.append(new_row)
 
     return pd.DataFrame(new_rows)
+
+
+def preprocess_french_text(text: str) -> str:
+    """
+    Preprocess French text by normalizing apostrophes, replacing hyphens and similar characters with spaces,
+    removing specific prefixes, removing unwanted punctuations (excluding apostrophes, periods, commas, and specific other punctuation),
+    replacing special characters with a space (preserving accented characters, common Latin extensions, and newlines),
+    normalizing superscripts and subscripts,
+    splitting words containing capitals in the middle (while avoiding splitting fully capitalized words), 
+    and replacing multiple spaces with a single space.
+    
+    Args:
+        text (str): The input French text to preprocess.
+    
+    Returns:
+        str: The preprocessed French text.
+    """
+    # Normalize different apostrophe variations to a standard apostrophe
+    text = text.replace("’", "'")
+
+    # Replace hyphens and similar characters with spaces
+    text = re.sub(r'\b(-|/|;|:)', ' ', text)
+    
+    # Replace special characters with a space (preserving specified punctuation, accented characters, common Latin extensions, and newlines)
+    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ.,\'\"\(\)\[\]]', ' ', text)
+    
+    # Normalize superscripts and subscripts for both numbers and letters
+    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖᵠʳˢᵗᵘᵛʷˣʸᶻ",
+                                    "0123456789abcdefghijklmnopqrstuvwxyz")
+    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉ₐₑᵢₒᵣᵤᵥₓ",
+                                  "0123456789aeioruvx")
+    text = text.translate(superscript_map)
+    text = text.translate(subscript_map)
+
+    # Split words that contain capitals in the middle but avoid splitting fully capitalized words
+    text = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', text)
+    
+    # Replace multiple spaces with a single space
+    text = re.sub(r'[ \t]+', ' ', text)
+    
+    return text

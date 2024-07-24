@@ -14,6 +14,7 @@ from state_utils import restore_widget_state, register_widget, save_widget_state
 from wattelse.bertopic.app.app_utils import plot_topics_over_time, compute_topics_over_time
 from wattelse.bertopic.temporal_metrics_embedding import TempTopic
 from datetime import timedelta
+from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
 
 # Set locale for French date names
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
@@ -355,7 +356,6 @@ def process_data_and_fit_temptopic(time_granularity):
     df['grouped_timestamp'] = group_timestamps(df['timestamp'], time_granularity)
 
     aggregated_df = df.groupby('grouped_timestamp').agg({TEXT_COLUMN: list, 'index': list}).reset_index()
-    logger.debug(f"{aggregated_df}")
     indices = st.session_state["timefiltered_df"]["index"]
     docs = [st.session_state["split_df"][TEXT_COLUMN][i] for i in indices]
 
@@ -448,7 +448,7 @@ def display_topic_evolution(topics_to_show):
         metric=metric,
         color_palette=color_palette
     )
-    st.plotly_chart(fig_topic_evolution, use_container_width=True)
+    st.plotly_chart(fig_topic_evolution, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
     
     st.divider()
 
@@ -463,30 +463,27 @@ def display_overall_topic_stability(topics_to_show):
         normalize=normalize_overall_stability,
         darkmode=True
     )
-    st.plotly_chart(fig_overall_stability, use_container_width=True)
+    st.plotly_chart(fig_overall_stability, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
     st.divider()
 
 def display_temporal_stability_metrics(topics_to_show):
     """Display Temporal Stability Metrics."""
     st.header("Temporal Stability Metrics")
-    col1, col2 = st.columns(2)
 
-    with col1:
-        fig_topic_stability = plot_temporal_stability_metrics(
-            st.session_state.temptopic,
-            metric="topic_stability", 
-            topics_to_show=topics_to_show
-        )
-        st.plotly_chart(fig_topic_stability, use_container_width=True)
+    fig_topic_stability = plot_temporal_stability_metrics(
+        st.session_state.temptopic,
+        metric="topic_stability", 
+        topics_to_show=topics_to_show
+    )
+    st.plotly_chart(fig_topic_stability, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
-    with col2:
-        fig_representation_stability = plot_temporal_stability_metrics(
-            st.session_state.temptopic,
-            metric="representation_stability", 
-            topics_to_show=topics_to_show
-        )
-        st.plotly_chart(fig_representation_stability, use_container_width=True)
+    fig_representation_stability = plot_temporal_stability_metrics(
+        st.session_state.temptopic,
+        metric="representation_stability", 
+        topics_to_show=topics_to_show
+    )
+    st.plotly_chart(fig_representation_stability, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
 def display_topics_popularity():
     """Display the popularity of topics over time."""
@@ -517,7 +514,7 @@ def display_topics_popularity():
                     st.session_state["topics_over_time"],
                     st.session_state["dynamic_topics_list"],
                     st.session_state["topic_model"],
-                ), use_container_width=True)
+                ), config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
 
 

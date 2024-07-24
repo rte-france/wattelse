@@ -10,7 +10,7 @@ from weak_signals import classify_signals, save_signal_evolution_data
 from plotly_resampler import FigureResampler, FigureWidgetResampler
 import time
 from plotly_resampler import register_plotly_resampler
-
+from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
 from multiprocessing import Process
 import streamlit.components.v1 as components
 
@@ -24,12 +24,12 @@ def plot_num_topics_and_outliers(topic_models: Dict[pd.Timestamp, BERTopic]) -> 
     num_topics = [len(model.get_topic_info()) for model in topic_models.values()]
     fig_num_topics = go.Figure(data=[go.Bar(x=list(topic_models.keys()), y=num_topics)])
     fig_num_topics.update_layout(title="Number of Topics Detected", xaxis_title="Time Period", yaxis_title="Number of Topics")
-    st.plotly_chart(fig_num_topics, use_container_width=True)
+    st.plotly_chart(fig_num_topics, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
     outlier_sizes = [model.get_topic_info().loc[model.get_topic_info()['Topic'] == -1]['Count'].values[0] if -1 in model.get_topic_info()['Topic'].values else 0 for model in topic_models.values()]
     fig_outlier_sizes = go.Figure(data=[go.Bar(x=list(topic_models.keys()), y=outlier_sizes)])
     fig_outlier_sizes.update_layout(title="Size of Outlier Topic", xaxis_title="Time Period", yaxis_title="Size of Outlier Topic")
-    st.plotly_chart(fig_outlier_sizes, use_container_width=True)
+    st.plotly_chart(fig_outlier_sizes, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
 ########################################################################################################################
 
@@ -85,7 +85,7 @@ def plot_topics_per_timestamp(topic_models: Dict[pd.Timestamp, BERTopic]) -> Non
             legend_title='Topics'
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
         
         st.dataframe(selected_model.doc_info_df[['Paragraph', 'document_id', 'Topic', 'Representation', 'source']], use_container_width=True)
         st.dataframe(selected_model.topic_info_df, use_container_width=True)
@@ -110,7 +110,7 @@ def create_topic_size_evolution_figure(topic_ids=None):
             x=data['Timestamps'],
             y=data['Popularity'],
             mode='lines+markers',
-            name=f"Topic {topic} : {data['Representations'][0].split('_')[:5]}",
+            name=f"Topic {topic} : {data['Representations'][0].split('_')[:3]}",
             hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
             text=[f"Topic {topic}"] * len(data['Timestamps']),
             customdata=[rep for rep in data['Representations']],
@@ -160,9 +160,10 @@ def create_topic_size_evolution_figure_labeled(topic_labels):
                 name=f"Topic {topic_id} : {data['Representations'][0].split('_')[:5]}",
                 hovertemplate='Topic: %{text}<br>Timestamp: %{x}<br>Popularity: %{y}<br>Representation: %{customdata}<extra></extra>',
                 text=[f"Topic {topic_id}"] * len(timestamps),
-                customdata=[rep for rep in representations],
+                customdata=[rep[:5] for rep in representations],
                 line=dict(color=trace_color),
-                marker=dict(color=trace_color)
+                marker=dict(color=trace_color),
+                line_shape='spline'
             ))
 
     fig.update_layout(
@@ -177,7 +178,7 @@ def create_topic_size_evolution_figure_labeled(topic_labels):
 
 def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_date, min_datetime, max_datetime) -> Tuple[float, float]:
     """
-    Plot the evolution of topic sizes over time.
+    Plot the evolution of topic sizes over time with colored overlays for signal regions.
     
     Args:
         fig (FigureWidgetResampler): The cached figure to plot.
@@ -188,85 +189,110 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
         max_datetime (datetime): The maximum datetime value.
     
     Returns:
-        Tuple[float, float]: The q1 and q3 values representing the 10th and 50th percentiles of popularity values.
+        Tuple[float, float]: The q1 and q3 values representing the 10th and 90th percentiles of popularity values.
     """
-    with st.expander("Topic Popularity Evolution", expanded=True):
-        topic_sizes = st.session_state.topic_sizes
-        topic_last_popularity = st.session_state.topic_last_popularity
-        topic_last_update = st.session_state.topic_last_update
+    
+    topic_sizes = st.session_state.topic_sizes
+    topic_last_popularity = st.session_state.topic_last_popularity
+    topic_last_update = st.session_state.topic_last_update
 
-        window_size_timedelta = pd.Timedelta(days=window_size)
-        granularity_timedelta = pd.Timedelta(granularity)
+    window_size_timedelta = pd.Timedelta(days=window_size)
+    granularity_timedelta = pd.Timedelta(days=granularity)
 
-        window_end = pd.to_datetime(current_date) + granularity_timedelta
-        window_start = window_end - granularity_timedelta - window_size_timedelta
+    current_date = pd.to_datetime(current_date).floor('D')  # Floor to start of day
+    window_end = current_date + granularity_timedelta
+    window_start = current_date - window_size_timedelta
 
-        logger.debug(f"WINDOW SPAN: {window_start} to {window_end}")
-        
-        # Collect popularity values above 0.01 within the specified window
-        all_popularity_values = [
-            popularity for topic, data in topic_sizes.items()
-            for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
-            if window_start <= timestamp <= window_end and popularity > 0.01
-        ]
+    # Calculate q1 and q3 values
+    all_popularity_values = [
+        popularity for topic, data in topic_sizes.items()
+        for timestamp, popularity in zip(pd.to_datetime(data['Timestamps']), data['Popularity'])
+        if window_start <= timestamp <= window_end and popularity > 1e-5
+    ]
 
-        # Calculate the 10th and 50th percentiles of popularity values
-        if all_popularity_values:
-            q1 = np.percentile(all_popularity_values, 10)
-            q3 = np.percentile(all_popularity_values, 90)
-        else:
-            q1, q3 = 0, 0
+    if all_popularity_values:
+        q1 = np.percentile(all_popularity_values, 10)
+        q3 = np.percentile(all_popularity_values, 90)
+    else:
+        q1, q3 = 0, 0
 
-        # st.write(window_end)
-        st.write(f"Noise Threshold : {q1}")
-        st.write(f"Strong Signal Threshold : {q3}")
+    st.write(f"### Noise Threshold : {'{:.3f}'.format(q1)}")
+    st.write(f"### Strong Signal Threshold : {'{:.3f}'.format(q3)}")
 
-        # Update the figure layout to limit the display range to the window
-        fig.update_layout(
-            title='Popularity Evolution',
-            xaxis_title='Timestamp',
-            yaxis_title='Popularity',
-            hovermode='closest',
-            xaxis_range=[window_start, window_end]  # Set the range of the x-axis to the retrospective window
+    # Update the figure layout
+    fig.update_layout(
+        title='Popularity Evolution',
+        xaxis_title='Timestamp',
+        yaxis_title='Popularity',
+        hovermode='closest',
+        xaxis_range=[window_start, window_end],
+        xaxis=dict(
+            type='date',
+            tickformat='%Y-%m-%d'
         )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Define the columns to display in the DataFrames
-        columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest_Popularity', 'Docs_Count', 'Paragraphs_Count', 'Latest_Timestamp', 'Documents']
+    )
+    
+    # Add vertical line for current date
+    fig.add_shape(
+        type="line",
+        x0=current_date,
+        x1=current_date,
+        y0=0,
+        y1=1,
+        yref="paper",
+        line=dict(color="red", width=2, dash="dash"),
+    )
+    
+    fig.add_annotation(
+        x=current_date,
+        y=1,
+        yref="paper",
+        text="Current Date",
+        showarrow=True,
+        textangle=0,
+        xanchor="left",
+        yanchor="bottom",
+        bgcolor="rgba(255, 255, 255, 0.8)"
+    )
+    
+    # Add colored overlays for signal regions
+    y_max = max(all_popularity_values) if all_popularity_values else 1
+    
+    # Noise region (grey)
+    fig.add_hrect(y0=0, y1=q1, fillcolor="rgba(128, 128, 128, 0.2)", line_width=0)
+    
+    # Weak signal region (orange)
+    fig.add_hrect(y0=q1, y1=q3, fillcolor="rgba(255, 165, 0, 0.2)", line_width=0)
+    
+    # Strong signal region (green)
+    fig.add_hrect(y0=q3, y1=y_max, fillcolor="rgba(0, 255, 0, 0.2)", line_width=0)
+    
+    st.plotly_chart(fig, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
+    
+    # Display DataFrames for each category
+    columns = ['Topic', 'Sources', 'Source_Diversity', 'Representation', 'Latest_Popularity', 'Docs_Count', 'Paragraphs_Count', 'Latest_Timestamp', 'Documents']
 
-        # Classify topics based on their popularity behavior at the final timestamp
-        noise_topics_df, weak_signal_topics_df, strong_signal_topics_df = classify_signals(topic_sizes, window_start, window_end, q1, q3)
+    noise_topics_df, weak_signal_topics_df, strong_signal_topics_df = classify_signals(topic_sizes, window_start, window_end, q1, q3)
 
-        # Display the DataFrames for each category
-        st.subheader(":grey[Noise]")
-        if not noise_topics_df.empty:
-            st.dataframe(noise_topics_df.astype(str)[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
-        else:
-            st.info(f"No noisy signals were detected at timestamp {window_end}.")
+    st.subheader(":grey[Noise]")
+    if not noise_topics_df.empty:
+        st.dataframe(noise_topics_df.astype(str)[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
+    else:
+        st.info(f"No noisy signals were detected at timestamp {window_end}.")
 
-        st.subheader(":orange[Weak Signals]")
-        
-        if not weak_signal_topics_df.empty:
-            st.dataframe(weak_signal_topics_df.astype(str)[columns].sort_values(by=['Latest_Popularity'], ascending=True))
-        else:
-            st.info(f"No weak signals were detected at timestamp {window_end}.")
+    st.subheader(":orange[Weak Signals]")
+    if not weak_signal_topics_df.empty:
+        st.dataframe(weak_signal_topics_df.astype(str)[columns].sort_values(by=['Latest_Popularity'], ascending=True))
+    else:
+        st.info(f"No weak signals were detected at timestamp {window_end}.")
 
-        st.subheader(":green[Strong Signals]")
-        if not strong_signal_topics_df.empty:
-            st.dataframe(strong_signal_topics_df.astype(str)[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
-        else:
-            st.info(f"No strong signals were detected at timestamp {window_end}.")
+    st.subheader(":green[Strong Signals]")
+    if not strong_signal_topics_df.empty:
+        st.dataframe(strong_signal_topics_df.astype(str)[columns].sort_values(by=['Topic', 'Latest_Popularity'], ascending=[False, False]))
+    else:
+        st.info(f"No strong signals were detected at timestamp {window_end}.")
 
-
-        # Add date range picker for saving signal evolution data
-        start_date, end_date = st.date_input("Select date range for saving signal evolution data:", value=(min_datetime.date(), max_datetime.date()), min_value=min_datetime.date(), max_value=max_datetime.date())
-
-        if st.button("Save Signal Evolution Data"):
-            save_signal_evolution_data(st.session_state.all_merge_histories_df, dict(topic_sizes), topic_last_popularity, topic_last_update, min_datetime, max_datetime, window_size, granularity, pd.Timestamp(start_date), pd.Timestamp(end_date))
-            st.success("Signal evolution data saved successfully!")
-
-        return window_start, window_end
+    return window_start, window_end
 
 
 def plot_newly_emerged_topics(all_new_topics_df: pd.DataFrame) -> None:
@@ -308,7 +334,7 @@ def plot_newly_emerged_topics(all_new_topics_df: pd.DataFrame) -> None:
 
     with st.expander("Newly Emerged Topics", expanded=False):
         st.dataframe(all_new_topics_df[['Topic', 'Count', 'Document_Count', 'Representation', 'Documents', 'Timestamp']].sort_values(by=['Timestamp', 'Document_Count'], ascending=[True, False]))
-        st.plotly_chart(fig_new_topics, use_container_width=True)
+        st.plotly_chart(fig_new_topics, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
 ########################################################################################################################
 
@@ -576,6 +602,6 @@ def create_sankey_diagram(all_merge_histories_df: pd.DataFrame) -> go.Figure:
         sankey_diagram = create_sankey_diagram_plotly(transformed_df, search_term, max_pairs)
 
         # Display the diagram using Streamlit in an expander
-        st.plotly_chart(sankey_diagram, use_container_width=True)
+        st.plotly_chart(sankey_diagram, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
     
     return sankey_diagram

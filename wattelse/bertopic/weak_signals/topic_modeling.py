@@ -14,6 +14,7 @@ from global_vars import *
 import streamlit as st
 import torch
 from tqdm import tqdm
+from wattelse.bertopic.utils import TEXT_COLUMN
 
 def create_topic_model(docs: List[str], 
                        embedding_model: SentenceTransformer, 
@@ -294,7 +295,7 @@ def train_topic_models(grouped_data: Dict[pd.Timestamp, pd.DataFrame],
     logger.debug(f"Starting to train topic models with zeroshot_topic_list: {zeroshot_topic_list}")
 
     for i, (period, group) in enumerate(non_empty_groups):
-        docs = group['text'].tolist()
+        docs = group[TEXT_COLUMN].tolist()
         embeddings_subset = embeddings[group.index]
 
         logger.debug(f"Processing period: {period}")
@@ -324,8 +325,8 @@ def train_topic_models(grouped_data: Dict[pd.Timestamp, pd.DataFrame],
             
             doc_info_df = topic_model.get_document_info(docs=docs)
             doc_info_df = doc_info_df.rename(columns={"Document": "Paragraph"})
-            doc_info_df = doc_info_df.merge(group[['text', 'document_id', 'source', 'url']], left_on='Paragraph', right_on='text', how='left')
-            doc_info_df = doc_info_df.drop(columns=['text'])
+            doc_info_df = doc_info_df.merge(group[[TEXT_COLUMN, 'document_id', 'source', 'url']], left_on='Paragraph', right_on=TEXT_COLUMN, how='left')
+            doc_info_df = doc_info_df.drop(columns=[TEXT_COLUMN])
 
             topic_info_df = topic_model.get_topic_info()
             topic_doc_count_df = doc_info_df.groupby('Topic')['document_id'].nunique().reset_index(name='Document_Count')

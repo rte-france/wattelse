@@ -18,10 +18,11 @@ from visualizations import (plot_num_topics_and_outliers, plot_topics_per_timest
                             plot_topic_size_evolution, create_topic_size_evolution_figure, 
                             plot_newly_emerged_topics, create_sankey_diagram)
 import plotly.graph_objects as go
-from weak_signals import detect_weak_signals_zeroshot, calculate_signal_popularity, analyze_signal
+from weak_signals import detect_weak_signals_zeroshot, calculate_signal_popularity, analyze_signal, save_signal_evolution_data
 from prompts import get_prompt
 from global_vars import *
 from nltk.corpus import stopwords
+from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG, TEXT_COLUMN
 import glob
 
 def save_state():
@@ -241,7 +242,7 @@ def main():
         start_date, end_date = st.slider("Select Timeframe", min_value=min_date, max_value=max_date, value=(min_date, max_date), key='timeframe_slider')
 
         # Filter and sample the DataFrame
-        df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)].drop_duplicates(subset='text', keep='first')
+        df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)].drop_duplicates(subset=TEXT_COLUMN, keep='first')
         df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
 
         sample_size = st.number_input("Sample Size", value=SAMPLE_SIZE_DEFAULT or len(df_filtered), min_value=1, max_value=len(df_filtered), key='sample_size')
@@ -252,7 +253,7 @@ def main():
 
         SessionStateManager.set('timefiltered_df', df_filtered)
         st.write(f"Number of documents in selected timeframe: {len(SessionStateManager.get_dataframe('timefiltered_df'))}")
-        st.dataframe(SessionStateManager.get_dataframe('timefiltered_df')[['text', 'timestamp']], use_container_width=True)
+        st.dataframe(SessionStateManager.get_dataframe('timefiltered_df')[[TEXT_COLUMN, 'timestamp']], use_container_width=True)
 
         # Embed documents
         if st.button("Embed Documents"):
@@ -260,7 +261,7 @@ def main():
                 embedding_dtype = SessionStateManager.get('embedding_dtype')
                 embedding_model_name = SessionStateManager.get('embedding_model_name')
                 
-                texts = SessionStateManager.get_dataframe('timefiltered_df')['text'].tolist()
+                texts = SessionStateManager.get_dataframe('timefiltered_df')[TEXT_COLUMN].tolist()
                 
                 try:
                     embedding_model, embeddings = embed_documents(
@@ -299,7 +300,7 @@ def main():
             if non_empty_timestamps:
                 selected_timestamp = st.select_slider("Select Timestamp", options=non_empty_timestamps, key='timestamp_slider')
                 selected_docs = grouped_data[selected_timestamp]
-                st.dataframe(selected_docs[['timestamp', 'text', 'document_id', 'source', 'url']], use_container_width=True)
+                st.dataframe(selected_docs[['timestamp', TEXT_COLUMN, 'document_id', 'source', 'url']], use_container_width=True)
             else:
                 st.warning("No data available for the selected granularity.")
         
@@ -413,7 +414,7 @@ def main():
             plot_num_topics_and_outliers(topic_models)
             plot_topics_per_timestamp(topic_models)
 
-            # Display weak signal trend
+            # Display zeroshot signal trend
             if zeroshot_topic_list:
                 st.subheader("Zero-shot Weak Signal Trends")
                 weak_signal_trends = detect_weak_signals_zeroshot(topic_models, zeroshot_topic_list, granularity)
@@ -428,7 +429,7 @@ def main():
                         ]
                         fig_trend.add_trace(go.Scatter(x=timestamps, y=popularity, mode='lines+markers', name=topic, hovertext=hovertext, hoverinfo='text'))
                     fig_trend.update_layout(title="Popularity of Zero-Shot Topics", xaxis_title="Timestamp", yaxis_title="Popularity")
-                    st.plotly_chart(fig_trend, use_container_width=True)
+                    st.plotly_chart(fig_trend, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
 
                     # Display the dataframe with zeroshot topics information
                     zeroshot_topics_data = [
@@ -458,41 +459,76 @@ def main():
                 st.stop()
 
             else:
-                # Plot topic size evolution
+                # Display merged signal trend
                 st.subheader("Topic Size Evolution")
-                window_size = st.number_input("Retrospective Period (days)", min_value=1, max_value=MAX_WINDOW_SIZE, value=DEFAULT_WINDOW_SIZE, key='window_size')
+                st.dataframe(SessionStateManager.get('all_merge_histories_df')[['Timestamp', 'Topic1', 'Topic2', 'Representation1', 'Representation2', 'Document_Count1', 'Document_Count2']])
 
-                all_merge_histories_df = SessionStateManager.get('all_merge_histories_df')
-                min_datetime = all_merge_histories_df['Timestamp'].min().to_pydatetime()
-                max_datetime = all_merge_histories_df['Timestamp'].max().to_pydatetime()
+                with st.expander("Topic Popularity Evolution", expanded=True):
+                    window_size = st.number_input("Retrospective Period (days)", min_value=1, max_value=MAX_WINDOW_SIZE, value=DEFAULT_WINDOW_SIZE, key='window_size')
 
-                current_date = st.slider(
-                    "Current date",
-                    min_value=min_datetime,
-                    max_value=max_datetime,
-                    step=pd.Timedelta(days=granularity),
-                    format="YYYY-MM-DD",
+                    all_merge_histories_df = SessionStateManager.get('all_merge_histories_df')
+                    min_datetime = all_merge_histories_df['Timestamp'].min().to_pydatetime()
+                    max_datetime = all_merge_histories_df['Timestamp'].max().to_pydatetime()
 
-                    help="""The earliest selectable date corresponds to the earliest timestamp when topics were merged 
-                    (with the smallest possible value being the earliest timestamp in the provided data). 
-                    The latest selectable date corresponds to the most recent topic merges, which is at most equal 
-                    to the latest timestamp in the data minus the provided granularity."""
-                )
+                    current_date = st.slider(
+                        "Current date",
+                        min_value=min_datetime,
+                        max_value=max_datetime,
+                        step=pd.Timedelta(days=granularity),
+                        format="YYYY-MM-DD",
 
-                plot_topic_size_evolution(create_topic_size_evolution_figure(), 
-                                        window_size, granularity, current_date, min_datetime, max_datetime)
+                        help="""The earliest selectable date corresponds to the earliest timestamp when topics were merged 
+                        (with the smallest possible value being the earliest timestamp in the provided data). 
+                        The latest selectable date corresponds to the most recent topic merges, which is at most equal 
+                        to the latest timestamp in the data minus the provided granularity."""
+                    )
+
+                    plot_topic_size_evolution(create_topic_size_evolution_figure(), 
+                                            window_size, granularity, current_date, min_datetime, max_datetime)
+                    
+                    # Save Signal Evolution Data to investigate later on in a separate notebook
+                    start_date, end_date = st.select_slider(
+                        "Select date range for saving signal evolution data:",
+                        options=pd.date_range(start=min_datetime, end=max_datetime, freq=pd.Timedelta(days=granularity)),
+                        value=(min_datetime, max_datetime),
+                        format_func=lambda x: x.strftime('%Y-%m-%d'),
+                    )
+
+                    if st.button("Save Signal Evolution Data"):
+                        try:
+                            save_path = save_signal_evolution_data(
+                                all_merge_histories_df=all_merge_histories_df,
+                                topic_sizes=dict(SessionStateManager.get('topic_sizes')),
+                                topic_last_popularity=SessionStateManager.get('topic_last_popularity'),
+                                topic_last_update=SessionStateManager.get('topic_last_update'),
+                                window_size=SessionStateManager.get('window_size'),
+                                granularity=granularity,
+                                start_timestamp=pd.Timestamp(start_date),
+                                end_timestamp=pd.Timestamp(end_date)
+                            )
+                            st.success(f"Signal evolution data saved successfully at {save_path}")
+                        except Exception as e:
+                            st.error(f"Error encountered while saving signal evolution data: {e}")
 
                 # Analyze signal
                 st.subheader("Signal Analysis")
-                topic_number = st.text_input("Enter a topic number to take a closer look:")
-                
+                topic_number = st.number_input("Enter a topic number to take a closer look:",
+                                               min_value=0,
+                                               step=1)
+
                 if st.button("Analyze signal"):
                     try:
-                        topic_number = int(topic_number)
                         language = SessionStateManager.get('language')
-                        analyze_signal(topic_number, current_date, all_merge_histories_df, granularity, language)
-                    except ValueError:
-                        st.error("Please enter a valid integer for the topic number.")
+                        with st.container(height=500, border=True):
+                            with st.spinner("Analyzing signal..."):
+                                summary, analysis = analyze_signal(topic_number, current_date, all_merge_histories_df, granularity, language)
+                                col1, col2 = st.columns(spec=[.5, .5], gap="medium")
+                                with col1:
+                                    st.markdown(summary)
+                                with col2:
+                                    st.markdown(analysis)
+                    except Exception as e:
+                        st.error(f"Error while trying to generate signal summary : {e}")
 
                 # Create the Sankey Diagram
                 st.subheader("Topic Evolution")
