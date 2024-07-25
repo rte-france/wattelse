@@ -302,6 +302,8 @@ def train_model():
                 st.session_state["timefiltered_df"][TEXT_COLUMN],
                 coherence_score_type
             )
+            logger.success(f"Coherence score [{coherence_score_type}]: {coherence}")
+
         except IndexError as e:
             logger.error("Error while calculating coherence metric. This likely happens when you're using an LLM to represent the topics instead of keywords.") 
         try: 
@@ -309,11 +311,9 @@ def train_model():
                                             st.session_state["topics"],
                                             st.session_state["timefiltered_df"][TEXT_COLUMN],
                                             diversity_score_type="puw")
+            logger.success(f"Diversity score [{diversity_score_type}]: {diversity}")
         except IndexError as e:
             logger.error("Error while calculating diversity metric. This likely happens when you're using an LLM to represent the topics instead of keywords.") 
-        
-        logger.success(f"Coherence score [{coherence_score_type}]: {coherence}")
-        logger.success(f"Diversity score [{diversity_score_type}]: {diversity}")
         
         st.session_state['model_trained'] = True
         if not st.session_state['model_saved']:
