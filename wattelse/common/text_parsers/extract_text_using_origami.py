@@ -9,7 +9,7 @@ import pandas as pd
 import typer
 from loguru import logger
 
-from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_DIR
+from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_PATH
 
 try:
     from origami_indexers.indexers import OrigamiSummaryPdfIndexer, OrigamiSummaryDocXIndexer
@@ -18,7 +18,7 @@ except ImportError as e:
 
 #TODO: ideally, the call to the Origami indexer shall be done using a API call to avoid conflicts of versions, etc.
 
-def parse_docx(name: Path, output_path: Path = BASE_DATA_DIR) -> Path:
+def parse_docx(name: Path, output_path: Path = BASE_DATA_PATH) -> Path:
     logger.info(f"Parsing {name}...")
 
     output_file = name.stem + ".csv"

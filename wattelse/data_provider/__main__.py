@@ -14,7 +14,7 @@ from loguru import logger
 from pathlib import Path
 
 from wattelse.common.crontab_utils import add_job_to_crontab
-from wattelse.common import FEED_BASE_DIR, LOG_DIR
+from wattelse.common import FEED_BASE_PATH, LOG_PATH
 from wattelse.data_provider.arxiv_provider import ArxivProvider
 from wattelse.data_provider.bing_news_provider import BingNewsProvider
 from wattelse.data_provider.google_news_provider import GoogleNewsProvider
@@ -197,9 +197,9 @@ if __name__ == "__main__":
         after = (current_date - timedelta(days=days_to_subtract)).strftime("%Y-%m-%d")
         language = data_feed_cfg.get("data-feed", "language")
         save_path = (
-            FEED_BASE_DIR
-            / data_feed_cfg.get("data-feed", "feed_dir_path")
-            / f"{current_date_str}_{data_feed_cfg.get('data-feed', 'id')}.jsonl"
+                FEED_BASE_PATH
+                / data_feed_cfg.get("data-feed", "feed_dir_path")
+                / f"{current_date_str}_{data_feed_cfg.get('data-feed', 'id')}.jsonl"
         )
         save_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -229,7 +229,7 @@ if __name__ == "__main__":
         schedule = data_feed_cfg.get("data-feed", "update_frequency")
         id = data_feed_cfg.get("data-feed", "id")
         proxy = os.getenv("https_proxy")
-        command = f"{sys.prefix}/bin/python -m wattelse.data_provider scrape-feed {feed_cfg.resolve()} > {LOG_DIR}/cron_feed_{id}.log 2>&1"
+        command = f"{sys.prefix}/bin/python -m wattelse.data_provider scrape-feed {feed_cfg.resolve()} > {LOG_PATH}/cron_feed_{id}.log 2>&1"
         env_vars = f"http_proxy='{proxy}' https_proxy='{proxy}'"
         add_job_to_crontab(schedule, command, env_vars)
 

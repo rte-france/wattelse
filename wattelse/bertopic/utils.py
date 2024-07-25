@@ -12,7 +12,7 @@ from pathlib import Path
 import nltk
 import pandas as pd
 
-from wattelse.common import BASE_DATA_DIR, BASE_OUTPUT_DIR, BASE_CACHE_PATH
+from wattelse.common import BASE_DATA_PATH, BASE_OUTPUT_PATH, BASE_CACHE_PATH
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
@@ -26,8 +26,8 @@ else:
     ssl._create_default_https_context = _create_unverified_https_context
 nltk.download("stopwords")
 
-DATA_DIR = BASE_DATA_DIR / "bertopic"
-OUTPUT_DIR = BASE_OUTPUT_DIR / "bertopic"
+DATA_DIR = BASE_DATA_PATH / "bertopic"
+OUTPUT_DIR = BASE_OUTPUT_PATH / "bertopic"
 CACHE_DIR = BASE_CACHE_PATH / "bertopic"
 
 TEXT_COLUMN = "text"

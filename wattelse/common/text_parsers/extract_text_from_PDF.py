@@ -12,7 +12,7 @@ import typer
 from llama_index.core.node_parser import SentenceSplitter
 from loguru import logger
 
-from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_DIR
+from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_PATH
 
 def _clean_text(x):
     """
@@ -96,7 +96,7 @@ def extract_chunks_from_pdf(pdf_file_path, chunk_size = 200, chunk_overlap = 50)
 
     return df
 
-def parse_pdf(pdf_file: Path, output_path: Path = BASE_DATA_DIR, mode: str = "chunk") -> Path:
+def parse_pdf(pdf_file: Path, output_path: Path = BASE_DATA_PATH, mode: str = "chunk") -> Path:
     """Parse a pdf file using defined mode.
 
     Args:

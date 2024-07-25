@@ -20,9 +20,9 @@ from langchain_core.documents import Document
 from loguru import logger
 
 from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
-from wattelse.common import BASE_DATA_DIR
+from wattelse.common import BASE_DATA_PATH
 
-DATABASE_PERSISTENCE_PATH = BASE_DATA_DIR / "rag_database"
+DATABASE_PERSISTENCE_PATH = BASE_DATA_PATH / "rag_database"
 
 
 class DataManagementError(Exception):

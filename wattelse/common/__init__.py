@@ -2,29 +2,21 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-
-import socket
+import os
 from pathlib import Path
 
 TEXT_COLUMN = "text"
 FILENAME_COLUMN = "filename"
 SEED = 666
-GPU_SERVERS = ["groesplu0", "GROESSLAO01"]
-GPU_DSVD = ["pf9sodsia001", "pf9sodsia002", "pf9sodsia003"]
 
-BASE_DIR = (
-    Path("/data/weak_signals")
-    if socket.gethostname() in GPU_SERVERS
-    else Path("/scratch/nlp")
-    if socket.gethostname() in GPU_DSVD
-    else Path(__file__).parent.parent.parent
-)
+WATTELSE_BASE_DIR = os.getenv("WATTELSE_BASE_DIR", None)
+BASE_PATH = Path(WATTELSE_BASE_DIR) if WATTELSE_BASE_DIR else Path(__file__).parent.parent.parent
 
-BASE_DATA_DIR = BASE_DIR / "data"
-BASE_OUTPUT_DIR = BASE_DIR / "output"
-BASE_CACHE_PATH = BASE_DIR / "cache"
-MODEL_BASE_PATH = BASE_DIR / "models"
-FEED_BASE_DIR = BASE_DATA_DIR / "bertopic" / "feeds"
-LOG_DIR = BASE_DIR / "log"
+BASE_DATA_PATH = BASE_PATH / "data"
+BASE_OUTPUT_PATH = BASE_PATH / "output"
+BASE_CACHE_PATH = BASE_PATH / "cache"
+MODEL_BASE_PATH = BASE_PATH / "models"
+FEED_BASE_PATH = BASE_DATA_PATH / "bertopic" / "feeds"
+LOG_PATH = BASE_PATH / "log"
 
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_PATH.mkdir(parents=True, exist_ok=True)

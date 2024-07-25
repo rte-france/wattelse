@@ -8,14 +8,14 @@ import os
 
 from pathlib import Path
 
-from wattelse.common import BASE_DATA_DIR, BASE_CACHE_PATH
+from wattelse.common import BASE_DATA_PATH, BASE_CACHE_PATH
 from wattelse.common.config_utils import parse_literal, EnvInterpolation
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
 
 # Make dirs if not exist
-DATA_DIR = BASE_DATA_DIR / "chatbot"
+DATA_DIR = BASE_DATA_PATH / "chatbot"
 CACHE_DIR = BASE_CACHE_PATH / "chatbot"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
