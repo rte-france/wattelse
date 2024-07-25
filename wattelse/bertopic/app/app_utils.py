@@ -72,6 +72,7 @@ def embedding_model_options():
                 "OrdalieTech/Solon-embeddings-large-0.1",
                 "dangvantuan/sentence-camembert-large",
                 "paraphrase-multilingual-MiniLM-L12-v2",
+                "BAAI/bge-base-en-v1.5",
                 "sentence-transformers/all-mpnet-base-v2",
                 "antoinelouis/biencoder-camembert-base-mmarcoFR",
                 "all-MiniLM-L12-v2",
