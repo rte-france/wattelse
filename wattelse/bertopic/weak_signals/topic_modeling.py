@@ -52,23 +52,38 @@ def create_topic_model(docs: List[str],
             zeroshot_topic_list = None
         
         logger.debug("\tInitializing BERTopic model")
+        ctfidf_model = ClassTfidfTransformer(reduce_frequent_words=True, bm25_weighting=False)
         topic_model = BERTopic(
             embedding_model=embedding_model,
             umap_model=umap_model,
             hdbscan_model=hdbscan_model,
             vectorizer_model=vectorizer_model,
-            ctfidf_model=ClassTfidfTransformer(reduce_frequent_words=True, bm25_weighting=False),
+            ctfidf_model=ctfidf_model,
             representation_model=mmr_model,
             zeroshot_topic_list=zeroshot_topic_list,
             zeroshot_min_similarity=zeroshot_min_similarity,
         )
-        logger.debug("\tBERTopic model instance created successfully")
+        logger.success("\tBERTopic model instance created successfully")
         
         logger.debug("\tFitting BERTopic model")
-        fitted_model = topic_model.fit(docs, embeddings)
-        logger.debug("\tBERTopic model fitted successfully")
+        topics, probs = topic_model.fit_transform(docs, embeddings)
+
+        logger.debug("\tReducing outliers")
+        new_topics = topic_model.reduce_outliers(documents=docs, 
+                                                 topics=topics, 
+                                                 embeddings=embeddings, 
+                                                 strategy="embeddings")
         
-        return fitted_model
+        topic_model.update_topics(docs=docs,
+                                  topics=new_topics,
+                                  vectorizer_model=vectorizer_model,
+                                  ctfidf_model=ctfidf_model,
+                                  representation_model=mmr_model)
+        
+
+        logger.success("\tBERTopic model fitted successfully")
+        
+        return topic_model
     except Exception as e:
         logger.error(f"\tError in create_topic_model: {str(e)}")
         logger.exception("\tTraceback:")
