@@ -1,14 +1,12 @@
-study_id: "23-1687"
-client_civil_status: "Monsieur"
-client_name: "Christian Schelander"
-client_email_address: "Christian@flowertech.se"
-client_company_name: "Flower Infrastructure Technologies AB"
-request_date: "26/10/2023"
-connection_type: "stockeur"
-generation_capacity_installed: "100 MW"
-generation_connection_power: "100 MW"
-load_connection_power: "100 MW"
-desired_commissioning_date: "Premier trimestre 2026"
-department_number: 35
-departement_name: "Ille-et-Vilaine"
-commune_name: "Vitré"
+D1_id_etude: "23-1687"
+D1_civilité_contact: "Monsieur"
+D1_prenom_nom_contact: "Christian Schelander"
+D1_email_contact: "Christian@flowertech.se"
+D1_nom_societe: "Flower Infrastructure Technologies AB"
+D1_date_demande: "26/10/2023"
+D1_type_filiere: "stockeur"
+D1_puissance_injection: 100
+D1_puissance_soutirage: 100
+D1_mise_service: "01/03/2026"
+D1_numero_departement_raccordement: 35
+D1_commune_raccordement: "Vitré"
