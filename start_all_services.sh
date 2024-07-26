@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set logs directory and create if not exists
-export WATTELSE_LOGS_DIR=`pwd`/logs
+export WATTELSE_LOGS_DIR=$WATTELSE_BASE_DIR/logs
 mkdir -p $WATTELSE_LOGS_DIR
 
 echo "Starting LLM service"
