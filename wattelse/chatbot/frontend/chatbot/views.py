@@ -12,7 +12,7 @@ from datetime import datetime
 
 import mammoth
 import pytz
-from django.db.models import Count, When, Case, Max, BooleanField, Q
+from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
 
