@@ -42,6 +42,10 @@ const SPECIAL_SEPARATOR = '¤¤¤¤¤';
 // messages
 const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte généré peut contenir des erreurs."
 
+// feedback
+MAX_QUESTIONS_WITHOUT_FEEDBACK = 5
+FEEDBACK_TOLERANCE = 5  // random value for reminder messages
+
 // initialize layout
 initializeLayout();
 
@@ -139,7 +143,7 @@ function updateAvailableDocuments(){
     if (removalDocumentList) {
         removalDocumentList.innerHTML="";
     }
-    
+
     // Display documents to be selected
     availableDocs.forEach((document) =>{
         const listItem = createDocumentListItem(document);
@@ -703,6 +707,8 @@ function newConversation() {
 
 // Functions to collect user feedback
 function provideFeedback(userMessage, botMessage) {
+    checkFeedbackCountSinceLastFeedback();
+
     const feedbackSection = document.createElement('div');
     feedbackSection.classList.add('feedback-section');
 
@@ -787,4 +793,25 @@ function uuid4() {
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
       (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
     );
+}
+
+function checkFeedbackCountSinceLastFeedback() {
+    response = fetch('/get_questions_count_since_last_feedback/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+                        })
+                    })
+      .then(response => response.json())
+      .then(data => {
+        console.log("Number of questions without feedback since last feedback: " + data.count);
+        if (data.count  > MAX_QUESTIONS_WITHOUT_FEEDBACK +  Math.floor(Math.random() * FEEDBACK_TOLERANCE)) {
+            createWarningMessage("N'oubliez pas de donner du feedback svp !")
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+    return response;
 }
