@@ -36,7 +36,7 @@ from wattelse.common.config_utils import parse_literal
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
 from wattelse.common.mail_utils import get_credentials, send_email
 from wattelse.common.crontab_utils import add_job_to_crontab
-from wattelse.common import FEED_BASE_PATH, LOG_PATH
+from wattelse.common import FEED_BASE_PATH, BERTOPIC_LOG_PATH
 
 # Config sections
 BERTOPIC_CONFIG_SECTION = "bertopic_config"
@@ -285,7 +285,7 @@ if __name__ == "__main__":
         id = newsletter_cfg.get(NEWSLETTER_SECTION, "id")
         proxy = os.getenv("https_proxy")
         api_key = os.getenv("OPENAI_API_KEY")
-        command = f"{sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {LOG_PATH}/cron_newsletter_{id}.log 2>&1"
+        command = f"{sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {BERTOPIC_LOG_PATH}/cron_newsletter_{id}.log 2>&1"
         env_vars = f"OPENAI_API_KEY={api_key} CUDA_VISIBLE_DEVICES={cuda_devices} http_proxy='{proxy}' https_proxy='{proxy}'"
         add_job_to_crontab(schedule, command, env_vars)
 
