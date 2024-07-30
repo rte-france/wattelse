@@ -12,6 +12,7 @@ from datetime import datetime
 
 import mammoth
 import pytz
+from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
 
@@ -242,6 +243,7 @@ def manage_short_feedback(request):
     """
     return insert_feedback(request, short=True)
 
+
 def manage_long_feedback(request):
     """
     Function that collects long feedback sent from the user interface about the last
@@ -432,3 +434,24 @@ def admin_change_group(request):
 
 def dashboard(request):
     return redirect(f"http://{socket.gethostbyname(socket.gethostname())}:9090")
+
+
+def get_questions_count_since_last_feedback(request):
+    """
+    Counts the number of entries without feedback since the user's last feedback
+    Returns:
+        int: The number of entries without feedback since the last feedback.
+    """
+    if request.method == "POST":
+        try:
+            last_feedback = Chat.objects.filter(~Q(short_feedback__exact=''), user=request.user,
+                                                short_feedback__isnull=False).order_by('-question_timestamp').first()
+            if last_feedback:
+                last_feedback_date = last_feedback.question_timestamp
+            else:
+                return JsonResponse({"count": 9999})  # arbitrary big value
+        except Chat.DoesNotExist:
+            return JsonResponse({"count": 9999})  # arbitrary big value
+
+        count = Chat.objects.filter(user=request.user, question_timestamp__gt=last_feedback_date).count()
+        return JsonResponse({"count": count})
