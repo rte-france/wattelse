@@ -10,7 +10,6 @@ from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
 
 # Streamlit configs
 st.set_page_config(layout="wide")
-print(Path(__file__).parent / "RTE_logo.svg")
 st.logo(str(Path(__file__).parent / "RTE_logo.svg"))
 
 # Paths
