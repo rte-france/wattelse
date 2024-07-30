@@ -243,6 +243,7 @@ def manage_short_feedback(request):
     """
     return insert_feedback(request, short=True)
 
+
 def manage_long_feedback(request):
     """
     Function that collects long feedback sent from the user interface about the last
@@ -443,11 +444,14 @@ def get_questions_count_since_last_feedback(request):
     """
     if request.method == "POST":
         try:
-            last_feedback = Chat.objects.filter(~Q(short_feedback__exact=''), user=request.user, short_feedback__isnull=False).order_by('-question_timestamp').first()
-            last_feedback_date = last_feedback.question_timestamp if last_feedback else 9999 # arbitrary big value
+            last_feedback = Chat.objects.filter(~Q(short_feedback__exact=''), user=request.user,
+                                                short_feedback__isnull=False).order_by('-question_timestamp').first()
+            if last_feedback:
+                last_feedback_date = last_feedback.question_timestamp
+            else:
+                return JsonResponse({"count": 9999})  # arbitrary big value
         except Chat.DoesNotExist:
-            return 9999 # arbitrary big value
+            return JsonResponse({"count": 9999})  # arbitrary big value
 
         count = Chat.objects.filter(user=request.user, question_timestamp__gt=last_feedback_date).count()
-
         return JsonResponse({"count": count})
