@@ -19,11 +19,11 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from loguru import logger
 
-from wattelse.common import BASE_DATA_DIR
+from wattelse.common import BASE_DATA_PATH
 
 SCOPES = ["https://mail.google.com/"] # full access to mail API
 FROM = "wattelse.ai@gmail.com"
-TOKEN_PATH = BASE_DATA_DIR / "gmail_token.json"
+TOKEN_PATH = BASE_DATA_PATH / "gmail_token.json"
 DEFAULT_GMAIL_CREDENTIALS_PATH = Path(__file__).parent.parent / "config" / "gmail_credentials.json"
 
 # Ensures to write with +rw for both user and groups
