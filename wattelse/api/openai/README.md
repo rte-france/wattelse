@@ -7,8 +7,8 @@ The `OpenAI_Client` class is based on the [OpenAI API](https://github.com/openai
 
 Before using it, you should set different environment variables:
 - **(mandatory)** `OPENAI_API_KEY`: OpenAI API key for official or Azure OpenAI API. Set it to `EMPTY` for local LLM.
-- **(optionnal)** `OPENAI_ENDPOINT`: if not set, `OpenAI_Client` will use official OpenAI API. Set it to `https://wattelse-openai.openai.azure.com/` to use Azure Cloud LLM. Set it to `http://localhost:8888/v1` (or any other local endpoint listening to an OpenAI compatible server) to use local LLM.
-- **(optionnal)** `OPENAI_DEFAULT_MODEL_NAME`: specify what model to use by default.
+- **(optional)** `OPENAI_ENDPOINT`: if not set, `OpenAI_Client` will use official OpenAI API. Set it to `https://wattelse-openai.openai.azure.com/` to use Azure Cloud LLM. Set it to `http://localhost:8888/v1` (or any other local endpoint listening to an OpenAI compatible server) to use local LLM.
+- **(optional)** `OPENAI_DEFAULT_MODEL_NAME`: specify what model to use by default.
 
 Here is a quick example of how to use it:
 
