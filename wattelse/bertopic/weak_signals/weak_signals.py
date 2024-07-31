@@ -1,18 +1,20 @@
-from typing import Dict, List, Tuple, Any
-import pandas as pd
-from bertopic import BERTopic
-import numpy as np
 import os
 import pickle
 from collections import defaultdict
-import streamlit as st
-from loguru import logger
-from tqdm import tqdm
-import scipy
 from pathlib import Path
-from prompts import get_prompt
-from openai import OpenAI 
+from typing import Dict, List, Tuple, Any
+
+import numpy as np
+import pandas as pd
+import scipy
+from bertopic import BERTopic
+from loguru import logger
+from openai import OpenAI
+from tqdm import tqdm
+
 from global_vars import GPT_MODEL, GPT_TEMPERATURE, GPT_SYSTEM_MESSAGE, SIGNAL_EVOLUTION_DATA_DIR
+from prompts import get_prompt
+
 
 def detect_weak_signals_zeroshot(topic_models: Dict[pd.Timestamp, BERTopic], zeroshot_topic_list: List[str], granularity: int, decay_factor: float = 0.01, decay_power: float = 2) -> Dict[str, Dict[pd.Timestamp, Dict[str, any]]]:
     """

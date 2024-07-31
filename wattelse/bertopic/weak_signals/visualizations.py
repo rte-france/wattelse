@@ -1,18 +1,15 @@
+from typing import Dict, Tuple
+
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from typing import Dict, Tuple 
-from bertopic import BERTopic
 import streamlit as st
-import numpy as np
-from loguru import logger
-import pandas as pd
-from weak_signals import classify_signals, save_signal_evolution_data
-from plotly_resampler import FigureResampler, FigureWidgetResampler
-import time
-from plotly_resampler import register_plotly_resampler
+from bertopic import BERTopic
+from plotly_resampler import FigureWidgetResampler
+
 from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
-from multiprocessing import Process
-import streamlit.components.v1 as components
+from weak_signals import classify_signals
+
 
 def plot_num_topics_and_outliers(topic_models: Dict[pd.Timestamp, BERTopic]) -> None:
     """

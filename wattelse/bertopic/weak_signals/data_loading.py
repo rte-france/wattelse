@@ -1,11 +1,9 @@
-import pandas as pd
 import os
-import glob
 import re
-import json
-from typing import Dict
-import streamlit as st
-from typing import Tuple
+from typing import Dict, Tuple
+
+import pandas as pd
+
 from global_vars import DATA_PATH
 from wattelse.bertopic.utils import (
     preprocess_french_text,
@@ -13,6 +11,7 @@ from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN,
     URL_COLUMN,
 )
+
 
 # @st.cache_data
 def load_and_preprocess_data(selected_file: Tuple[str, str], language: str, min_chars: int, split_by_paragraph: bool) -> pd.DataFrame:

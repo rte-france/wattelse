@@ -58,7 +58,7 @@ def generate_topic_description(topic_model, topic_number, filtered_docs):
 
     try:
         client = OpenAI_Client()
-        return client.generate(prompt=prompt)
+        return client.generate(user_prompt=prompt)
     except Exception as e:
         logger.error(f"Error calling OpenAI API: {e}")
         return f"Error generating description: {str(e)}"

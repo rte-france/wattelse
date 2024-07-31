@@ -3,39 +3,16 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
+import ast
+import datetime
+import re
+from pathlib import Path
+
+import pandas as pd
 import streamlit as st
 from loguru import logger
-import pandas as pd
-from wattelse.bertopic.app.data_utils import data_overview, choose_data
-from wattelse.bertopic.topic_metrics import get_coherence_value, get_diversity_value
-from wattelse.bertopic.train import train_BERTopic
-import datetime
-from bertopic import BERTopic
-from typing import List
-import plotly.graph_objects as go
-from transformers import AutoTokenizer
 from sentence_transformers import SentenceTransformer
-import re
-import ast
-import torch
-from pathlib import Path 
-
-from wattelse.bertopic.temporal_metrics_embedding import TempTopic
-
-from wattelse.bertopic.utils import (
-    TIMESTAMP_COLUMN,
-    clean_dataset,
-    split_df_by_paragraphs,
-    DATA_DIR,
-    TEXT_COLUMN,
-    preprocess_french_text,
-)
-
-from wattelse.bertopic.app.state_utils import (
-    register_widget,
-    save_widget_state,
-    restore_widget_state,
-)
+from transformers import AutoTokenizer
 
 from wattelse.bertopic.app.app_utils import (
     embedding_model_options,
@@ -45,13 +22,24 @@ from wattelse.bertopic.app.app_utils import (
     countvectorizer_options,
     ctfidf_options,
     representation_model_options,
-    plot_2d_topics,
-    plot_topics_over_time,
-    compute_topics_over_time,
-    initialize_default_parameters_keys,
     load_data_wrapper,
 )
-
+from wattelse.bertopic.app.data_utils import data_overview, choose_data
+from wattelse.bertopic.app.state_utils import (
+    register_widget,
+    save_widget_state,
+    restore_widget_state,
+)
+from wattelse.bertopic.topic_metrics import get_coherence_value, get_diversity_value
+from wattelse.bertopic.train import train_BERTopic
+from wattelse.bertopic.utils import (
+    TIMESTAMP_COLUMN,
+    clean_dataset,
+    split_df_by_paragraphs,
+    DATA_DIR,
+    TEXT_COLUMN,
+    preprocess_french_text,
+)
 
 
 def split_dataframe(split_option, enhanced):
@@ -67,22 +55,22 @@ def split_dataframe(split_option, enhanced):
     if split_option == "No split":
         st.session_state["split_df"] = st.session_state["raw_df"]
         st.session_state["split_by_paragraphs"] = False
-    else: # Split by paragraph
+    else:  # Split by paragraph
         if enhanced:
             logger.debug(f"Using {st.session_state.get('embedding_model_name')} for enhanced splitting...")
             model_name = st.session_state.get('embedding_model_name')
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             max_length = SentenceTransformer(model_name).get_max_seq_length()
-            
+
             # Correcting the max seq length anomaly in certain embedding models description
-            if max_length == 514: max_length = 512 
-            
+            if max_length == 514: max_length = 512
+
             with st.spinner("Splitting the dataset..."):
                 st.session_state["split_df"] = split_df_by_paragraphs(
                     dataset=st.session_state["raw_df"],
                     enhanced=True,
                     tokenizer=tokenizer,
-                    max_length=max_length-2, # Minus 2 because beginning and end tokens are not considered
+                    max_length=max_length - 2,  # Minus 2 because beginning and end tokens are not considered
                     min_length=0
                 )
         else:
@@ -91,7 +79,7 @@ def split_dataframe(split_option, enhanced):
                 enhanced=False
             )
         st.session_state["split_by_paragraphs"] = True
-        
+
 
 def generate_model_name(base_name="topic_model"):
     """
@@ -112,11 +100,12 @@ def save_model_interface():
     # Button to save the model
     if st.button("Save Model", key="save_model_button"):
         if "topic_model" in st.session_state:
-            dynamic_model_name = generate_model_name(base_model_name if base_model_name else "topic_model")            
+            dynamic_model_name = generate_model_name(base_model_name if base_model_name else "topic_model")
             model_save_path = Path(__file__).parent / "saved_models" / dynamic_model_name
             logger.debug(f"Saving the model in the following directory: {model_save_path}")
             try:
-                st.session_state['topic_model'].save(model_save_path, serialization="safetensors", save_ctfidf=True, save_embedding_model=True)
+                st.session_state['topic_model'].save(model_save_path, serialization="safetensors", save_ctfidf=True,
+                                                     save_embedding_model=True)
                 st.success(f"Model saved successfully as {model_save_path}")
                 st.session_state['model_saved'] = True
                 logger.success(f"Model saved successfully!")
@@ -127,17 +116,16 @@ def save_model_interface():
             st.error("No model available to save. Please train a model first.")
 
 
-
-
 def select_data():
     st.write("## Data selection")
 
     choose_data(DATA_DIR, ["*.csv", "*.jsonl*", "*.parquet"])
-    
+
     # Check if selected files have changed
-    if "previous_selected_files" not in st.session_state or st.session_state["previous_selected_files"] != st.session_state["selected_files"]:
+    if "previous_selected_files" not in st.session_state or st.session_state["previous_selected_files"] != \
+            st.session_state["selected_files"]:
         st.session_state["previous_selected_files"] = st.session_state["selected_files"].copy()
-        
+
         if st.session_state["selected_files"]:
             loaded_dfs = []
             for file_path in st.session_state["selected_files"]:
@@ -146,19 +134,19 @@ def select_data():
                 loaded_dfs.append(df)
 
             st.session_state["raw_df"] = pd.concat(loaded_dfs) if len(loaded_dfs) > 1 else loaded_dfs[0]
-            
+
             # Remove duplicates from raw_df
             st.session_state["raw_df"] = st.session_state["raw_df"].drop_duplicates(subset=TEXT_COLUMN, keep='first')
             st.session_state["raw_df"].sort_values(by=[TIMESTAMP_COLUMN], ascending=True, inplace=True)
             st.session_state["initial_df"] = st.session_state["raw_df"].copy()
-            
+
             # Reset the timestamp range when new files are selected
             min_max = st.session_state["raw_df"][TIMESTAMP_COLUMN].agg(["min", "max"])
             st.session_state["timestamp_range"] = (
                 min_max["min"].to_pydatetime(),
                 min_max["max"].to_pydatetime(),
             )
-            
+
             # Trigger re-processing of the data
             st.session_state["data_changed"] = True
         else:
@@ -213,30 +201,33 @@ def select_data():
 
     # Check if any parameters have changed or if data has changed
     if (st.session_state.get("data_changed", False) or
-        "split_method" not in st.session_state or st.session_state["split_method"] != split_option or
-        "enhanced_splitting" not in st.session_state or st.session_state["enhanced_splitting"] != enhanced_split or
-        "prev_timestamp_range" not in st.session_state or st.session_state["prev_timestamp_range"] != timestamp_range or
-        "prev_min_text_length" not in st.session_state or st.session_state["prev_min_text_length"] != min_text_length):
-        
+            "split_method" not in st.session_state or st.session_state["split_method"] != split_option or
+            "enhanced_splitting" not in st.session_state or st.session_state["enhanced_splitting"] != enhanced_split or
+            "prev_timestamp_range" not in st.session_state or st.session_state[
+                "prev_timestamp_range"] != timestamp_range or
+            "prev_min_text_length" not in st.session_state or st.session_state[
+                "prev_min_text_length"] != min_text_length):
+
         st.session_state["split_method"] = split_option
         st.session_state["enhanced_splitting"] = enhanced_split
         st.session_state["prev_timestamp_range"] = timestamp_range
         st.session_state["prev_min_text_length"] = min_text_length
-        
+
         if split_option != "No split":
             split_dataframe(split_option, enhanced_split)
-        else: # If No Splitting is done
+        else:  # If No Splitting is done
             st.session_state["split_df"] = st.session_state["raw_df"]
             st.session_state["split_by_paragraphs"] = False
 
         # Preprocess the text
-        st.session_state["split_df"][TEXT_COLUMN] = st.session_state["split_df"][TEXT_COLUMN].apply(preprocess_french_text)
+        st.session_state["split_df"][TEXT_COLUMN] = st.session_state["split_df"][TEXT_COLUMN].apply(
+            preprocess_french_text)
 
         # Remove unwanted rows from split_df
         st.session_state["split_df"] = st.session_state["split_df"][
             (st.session_state["split_df"][TEXT_COLUMN].str.strip() != "") &
             (st.session_state["split_df"][TEXT_COLUMN].apply(lambda x: len(re.findall(r'[a-zA-Z]', x)) >= 5))
-        ]
+            ]
 
         st.session_state["split_df"].reset_index(drop=True, inplace=True)
         st.session_state["split_df"]["index"] = st.session_state["split_df"].index
@@ -264,6 +255,7 @@ def select_data():
         st.info(f"Found {len(st.session_state['timefiltered_df'])} documents after final cleaning.")
         st.divider()
 
+
 def train_model():
     if "timefiltered_df" in st.session_state and not st.session_state["timefiltered_df"].empty:
         with st.spinner("Training model..."):
@@ -271,14 +263,14 @@ def train_model():
             indices = full_dataset.index.tolist()
 
             form_parameters = ast.literal_eval(st.session_state["parameters"])
-            
-            (   st.session_state["topic_model"],
-                st.session_state["topics"],
-                _,
-                st.session_state["embeddings"],
-                st.session_state["token_embeddings"],
-                st.session_state["token_strings"],
-            ) = train_BERTopic(
+
+            (st.session_state["topic_model"],
+             st.session_state["topics"],
+             _,
+             st.session_state["embeddings"],
+             st.session_state["token_embeddings"],
+             st.session_state["token_strings"],
+             ) = train_BERTopic(
                 full_dataset=full_dataset,
                 indices=indices,
                 form_parameters=form_parameters,
@@ -286,21 +278,23 @@ def train_model():
                 if st.session_state["split_method"] == "No split"
                 else f'{st.session_state["data_name"]}_split_by_paragraphs',
             )
-        
+
         st.success("Model trained successfully!")
-        st.info("Embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without using cached embeddings if you want correct and functional temporal visualizations.")
-            
+        st.info(
+            "Embeddings aren't saved in cache and thus aren't loaded. Please make sure to train the model without "
+            "using cached embeddings if you want correct and functional temporal visualizations.")
+
         temp = st.session_state["topic_model"].get_topic_info()
         st.session_state["topics_info"] = (
             temp[temp['Topic'] != -1]
         )  # exclude -1 topic from topic list
-        
+
         # TOPIC MODEL COHERENCE AND DIVERSITY METRICS (optional) :
         coherence_score_type = "c_npmi"
         diversity_score_type = "puw"
         logger.info(f"Calculating {coherence_score_type} coherence and {diversity_score_type} diversity...")
-        
-        try: 
+
+        try:
             coherence = get_coherence_value(
                 st.session_state["topic_model"],
                 st.session_state["topics"],
@@ -310,16 +304,20 @@ def train_model():
             logger.success(f"Coherence score [{coherence_score_type}]: {coherence}")
 
         except IndexError as e:
-            logger.error("Error while calculating coherence metric. This likely happens when you're using an LLM to represent the topics instead of keywords.") 
-        try: 
+            logger.error(
+                "Error while calculating coherence metric. This likely happens when you're using an LLM to represent "
+                "the topics instead of keywords.")
+        try:
             diversity = get_diversity_value(st.session_state["topic_model"],
                                             st.session_state["topics"],
                                             st.session_state["timefiltered_df"][TEXT_COLUMN],
                                             diversity_score_type="puw")
             logger.success(f"Diversity score [{diversity_score_type}]: {diversity}")
         except IndexError as e:
-            logger.error("Error while calculating diversity metric. This likely happens when you're using an LLM to represent the topics instead of keywords.") 
-        
+            logger.error(
+                "Error while calculating diversity metric. This likely happens when you're using an LLM to represent "
+                "the topics instead of keywords.")
+
         st.session_state['model_trained'] = True
         if not st.session_state['model_saved']:
             st.warning('Don\'t forget to save your model!', icon="⚠️")
@@ -339,14 +337,11 @@ restore_widget_state()
 ### TITLE ###
 st.title("Topic modelling")
 
-
 if 'model_trained' not in st.session_state: st.session_state['model_trained'] = False
 if 'model_saved' not in st.session_state: st.session_state['model_saved'] = False
 
 
-
 def apply_changes():
-    
     # Update other parameters
     parameters = {
         **embedding_model_options,
@@ -361,7 +356,7 @@ def apply_changes():
 
     save_widget_state()
     st.sidebar.success("Changes applied successfully!")
-    
+
 
 # In the sidebar form
 with st.sidebar.form("parameters_sidebar"):
@@ -386,22 +381,22 @@ with st.sidebar.form("parameters_sidebar"):
         ctfidf_options = ctfidf_options()
 
     with st.expander("Representation Models"):
-        representation_model_options = representation_model_options()        
-            
-    # Form submit button for applying changes 
+        representation_model_options = representation_model_options()
+
+        # Form submit button for applying changes
     # (using on_click with callback function causes a glitch where the button has to be clicked twice for changes to take effect)
     changes_applied = st.form_submit_button(label="Apply Changes", type="primary", use_container_width=True)
     if changes_applied: apply_changes()
-    
+
 # Separate button for training the model
-if st.sidebar.button("Train Model", type="primary", 
-                     key="train_model_button", 
-                     use_container_width=True, 
+if st.sidebar.button("Train Model", type="primary",
+                     key="train_model_button",
+                     use_container_width=True,
                      disabled=('parameters' not in st.session_state),
                      help="Make sure to review and apply changes before clicking on this button."):
     train_model()
 
-if "parameters" in st.session_state: 
+if "parameters" in st.session_state:
     st.sidebar.write(f"Current parameters:")
     st.sidebar.write(st.session_state["parameters"])
 
@@ -414,8 +409,5 @@ data_overview(st.session_state["timefiltered_df"])
 # Save the model button
 save_model_interface()
 
-
-# TODO: Investigate the potentially deprecated save_model_interface() I implemented a while ago 
+# TODO: Investigate the potentially deprecated save_model_interface() I implemented a while ago
 # to save a BERTopic model to either load it up later or load it up somewhere else
-
-

@@ -1,29 +1,23 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import os
 import pickle
 import shutil
-from loguru import logger
-from openai import OpenAI
-from bertopic import BERTopic
-from sentence_transformers import SentenceTransformer
-import torch
-from tqdm import tqdm 
 
-from session_state_manager import SessionStateManager
-from data_loading import load_and_preprocess_data, group_by_days
-from topic_modeling import embed_documents, train_topic_models, merge_models, preprocess_model
-from visualizations import (plot_num_topics_and_outliers, plot_topics_per_timestamp, 
-                            plot_topic_size_evolution, create_topic_size_evolution_figure, 
-                            plot_newly_emerged_topics, create_sankey_diagram)
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
-from weak_signals import detect_weak_signals_zeroshot, calculate_signal_popularity, analyze_signal, save_signal_evolution_data
-from prompts import get_prompt
+from bertopic import BERTopic
+from openai import OpenAI
+
+from data_loading import load_and_preprocess_data, group_by_days
 from global_vars import *
-from nltk.corpus import stopwords
+from session_state_manager import SessionStateManager
+from topic_modeling import embed_documents, train_topic_models, merge_models, preprocess_model
+from visualizations import (plot_num_topics_and_outliers, plot_topics_per_timestamp,
+                            plot_topic_size_evolution, create_topic_size_evolution_figure,
+                            plot_newly_emerged_topics, create_sankey_diagram)
 from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG, TEXT_COLUMN
-import glob
+from weak_signals import detect_weak_signals_zeroshot, calculate_signal_popularity, analyze_signal, \
+    save_signal_evolution_data
+
 
 def save_state():
     os.makedirs(CACHE_DIR, exist_ok=True)

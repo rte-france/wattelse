@@ -10,6 +10,7 @@ from wattelse.summary import (
     GPTSummarizer,
     AbstractiveSummarizer,
     ExtractiveSummarizer,
+    EnhancedExtractiveSummarizer
 )
 
 # Restore widget state
@@ -20,6 +21,7 @@ SUMMARIZER_OPTIONS_MAPPER = {
     "GPTSummarizer": GPTSummarizer,
     "AbstractiveSummarizer": AbstractiveSummarizer,
     "ExtractiveSummarizer": ExtractiveSummarizer,
+    "EnhancedExtractiveSummarizer": EnhancedExtractiveSummarizer,
 }
 
 
@@ -104,7 +106,7 @@ if generate_newsletter_clicked:
 
 # Display generated newsletter
 if "newsletter" in st.session_state:
-    st.html(
+    st.components.v1.html(
         md2html(
             st.session_state["newsletter"][0],
             Path(__file__).parent.parent.parent / "newsletter.css",
