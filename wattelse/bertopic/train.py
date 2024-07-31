@@ -3,12 +3,17 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
+import json
+import os
+from pathlib import Path
 from typing import List, Tuple, Union
+
+import numpy as np
 import pandas as pd
 import torch
-import typer
 from bertopic import BERTopic
 from bertopic.backend import BaseEmbedder
+from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance, OpenAI
 from bertopic.vectorizers import ClassTfidfTransformer
 from hdbscan import HDBSCAN
 from loguru import logger
@@ -16,22 +21,16 @@ from nltk.corpus import stopwords
 from numpy import ndarray
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
-from umap import UMAP
-import numpy as np
 from tqdm import tqdm
-from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance, OpenAI
-from pathlib import Path
-import json
-import os
-import openai
+from umap import UMAP
 
+from wattelse.api.openai.client_openai_api import OpenAI_Client
+from wattelse.api.prompts import FRENCH_TOPIC_REPRESENTATION_PROMPT
 from wattelse.bertopic.utils import (
     TEXT_COLUMN,
     BASE_CACHE_PATH,
-    file_to_pd,
 )
 from wattelse.common.cache_utils import load_embeddings, save_embeddings, get_hash
-from wattelse.api.prompts import FRENCH_TOPIC_REPRESENTATION_PROMPT
 
 # Parameters:
 DEFAULT_EMBEDDING_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
@@ -386,8 +385,8 @@ def train_BERTopic(
             elif model == "OpenAI":
                 representation_model.append(
                     OpenAI(
-                        client=openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"]),
-                        model=form_parameters["OpenAI_model"],
+                        client=OpenAI_Client().llm_client,
+                        model=os.environ["OPENAI_DEFAULT_MODEL_NAME"],
                         nr_docs=form_parameters["OpenAI_nr_docs"],
                         prompt=(
                             FRENCH_TOPIC_REPRESENTATION_PROMPT

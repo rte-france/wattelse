@@ -43,8 +43,6 @@ DEFAULT_PARAMETERS = {
     "keybert_top_n_words": 20,
     "mmr_diversity": 0.2,
     "mmr_top_n_words": 10,
-    "openai_model": "gpt-4o-mini",
-    "openai_nr_docs": 5,
     "data_language": "English",
 }
 
@@ -254,11 +252,6 @@ def representation_model_options():
                 key=f"{model}_top_n_words"
             )
         elif model == "OpenAI":
-            options[f"{model}_model"] = st.selectbox(
-                f"{model}: Model",
-                options=["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo", "gpt-4"],
-                key=f"{model}_model"
-            )
             options[f"{model}_nr_docs"] = st.number_input(
                 f"{model}: Number of documents",
                 min_value=1,
