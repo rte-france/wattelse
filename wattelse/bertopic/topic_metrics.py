@@ -108,6 +108,7 @@ def get_diversity_value(topic_model: BERTopic, topics: List[List[str]], docs: Li
         topic_words.append(words)
     topic_words = [words for words in topic_words if len(words) > 0]
     
+    
     if diversity_score_type == 'puw':
         return proportion_unique_words(topic_words, topk)
     elif diversity_score_type == 'pjd':
