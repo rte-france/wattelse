@@ -1,20 +1,18 @@
-import streamlit as st
-import pandas as pd
 import locale
 from datetime import timedelta
+
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
 import umap
-import numpy as np
-from loguru import logger
 
-from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
-from app_utils import plot_topics_over_time
-from state_utils import restore_widget_state, register_widget, save_widget_state
 from wattelse.bertopic.app.app_utils import plot_topics_over_time, compute_topics_over_time
+from wattelse.bertopic.app.state_utils import register_widget, save_widget_state
 from wattelse.bertopic.temporal_metrics_embedding import TempTopic
-from datetime import timedelta
 from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
+from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
 
 # Set locale for French date names
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')

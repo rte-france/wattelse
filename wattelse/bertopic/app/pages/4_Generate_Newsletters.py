@@ -10,26 +10,24 @@ from wattelse.summary import (
     GPTSummarizer,
     AbstractiveSummarizer,
     ExtractiveSummarizer,
-    FastchatLLMSummarizer,
 )
-
 
 # Restore widget state
 restore_widget_state()
 
 # Define summarizer options
 SUMMARIZER_OPTIONS_MAPPER = {
-    "AbstractiveSummarizer": AbstractiveSummarizer,
     "GPTSummarizer": GPTSummarizer,
-    "FastchatLLMSummarizer": FastchatLLMSummarizer,
+    "AbstractiveSummarizer": AbstractiveSummarizer,
     "ExtractiveSummarizer": ExtractiveSummarizer,
 }
+
 
 def generate_newsletter_wrapper():
     """Wrapper function to generate newsletter based on user settings."""
     top_n_topics = None if st.session_state["newsletter_all_topics"] else st.session_state["newsletter_nb_topics"]
     top_n_docs = None if st.session_state["newsletter_all_docs"] else st.session_state["newsletter_nb_docs"]
-    
+
     return generate_newsletter(
         topic_model=st.session_state["topic_model"],
         df=df,
@@ -41,6 +39,7 @@ def generate_newsletter_wrapper():
         summarizer_class=SUMMARIZER_OPTIONS_MAPPER[st.session_state["summarizer_classname"]],
         summary_mode=st.session_state['summary_mode'],
     )
+
 
 # Check if a topic model exists
 if "topic_model" not in st.session_state:
@@ -75,15 +74,20 @@ with st.sidebar:
     register_widget("summary_mode")
 
     all_topics = st.checkbox("Include all topics", on_change=save_widget_state, key="newsletter_all_topics")
-    st.slider("Number of topics", min_value=1, max_value=20, on_change=save_widget_state, key="newsletter_nb_topics", disabled=all_topics)
+    st.slider("Number of topics", min_value=1, max_value=20, on_change=save_widget_state, key="newsletter_nb_topics",
+              disabled=all_topics)
 
-    all_documents = st.checkbox("Include all documents per topic", on_change=save_widget_state, key="newsletter_all_docs")
-    st.slider("Number of docs per topic", min_value=1, max_value=10, on_change=save_widget_state, key="newsletter_nb_docs", disabled=all_documents)
+    all_documents = st.checkbox("Include all documents per topic", on_change=save_widget_state,
+                                key="newsletter_all_docs")
+    st.slider("Number of docs per topic", min_value=1, max_value=10, on_change=save_widget_state,
+              key="newsletter_nb_docs", disabled=all_documents)
 
-    st.toggle("Improve topic description", value=False, on_change=save_widget_state, key="newsletter_improve_description")
+    st.toggle("Improve topic description", value=False, on_change=save_widget_state,
+              key="newsletter_improve_description")
     st.selectbox("Summary mode", ['topic', 'document', 'none'], on_change=save_widget_state, key="summary_mode")
-    st.selectbox("Summarizer class", list(SUMMARIZER_OPTIONS_MAPPER.keys()), on_change=save_widget_state, key="summarizer_classname")
-    
+    st.selectbox("Summarizer class", list(SUMMARIZER_OPTIONS_MAPPER.keys()), on_change=save_widget_state,
+                 key="summarizer_classname")
+
     generate_newsletter_clicked = st.button("Generate newsletter", type="primary", use_container_width=True)
 
 # Generate newsletter when button is clicked
@@ -94,13 +98,13 @@ if generate_newsletter_clicked:
     else:
         df = st.session_state["timefiltered_df"]
         df_split = None
-    
+
     with st.spinner("Generating newsletter..."):
         st.session_state["newsletter"] = generate_newsletter_wrapper()
 
 # Display generated newsletter
 if "newsletter" in st.session_state:
-    st.components.v1.html(
+    st.html(
         md2html(
             st.session_state["newsletter"][0],
             Path(__file__).parent.parent.parent / "newsletter.css",
@@ -108,6 +112,5 @@ if "newsletter" in st.session_state:
         height=800,
         scrolling=True,
     )
-    
+
 # TODO: Properly handle the streamlit interface's session state to automatically gray out the number of topics/document sliders if all topics/all documents checkboxes are activated.
-# TODO: Currently, the gpt key being used in is a .cfg, it's preferable to modify the code in order to use directly from the environment's variables.

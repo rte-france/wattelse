@@ -1,25 +1,22 @@
+import locale
+from pathlib import Path
+
+import datamapplot
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import seaborn as sns
 import streamlit as st
 import streamlit.components.v1 as components
-import pandas as pd
-import numpy as np
-import locale
 from loguru import logger
 from umap import UMAP
-import datamapplot
-from pathlib import Path
-import seaborn as sns
-import plotly.graph_objects as go
 
-from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
-from app_utils import plot_topics_over_time
-from state_utils import restore_widget_state
 from wattelse.bertopic.app.app_utils import (
     plot_2d_topics,
-    plot_topics_over_time,
-    compute_topics_over_time,
 )
-import base64
+from wattelse.bertopic.app.state_utils import restore_widget_state
 from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
+from wattelse.bertopic.utils import TEXT_COLUMN
 
 # Set locale for French date names
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')

@@ -17,31 +17,29 @@ from wattelse.bertopic.utils import (
     TIMESTAMP_COLUMN
 )
 
-def data_overview(df: pd.DataFrame):
 
+def data_overview(df: pd.DataFrame):
     with st.container(border=True):
         col1, col2 = st.columns([0.4, 0.6])
         freq = st.select_slider(
-                        "Time aggregation",
-                        options=(
-                            "1D",
-                            "2D",
-                            "1W",
-                            "2W",
-                            "1M",
-                            "2M",
-                            "1Y",
-                            "2Y",
-                        ),
-                        value="1M",
-                    )
+            "Time aggregation",
+            options=(
+                "1D",
+                "2D",
+                "1W",
+                "2W",
+                "1M",
+                "2M",
+                "1Y",
+                "2Y",
+            ),
+            value="1M",
+        )
         with col1:
             plot_docs_reparition_over_time(df, freq)
-        with col2: 
-            st.dataframe(st.session_state['timefiltered_df'][['index', TEXT_COLUMN, TIMESTAMP_COLUMN]], use_container_width=True)
-
-
-
+        with col2:
+            st.dataframe(st.session_state['timefiltered_df'][['index', TEXT_COLUMN, TIMESTAMP_COLUMN]],
+                         use_container_width=True)
 
 
 def choose_data(base_dir: Path, filters: List[str]):
@@ -53,20 +51,19 @@ def choose_data(base_dir: Path, filters: List[str]):
             )
         )
     )
-    
+
     if "data_folder" not in st.session_state:
         st.session_state["data_folder"] = data_folders[0] if data_folders else base_dir
-        
-    
+
     data_options = ["None"] + sorted(
         [
             p.name
             for p in itertools.chain.from_iterable(
-                [
-                    list(st.session_state["data_folder"].glob(f"{filter}"))
-                    for filter in filters
-                ]
-            )
+            [
+                list(st.session_state["data_folder"].glob(f"{filter}"))
+                for filter in filters
+            ]
+        )
         ]
     )
 
@@ -76,8 +73,11 @@ def choose_data(base_dir: Path, filters: List[str]):
     if "selected_files" not in st.session_state:
         st.session_state["selected_files"] = []
 
-
     folder_options = [folder.name for folder in data_folders]
+    if not folder_options:
+        st.warning("No data available!")
+        st.stop()
+
     selected_folder_index = st.selectbox("Base folder", index=0, options=folder_options)
     selected_folder = data_folders[folder_options.index(selected_folder_index)]
     st.session_state["data_folder"] = selected_folder
@@ -100,8 +100,6 @@ def choose_data(base_dir: Path, filters: List[str]):
 
     if not st.session_state["selected_files"]:
         st.stop()
-
-
 
 
 def reset_all():

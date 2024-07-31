@@ -1,8 +1,8 @@
 import streamlit as st
 from statistics import StatisticsError
 
+from wattelse.bertopic.app.state_utils import restore_widget_state, register_widget, save_widget_state
 from wattelse.bertopic.metrics import TopicMetrics, TIME_WEIGHT
-from state_utils import register_widget, save_widget_state, restore_widget_state
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN, PLOTLY_BUTTON_SAVE_CONFIG
 from wattelse.bertopic.app.app_utils import compute_topics_over_time
 

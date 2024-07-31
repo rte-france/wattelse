@@ -274,42 +274,6 @@ if time_granularity != "":
         st.plotly_chart(fig_topic_evolution, theme="streamlit", use_container_width=True)
 
 
-    # with st.expander("Sélectionner un Topic et une Date"):
-    #     available_topics = temptopic.final_df['Topic'].unique()
-    #     selected_topic = st.selectbox("Sélectionnez un topic", available_topics)
-    #     topic_data = temptopic.final_df[temptopic.final_df['Topic'] == selected_topic]
-    #     available_dates = topic_data['Timestamp'].unique()
-    #     selected_date = st.selectbox("Sélectionnez une date", available_dates)
-    #     filtered_data = topic_data[topic_data['Timestamp'] == selected_date]
-
-    #     if not filtered_data.empty:
-    #         documents = filtered_data['Document'].tolist()
-    #         topic_name = filtered_data['Words'].iloc[0] 
-    #         st.header(f"Topic '{topic_name}' à la date {selected_date}")
-
-    #         prompt = f"Voici le contenu du topic '{topic_name}' à la date {selected_date}:\n\n"
-    #         for i, document in enumerate(documents):
-    #             prompt += f"Document {i+1} : {document}\n"
-    #         prompt += "\nVeuillez fournir un titre et un résumé concis du contenu de ce topic."
-            
-    #         if st.button("Générer un résumé"):
-    #             with st.spinner("Création du résumé..."):
-    #                 messages = [
-    #                     SystemMessage(
-    #                         content="Vous êtes un assistant qui résume le contenu d'un topic."
-    #                     ),
-    #                     HumanMessage(
-    #                         content=prompt
-    #                     ),
-    #                 ]
-
-    #                 summary = chat.invoke(messages)
-
-    #                 st.write(summary.content)
-    #     else:
-    #         st.write("Aucun document trouvé pour le topic et la date sélectionnés.")
-
-
 
 with st.spinner("Computing topics over time..."):
     with st.expander("Popularity of topics over time"):
