@@ -20,6 +20,21 @@ It is composed of several modules:
 - Python >= 3.10
 - sqlite3 >= 3.35
 
+## Environment variables
+
+Wattelse uses several environment variables that shall be configured:
+
+- openai variables: define which openai-compatible server to use: it can be either the official openai API (in this case, no need to set the `OPENAI_ENDPOINT` variable; it can be an MS Azure openai endpoint, or a local deployment). Set the following variables accordingly.
+  
+  * `OPENAI_API_KEY` defines the key to use based on your openai setup
+  * `OPENAI_ENDPOINT` defines the endpoint to connect with, mandatory for Azure and local deployments
+  * `OPENAI_DEFAULT_MODEL_NAME` defines the name of the preferred model to use with the API
+ 
+- other variables
+
+  * `WATTELSE_BASE_DIR` indicates the base directory where to store data, cache and logs
+
+
 
 ## Installation
 
