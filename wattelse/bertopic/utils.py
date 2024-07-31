@@ -46,13 +46,14 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 PLOTLY_BUTTON_SAVE_CONFIG = {
-  'toImageButtonOptions': {
-    'format': 'svg',
-    # 'height': 500,
-    # 'width': 1500,
-    'scale': 1,
-  }
+    "toImageButtonOptions": {
+        "format": "svg",
+        # 'height': 500,
+        # 'width': 1500,
+        "scale": 1,
+    }
 }
+
 
 def load_data(full_data_name: Path) -> pd.DataFrame:
     """
@@ -68,6 +69,7 @@ def load_data(full_data_name: Path) -> pd.DataFrame:
     df = file_to_pd(str(full_data_name), full_data_name.parent)
     df[TIMESTAMP_COLUMN] = pd.to_datetime(df[TIMESTAMP_COLUMN])
     return df.drop_duplicates(subset=["title"], keep="first")
+
 
 def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
     """
@@ -88,10 +90,11 @@ def file_to_pd(file_name: str, base_dir: Path = None) -> pd.DataFrame:
     elif file_name.endswith(".jsonl") or file_name.endswith(".jsonlines"):
         return pd.read_json(data_path_str, lines=True)
     elif file_name.endswith(".jsonl.gz") or file_name.endswith(".jsonlines.gz"):
-        with gzip.open(data_path_str, 'rt') as f_in:
+        with gzip.open(data_path_str, "rt") as f_in:
             return pd.read_json(f_in, lines=True)
     elif file_name.endswith(".parquet"):
         return pd.read_parquet(data_path_str)
+
 
 def clean_dataset(dataset: pd.DataFrame, length_criteria: int) -> pd.DataFrame:
     """
@@ -107,7 +110,14 @@ def clean_dataset(dataset: pd.DataFrame, length_criteria: int) -> pd.DataFrame:
     cleaned_dataset = dataset.loc[dataset[TEXT_COLUMN].str.len() >= length_criteria]
     return cleaned_dataset
 
-def split_df_by_paragraphs(dataset: pd.DataFrame, enhanced: bool = False, tokenizer: AutoTokenizer = None, max_length: int = 512, min_length: int = 5) -> pd.DataFrame:
+
+def split_df_by_paragraphs(
+    dataset: pd.DataFrame,
+    enhanced: bool = False,
+    tokenizer: AutoTokenizer = None,
+    max_length: int = 512,
+    min_length: int = 5,
+) -> pd.DataFrame:
     """
     Split texts into multiple paragraphs and return a concatenation of all extracts as a new DataFrame.
     If enhanced is True, it also considers the embedding model's max sequence length.
@@ -128,7 +138,7 @@ def split_df_by_paragraphs(dataset: pd.DataFrame, enhanced: bool = False, tokeni
         df = df.explode(TEXT_COLUMN)
         df = df[df[TEXT_COLUMN] != ""]
         return df
-    
+
     if tokenizer is None:
         raise ValueError("Tokenizer is required for enhanced splitting.")
 
@@ -139,25 +149,42 @@ def split_df_by_paragraphs(dataset: pd.DataFrame, enhanced: bool = False, tokeni
         doc = row[TEXT_COLUMN]
         timestamp = row[TIMESTAMP_COLUMN]
 
-        paragraphs = re.split(r'\n+', doc)
+        paragraphs = re.split(r"\n+", doc)
 
         for paragraph in paragraphs:
-            sentences = re.split(r'(?<=[.!?])\s+', paragraph)
+            sentences = re.split(r"(?<=[.!?])\s+", paragraph)
 
             current_doc = ""
             for sentence in sentences:
-                sentence_ids = tokenizer.encode(sentence, padding=False, truncation=False, add_special_tokens=False)
+                sentence_ids = tokenizer.encode(
+                    sentence, padding=False, truncation=False, add_special_tokens=False
+                )
 
                 if len(sentence_ids) > max_length:
-                    sentence_chunks = [sentence[i:i+max_length] for i in range(0, len(sentence), max_length)]
+                    sentence_chunks = [
+                        sentence[i : i + max_length]
+                        for i in range(0, len(sentence), max_length)
+                    ]
                     for chunk in sentence_chunks:
                         new_row = row.copy()
                         new_row[TEXT_COLUMN] = chunk
-                        new_row['is_split'] = True
-                        new_row['num_tokens'] = len(tokenizer.encode(chunk, padding=False, truncation=False, add_special_tokens=False))
+                        new_row["is_split"] = True
+                        new_row["num_tokens"] = len(
+                            tokenizer.encode(
+                                chunk,
+                                padding=False,
+                                truncation=False,
+                                add_special_tokens=False,
+                            )
+                        )
                         new_rows.append(new_row)
                 else:
-                    ids = tokenizer.encode(current_doc + " " + sentence, padding=False, truncation=False, add_special_tokens=False)
+                    ids = tokenizer.encode(
+                        current_doc + " " + sentence,
+                        padding=False,
+                        truncation=False,
+                        add_special_tokens=False,
+                    )
                     num_tokens = len(ids)
 
                     if num_tokens <= max_length:
@@ -166,16 +193,30 @@ def split_df_by_paragraphs(dataset: pd.DataFrame, enhanced: bool = False, tokeni
                         if current_doc.strip():
                             new_row = row.copy()
                             new_row[TEXT_COLUMN] = current_doc.strip()
-                            new_row['is_split'] = True
-                            new_row['num_tokens'] = len(tokenizer.encode(current_doc.strip(), padding=False, truncation=False, add_special_tokens=False))
+                            new_row["is_split"] = True
+                            new_row["num_tokens"] = len(
+                                tokenizer.encode(
+                                    current_doc.strip(),
+                                    padding=False,
+                                    truncation=False,
+                                    add_special_tokens=False,
+                                )
+                            )
                             new_rows.append(new_row)
                         current_doc = sentence
 
             if current_doc.strip():
                 new_row = row.copy()
                 new_row[TEXT_COLUMN] = current_doc.strip()
-                new_row['is_split'] = True
-                new_row['num_tokens'] = len(tokenizer.encode(current_doc.strip(), padding=False, truncation=False, add_special_tokens=False))
+                new_row["is_split"] = True
+                new_row["num_tokens"] = len(
+                    tokenizer.encode(
+                        current_doc.strip(),
+                        padding=False,
+                        truncation=False,
+                        add_special_tokens=False,
+                    )
+                )
                 new_rows.append(new_row)
 
     return pd.DataFrame(new_rows)
@@ -187,12 +228,12 @@ def preprocess_french_text(text: str) -> str:
     removing specific prefixes, removing unwanted punctuations (excluding apostrophes, periods, commas, and specific other punctuation),
     replacing special characters with a space (preserving accented characters, common Latin extensions, and newlines),
     normalizing superscripts and subscripts,
-    splitting words containing capitals in the middle (while avoiding splitting fully capitalized words), 
+    splitting words containing capitals in the middle (while avoiding splitting fully capitalized words),
     and replacing multiple spaces with a single space.
-    
+
     Args:
         text (str): The input French text to preprocess.
-    
+
     Returns:
         str: The preprocessed French text.
     """
@@ -200,23 +241,23 @@ def preprocess_french_text(text: str) -> str:
     text = text.replace("’", "'")
 
     # Replace hyphens and similar characters with spaces
-    text = re.sub(r'\b(-|/|;|:)', ' ', text)
-    
+    text = re.sub(r"\b(-|/|;|:)", " ", text)
+
     # Replace special characters with a space (preserving specified punctuation, accented characters, common Latin extensions, and newlines)
-    text = re.sub(r'[^\w\s\nàâçéèêëîïôûùüÿñæœ.,\'\"\(\)\[\]]', ' ', text)
-    
+    text = re.sub(r"[^\w\s\nàâçéèêëîïôûùüÿñæœ.,\'\"\(\)\[\]]", " ", text)
+
     # Normalize superscripts and subscripts for both numbers and letters
-    superscript_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖᵠʳˢᵗᵘᵛʷˣʸᶻ",
-                                    "0123456789abcdefghijklmnopqrstuvwxyz")
-    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉ₐₑᵢₒᵣᵤᵥₓ",
-                                  "0123456789aeioruvx")
+    superscript_map = str.maketrans(
+        "⁰¹²³⁴⁵⁶⁷⁸⁹ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖᵠʳˢᵗᵘᵛʷˣʸᶻ", "0123456789abcdefghijklmnopqrstuvwxyz"
+    )
+    subscript_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉ₐₑᵢₒᵣᵤᵥₓ", "0123456789aeioruvx")
     text = text.translate(superscript_map)
     text = text.translate(subscript_map)
 
     # Split words that contain capitals in the middle but avoid splitting fully capitalized words
-    text = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', text)
-    
+    text = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", text)
+
     # Replace multiple spaces with a single space
-    text = re.sub(r'[ \t]+', ' ', text)
-    
+    text = re.sub(r"[ \t]+", " ", text)
+
     return text

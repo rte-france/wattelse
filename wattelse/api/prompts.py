@@ -108,19 +108,6 @@ FRENCH_TOPIC_REPRESENTATION_PROMPT = ("J'ai un topic qui contient les documents 
 
 
 ### CHATBOT ###
-
-"""
-FR_USER_BASE_RAG = ("Répondez à la question en utilisant le contexte fourni. La réponse doit être {expected_answer_size}. "
-					"Si le contexte ne fourni pas assez d'information pour répondre à la question, répondre : "
-					"\"Le contexte fourni n'est pas suffisant pour répondre.\n"
-					"---\n"
-					"Contexte :\n"
-					"\"\"\"\n"
-					"{context}\n"
-					"\"\"\"\n"
-					"Question : {query}\n"
-					)
-"""
 FR_USER_BASE_RAG = ("Vous êtes une IA experte qui aide les utilisateurs à répondre à des "
                     "questions sur la base de documents provenant de l'entreprise RTE (Réseau de Transport de l'Électricité). "
                     "À partir des documents fournis dans le contexte, répondez à la question. "

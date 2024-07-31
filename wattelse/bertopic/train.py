@@ -3,7 +3,6 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-import pdb
 from typing import List, Tuple, Union
 import pandas as pd
 import torch
@@ -18,7 +17,6 @@ from numpy import ndarray
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
-import streamlit as st
 import numpy as np
 from tqdm import tqdm
 from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance, OpenAI
@@ -29,7 +27,6 @@ import openai
 
 from wattelse.bertopic.utils import (
     TEXT_COLUMN,
-    TIMESTAMP_COLUMN,
     BASE_CACHE_PATH,
     file_to_pd,
 )
@@ -51,7 +48,21 @@ DEFAULT_HDBSCAN_MODEL = HDBSCAN(
     prediction_data=True,
 )
 
-STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
+STOP_WORDS_RTE = [
+    "w",
+    "kw",
+    "mw",
+    "gw",
+    "tw",
+    "wh",
+    "kwh",
+    "mwh",
+    "gwh",
+    "twh",
+    "volt",
+    "volts",
+    "000",
+]
 COMMON_NGRAMS = [
     "éléctricité",
     "RTE",
@@ -73,14 +84,14 @@ COMMON_NGRAMS = [
     "Réseau transport",
     "RTE gestionnaire",
     "électricité France",
-    "système électrique"
+    "système électrique",
 ]
 
 # Define the path to extended list of french stopwords JSON file
-stopwords_fr_file = Path(__file__).parent / 'weak_signals' / 'stopwords-fr.json'
+stopwords_fr_file = Path(__file__).parent / "weak_signals" / "stopwords-fr.json"
 
 # Read the JSON data from the file and directly assign it to the list
-with open(stopwords_fr_file, 'r', encoding='utf-8') as file:
+with open(stopwords_fr_file, "r", encoding="utf-8") as file:
     FRENCH_STOPWORDS = json.load(file)
 
 DEFAULT_STOP_WORDS = FRENCH_STOPWORDS + STOP_WORDS_RTE + COMMON_NGRAMS
@@ -93,8 +104,9 @@ DEFAULT_VECTORIZER_MODEL = CountVectorizer(
 DEFAULT_CTFIDF_MODEL = ClassTfidfTransformer(reduce_frequent_words=True)
 
 RepresentationModelType = Union[KeyBERTInspired, MaximalMarginalRelevance, OpenAI]
-DEFAULT_REPRESENTATION_MODEL: List[RepresentationModelType] = [MaximalMarginalRelevance(diversity=0.3)]
-
+DEFAULT_REPRESENTATION_MODEL: List[RepresentationModelType] = [
+    MaximalMarginalRelevance(diversity=0.3)
+]
 
 
 class EmbeddingModel(BaseEmbedder):
@@ -121,27 +133,27 @@ class EmbeddingModel(BaseEmbedder):
         # Convert to list if input is a pandas Series
         if isinstance(documents, pd.Series):
             documents = documents.tolist()
-        
+
         num_documents = len(documents)
         num_batches = (num_documents + self.batch_size - 1) // self.batch_size
         embeddings = []
-        
+
         # Embed by batches instead of everything at once to not quickly saturate GPU
-        for i in tqdm(range(num_batches), desc="Embedding batches", disable=not verbose):
+        for i in tqdm(
+            range(num_batches), desc="Embedding batches", disable=not verbose
+        ):
             start_idx = i * self.batch_size
             end_idx = min(start_idx + self.batch_size, num_documents)
             batch_documents = documents[start_idx:end_idx]
-            
+
             batch_embeddings = self.embedding_model.encode(
-                batch_documents,
-                show_progress_bar=False,
-                output_value=None
+                batch_documents, show_progress_bar=False, output_value=None
             )
             embeddings.append(batch_embeddings)
 
         # Concatenate all batch embeddings
         all_embeddings = np.concatenate(embeddings, axis=0)
-        
+
         logger.success(f"Embedded {num_documents} documents in {num_batches} batches")
         return all_embeddings
 
@@ -156,7 +168,11 @@ def convert_to_numpy(obj, type=None):
         np.ndarray or list of np.ndarray.
     """
     if isinstance(obj, torch.Tensor):
-        return obj.numpy().astype(np.int64) if type == 'token_id' else obj.numpy().astype(np.float32)
+        return (
+            obj.numpy().astype(np.int64)
+            if type == "token_id"
+            else obj.numpy().astype(np.float32)
+        )
     elif isinstance(obj, list):
         return [convert_to_numpy(item) for item in obj]
     else:
@@ -176,29 +192,36 @@ def group_tokens(tokenizer, token_ids, token_embeddings, language="french"):
     """
     grouped_token_lists = []
     grouped_embedding_lists = []
-    
-    special_tokens = {"english": ["[CLS]", "[SEP]", "[PAD]"], "french": ["<s>", "</s>", "<pad>"]}
+
+    special_tokens = {
+        "english": ["[CLS]", "[SEP]", "[PAD]"],
+        "french": ["<s>", "</s>", "<pad>"],
+    }
     subword_prefix = {"english": "##", "french": "▁"}
-    
-    for token_id, token_embedding in tqdm(zip(token_ids, token_embeddings), desc="Grouping split tokens into whole words"):
+
+    for token_id, token_embedding in tqdm(
+        zip(token_ids, token_embeddings), desc="Grouping split tokens into whole words"
+    ):
         tokens = tokenizer.convert_ids_to_tokens(token_id)
-        
+
         grouped_tokens = []
         grouped_embeddings = []
         current_word = ""
         current_embedding = []
-        
+
         for token, embedding in zip(tokens, token_embedding):
             if token in special_tokens[language]:
                 continue
-            
+
             if language == "french" and token.startswith(subword_prefix[language]):
                 if current_word:
                     grouped_tokens.append(current_word)
                     grouped_embeddings.append(np.mean(current_embedding, axis=0))
                 current_word = token[1:]
                 current_embedding = [embedding]
-            elif language == "english" and not token.startswith(subword_prefix[language]):
+            elif language == "english" and not token.startswith(
+                subword_prefix[language]
+            ):
                 if current_word:
                     grouped_tokens.append(current_word)
                     grouped_embeddings.append(np.mean(current_embedding, axis=0))
@@ -207,14 +230,14 @@ def group_tokens(tokenizer, token_ids, token_embeddings, language="french"):
             else:
                 current_word += token.lstrip(subword_prefix[language])
                 current_embedding.append(embedding)
-        
+
         if current_word:
             grouped_tokens.append(current_word)
             grouped_embeddings.append(np.mean(current_embedding, axis=0))
-        
+
         grouped_token_lists.append(grouped_tokens)
         grouped_embedding_lists.append(np.array(grouped_embeddings))
-    
+
     return grouped_token_lists, grouped_embedding_lists
 
 
@@ -230,14 +253,14 @@ def remove_special_tokens(tokenizer, token_id, token_embedding, special_tokens):
         List of filtered tokens and their corresponding embeddings.
     """
     tokens = tokenizer.convert_ids_to_tokens(token_id)
-    
+
     filtered_tokens = []
     filtered_embeddings = []
     for token, embedding in zip(tokens, token_embedding):
         if token not in special_tokens:
             filtered_tokens.append(token)
             filtered_embeddings.append(embedding)
-    
+
     return filtered_tokens, filtered_embeddings
 
 
@@ -256,7 +279,7 @@ def train_BERTopic(
     use_cache: bool = True,
     cache_base_name: str = None,
     form_parameters: dict = None,
-    **kwargs
+    **kwargs,
 ) -> Tuple[BERTopic, List[int], ndarray, ndarray, List[ndarray], List[List[str]]]:
     """
     Train a BERTopic model with customizable representation models.
@@ -315,14 +338,19 @@ def train_BERTopic(
             min_cluster_size=form_parameters["hdbscan_min_cluster_size"],
             min_samples=form_parameters["hdbscan_min_samples"],
             metric=form_parameters["hdbscan_metric"],
-            cluster_selection_method=form_parameters["hdbscan_cluster_selection_method"],
-            cluster_selection_epsilon=form_parameters["hdbscan_cluster_selection_epsilon"], 
-            max_cluster_size=form_parameters["hdbscan_max_cluster_size"], 
+            cluster_selection_method=form_parameters[
+                "hdbscan_cluster_selection_method"
+            ],
+            cluster_selection_epsilon=form_parameters[
+                "hdbscan_cluster_selection_epsilon"
+            ],
+            max_cluster_size=form_parameters["hdbscan_max_cluster_size"],
             allow_single_cluster=form_parameters["hdbscan_allow_single_cluster"],
             prediction_data=True,
         )
         stop_words = (
-            stopwords.words('english') if form_parameters["countvectorizer_stop_words"] == 'english'
+            stopwords.words("english")
+            if form_parameters["countvectorizer_stop_words"] == "english"
             else DEFAULT_STOP_WORDS
         )
         vectorizer_model = CountVectorizer(
@@ -332,31 +360,50 @@ def train_BERTopic(
         )
         ctfidf_model = ClassTfidfTransformer(
             reduce_frequent_words=form_parameters["ctfidf_reduce_frequent_words"],
-            bm25_weighting=form_parameters["ctfidf_bm25_weighting"]
+            bm25_weighting=form_parameters["ctfidf_bm25_weighting"],
         )
         representation_model = []
         for model in form_parameters["representation_model"]:
             if model == "MaximalMarginalRelevance":
-                representation_model.append(MaximalMarginalRelevance(
-                    diversity=form_parameters["MaximalMarginalRelevance_diversity"],
-                    top_n_words=form_parameters["MaximalMarginalRelevance_top_n_words"]
-                ))
+                representation_model.append(
+                    MaximalMarginalRelevance(
+                        diversity=form_parameters["MaximalMarginalRelevance_diversity"],
+                        top_n_words=form_parameters[
+                            "MaximalMarginalRelevance_top_n_words"
+                        ],
+                    )
+                )
             elif model == "KeyBERTInspired":
-                representation_model.append(KeyBERTInspired(
-                    top_n_words=form_parameters["KeyBERTInspired_top_n_words"],
-                    nr_repr_docs=form_parameters["KeyBERTInspired_nr_repr_docs"],
-                    nr_candidate_words=form_parameters["KeyBERTInspired_nr_candidate_words"]
-                ))
+                representation_model.append(
+                    KeyBERTInspired(
+                        top_n_words=form_parameters["KeyBERTInspired_top_n_words"],
+                        nr_repr_docs=form_parameters["KeyBERTInspired_nr_repr_docs"],
+                        nr_candidate_words=form_parameters[
+                            "KeyBERTInspired_nr_candidate_words"
+                        ],
+                    )
+                )
             elif model == "OpenAI":
-                representation_model.append(OpenAI(
-                    client=openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"]),
-                    model=form_parameters["OpenAI_model"],
-                    nr_docs=form_parameters["OpenAI_nr_docs"],
-                    prompt=FRENCH_TOPIC_REPRESENTATION_PROMPT if form_parameters.get("OpenAI_language", "Français") == "Français" else None,
-                    chat=True,
-                ))
+                representation_model.append(
+                    OpenAI(
+                        client=openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"]),
+                        model=form_parameters["OpenAI_model"],
+                        nr_docs=form_parameters["OpenAI_nr_docs"],
+                        prompt=(
+                            FRENCH_TOPIC_REPRESENTATION_PROMPT
+                            if form_parameters.get("OpenAI_language", "Français")
+                            == "Français"
+                            else None
+                        ),
+                        chat=True,
+                    )
+                )
         top_n_words = form_parameters["bertopic_top_n_words"]
-        nr_topics = form_parameters["bertopic_nr_topics"] if form_parameters["bertopic_nr_topics"] > 0 else None
+        nr_topics = (
+            form_parameters["bertopic_nr_topics"]
+            if form_parameters["bertopic_nr_topics"] > 0
+            else None
+        )
         use_cache = form_parameters["use_cached_embeddings"]
 
     if use_cache and cache_base_name is None:
@@ -369,10 +416,12 @@ def train_BERTopic(
     embedding_model = EmbeddingModel(embedding_model_name)
 
     if indices is not None:
-        filtered_dataset = full_dataset[full_dataset.index.isin(indices)].reset_index(drop=True)
+        filtered_dataset = full_dataset[full_dataset.index.isin(indices)].reset_index(
+            drop=True
+        )
     else:
         filtered_dataset = full_dataset
-    
+
     if cache_path.exists() and use_cache:
         embeddings = load_embeddings(cache_path)
         logger.info(f"Embeddings loaded from cache file: {cache_path}")
@@ -381,20 +430,22 @@ def train_BERTopic(
     else:
         logger.info("Computing embeddings")
         output = embedding_model.embed(filtered_dataset[column])
-        
-        embeddings = [item['sentence_embedding'].detach().cpu() for item in output]
+
+        embeddings = [item["sentence_embedding"].detach().cpu() for item in output]
         embeddings = torch.stack(embeddings)
         embeddings = embeddings.numpy()
-        
-        token_embeddings = [item['token_embeddings'].detach().cpu() for item in output]
-        token_ids = [item['input_ids'].detach().cpu() for item in output]
-        
+
+        token_embeddings = [item["token_embeddings"].detach().cpu() for item in output]
+        token_ids = [item["input_ids"].detach().cpu() for item in output]
+
         token_embeddings = convert_to_numpy(token_embeddings)
-        token_ids = convert_to_numpy(token_ids, type='token_id')
-        
+        token_ids = convert_to_numpy(token_ids, type="token_id")
+
         tokenizer = embedding_model.embedding_model._first_module().tokenizer
 
-        token_strings, token_embeddings = group_tokens(tokenizer, token_ids, token_embeddings, language="french")
+        token_strings, token_embeddings = group_tokens(
+            tokenizer, token_ids, token_embeddings, language="french"
+        )
 
         if use_cache:
             save_embeddings(embeddings, cache_path)
@@ -402,7 +453,7 @@ def train_BERTopic(
 
     if nr_topics == 0:
         nr_topics = None
-    
+
     # Separate OpenAI model if present
     openai_model = None
     other_models = []
@@ -411,7 +462,7 @@ def train_BERTopic(
             openai_model = model
         else:
             other_models.append(model)
-    
+
     logger.debug(f"Representation models used: {other_models}")
     logger.debug(f"Using OpenAI to finetune representations: {(openai_model != None)}")
 
@@ -430,64 +481,33 @@ def train_BERTopic(
     )
 
     logger.info("Fitting BERTopic...")
-    
-    topics, probs = topic_model.fit_transform(
-        filtered_dataset[column],
-        embeddings
-    )
+
+    topics, probs = topic_model.fit_transform(filtered_dataset[column], embeddings)
 
     logger.info("Reducing outliers via embeddings strategy...")
     new_topics = topic_model.reduce_outliers(
-        documents=filtered_dataset[column], 
-        topics=topics, 
+        documents=filtered_dataset[column],
+        topics=topics,
         embeddings=embeddings,
-        strategy="embeddings"
+        strategy="embeddings",
     )
-    
+
     topic_model.update_topics(
-        filtered_dataset[column], 
-        topics=new_topics, 
-        vectorizer_model=vectorizer_model, 
-        representation_model=other_models
+        filtered_dataset[column],
+        topics=new_topics,
+        vectorizer_model=vectorizer_model,
+        representation_model=other_models,
     )
-    
+
     # If OpenAI model is present, apply it after reducing outliers
     if openai_model:
         logger.info("Applying OpenAI representation model...")
-        backup_representation_model = topic_model.representation_model 
-        topic_model.update_topics(filtered_dataset[column], topics=new_topics, representation_model=openai_model)
-        topic_model.representation_model = backup_representation_model 
-    
-    return topic_model, new_topics, probs, embeddings, token_embeddings, token_strings
-
-
-
-if __name__ == "__main__":
-    app = typer.Typer()
-
-    @app.command("train")
-    def train(
-        model: str = typer.Option(DEFAULT_EMBEDDING_MODEL_NAME, help="name of the model to be used"),
-        data_path: str = typer.Option(None, help="path to the data from which topics have to be analyzed"),
-        topics: int = typer.Option(10, help="number of topics"),
-        save_model_path: str = typer.Option(None, help="where to save the model"),
-    ):
-        embedding_model = EmbeddingModel(model)
-
-        # Load data
-        logger.info(f"Loading data from: {data_path}...")
-        data = file_to_pd(data_path)
-        logger.info("Data loaded")
-
-        # Train BERTopic
-        topics, probs, topic_model = train_BERTopic(
-            embedding_model=embedding_model, texts=data[TEXT_COLUMN], nr_topics=topics
+        backup_representation_model = topic_model.representation_model
+        topic_model.update_topics(
+            filtered_dataset[column],
+            topics=new_topics,
+            representation_model=openai_model,
         )
+        topic_model.representation_model = backup_representation_model
 
-        # Save model
-        if save_model_path:
-            topic_model.save(save_model_path, serialization="pytorch")
-
-        pdb.set_trace()
-
-    app()
+    return topic_model, new_topics, probs, embeddings, token_embeddings, token_strings
