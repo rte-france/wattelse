@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 # Global variables for prompts
 SIGNAL_INTRO = {
     'en': """As an elite strategic foresight analyst with extensive expertise across multiple domains and industries, your task is to conduct a comprehensive evaluation of a potential signal derived from the following topic summary:

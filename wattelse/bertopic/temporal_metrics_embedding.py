@@ -40,6 +40,11 @@ temptopic.calculate_temporal_representation_stability()
 temptopic.calculate_topic_embedding_stability()
 """
 
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import pandas as pd
 from loguru import logger
 import numpy as np

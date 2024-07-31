@@ -54,6 +54,11 @@ temptopic.plot_temporal_topic_metrics(metric='smoothness')
 temptopic.plot_temporal_topic_quality()
 """
 
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 from sklearn.preprocessing import normalize
 import pandas as pd
 from typing import List, Union, Tuple, Dict

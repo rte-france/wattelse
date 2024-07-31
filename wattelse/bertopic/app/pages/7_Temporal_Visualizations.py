@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import locale
 from datetime import timedelta
 
@@ -9,7 +14,7 @@ import streamlit as st
 import umap
 
 from wattelse.bertopic.app.app_utils import plot_topics_over_time, compute_topics_over_time
-from wattelse.bertopic.app.state_utils import register_widget, save_widget_state
+from wattelse.bertopic.app.state_utils import register_widget, save_widget_state, restore_widget_state
 from wattelse.bertopic.temporal_metrics_embedding import TempTopic
 from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
 from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
