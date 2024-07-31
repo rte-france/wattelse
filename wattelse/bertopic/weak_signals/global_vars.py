@@ -1,5 +1,8 @@
 import json
+import os
 from pathlib import Path
+
+from wattelse.common import BASE_CACHE_PATH, BASE_DATA_PATH
 
 # Stopwords
 STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
@@ -34,30 +37,11 @@ with open(stopwords_fr_file, 'r', encoding='utf-8') as file:
 STOPWORDS = STOP_WORDS_RTE + COMMON_NGRAMS + FRENCH_STOPWORDS
 
 # Paths
-'''
-# Decomment this to use data from the data folder in the server
-TEXT_COLUMN = "text"
-FILENAME_COLUMN = "filename"
-SEED = 666
-GPU_SERVERS = ["groesplu0", "GROESSLAO01"]
-GPU_DSVD = ["pf9sodsia001"]
-BASE_DATA_DIR = (
-    Path("/data/weak_signals/data/bertopic/Big Datasets/")
-    if socket.gethostname() in GPU_SERVERS
-    else Path("/scratch/weak_signals/data/")
-    if socket.gethostname() in GPU_DSVD
-    else Path(__file__).parent.parent.parent / "data"
-)
-DATA_PATH = BASE_DATA_DIR.absolute().as_posix() +'/'
-'''
-
-BASE_DIR = Path(__file__).resolve().parent
-CACHE_DIR = BASE_DIR / 'cache'
-MODELS_DIR = CACHE_DIR / 'models'
-WS_CACHE_DIR = BASE_DIR / 'cache'
-DATA_PATH = BASE_DIR.parent.parent.parent / 'data' / 'bertopic'
-ZEROSHOT_TOPICS_DATA_DIR = WS_CACHE_DIR / "zeroshot_topics_data"
-SIGNAL_EVOLUTION_DATA_DIR = WS_CACHE_DIR / "signal_evolution_data"
+CACHE_PATH = BASE_CACHE_PATH / "weak_signals"
+MODELS_DIR = CACHE_PATH / "models"
+DATA_PATH = BASE_DATA_PATH / "bertopic"
+ZEROSHOT_TOPICS_DATA_DIR = CACHE_PATH / "zeroshot_topics_data"
+SIGNAL_EVOLUTION_DATA_DIR = CACHE_PATH / "signal_evolution_data"
 
 # File names
 STATE_FILE = 'app_state.pkl'
@@ -110,7 +94,7 @@ HDBSCAN_CLUSTER_SELECTION_METHODS = ["leaf", "eom"]
 VECTORIZER_NGRAM_RANGES = [(1, 2), (1, 1), (2, 2)]
 
 # GPT Model Settings
-GPT_MODEL = "gpt-4o-mini"
+GPT_MODEL = os.getenv("OPENAI_DEFAULT_MODEL_NAME")
 GPT_TEMPERATURE = 0.0
 GPT_SYSTEM_MESSAGE = "You are a helpful assistant, skilled in detailing topic evolution over time for the detection of emerging trends and signals."
 

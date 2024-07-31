@@ -1,11 +1,13 @@
+import os
 import pickle
 import shutil
 
+import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from bertopic import BERTopic
-from openai import OpenAI
+from loguru import logger
 
 from data_loading import load_and_preprocess_data, group_by_days
 from global_vars import *
@@ -20,9 +22,9 @@ from weak_signals import detect_weak_signals_zeroshot, calculate_signal_populari
 
 
 def save_state():
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    state_file = CACHE_DIR / STATE_FILE
-    embeddings_file = CACHE_DIR / EMBEDDINGS_FILE
+    os.makedirs(CACHE_PATH, exist_ok=True)
+    state_file = CACHE_PATH / STATE_FILE
+    embeddings_file = CACHE_PATH / EMBEDDINGS_FILE
 
     state = SessionStateManager.get_multiple(
         'selected_file', 'min_chars', 'split_by_paragraph', 'timeframe_slider',
@@ -38,8 +40,8 @@ def save_state():
     st.success("Application state saved.")
 
 def restore_state():
-    state_file = CACHE_DIR / STATE_FILE
-    embeddings_file = CACHE_DIR / EMBEDDINGS_FILE
+    state_file = CACHE_PATH / STATE_FILE
+    embeddings_file = CACHE_PATH / EMBEDDINGS_FILE
 
     if state_file.exists() and embeddings_file.exists():
         with open(state_file, 'rb') as f:
@@ -65,15 +67,15 @@ def save_models():
         topic_model.doc_info_df.to_pickle(model_dir / DOC_INFO_DF_FILE)
         topic_model.topic_info_df.to_pickle(model_dir / TOPIC_INFO_DF_FILE)
 
-    with open(CACHE_DIR / DOC_GROUPS_FILE, 'wb') as f:
+    with open(CACHE_PATH / DOC_GROUPS_FILE, 'wb') as f:
         pickle.dump(SessionStateManager.get('doc_groups'), f)
-    with open(CACHE_DIR / EMB_GROUPS_FILE, 'wb') as f:
+    with open(CACHE_PATH / EMB_GROUPS_FILE, 'wb') as f:
         pickle.dump(SessionStateManager.get('emb_groups'), f)
-    with open(CACHE_DIR / GRANULARITY_FILE, 'wb') as f:
+    with open(CACHE_PATH / GRANULARITY_FILE, 'wb') as f:
         pickle.dump(SessionStateManager.get('granularity_select'), f)
 
     # Save the models_trained flag
-    with open(CACHE_DIR / MODELS_TRAINED_FILE, 'wb') as f:
+    with open(CACHE_PATH / MODELS_TRAINED_FILE, 'wb') as f:
         pickle.dump(SessionStateManager.get('models_trained'), f)
 
     hyperparams = SessionStateManager.get_multiple(
@@ -81,7 +83,7 @@ def save_models():
         'hdbscan_min_samples', 'hdbscan_cluster_selection_method', 'top_n_words',
         'vectorizer_ngram_range', 'min_df'
     )
-    with open(CACHE_DIR / HYPERPARAMS_FILE, 'wb') as f:
+    with open(CACHE_PATH / HYPERPARAMS_FILE, 'wb') as f:
         pickle.dump(hyperparams, f)
 
     st.success("Models saved.")
@@ -110,14 +112,14 @@ def restore_models():
     SessionStateManager.set('topic_models', topic_models)
 
     for file, key in [(DOC_GROUPS_FILE, 'doc_groups'), (EMB_GROUPS_FILE, 'emb_groups')]:
-        file_path = CACHE_DIR / file
+        file_path = CACHE_PATH / file
         if file_path.exists():
             with open(file_path, 'rb') as f:
                 SessionStateManager.set(key, pickle.load(f))
         else:
             logger.warning(f"{file} not found.")
 
-    granularity_file = CACHE_DIR / GRANULARITY_FILE
+    granularity_file = CACHE_PATH / GRANULARITY_FILE
     if granularity_file.exists():
         with open(granularity_file, 'rb') as f:
             SessionStateManager.set('granularity_select', pickle.load(f))
@@ -125,14 +127,14 @@ def restore_models():
         logger.warning("Granularity value not found.")
 
     # Restore the models_trained flag
-    models_trained_file = CACHE_DIR / MODELS_TRAINED_FILE
+    models_trained_file = CACHE_PATH / MODELS_TRAINED_FILE
     if models_trained_file.exists():
         with open(models_trained_file, 'rb') as f:
             SessionStateManager.set('models_trained', pickle.load(f))
     else:
         logger.warning("Models trained flag not found.")
 
-    hyperparams_file = CACHE_DIR / HYPERPARAMS_FILE
+    hyperparams_file = CACHE_PATH / HYPERPARAMS_FILE
     if hyperparams_file.exists():
         with open(hyperparams_file, 'rb') as f:
             SessionStateManager.set_multiple(**pickle.load(f))
@@ -143,7 +145,7 @@ def restore_models():
 
 
 def purge_cache():
-    cache_dir = CACHE_DIR
+    cache_dir = CACHE_PATH
     if os.path.exists(cache_dir):
         shutil.rmtree(cache_dir)
         st.success(f"Cache purged.")
@@ -562,8 +564,6 @@ def main():
                         st.success(f"Topic counts for individual and cumulative merged models saved to {json_file_path}")
 
 if __name__ == "__main__":
-    # st.set_page_config(page_title=PAGE_TITLE, layout=LAYOUT) 
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     main()
 
 

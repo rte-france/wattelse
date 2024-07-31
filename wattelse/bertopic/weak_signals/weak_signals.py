@@ -9,11 +9,11 @@ import pandas as pd
 import scipy
 from bertopic import BERTopic
 from loguru import logger
-from openai import OpenAI
 from tqdm import tqdm
 
 from global_vars import GPT_MODEL, GPT_TEMPERATURE, GPT_SYSTEM_MESSAGE, SIGNAL_EVOLUTION_DATA_DIR
 from prompts import get_prompt
+from wattelse.api.openai.client_openai_api import OpenAI_Client
 
 
 def detect_weak_signals_zeroshot(topic_models: Dict[pd.Timestamp, BERTopic], zeroshot_topic_list: List[str], granularity: int, decay_factor: float = 0.01, decay_power: float = 2) -> Dict[str, Dict[pd.Timestamp, Dict[str, any]]]:
@@ -418,29 +418,14 @@ def analyze_signal(topic_number, current_date, all_merge_histories_df, granulari
                 # First prompt: Generate summary
                 summary_prompt = get_prompt(language, "topic_summary", topic_number=topic_number, content_summary=content_summary)
                 try:
-                    client = OpenAI()
-                    completion = client.chat.completions.create(
-                        model=GPT_MODEL,
-                        messages=[
-                            {"role": "system", "content": GPT_SYSTEM_MESSAGE},
-                            {"role": "user", "content": summary_prompt}
-                        ],
-                        temperature=GPT_TEMPERATURE,
-                    )
-                    summary = completion.choices[0].message.content
-
+                    openai_client = OpenAI_Client()
+                    summary = openai_client.generate(system_prompt=GPT_SYSTEM_MESSAGE, user_prompt=summary_prompt,
+                                                     model_name=GPT_MODEL, temperature=GPT_TEMPERATURE)
 
                     # Second prompt: Analyze weak signal
                     weak_signal_prompt = get_prompt(language, "weak_signal", summary_from_first_prompt=summary)
-                    completion = client.chat.completions.create(
-                        model=GPT_MODEL,
-                        messages=[
-                            {"role": "system", "content": GPT_SYSTEM_MESSAGE},
-                            {"role": "user", "content": weak_signal_prompt}
-                        ],
-                        temperature=GPT_TEMPERATURE,
-                    )
-                    weak_signal_analysis = completion.choices[0].message.content                    
+                    weak_signal_analysis = openai_client.generate(system_prompt=GPT_SYSTEM_MESSAGE, user_prompt=weak_signal_prompt,
+                                                                  model_name=GPT_MODEL, temperature=GPT_TEMPERATURE)
                     return summary, weak_signal_analysis
                 
                 except Exception as e:
