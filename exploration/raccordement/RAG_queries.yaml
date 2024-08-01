@@ -1,0 +1,35 @@
+RAG_type_raccordement:
+  name: "Type de raccordement"
+  prompt: "Quel est le type de raccordement pour la solution envisagée ? Réponds uniquement par \"Antenne\", \"Piquage\" ou \"Coupure\"."
+
+RAG_poste_liaison_raccordement:
+  name: "Poste/Liaison"
+  prompt: "Quel est le poste ou la liaison de raccordement concerné par la solution envisagée ? Réponds uniquement par le nom du poste ou de la liaison."
+
+RAG_domaine_tension:
+  name: "Domaine de tension de raccordement de référence"
+  prompt: "Quel est le domaine de tension concerné par la solution envisagée ? Réponds uniquement par HTB 1, HTB 2 ou HTB 3."
+
+RAG_tension_raccordement:
+  name: "Tension de raccordement"
+  prompt: "Quelle est la tension de raccordement pour la solution envisagée ? Réponds uniquement par 63 kV, 90kV, 150 kV, 225 kV ou 400 kV."
+
+RAG_type_liaison:
+  name: "Type de liaison"
+  prompt: "Quel est le type de liaison concerné par la solution envisagée ? Réponds uniquement par aérienne ou souterraine."
+
+RAG_longueur_liaison:
+  name: "Longueur de la liaison"
+  prompt: "Quelle est la longueur de la liaison concernée par la solution envisagée ? Réponds uniquement par la longueur en kilomètres."
+
+RAG_section_liaison:
+  name: "Section de la liaison"
+  prompt: "Quelle est la section de la liaison concernée par la solution envisagée ? Réponds uniquement par la section en mm carrés."
+
+RAG_startegies_ecartees:
+  name: "Stratégies écratées"
+  prompt: "Quelles sont les stratégies écartées pour le raccordement ?"
+
+RAG_cout_raccordement:
+  name: "Coût du raccordement"
+  prompt: "Quel est le coût estimé pour la réalisation du raccordement ? Réponds uniquement par le coût en k€."
