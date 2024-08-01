@@ -28,7 +28,7 @@ CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES python -m vllm.entrypoints.openai.api
 	--host $HOST \
 	--device auto \
 	--worker-use-ray \
-	--tensor-parallel-size 2 \
+	--tensor-parallel-size 4 \
     --enforce-eager \
 	--dtype=half # needed for T4 GPU that do not support Bfloat16
 
