@@ -6,6 +6,7 @@
 import json
 import logging
 import os
+import shutil
 from typing import BinaryIO, List, Dict, Union
 
 from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
@@ -148,6 +149,32 @@ class RAGBackEnd:
             # remove file from disk
             os.remove(paths[0])
             logger.info(f"File {filename} removed from disk and vector database")
+
+    def clear_collection(self):
+        """
+        Delete all documents and embeddings from the document collection.
+        WARNING: all files will be lost permanently. You should use this function with caution.
+        """
+        logger.warning(
+            f"Clearing document collection: {self.document_collection.collection_name}"
+        )
+
+        # Delete ChromaDB collection
+        try:
+            self.document_collection.client.delete_collection(
+                self.document_collection.collection_name
+            )
+        except ValueError:
+            logger.error(
+                f"Collection {self.document_collection.collection_name} not found"
+            )
+
+        # Delete collection files folder
+        collection_path = DATA_DIR / self.document_collection.collection_name
+        try:
+            shutil.rmtree(str(collection_path))
+        except FileNotFoundError:
+            logger.error(f"No documents found at {collection_path}")
 
     def get_available_docs(self) -> List[str]:
         """Returns the list of documents in the collection"""
