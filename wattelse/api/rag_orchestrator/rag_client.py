@@ -13,8 +13,8 @@ from pathlib import Path
 from loguru import logger
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, ENDPOINT_QUERY_RAG, \
-    ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, \
-    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD
+    ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, ENDPOINT_CLEAR_COLLECTION, \
+    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD 
 
 
 class RAGAPIError(Exception):
@@ -64,6 +64,19 @@ class RAGOrchestratorClient:
         """Removes documents from the collection the user has access to, as well as associated embeddings"""
         response = requests.post(url=f"{self.url}{ENDPOINT_REMOVE_DOCS}/{group_id}",
                                  data=json.dumps(doc_filenames))
+        if response.status_code == 200:
+            logger.debug(f"[Group: {group_id}] {response.json()['message']}")
+            return response.json()
+        else:
+            logger.error(f"Error: {response.status_code, response.text}")
+            raise RAGAPIError(f"Error: {response.status_code, response.text}")
+        
+    def clear_collection(self, group_id: str) -> str:
+        """
+        Clears all documents and embeddings from the collection.
+        WARNING: all files will be lost permanently.
+        """
+        response = requests.post(url=f"{self.url}{ENDPOINT_CLEAR_COLLECTION}/{group_id}")
         if response.status_code == 200:
             logger.debug(f"[Group: {group_id}] {response.json()['message']}")
             return response.json()
