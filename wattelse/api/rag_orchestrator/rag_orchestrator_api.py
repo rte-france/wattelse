@@ -12,9 +12,18 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from starlette.responses import FileResponse, StreamingResponse
 
-from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, \
-    ENDPOINT_QUERY_RAG, ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, \
-    ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD
+from wattelse.api.rag_orchestrator import (
+    ENDPOINT_CHECK_SERVICE,
+    ENDPOINT_CREATE_SESSION,
+    ENDPOINT_QUERY_RAG,
+    ENDPOINT_UPLOAD_DOCS,
+    ENDPOINT_REMOVE_DOCS,
+    ENDPOINT_CURRENT_SESSIONS,
+    ENDPOINT_LIST_AVAILABLE_DOCS,
+    ENDPOINT_CLEAN_SESSIONS,
+    ENDPOINT_DOWNLOAD,
+    ENDPOINT_CLEAR_COLLECTION,
+)
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
 SESSION_TIMEOUT = 30  # in minutes
@@ -75,12 +84,15 @@ def upload(group_id: str, files: List[UploadFile] = File(...)):
         if collection.is_present(file.filename):
             logger.warning(
                 f"[Group: {group_id}] File {file.filename} already present in the collection {collection_name}, "
-                f"skipping indexing and chunking")
+                f"skipping indexing and chunking"
+            )
             continue
 
         RAG_SESSIONS[group_id].add_file_to_collection(file.filename, file.file)
 
-    return {"message": f"[Group: {group_id}] Successfully uploaded {[file.filename for file in files]}"}
+    return {
+        "message": f"[Group: {group_id}] Successfully uploaded {[file.filename for file in files]}"
+    }
 
 
 @app.post(ENDPOINT_REMOVE_DOCS + "/{group_id}")
@@ -88,7 +100,25 @@ def remove_docs(group_id: str, doc_file_names: List[str]) -> Dict[str, str]:
     """Remove the documents from raw storage and vector database"""
     check_if_session_exists(group_id)
     RAG_SESSIONS[group_id].remove_docs(doc_file_names)
-    return {"message": f"[Group: {group_id}] Successfully removed files {doc_file_names}"}
+    return {
+        "message": f"[Group: {group_id}] Successfully removed files {doc_file_names}"
+    }
+
+
+@app.post(ENDPOINT_CLEAR_COLLECTION + "/{group_id}")
+def clear_collection(group_id: str):
+    """
+    If collection exists, clears all documents and embeddings from the collection.
+    WARNING: all files will be lost permanently.
+    """
+    if group_id in RAG_SESSIONS.keys():
+        RAG_SESSIONS[group_id].clear_collection()
+        del RAG_SESSIONS[group_id]
+        return {
+            "message": f"[Group: {group_id}] Successfully cleared collection {group_id}"
+        }
+    else:
+        return {"message": f"[Group: {group_id}] Session not found"}
 
 
 @app.get(ENDPOINT_LIST_AVAILABLE_DOCS + "/{group_id}")
@@ -104,7 +134,7 @@ def data_streamer(stream_data):
     Encodes received chunks in a binary format and streams them.
     """
     for i in stream_data:
-        yield f'{i}'.encode('utf-8')
+        yield f"{i}".encode("utf-8")
 
 
 @app.get(ENDPOINT_QUERY_RAG)
@@ -119,7 +149,9 @@ async def query_rag(rag_query: RAGQuery) -> StreamingResponse:
         stream=rag_query.stream,
     )
     if rag_query.stream:
-        return StreamingResponse(data_streamer(response), media_type='text/event-stream')
+        return StreamingResponse(
+            data_streamer(response), media_type="text/event-stream"
+        )
     else:
         return json.dumps(response)
 
@@ -134,7 +166,9 @@ def clean_sessions(group_id: str | None = None):
         if group_id in RAG_SESSIONS.keys():
             del RAG_SESSIONS[group_id]
         else:
-            raise HTTPException(status_code=404, detail=f"Group id : {group_id} not found in sessions.")
+            raise HTTPException(
+                status_code=404, detail=f"Group id : {group_id} not found in sessions."
+            )
     else:
         RAG_SESSIONS.clear()
 
@@ -142,7 +176,9 @@ def clean_sessions(group_id: str | None = None):
 def check_if_session_exists(group_id: str):
     """Check if the session_id exists, if not throw an exception"""
     if group_id not in RAG_SESSIONS:
-        raise RAGOrchestratorAPIError(f"Session {group_id} does not exist, please reconnect")
+        raise RAGOrchestratorAPIError(
+            f"Session {group_id} does not exist, please reconnect"
+        )
 
 
 @app.get(ENDPOINT_DOWNLOAD + "/{group_id}/{file_name}")
@@ -151,8 +187,11 @@ def download_file(group_id: str, file_name: str):
     if file_name in RAG_SESSIONS[group_id].get_available_docs():
         file_path = RAG_SESSIONS[group_id].get_file_path(file_name)
         if file_path:
-            return FileResponse(file_path, media_type="application/octet-stream", filename=file_name)
+            return FileResponse(
+                file_path, media_type="application/octet-stream", filename=file_name
+            )
     raise HTTPException(status_code=404, detail=f"File: {file_name} not found.")
+
 
 # to run the API (reload each time the python is changed)
 # uvicorn rag_orchestrator_api:app --reload
