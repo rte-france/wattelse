@@ -165,7 +165,7 @@ class RAGBackEnd:
                 self.document_collection.collection_name
             )
         except ValueError:
-            logger.error(
+            logger.warning(
                 f"Collection {self.document_collection.collection_name} not found"
             )
 
@@ -174,7 +174,7 @@ class RAGBackEnd:
         try:
             shutil.rmtree(str(collection_path))
         except FileNotFoundError:
-            logger.error(f"No documents found at {collection_path}")
+            logger.warning(f"No documents found at {collection_path}")
 
     def get_available_docs(self) -> List[str]:
         """Returns the list of documents in the collection"""
