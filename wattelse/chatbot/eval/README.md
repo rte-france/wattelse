@@ -6,8 +6,8 @@ This folder contains the main function for RAG evaluation.
 The evaluation pipeline currently evaluates the generation part of the RAG only.
 
 The metrics used are:
-- BERTScore, using the official [https://github.com/Tiiiger/bert_score](bert-score) implementation. As specified [here](https://github.com/Tiiiger/bert_score?tab=readme-ov-file#default-behavior), the default model used for french is `bert-base-multilingual-cased`.
-- LLM as a judge, using a prompt defined in [wattelse/chatbot/eval/prompt.py](https://github.com/rte-france/wattelse/tree/main/wattelse/chatbot/eval/prompt.py). The LLM used for evaluating answers can be specified using environment variables (see [wattelse/api/openai](https://github.com/rte-france/wattelse/tree/main/wattelse/api/openai))
+- **BERTScore**, using the official [https://github.com/Tiiiger/bert_score](bert-score) implementation. As specified [here](https://github.com/Tiiiger/bert_score?tab=readme-ov-file#default-behavior), the default model used for french is `bert-base-multilingual-cased`.
+- **LLM as a judge**, using a prompt defined in [wattelse/chatbot/eval/prompt.py](https://github.com/rte-france/wattelse/tree/main/wattelse/chatbot/eval/prompt.py). The LLM used for evaluating answers can be specified using environment variables (see [wattelse/api/openai](https://github.com/rte-france/wattelse/tree/main/wattelse/api/openai))
 
 ## Usage
 
@@ -39,7 +39,6 @@ python main.py /path/to/qr_df.xlsx /path/to/eval_corpus/
 
 You can specifiy the path to the output result using the `--output_path` argument, for example:
 
-Example usage:
 ```bash
 python main.py /path/to/qr_df.xlsx /path/to/eval_corpus/ --output_path /path/to/output.xlsx
 ```
