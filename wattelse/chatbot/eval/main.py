@@ -1,4 +1,5 @@
 import typer
+import json
 from loguru import logger
 import numpy as np
 import pandas as pd
@@ -13,6 +14,7 @@ from wattelse.chatbot.eval.prompt import EVAL_LLM_PROMPT
 QUERY_COLUMN = "query"
 ANSWER_COLUMN = "answer"
 DOC_LIST_COLUMN = "doc_list"
+
 
 def main(
     qr_df_path: Path,
@@ -36,6 +38,8 @@ def main(
 
     # Load data
     eval_df = pd.read_excel(qr_df_path)
+    # Transform "doc_list" column from string to list
+    eval_df["doc_list"] = eval_df["doc_list"].apply(lambda x: json.loads(x))
 
     # Load eval docs in RAG backend
     for doc in eval_corpus_path.iterdir():
@@ -88,7 +92,9 @@ def main(
 
     # Update eval_df with RAG predictions and scores
     eval_df["rag_answer"] = rag_answers
-    eval_df["rag_relevant_extracts"] = rag_relevant_extracts
+    eval_df["rag_relevant_extracts"] = [
+        json.dumps(extract, ensure_ascii=False) for extract in rag_relevant_extracts
+    ]
     eval_df["bert_score_P"] = P.tolist()
     eval_df["bert_score_R"] = R.tolist()
     eval_df["bert_score_F1"] = F1.tolist()
