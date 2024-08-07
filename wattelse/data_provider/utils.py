@@ -9,15 +9,89 @@ import re
 import time
 from urllib.parse import urlsplit
 
+import requests
+from loguru import logger
+
 # Ref: https://stackoverflow.com/a/59023463/
 
 _ENCODED_URL_PREFIX = "https://news.google.com/rss/articles/"
 _ENCODED_URL_RE = re.compile(fr"^{re.escape(_ENCODED_URL_PREFIX)}(?P<encoded_url>[^?]+)")
 _DECODED_URL_RE = re.compile(rb'^\x08\x13".+?(?P<primary_url>http[^\xd2]+)\xd2\x01')
 
+
+def _fetch_decoded_batch_execute(id):
+    s = (
+            '[[["Fbv4je","[\\"garturlreq\\",[[\\"en-US\\",\\"US\\",[\\"FINANCE_TOP_INDICES\\",\\"WEB_TEST_1_0_0\\"],'
+            'null,null,1,1,\\"US:en\\",null,180,null,null,null,null,null,0,null,null,[1608992183,723341000]],'
+            '\\"en-US\\",\\"US\\",1,[2,3,4,8],1,0,\\"655000234\\",0,0,null,0],\\"'
+            + id
+            + '\\"]",null,"generic"]]]'
+    )
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+        "Referer": "https://news.google.com/",
+    }
+
+    response = requests.post(
+        "https://news.google.com/_/DotsSplashUi/data/batchexecute?rpcids=Fbv4je",
+        headers=headers,
+        data={"f.req": s},
+    )
+
+    if response.status_code != 200:
+        logger.error("Failed to fetch data from Google.")
+        raise Exception("Failed to fetch data from Google.")
+
+    text = response.text
+    header = '[\\"garturlres\\",\\"'
+    footer = '\\",'
+    if header not in text:
+        raise Exception(f"Header not found in response: {text}")
+    start = text.split(header, 1)[1]
+    if footer not in start:
+        raise Exception("Footer not found in response.")
+    url = start.split(footer, 1)[0]
+    return url
+
+
+@functools.lru_cache(2048)
+def _decode_google_news_url_v2(source_url):
+    """New way of decoding Gnews URL (from August 2024), the URL are not simply encoded in Base64, need to obtain
+    the redirection URL from server-side"""
+    url = requests.utils.urlparse(source_url)
+    path = url.path.split("/")
+    if url.hostname == "news.google.com" and len(path) > 1 and path[-2] == "articles":
+        base64_str = path[-1]
+        decoded_bytes = base64.urlsafe_b64decode(base64_str + "==")
+        decoded_str = decoded_bytes.decode("latin1")
+
+        prefix = b"\x08\x13\x22".decode("latin1")
+        if decoded_str.startswith(prefix):
+            decoded_str = decoded_str[len(prefix):]
+
+        suffix = b"\xd2\x01\x00".decode("latin1")
+        if decoded_str.endswith(suffix):
+            decoded_str = decoded_str[: -len(suffix)]
+
+        bytes_array = bytearray(decoded_str, "latin1")
+        length = bytes_array[0]
+        if length >= 0x80:
+            decoded_str = decoded_str[2: length + 1]
+        else:
+            decoded_str = decoded_str[1: length + 1]
+
+        if decoded_str.startswith("AU_yqL"):
+            return _fetch_decoded_batch_execute(base64_str)
+
+        return decoded_str
+    else:
+        return source_url
+
+
 @functools.lru_cache(2048)
 def _decode_google_news_url(url: str) -> str:
-    """Decode encoded Google News entry URLs."""
+    """Decode encoded Google News entry URLs. (until August 2024)"""
     match = _ENCODED_URL_RE.match(url)
     encoded_text = match.groupdict()["encoded_url"]  # type: ignore
     encoded_text += "==="  # Fix incorrect padding. Ref: https://stackoverflow.com/a/49459036/
@@ -28,9 +102,10 @@ def _decode_google_news_url(url: str) -> str:
     primary_url = primary_url.decode()
     return primary_url
 
+
 def decode_google_news_url(url: str) -> str:  # Not cached because not all Google News URLs are encoded.
     """Return Google News entry URLs after decoding their encoding as applicable."""
-    return _decode_google_news_url(url) if url.startswith(_ENCODED_URL_PREFIX) else url
+    return _decode_google_news_url_v2(url) if url.startswith(_ENCODED_URL_PREFIX) else url
 
 
 def wait(secs):
