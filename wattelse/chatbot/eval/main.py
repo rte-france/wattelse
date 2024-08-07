@@ -41,6 +41,15 @@ def main(
     # Transform "doc_list" column from string to list
     eval_df["doc_list"] = eval_df["doc_list"].apply(lambda x: json.loads(x))
 
+    # Check all documents listed in `doc_list` are present in `eval_corpus_path` folder
+    all_doc_list = set(
+        [item for sublist in eval_df["doc_list"].to_list() for item in sublist]
+    )
+    all_eval_corpus_files = set([doc.name for doc in eval_corpus_path.iterdir()])
+    for doc in all_doc_list:
+        if doc not in all_eval_corpus_files:
+            logger.warning(f"Document {doc} not found in eval corpus folder")
+
     # Load eval docs in RAG backend
     for doc in eval_corpus_path.iterdir():
         if doc.is_file():
