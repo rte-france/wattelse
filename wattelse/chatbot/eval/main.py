@@ -10,6 +10,9 @@ from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.chatbot.eval.prompt import EVAL_LLM_PROMPT
 
+QUERY_COLUMN = "query"
+ANSWER_COLUMN = "answer"
+DOC_LIST_COLUMN = "doc_list"
 
 def main(
     qr_df_path: Path,
@@ -48,9 +51,9 @@ def main(
     rag_relevant_extracts = []
     for _, row in eval_df.iterrows():
         response = RAG_EVAL_BACKEND.query_rag(
-            row["query"], selected_files=[row["doc_name"]]
+            row[QUERY_COLUMN], selected_files=row[DOC_LIST_COLUMN]
         )
-        answer = response["answer"]
+        answer = response[ANSWER_COLUMN]
         relevant_extracts = [
             extract["content"] for extract in response["relevant_extracts"]
         ]
@@ -58,7 +61,7 @@ def main(
         rag_relevant_extracts.append(relevant_extracts)
 
     # Compute BERTscore
-    refs = eval_df["answer"].tolist()
+    refs = eval_df[ANSWER_COLUMN].tolist()
 
     P, R, F1 = score(rag_answers, refs, lang="fr")
 
@@ -67,8 +70,8 @@ def main(
     for i, row in eval_df.iterrows():
         response = EVAL_LLM_CLIENT.generate(
             EVAL_LLM_PROMPT.format(
-                query=row["query"],
-                answer=row["answer"],
+                query=row[QUERY_COLUMN],
+                answer=row[ANSWER_COLUMN],
                 candidate=rag_answers[i],
             )
         )
