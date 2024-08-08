@@ -6,7 +6,6 @@
 import configparser
 import glob
 import os
-import sys
 from pydoc import locate
 
 import pandas as pd
@@ -35,8 +34,8 @@ from wattelse.bertopic.utils import (
 from wattelse.common.config_utils import parse_literal
 from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
 from wattelse.common.mail_utils import get_credentials, send_email
-from wattelse.common.crontab_utils import add_job_to_crontab
-from wattelse.common import FEED_BASE_PATH, BERTOPIC_LOG_PATH
+from wattelse.common.crontab_utils import schedule_newsletter
+from wattelse.common import FEED_BASE_PATH, BEST_CUDA_DEVICE
 
 # Config sections
 BERTOPIC_CONFIG_SECTION = "bertopic_config"
@@ -49,9 +48,6 @@ LEARN_FROM_SCRATCH = (
 )
 LEARN_FROM_LAST = "learn_from_last"  # only the last feed data to create the model
 INFERENCE_ONLY = "inference_only"  # do not retrain model; reuse existing bertopic model if available, otherwise, fallback to learn_from_scratch for the first run"""
-
-# Linux command to find the index of the GPU device currently less used than the others
-BEST_CUDA_DEVICE = "\`nvidia-smi --query-gpu=index,memory.used --format=csv,nounits | tail -n +2 | sort -t',' -k2 -n  | head -n 1 | cut -d',' -f1\`"
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
@@ -279,13 +275,7 @@ if __name__ == "__main__":
         cuda_devices: str = typer.Option(BEST_CUDA_DEVICE, help="CUDA_VISIBLE_DEVICES parameters"),
     ):
         """Schedule data scrapping on the basis of a feed configuration file"""
-        newsletter_cfg = configparser.ConfigParser()
-        newsletter_cfg.read(newsletter_cfg_path)
-        schedule = newsletter_cfg.get(NEWSLETTER_SECTION, "update_frequency")
-        id = newsletter_cfg.get(NEWSLETTER_SECTION, "id")
-        command = f"{sys.prefix}/bin/python -m wattelse.bertopic newsletter {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {BERTOPIC_LOG_PATH}/cron_newsletter_{id}.log 2>&1"
-        env_vars = f"CUDA_VISIBLE_DEVICES={cuda_devices}"
-        add_job_to_crontab(schedule, command, env_vars)
+        schedule_newsletter(newsletter_cfg_path, data_feed_cfg_path, cuda_devices)
 
     @app.command("list-newsletters")
     def list_newsletters():

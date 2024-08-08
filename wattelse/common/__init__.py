@@ -9,6 +9,9 @@ TEXT_COLUMN = "text"
 FILENAME_COLUMN = "filename"
 SEED = 666
 
+# Linux command to find the index of the GPU device currently less used than the others
+BEST_CUDA_DEVICE = "\`nvidia-smi --query-gpu=index,memory.used --format=csv,nounits | tail -n +2 | sort -t',' -k2 -n  | head -n 1 | cut -d',' -f1\`"
+
 WATTELSE_BASE_DIR = os.getenv("WATTELSE_BASE_DIR", None)
 BASE_PATH = Path(WATTELSE_BASE_DIR) if WATTELSE_BASE_DIR else Path(__file__).parent.parent.parent
 
