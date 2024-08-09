@@ -59,7 +59,9 @@ def get_chat_model() -> BaseChatModel:
                       "api_version": AZURE_API_VERSION,
                       "temperature": DEFAULT_TEMPERATURE,
                       }
-        return AzureChatOpenAI(**llm_config)
+        llm = AzureChatOpenAI(**llm_config)
+        llm.model_name = generator_config["openai_default_model"] # with Azure, set to gpt3.5-turbo by default
+        return llm
 
 
 def preprocess_streaming_data(streaming_data):
@@ -306,6 +308,7 @@ class RAGBackEnd:
             return preprocess_streaming_data(rag_chain.stream(contextualized_question))
         else:
             resp = rag_chain.invoke(contextualized_question)
+            print(resp)
             answer = resp.get("answer")
             sources = resp.get("context")
             # Transform sources
