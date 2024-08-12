@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 from bertopic import BERTopic
 from loguru import logger
 
-from data_loading import load_and_preprocess_data, group_by_days
+from data_loading import load_and_preprocess_data, group_by_days, find_compatible_files
 from global_vars import *
 from session_state_manager import SessionStateManager
 from topic_modeling import embed_documents, train_topic_models, merge_models, preprocess_model
@@ -31,12 +31,17 @@ def save_state():
     state_file = CACHE_PATH / STATE_FILE
     embeddings_file = CACHE_PATH / EMBEDDINGS_FILE
 
+    # Save the selected files (list of filenames)
+    selected_files = SessionStateManager.get('selected_files', [])
+
     state = SessionStateManager.get_multiple(
-        'selected_file', 'min_chars', 'split_by_paragraph', 'timeframe_slider',
+        'selected_files', 'min_chars', 'split_by_paragraph', 'timeframe_slider',
         'language', 'embedding_model_name', 'embedding_model', 'sample_size',
         'min_similarity', 'zeroshot_min_similarity', 'embedding_dtype', 
         'data_embedded'
     )
+
+    state['selected_files'] = selected_files
 
     with open(state_file, 'wb') as f:
         pickle.dump(state, f)
@@ -51,9 +56,18 @@ def restore_state():
     if state_file.exists() and embeddings_file.exists():
         with open(state_file, 'rb') as f:
             state = pickle.load(f)
+
+        # Restore the selected files
+        selected_files = state.get('selected_files', [])
+        SessionStateManager.set('selected_files', selected_files)
+
+        # Restore other states
         SessionStateManager.set_multiple(**state)
         SessionStateManager.set('embeddings', np.load(embeddings_file))
         st.success("Application state restored.")
+
+        # Update the multiselect widget with restored selected files
+        st.session_state['selected_files'] = selected_files
     else:
         st.warning("No saved state found.")
 
@@ -228,61 +242,100 @@ def main():
     
     with tab1:
         st.header("Data Loading and Preprocessing")
-        
-        selected_file = st.selectbox("Select a dataset", [(f.name, f.suffix[1:]) for f in DATA_PATH.glob('*')], key='selected_file')
+
+        # Find files in the current directory and subdirectories
+        compatible_extensions = ['csv', 'parquet', 'json', 'jsonl']
+        selected_files = st.multiselect(
+            "Select one or more datasets",
+            find_compatible_files(DATA_PATH, compatible_extensions),
+            default=SessionStateManager.get('selected_files', []),
+            key='selected_files'
+        )
+
+        if not selected_files:
+            st.warning("Please select at least one dataset to proceed.")
+            return
+
+        # Display number input and checkbox for preprocessing options
         col1, col2 = st.columns(2)
         with col1:
             min_chars = st.number_input("Minimum Characters", value=MIN_CHARS_DEFAULT, min_value=0, max_value=1000, key='min_chars')
         with col2:
             split_by_paragraph = st.checkbox("Split text by paragraphs", value=False, key="split_by_paragraph")
 
-        df = load_and_preprocess_data(selected_file, language, min_chars, split_by_paragraph)
+        # Load and preprocess each selected file, then concatenate them
+        dfs = []
+        for selected_file, ext in selected_files:
+            file_path = DATA_PATH / selected_file
+            df = load_and_preprocess_data((file_path, ext), language, min_chars, split_by_paragraph)
+            dfs.append(df)
 
-        # Select timeframe
-        min_date, max_date = df['timestamp'].dt.date.agg(['min', 'max'])
-        start_date, end_date = st.slider("Select Timeframe", min_value=min_date, max_value=max_date, value=(min_date, max_date), key='timeframe_slider')
+        if not dfs:
+            st.warning("No data available after preprocessing. Please check the selected files and preprocessing options.")   
+        else:
+            df = pd.concat(dfs, ignore_index=True)
+            
+            # Deduplicate using all columns
+            df = df.drop_duplicates()
 
-        # Filter and sample the DataFrame
-        df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)].drop_duplicates(subset=TEXT_COLUMN, keep='first')
-        df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
+            # Select timeframe
+            min_date, max_date = df['timestamp'].dt.date.agg(['min', 'max'])
+            start_date, end_date = st.slider(
+                "Select Timeframe",
+                min_value=min_date,
+                max_value=max_date,
+                value=(min_date, max_date),
+                key='timeframe_slider'
+            )
 
-        sample_size = st.number_input("Sample Size", value=SAMPLE_SIZE_DEFAULT or len(df_filtered), min_value=1, max_value=len(df_filtered), key='sample_size')
-        if sample_size < len(df_filtered):
-            df_filtered = df_filtered.sample(n=sample_size, random_state=42)
+            # Filter and sample the DataFrame
+            df_filtered = df[(df['timestamp'].dt.date >= start_date) & (df['timestamp'].dt.date <= end_date)]
+            df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
 
-        df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
+            sample_size = st.number_input(
+                "Sample Size",
+                value=SAMPLE_SIZE_DEFAULT or len(df_filtered),
+                min_value=1,
+                max_value=len(df_filtered),
+                key='sample_size'
+            )
+            if sample_size < len(df_filtered):
+                df_filtered = df_filtered.sample(n=sample_size, random_state=42)
 
-        SessionStateManager.set('timefiltered_df', df_filtered)
-        st.write(f"Number of documents in selected timeframe: {len(SessionStateManager.get_dataframe('timefiltered_df'))}")
-        st.dataframe(SessionStateManager.get_dataframe('timefiltered_df')[[TEXT_COLUMN, 'timestamp']], use_container_width=True)
+            df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
 
-        # Embed documents
-        if st.button("Embed Documents"):
-            with st.spinner("Embedding documents..."):
-                embedding_dtype = SessionStateManager.get('embedding_dtype')
-                embedding_model_name = SessionStateManager.get('embedding_model_name')
-                
-                texts = SessionStateManager.get_dataframe('timefiltered_df')[TEXT_COLUMN].tolist()
-                
-                try:
-                    embedding_model, embeddings = embed_documents(
-                        texts=texts,
-                        embedding_model_name=embedding_model_name,
-                        embedding_dtype=embedding_dtype,
-                        embedding_device=EMBEDDING_DEVICE,
-                        batch_size=EMBEDDING_BATCH_SIZE,
-                        max_seq_length=EMBEDDING_MAX_SEQ_LENGTH
-                    )
+            SessionStateManager.set('timefiltered_df', df_filtered)
+            st.write(f"Number of documents in selected timeframe: {len(SessionStateManager.get_dataframe('timefiltered_df'))}")
+            st.dataframe(SessionStateManager.get_dataframe('timefiltered_df')[[TEXT_COLUMN, 'timestamp']], use_container_width=True)
+
+            # Embed documents
+            if st.button("Embed Documents"):
+                with st.spinner("Embedding documents..."):
+                    embedding_dtype = SessionStateManager.get('embedding_dtype')
+                    embedding_model_name = SessionStateManager.get('embedding_model_name')
                     
-                    SessionStateManager.set('embedding_model', embedding_model)
-                    SessionStateManager.set('embeddings', embeddings)
-                    SessionStateManager.set('data_embedded', True)
+                    texts = SessionStateManager.get_dataframe('timefiltered_df')[TEXT_COLUMN].tolist()
+                    
+                    try:
+                        embedding_model, embeddings = embed_documents(
+                            texts=texts,
+                            embedding_model_name=embedding_model_name,
+                            embedding_dtype=embedding_dtype,
+                            embedding_device=EMBEDDING_DEVICE,
+                            batch_size=EMBEDDING_BATCH_SIZE,
+                            max_seq_length=EMBEDDING_MAX_SEQ_LENGTH
+                        )
+                        
+                        SessionStateManager.set('embedding_model', embedding_model)
+                        SessionStateManager.set('embeddings', embeddings)
+                        SessionStateManager.set('data_embedded', True)
 
-                    st.success("Embeddings calculated successfully!")
-                    save_state()
-                except Exception as e:
-                    st.error(f"An error occurred while embedding documents: {str(e)}")
-           
+                        st.success("Embeddings calculated successfully!")
+                        save_state()
+                    except Exception as e:
+                        st.error(f"An error occurred while embedding documents: {str(e)}")
+            
+
     with tab2:
         st.header("Model Training")
 

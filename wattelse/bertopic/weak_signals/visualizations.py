@@ -13,6 +13,7 @@ from bertopic import BERTopic
 from plotly_resampler import FigureWidgetResampler
 
 from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
+from global_vars import SIGNAL_CLASSIF_LOWER_BOUND, SIGNAL_CLASSIF_UPPER_BOUND
 from weak_signals import classify_signals
 
 
@@ -157,7 +158,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
     window_end = current_date + granularity_timedelta
     window_start = current_date - window_size_timedelta
 
-    # Calculate q1 and q3 values
+    # Calculate q1 and q3 values (we remove very low values of disappearing signals to not skew the thresholds)
     all_popularity_values = [
         popularity for topic, data in topic_sizes.items()
         for timestamp, popularity in zip(pd.to_datetime(data['Timestamps']), data['Popularity'])
@@ -165,8 +166,8 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
     ]
 
     if all_popularity_values:
-        q1 = np.percentile(all_popularity_values, 10)
-        q3 = np.percentile(all_popularity_values, 90)
+        q1 = np.percentile(all_popularity_values, SIGNAL_CLASSIF_LOWER_BOUND)
+        q3 = np.percentile(all_popularity_values, SIGNAL_CLASSIF_UPPER_BOUND)
     else:
         q1, q3 = 0, 0
 

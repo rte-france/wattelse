@@ -76,16 +76,17 @@ FRENCH_EMBEDDING_MODELS = ["OrdalieTech/Solon-embeddings-base-0.1",
 # BERTopic Hyperparameters
 DEFAULT_UMAP_N_COMPONENTS = 5
 DEFAULT_UMAP_N_NEIGHBORS = 5
-DEFAULT_HDBSCAN_MIN_CLUSTER_SIZE = 2
-DEFAULT_HDBSCAN_MIN_SAMPLES = 1
+DEFAULT_HDBSCAN_MIN_CLUSTER_SIZE = 5
+DEFAULT_HDBSCAN_MIN_SAMPLES = 5
 DEFAULT_TOP_N_WORDS = 10
 DEFAULT_MIN_DF = 1
-DEFAULT_GRANULARITY = 7
+DEFAULT_GRANULARITY = 2
 DEFAULT_MIN_SIMILARITY = 0.7
-DEFAULT_ZEROSHOT_MIN_SIMILARITY = 0.4
+DEFAULT_ZEROSHOT_MIN_SIMILARITY = 0.5
 BERTOPIC_SERIALIZATION = "safetensors" # or pickle
 DEFAULT_MMR_DIVERSITY = 0.3
 DEFAULT_UMAP_MIN_DIST = 0.0
+OUTLIER_REDUCTION_STRATEGY = "c-tf-idf" # or "embeddings"
 
 # Embedding Settings
 EMBEDDING_DTYPES = ["float32", "float16", "bfloat16"]
@@ -95,11 +96,11 @@ EMBEDDING_DEVICE = "cuda"
 
 # Other constants
 LANGUAGES = ["French", "English"]
-HDBSCAN_CLUSTER_SELECTION_METHODS = ["leaf", "eom"]
+HDBSCAN_CLUSTER_SELECTION_METHODS = ["eom", "leaf"]
 VECTORIZER_NGRAM_RANGES = [(1, 2), (1, 1), (2, 2)]
 
 # GPT Model Settings
-GPT_MODEL = os.getenv("OPENAI_DEFAULT_MODEL_NAME")
+GPT_MODEL = os.getenv("OPENAI_DEFAULT_MODEL_NAME", "gpt-4o-mini")
 GPT_TEMPERATURE = 0.0
 GPT_SYSTEM_MESSAGE = "You are a helpful assistant, skilled in detailing topic evolution over time for the detection of emerging trends and signals."
 
@@ -123,6 +124,10 @@ SANKEY_LINE_WIDTH = 0.5
 
 # Data Analysis Settings
 POPULARITY_THRESHOLD = 0.1  # for weak signal detection, if applicable
+
+# Signal classification Settings
+SIGNAL_CLASSIF_LOWER_BOUND = 10
+SIGNAL_CLASSIF_UPPER_BOUND = 75
 
 # Error Messages
 NO_DATA_WARNING = "No data available for the selected granularity."

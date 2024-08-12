@@ -16,7 +16,7 @@ from bertopic import BERTopic
 from loguru import logger
 from tqdm import tqdm
 
-from global_vars import GPT_MODEL, GPT_TEMPERATURE, GPT_SYSTEM_MESSAGE, SIGNAL_EVOLUTION_DATA_DIR
+from global_vars import GPT_MODEL, GPT_TEMPERATURE, GPT_SYSTEM_MESSAGE, SIGNAL_EVOLUTION_DATA_DIR, SIGNAL_CLASSIF_LOWER_BOUND, SIGNAL_CLASSIF_UPPER_BOUND
 from prompts import get_prompt
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 
@@ -366,8 +366,8 @@ def save_signal_evolution_data(all_merge_histories_df: pd.DataFrame, topic_sizes
         ]
 
         if all_popularity_values:
-            q1 = np.percentile(all_popularity_values, 10)
-            q3 = np.percentile(all_popularity_values, 90)
+            q1 = np.percentile(all_popularity_values, SIGNAL_CLASSIF_LOWER_BOUND)
+            q3 = np.percentile(all_popularity_values, SIGNAL_CLASSIF_UPPER_BOUND)
         else:
             q1, q3 = 0, 0
 

@@ -77,7 +77,7 @@ def create_topic_model(docs: List[str],
         new_topics = topic_model.reduce_outliers(documents=docs, 
                                                  topics=topics, 
                                                  embeddings=embeddings, 
-                                                 strategy="embeddings")
+                                                 strategy=OUTLIER_REDUCTION_STRATEGY)
         
         topic_model.update_topics(docs=docs,
                                   topics=new_topics,

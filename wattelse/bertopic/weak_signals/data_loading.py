@@ -17,6 +17,9 @@ from wattelse.bertopic.utils import (
     URL_COLUMN,
 )
 
+def find_compatible_files(path, extensions):
+    return [(str(f.relative_to(path)), f.suffix[1:]) for f in path.rglob('*') if f.suffix[1:] in extensions]
+
 
 # @st.cache_data
 def load_and_preprocess_data(selected_file: Tuple[str, str], language: str, min_chars: int, split_by_paragraph: bool) -> pd.DataFrame:
