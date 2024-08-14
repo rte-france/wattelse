@@ -577,16 +577,29 @@ def main():
                 if st.button("Analyze signal"):
                     try:
                         language = SessionStateManager.get('language')
-                        with st.container(height=500, border=True):
+                        with st.expander("Signal Interpretation", expanded=True):
                             with st.spinner("Analyzing signal..."):
-                                summary, analysis = analyze_signal(topic_number, current_date, all_merge_histories_df, granularity, language)
-                                col1, col2 = st.columns(spec=[.5, .5], gap="medium")
-                                with col1:
-                                    st.markdown(summary)
-                                with col2:
-                                    st.markdown(analysis)
+                                summary, analysis, formatted_html = analyze_signal(topic_number, current_date, all_merge_histories_df, granularity, language)
+                                
+                                # Check if the HTML file was created successfully
+                                output_file_path = Path(__file__).parent / "signal_llm.html"
+                                if os.path.exists(output_file_path):
+                                    # Read the HTML file
+                                    with open(output_file_path, "r", encoding="utf-8") as file:
+                                        html_content = file.read()
+                                    # Display the HTML content
+                                    st.html(html_content)
+                                else:
+                                    st.warning("HTML generation failed. Displaying markdown instead.")
+                                    # Fallback to displaying markdown if HTML generation fails
+                                    col1, col2 = st.columns(spec=[.5, .5], gap="medium")
+                                    with col1:
+                                        st.markdown(summary)
+                                    with col2:
+                                        st.markdown(analysis)
+                                
                     except Exception as e:
-                        st.error(f"Error while trying to generate signal summary : {e}")
+                        st.error(f"Error while trying to generate signal summary: {e}")
 
                 # Create the Sankey Diagram
                 st.subheader("Topic Evolution")
@@ -612,8 +625,9 @@ def main():
                         json_cumulative_merged = df_cumulative_merged.to_json(orient='records', date_format='iso', indent=4)
 
                         # Save individual model topic counts
-                        json_file_path = SIGNAL_EVOLUTION_DATA_DIR
+                        json_file_path = SIGNAL_EVOLUTION_DATA_DIR / f"retrospective_{window_size}_days"
                         json_file_path.mkdir(parents=True, exist_ok=True)
+
                         (json_file_path / INDIVIDUAL_MODEL_TOPIC_COUNTS_FILE).write_text(json_individual_models)
 
                         # Save cumulative merged model topic counts

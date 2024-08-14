@@ -101,8 +101,9 @@ VECTORIZER_NGRAM_RANGES = [(1, 2), (1, 1), (2, 2)]
 
 # GPT Model Settings
 GPT_MODEL = os.getenv("OPENAI_DEFAULT_MODEL_NAME", "gpt-4o-mini")
-GPT_TEMPERATURE = 0.0
+GPT_TEMPERATURE = 0.1
 GPT_SYSTEM_MESSAGE = "You are a helpful assistant, skilled in detailing topic evolution over time for the detection of emerging trends and signals."
+GPT_MAX_TOKENS = 2048
 
 # Data Processing
 MIN_CHARS_DEFAULT = 100

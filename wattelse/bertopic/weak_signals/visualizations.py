@@ -192,6 +192,9 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
 
     )
 
+    fig.update_yaxes(type="log")
+
+
     # Add vertical line for current date
     fig.add_shape(
         type="line",

@@ -16,8 +16,15 @@ from bertopic import BERTopic
 from loguru import logger
 from tqdm import tqdm
 
-from global_vars import GPT_MODEL, GPT_TEMPERATURE, GPT_SYSTEM_MESSAGE, SIGNAL_EVOLUTION_DATA_DIR, SIGNAL_CLASSIF_LOWER_BOUND, SIGNAL_CLASSIF_UPPER_BOUND
-from prompts import get_prompt
+from global_vars import (GPT_MODEL, 
+                         GPT_TEMPERATURE, 
+                         GPT_SYSTEM_MESSAGE, 
+                         GPT_MAX_TOKENS, 
+                         SIGNAL_EVOLUTION_DATA_DIR, 
+                         SIGNAL_CLASSIF_LOWER_BOUND, 
+                         SIGNAL_CLASSIF_UPPER_BOUND
+                        )
+from prompts import get_prompt, save_html_output
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 
 
@@ -346,7 +353,7 @@ def save_signal_evolution_data(all_merge_histories_df: pd.DataFrame, topic_sizes
     window_size_timedelta = pd.Timedelta(days=window_size)
     granularity_timedelta = pd.Timedelta(days=granularity)
 
-    save_path = SIGNAL_EVOLUTION_DATA_DIR
+    save_path = SIGNAL_EVOLUTION_DATA_DIR / f"retrospective_{window_size}_days"
     os.makedirs(save_path, exist_ok=True)
 
     q1_values, q3_values, timestamps_over_time = [], [], []
@@ -405,40 +412,49 @@ def save_signal_evolution_data(all_merge_histories_df: pd.DataFrame, topic_sizes
 
 
 def analyze_signal(topic_number, current_date, all_merge_histories_df, granularity, language):
-    
-            topic_merge_rows = all_merge_histories_df[all_merge_histories_df['Topic1'] == topic_number].sort_values('Timestamp')
-            topic_merge_rows_filtered = topic_merge_rows[topic_merge_rows['Timestamp'] <= current_date]
+    topic_merge_rows = all_merge_histories_df[all_merge_histories_df['Topic1'] == topic_number].sort_values('Timestamp')
+    topic_merge_rows_filtered = topic_merge_rows[topic_merge_rows['Timestamp'] <= current_date]
 
-            if not topic_merge_rows_filtered.empty:
-                content_summary = "\n".join([
-                    f"Timestamp: {row.Timestamp.strftime('%Y-%m-%d')}\n"
-                    f"Topic representation: {row.Representation1}\n"
-                    f"{' '.join(f'- {doc}' for doc in row.Documents1 if isinstance(doc, str))}\n"
-                    f"Timestamp: {(row.Timestamp + pd.Timedelta(days=granularity)).strftime('%Y-%m-%d')}\n"
-                    f"Topic representation: {row.Representation2}\n"
-                    f"{' '.join(f'- {doc}' for doc in row.Documents2 if isinstance(doc, str))}\n"
-                    for row in topic_merge_rows_filtered.itertuples()
-                ])
+    if not topic_merge_rows_filtered.empty:
+        content_summary = "\n".join([
+            f"Timestamp: {row.Timestamp.strftime('%Y-%m-%d')}\n"
+            f"Topic representation: {row.Representation1}\n"
+            f"{' '.join(f'- {doc}' for doc in row.Documents1 if isinstance(doc, str))}\n"
+            f"Timestamp: {(row.Timestamp + pd.Timedelta(days=granularity)).strftime('%Y-%m-%d')}\n"
+            f"Topic representation: {row.Representation2}\n"
+            f"{' '.join(f'- {doc}' for doc in row.Documents2 if isinstance(doc, str))}\n"
+            for row in topic_merge_rows_filtered.itertuples()
+        ])
 
-                # First prompt: Generate summary
-                summary_prompt = get_prompt(language, "topic_summary", topic_number=topic_number, content_summary=content_summary)
-                try:
-                    openai_client = OpenAI_Client()
-                    summary = openai_client.generate(system_prompt=GPT_SYSTEM_MESSAGE, user_prompt=summary_prompt,
-                                                     model_name=GPT_MODEL, temperature=GPT_TEMPERATURE)
+        try:
+            openai_client = OpenAI_Client()
 
-                    # Second prompt: Analyze weak signal
-                    weak_signal_prompt = get_prompt(language, "weak_signal", summary_from_first_prompt=summary)
-                    weak_signal_analysis = openai_client.generate(system_prompt=GPT_SYSTEM_MESSAGE, user_prompt=weak_signal_prompt,
-                                                                  model_name=GPT_MODEL, temperature=GPT_TEMPERATURE)
-                    return summary, weak_signal_analysis
-                
-                except Exception as e:
-                    error_msg = f"An error occurred while generating the analysis: {str(e)}"
-                    logger.error(error_msg)
-                    raise(Exception(error_msg))
+            # First prompt: Generate summary
+            summary_prompt = get_prompt(language, "topic_summary", topic_number=topic_number, content_summary=content_summary)
+            summary = openai_client.generate(system_prompt=GPT_SYSTEM_MESSAGE, user_prompt=summary_prompt,
+                                             model_name=GPT_MODEL, temperature=GPT_TEMPERATURE, max_tokens=GPT_MAX_TOKENS)
 
-            else:
-                error_msg = f"No data available for topic {topic_number} within the specified date range. Please enter a valid topic number."
-                logger.error(error_msg)
-                raise(Exception(error_msg))
+            # Second prompt: Analyze weak signal
+            weak_signal_prompt = get_prompt(language, "weak_signal", summary_from_first_prompt=summary)
+            weak_signal_analysis = openai_client.generate(system_prompt=GPT_SYSTEM_MESSAGE, user_prompt=weak_signal_prompt,
+                                                          model_name=GPT_MODEL, temperature=GPT_TEMPERATURE, max_tokens=GPT_MAX_TOKENS)
+
+            # Third prompt: Generate HTML format
+            html_format_prompt = get_prompt(language, "html_format", topic_summary=summary, weak_signal_analysis=weak_signal_analysis)
+            formatted_html = openai_client.generate(system_prompt=GPT_SYSTEM_MESSAGE, user_prompt=html_format_prompt,
+                                                    model_name=GPT_MODEL, temperature=GPT_TEMPERATURE, max_tokens=GPT_MAX_TOKENS)
+
+            # Save the formatted HTML
+            save_html_output(formatted_html)
+
+            return summary, weak_signal_analysis, formatted_html
+        
+        except Exception as e:
+            error_msg = f"An error occurred while generating the analysis: {str(e)}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+
+    else:
+        error_msg = f"No data available for topic {topic_number} within the specified date range. Please enter a valid topic number."
+        logger.error(error_msg)
+        raise Exception(error_msg)
