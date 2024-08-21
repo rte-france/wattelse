@@ -14,21 +14,38 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate, \
-    PromptTemplate
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
+    PromptTemplate,
+)
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from loguru import logger
 from starlette.responses import StreamingResponse
 
 from wattelse.chatbot.backend import DATA_DIR
-from wattelse.chatbot.backend.vector_database import format_docs, \
-    load_document_collection
+from wattelse.chatbot.backend.vector_database import (
+    format_docs,
+    load_document_collection,
+)
 
-from wattelse.api.prompts import FR_SYSTEM_RAG_LLAMA3, FR_USER_RAG_LLAMA3, \
-    FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3, FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
-from wattelse.chatbot.backend import (retriever_config, generator_config, BM25, ENSEMBLE, MMR, SIMILARITY,
-                                      SIMILARITY_SCORE_THRESHOLD)
+from wattelse.api.prompts import (
+    FR_SYSTEM_RAG_LLAMA3,
+    FR_USER_RAG_LLAMA3,
+    FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3,
+    FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3,
+)
+from wattelse.chatbot.backend import (
+    retriever_config,
+    generator_config,
+    BM25,
+    ENSEMBLE,
+    MMR,
+    SIMILARITY,
+    SIMILARITY_SCORE_THRESHOLD,
+)
 from wattelse.indexer.document_splitter import split_file
 from wattelse.indexer.document_parser import parse_file
 
@@ -46,21 +63,25 @@ class RAGError(Exception):
 def get_chat_model() -> BaseChatModel:
     endpoint = generator_config["openai_endpoint"]
     if "azure.com" not in endpoint:
-        llm_config = {"openai_api_key": generator_config["openai_api_key"],
-                      "openai_api_base": generator_config["openai_endpoint"],
-                      "model_name": generator_config["openai_default_model"],
-                      "temperature": DEFAULT_TEMPERATURE,
-                      }
+        llm_config = {
+            "openai_api_key": generator_config["openai_api_key"],
+            "openai_api_base": generator_config["openai_endpoint"],
+            "model_name": generator_config["openai_default_model"],
+            "temperature": DEFAULT_TEMPERATURE,
+        }
         return ChatOpenAI(**llm_config)
     else:
-        llm_config = {"openai_api_key": generator_config["openai_api_key"],
-                      "azure_endpoint": generator_config["openai_endpoint"],
-                      "azure_deployment": generator_config["openai_default_model"],
-                      "api_version": AZURE_API_VERSION,
-                      "temperature": DEFAULT_TEMPERATURE,
-                      }
+        llm_config = {
+            "openai_api_key": generator_config["openai_api_key"],
+            "azure_endpoint": generator_config["openai_endpoint"],
+            "azure_deployment": generator_config["openai_default_model"],
+            "api_version": AZURE_API_VERSION,
+            "temperature": DEFAULT_TEMPERATURE,
+        }
         llm = AzureChatOpenAI(**llm_config)
-        llm.model_name = generator_config["openai_default_model"] # with Azure, set to gpt3.5-turbo by default
+        llm.model_name = generator_config[
+            "openai_default_model"
+        ]  # with Azure, set to gpt3.5-turbo by default
         return llm
 
 
@@ -72,7 +93,10 @@ def preprocess_streaming_data(streaming_data):
     for chunk in streaming_data:
         context_chunk = chunk.get("context", None)
         if context_chunk is not None:
-            relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in context_chunk]
+            relevant_extracts = [
+                {"content": s.page_content, "metadata": s.metadata}
+                for s in context_chunk
+            ]
             relevant_extracts = {"relevant_extracts": relevant_extracts}
             yield json.dumps(relevant_extracts)
         answer_chunk = chunk.get("answer")
@@ -82,7 +106,7 @@ def preprocess_streaming_data(streaming_data):
 
 def filter_history(history, window_size):
     # window size = question + answser, we return the last ones
-    return history[-2 * window_size:]
+    return history[-2 * window_size :]
 
 
 class RAGBackEnd:
@@ -108,8 +132,12 @@ class RAGBackEnd:
         # Prompts
         self.system_prompt = FR_SYSTEM_RAG_LLAMA3
         self.user_prompt = FR_USER_RAG_LLAMA3
-        self.system_prompt_query_contextualization = FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3
-        self.user_prompt_query_contextualization = FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
+        self.system_prompt_query_contextualization = (
+            FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3
+        )
+        self.user_prompt_query_contextualization = (
+            FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
+        )
 
     def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
@@ -139,14 +167,19 @@ class RAGBackEnd:
             # check if the file is already in the document collection
             if not self.document_collection.is_present(filename):
                 logger.warning(
-                    f"File {filename} not present in the collection {self.document_collection.collection_name}, skippping removal")
+                    f"File {filename} not present in the collection {self.document_collection.collection_name}, skippping removal"
+                )
                 continue
 
             # remove info from vector database
-            data = self.document_collection.collection.get(where={"file_name": filename}, include=["metadatas"])
+            data = self.document_collection.collection.get(
+                where={"file_name": filename}, include=["metadatas"]
+            )
             paths = list({meta["source"] for meta in data["metadatas"]})
-            assert (len(paths) == 1)
-            self.document_collection.collection.delete(self.document_collection.get_ids(filename))
+            assert len(paths) == 1
+            self.document_collection.collection.delete(
+                self.document_collection.get_ids(filename)
+            )
 
             # remove file from disk
             os.remove(paths[0])
@@ -195,8 +228,10 @@ class RAGBackEnd:
 
     def get_doc_list(self, document_filter: Dict | None) -> list[Document]:
         """Returns the list of documents in the collection, using the current document filter"""
-        data = self.document_collection.collection.get(include=["documents", "metadatas"],
-                                                       where={} if not document_filter else document_filter)
+        data = self.document_collection.collection.get(
+            include=["documents", "metadatas"],
+            where={} if not document_filter else document_filter,
+        )
         langchain_documents = []
         for doc, meta in zip(data["documents"], data["metadatas"]):
             langchain_doc = Document(page_content=doc, metadata=meta)
@@ -205,8 +240,10 @@ class RAGBackEnd:
 
     def get_text_list(self, document_filter: Dict | None) -> List[str]:
         """Returns the list of texts in the collection, using the current document filter"""
-        data = self.document_collection.collection.get(include=["documents", "metadatas"],
-                                                       where={} if not document_filter else document_filter)
+        data = self.document_collection.collection.get(
+            include=["documents", "metadatas"],
+            where={} if not document_filter else document_filter,
+        )
         return data["documents"]
 
     def get_document_filter(self, file_names: List[str]):
@@ -223,8 +260,13 @@ class RAGBackEnd:
         # TODO: to be implemented
         pass
 
-    def query_rag(self, message: str, history: List[dict[str, str]] = None,
-                  selected_files: List[str] = None, stream: bool = False) -> Union[Dict, StreamingResponse]:
+    def query_rag(
+        self,
+        message: str,
+        history: List[dict[str, str]] = None,
+        selected_files: List[str] = None,
+        stream: bool = False,
+    ) -> Union[Dict, StreamingResponse]:
         """Query the RAG"""
         # Sanity check
         if self.document_collection is None:
@@ -243,22 +285,24 @@ class RAGBackEnd:
 
         if self.retrieval_method in [MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD]:
             dense_retriever = self.document_collection.collection.as_retriever(
-                search_type=self.retrieval_method,
-                search_kwargs=search_kwargs
+                search_type=self.retrieval_method, search_kwargs=search_kwargs
             )
             retriever = dense_retriever
 
         elif self.retrieval_method in [BM25, ENSEMBLE]:
-            bm25_retriever = BM25Retriever.from_documents(self.get_doc_list(document_filter))
+            bm25_retriever = BM25Retriever.from_documents(
+                self.get_doc_list(document_filter)
+            )
             bm25_retriever.k = self.top_n_extracts
             if self.retrieval_method == BM25:
                 retriever = bm25_retriever
             else:  # ENSEMBLE
                 dense_retriever = self.document_collection.collection.as_retriever(
-                    search_type=MMR,
-                    search_kwargs=search_kwargs
+                    search_type=MMR, search_kwargs=search_kwargs
                 )
-                retriever = EnsembleRetriever(retrievers=[bm25_retriever, dense_retriever])
+                retriever = EnsembleRetriever(
+                    retrievers=[bm25_retriever, dense_retriever]
+                )
 
         if self.multi_query_mode:
             multi_query_retriever = MultiQueryRetriever.from_llm(
@@ -267,30 +311,36 @@ class RAGBackEnd:
 
         # Definition of RAG chain
         # - prompt
-        prompt = ChatPromptTemplate(input_variables=["context", "history", "query"],
-                                    messages=[
-                                        SystemMessagePromptTemplate(
-                                            prompt=PromptTemplate(
-                                                input_variables=[],
-                                                template=self.system_prompt)
-                                        ),
-                                        HumanMessagePromptTemplate(
-                                            prompt=PromptTemplate(
-                                                input_variables=['context', "history", 'query'],
-                                                template=self.user_prompt)
-                                        )])
+        prompt = ChatPromptTemplate(
+            input_variables=["context", "history", "query"],
+            messages=[
+                SystemMessagePromptTemplate(
+                    prompt=PromptTemplate(
+                        input_variables=[], template=self.system_prompt
+                    )
+                ),
+                HumanMessagePromptTemplate(
+                    prompt=PromptTemplate(
+                        input_variables=["context", "history", "query"],
+                        template=self.user_prompt,
+                    )
+                ),
+            ],
+        )
 
         # - RAG chain
         rag_chain_from_docs = (
-                RunnablePassthrough.assign(context=(lambda x: format_docs(x["context"])))
-                | prompt
-                | self.llm
-                | StrOutputParser()
+            RunnablePassthrough.assign(context=(lambda x: format_docs(x["context"])))
+            | prompt
+            | self.llm
+            | StrOutputParser()
         )
         # returns both answer and sources
         rag_chain = RunnableParallel(
             {
-                "context": retriever if not self.multi_query_mode else multi_query_retriever,
+                "context": retriever
+                if not self.multi_query_mode
+                else multi_query_retriever,
                 "history": (lambda _: get_history_as_text(history)),
                 "query": (lambda _: message),
                 "contextualized_query": RunnablePassthrough(),
@@ -300,25 +350,32 @@ class RAGBackEnd:
         # TODO: implement reranking (optional)
 
         # Handle conversation history
-        contextualized_question = "query : " + self.contextualize_question(message, history)
-        logger.debug(f"Calling RAG chain for question : \"{message}\"...")
+        contextualized_question = "query : " + self.contextualize_question(
+            message, history
+        )
+        logger.debug(f'Calling RAG chain for question : "{message}"...')
 
         # Handle answer
         if stream:
             return preprocess_streaming_data(rag_chain.stream(contextualized_question))
         else:
             resp = rag_chain.invoke(contextualized_question)
-            print(resp)
             answer = resp.get("answer")
             sources = resp.get("context")
             # Transform sources
-            relevant_extracts = [{"content": s.page_content, "metadata": s.metadata} for s in sources]
+            relevant_extracts = [
+                {"content": s.page_content, "metadata": s.metadata} for s in sources
+            ]
 
             # Return answer and sources
             return {"answer": answer, "relevant_extracts": relevant_extracts}
 
-    def contextualize_question(self, message: str, history: List[dict[str, str]] = None,
-                               interaction_window: int = 3) -> str:
+    def contextualize_question(
+        self,
+        message: str,
+        history: List[dict[str, str]] = None,
+        interaction_window: int = 3,
+    ) -> str:
         """
         If self.remember_recent_messages is False or no message in history:
             Return last user query
@@ -331,26 +388,31 @@ class RAGBackEnd:
             history = filter_history(history, interaction_window)
 
             logger.debug("Contextualizing prompt with history...")
-            prompt = ChatPromptTemplate(input_variables=["history", "query"],
-                                        messages=[
-                                            SystemMessagePromptTemplate(
-                                                prompt=PromptTemplate(
-                                                    input_variables=[],
-                                                    template=self.system_prompt_query_contextualization)
-                                            ),
-                                            HumanMessagePromptTemplate(
-                                                prompt=PromptTemplate(
-                                                    input_variables=["history", "query"],
-                                                    template=self.user_prompt_query_contextualization)
-                                            )])
+            prompt = ChatPromptTemplate(
+                input_variables=["history", "query"],
+                messages=[
+                    SystemMessagePromptTemplate(
+                        prompt=PromptTemplate(
+                            input_variables=[],
+                            template=self.system_prompt_query_contextualization,
+                        )
+                    ),
+                    HumanMessagePromptTemplate(
+                        prompt=PromptTemplate(
+                            input_variables=["history", "query"],
+                            template=self.user_prompt_query_contextualization,
+                        )
+                    ),
+                ],
+            )
 
-            chain = (prompt
-                     | self.llm
-                     | StrOutputParser())
+            chain = prompt | self.llm | StrOutputParser()
 
             # Format messages into a single string
             history_as_text = get_history_as_text(history)
-            contextualized_question = chain.invoke({"query": message, "history": history_as_text})
+            contextualized_question = chain.invoke(
+                {"query": message, "history": history_as_text}
+            )
             logger.debug(f"Contextualized question: {contextualized_question}")
             return contextualized_question
 
