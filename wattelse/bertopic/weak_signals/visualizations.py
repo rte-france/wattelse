@@ -162,7 +162,7 @@ def plot_topic_size_evolution(fig, window_size: int, granularity: int, current_d
     all_popularity_values = [
         popularity for topic, data in topic_sizes.items()
         for timestamp, popularity in zip(pd.to_datetime(data['Timestamps']), data['Popularity'])
-        if window_start <= timestamp <= window_end and popularity > 1e-5
+        if window_start <= timestamp <= current_date and popularity > 1e-5
     ]
 
     if all_popularity_values:
