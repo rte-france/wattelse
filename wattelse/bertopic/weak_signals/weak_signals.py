@@ -369,7 +369,7 @@ def save_signal_evolution_data(all_merge_histories_df: pd.DataFrame, topic_sizes
         all_popularity_values = [
             popularity for topic, data in topic_sizes.items()
             for timestamp, popularity in zip(data['Timestamps'], data['Popularity'])
-            if window_start <= timestamp <= window_end and popularity > 1^-5
+            if window_start <= timestamp <= current_timestamp and popularity > 1^-5
         ]
 
         if all_popularity_values:
