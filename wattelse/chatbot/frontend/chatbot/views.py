@@ -469,8 +469,6 @@ def manage_superuser_permission(request):
         content_type = ContentType.objects.get_for_model(SuperUserPermissions)
         permissions = Permission.objects.filter(content_type=content_type)
 
-        # Get unset parameter
-
         # Assign permissions to user
         try:
             for permission in permissions:
