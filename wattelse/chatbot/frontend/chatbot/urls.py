@@ -33,6 +33,7 @@ urlpatterns = [
     path('add_user_to_group/', views.add_user_to_group, name='add_user_to_group'),
     path('remove_user_from_group/', views.remove_user_from_group, name='remove_user_from_group'),
     path('admin_change_group/', views.admin_change_group, name="admin_change_group"),
+	path("manage_superuser_permission/", views.manage_superuser_permission, name="manage_superuser_permission"),
 
     # Dashboard
     path('dashboard/', views.dashboard, name="dashboard"),
