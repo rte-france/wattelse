@@ -44,14 +44,34 @@ def get_user_group_id(user: User) -> str:
     else:
         return group_list[0].name
 
-def get_group_usernames_list(group_id: str) -> List[str]:
+
+def is_superuser(user: User) -> bool:
     """
-    Return the list of users username belonging to the group.
+    Check if user is a superuser, i.e. can
+    add/remove docs and manage users.
+    """
+
+    return (
+        user.has_perm("chatbot.can_upload_documents")
+        and user.has_perm("chatbot.can_remove_documents")
+        and user.has_perm("chatbot.can_manage_users")
+    )
+
+
+def get_group_usernames_list(group_id: str) -> dict[str, bool]:
+    """
+    Returns a dictionnary with usernames as keys and
+    whether they are superuser as values.
     """
     group = Group.objects.get(name=group_id)
     users_list = User.objects.filter(groups=group)
-    usernames_list = [user.username for user in users_list]
-    return usernames_list
+    users_dict = {user.username: is_superuser(user) for user in users_list}
+    # Sort dictionnary so superusers are first and alphabetically sorted
+    users_dict = dict(
+        sorted(users_dict.items(), key=lambda item: (not item[1], item[0]))
+    )
+    return users_dict
+
 
 def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dict[str, str]] | None:
     """

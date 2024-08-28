@@ -17,7 +17,8 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
 
 from django.contrib import auth
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import User, Group, Permission
+from django.contrib.contenttypes.models import ContentType
 from loguru import logger
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGAPIError
 from wattelse.chatbot.backend import DATA_DIR
-from .models import Chat
+from .models import Chat, SuperUserPermissions
 
 from .utils import (
     get_user_group_id,
@@ -66,14 +67,9 @@ def main_page(request):
 
     # If can manage users, find usernames of its group
     if can_manage_users:
-        group_usernames_list = get_group_usernames_list(user_group_id)
-        # Remove admin so it cannot be deleted
-        try:
-            group_usernames_list.remove("admin")
-        except ValueError:
-            pass  # admin may not be in the list depending on how users have been defined
+        group_usernames_dict = get_group_usernames_list(user_group_id)
     else:
-        group_usernames_list = None
+        group_usernames_dict = None
 
     # Special case for admin
     if request.user.is_superuser:
@@ -89,7 +85,7 @@ def main_page(request):
             "can_remove_documents": can_remove_documents,
             "can_manage_users": can_manage_users,
             "user_group": user_group_id,
-            "group_usernames_list": group_usernames_list,
+            "group_usernames_dict": group_usernames_dict,
             "admin_group_selection": admin_group_selection,
         }
     )
@@ -455,3 +451,47 @@ def get_questions_count_since_last_feedback(request):
 
         count = Chat.objects.filter(user=request.user, question_timestamp__gt=last_feedback_date).count()
         return JsonResponse({"count": count})
+
+
+def manage_superuser_permission(request):
+    """
+    Function to allow a superuser to add or remove superuser permissions
+    for users of its group. The request should contain a JSON body with the
+    `upgrade` parameter: true to upgrade user and false to downgrade.
+    """
+    if request.method == "POST":
+        # Get response data
+        data = json.loads(request.body)
+        user = User.objects.get(username=data.get("username", None))
+        upgrade = data.get("upgrade", False)
+
+        # Get permissions
+        content_type = ContentType.objects.get_for_model(SuperUserPermissions)
+        permissions = Permission.objects.filter(content_type=content_type)
+
+        # Assign permissions to user
+        try:
+            for permission in permissions:
+                if upgrade:
+                    logger.info(
+                        f"[User: {user.username}] Added permission: {permission.name}"
+                    )
+                    user.user_permissions.add(permission)
+                else:
+                    user.user_permissions.remove(permission)
+                    logger.info(
+                        f"[User: {user.username}] Removed permission: {permission.name}"
+                    )
+
+        # Return error message if something goes wrong with permissions assignment
+        except:
+            return JsonResponse(
+                {
+                    "message": "Une erreur s'est produite, modifications non sauvegardées."
+                }
+            )
+
+        # Return success message
+        return JsonResponse({"message": f"Modifications validées."})
+    else:
+        raise Http404()

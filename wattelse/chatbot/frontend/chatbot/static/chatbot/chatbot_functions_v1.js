@@ -671,6 +671,59 @@ function addUserToUserList(username) {
     groupUsernamesList.appendChild(listItem);
 }
 
+// Upgrade or downgrade user permissions
+function manageUserPermissions(username, upgrade) {
+    // Define message to be displayed in the confirmation dialog
+    let confirmMessage;
+    if (upgrade) {
+        confirmMessage = `Voulez-vous vraiment donner les droits administrateurs à ${username} ?`;
+    }
+    else {
+        confirmMessage = `Voulez-vous vraiment enlever les droits administrateurs à ${username} ?`;
+    }
+    // Call back function if user confirms the action
+    if (confirm(confirmMessage)) {
+        fetch('/manage_superuser_permission/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfmiddlewaretoken,
+            },
+            body: JSON.stringify({
+                'username': username,
+                'upgrade': upgrade,
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Change icon to match the new permissions
+            const userItem = document.getElementById(`group_user_${username}`);
+            
+            if (upgrade) {
+                const userIcon = userItem.querySelector('.user-icon').parentElement;
+                userIcon.innerHTML = `
+                <button class="superuser-icon" title="Diminuer les permissions de l'utilisateur" onclick="manageUserPermissions('${username}', false)">
+                    <i class="fa-solid fa-user-secret"></i>
+                </button>
+                `;
+            }
+            else {
+                const userIcon = userItem.querySelector('.superuser-icon').parentElement;
+                userIcon.innerHTML = `
+                <button class="user-icon" title="Augmenter les permissions de l'utilisateur" onclick="manageUserPermissions('${username}', true)">
+                    <i class="fa-solid fa-user-plus"></i>
+                </button>
+                `;
+                
+            }
+            alert(data.message);
+        })
+    }
+
+    
+    
+}
+
 
 // Delete users
 function removeUserFromGroup(userNameToDelete) {
