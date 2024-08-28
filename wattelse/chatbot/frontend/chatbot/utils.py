@@ -44,7 +44,19 @@ def get_user_group_id(user: User) -> str:
     else:
         return group_list[0].name
 
-def get_group_usernames_list(group_id: str) -> List[str]:
+
+def is_superuser(user: User) -> bool:
+    """
+    Check if user is a superuser, i.e. can
+    add/remove docs and manage users.
+    """
+
+    return (
+        user.has_perm("chatbot.can_upload_documents")
+        and user.has_perm("chatbot.can_remove_documents")
+        and user.has_perm("chatbot.can_manage_users")
+    )
+
     """
     Return the list of users username belonging to the group.
     """
