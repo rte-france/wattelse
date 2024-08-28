@@ -255,13 +255,16 @@ color: var(--complementary-color);
   padding: 4px 0px;
   border-radius: 8px;
   background-color: #f2f2f2;
-  transition-duration: 0.2s;
   align-items: center;
-  transition: all .1s ease-in-out;
+  
 }
 
-.document-list li:hover,
-.user-list li:hover {
+.document-list li {
+  transition: all .1s ease-in-out;
+  transition-duration: 0.2s;
+}
+
+.document-list li:hover {
   box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
   cursor: pointer;
   transform: scale(1.02);
@@ -511,6 +514,17 @@ color: var(--complementary-color);
   font-size: 1.3rem;
 }
 
+.superuser-icon,
+.user-icon {
+  background-color: inherit;
+  border: None;
+  font-size: 1.3rem;
+}
+
+.superuser-icon:hover,
+.user-icon:hover {
+  transform: scale(1.1);
+}
 .div-add-users-input-field {
   text-align: center;
 }

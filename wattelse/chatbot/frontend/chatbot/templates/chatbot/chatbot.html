@@ -135,16 +135,26 @@
                 <h3>Groupe de travail : <span class="groupname">{{ user_group }}</span></h3>
                 <div class="users-management-section">
                     <ul class="user-list" id="group-usernames-list">
-                        {% for group_username in group_usernames_list %}
-                        <li id="group_user_{{ group_username }}">
+                        {% for username, is_superuser in group_usernames_dict.items %}
+                        <li id="group_user_{{ username }}">
                             <div class="col">
-                                <i class="fa-solid fa-user-secret fa-xl"></i>
+                                {% if is_superuser %}
+                                    <button class="superuser-icon" title="Diminuer les permissions de l'utilisateur" onclick="manageUserPermissions('{{ username }}', false)">
+                                        <i class="fa-solid fa-user-secret"></i>
+                                    </button>
+                                {% else %}
+                                    <button class="user-icon" title="Augmenter les permissions de l'utilisateur" onclick="manageUserPermissions('{{ username }}', true)">
+                                        <i class="fa-solid fa-user-plus"></i>
+                                    </button>
+                                {% endif %}
                             </div>
                             <div class="col">
-                                {{ group_username }}
+                                {{ username }}
                             </div>
                             <div class="col">
-                                <button class="remove-user-button" onclick="removeUserFromGroup('{{ group_username }}')"><i class="fa-solid fa-xmark fa-xl"></i></button>
+                                <button class="remove-user-button" onclick="removeUserFromGroup('{{ username }}')" title="Supprimer l'utilisateur du groupe">
+                                    <i class="fa-solid fa-xmark fa-xl"></i>
+                                </button>
                             </div>
                         </li>
                         {% endfor %}
