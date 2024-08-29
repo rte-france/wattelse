@@ -71,13 +71,14 @@ with col1:
             len(LOCAL_TOKENIZER.encode(text)), ","
         ).replace(",", " ")
         st.write(f"Number of tokens: {local_api_tokens_number}")
-        if summarize_button:
-            local_summary_stream = LOCAL_API.generate(
-                f'"""{text}"""',
-                system_prompt=st.session_state["system_prompt"],
-                stream=True,
-            )
-            st.write_stream(handle_streaming_answer(local_summary_stream))
+        # if summarize_button:
+        #     local_summary_stream = LOCAL_API.generate(
+        #         f'"""{text}"""',
+        #         system_prompt=st.session_state["system_prompt"],
+        #         stream=True,
+        #     )
+        #     st.write_stream(handle_streaming_answer(local_summary_stream))
+        st.warning("LLM not available for now.")
 
 with col2:
     st.subheader(OPENAI_API.model_name)
