@@ -37,6 +37,7 @@ RAG_SESSIONS: Dict[str, RAGBackEnd] = {}  # used to link a backend to a group
 
 class RAGOrchestratorAPIError(Exception):
     """Generic exception for RAG orchestrator API"""
+
     pass
 
 

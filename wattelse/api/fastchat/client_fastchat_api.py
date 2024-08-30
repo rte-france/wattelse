@@ -32,7 +32,6 @@ class FastchatAPI:
         )
         self.temperature = config.getfloat("API_CONFIG", "temperature")
 
-
     def get_api_model_name(self):
         """
         Return currently loaded model name in Fastchat.

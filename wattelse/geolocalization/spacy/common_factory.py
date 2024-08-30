@@ -25,6 +25,7 @@ def create_normalizer_component(nlp, name):
 def create_tokenizer_component(nlp, name):
     return TokenizerComponent()
 
+
 @Language.factory(
     "DBpedia_spotlight",
     default_config={
@@ -122,7 +123,9 @@ class TokenizerComponent:
 
 def strip_accents(s: str) -> str:
     # From https://stackoverflow.com/questions/517923/what-is-the-best-way-to-remove-accents-normalize-in-a-python-unicode-string
-    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn"
+    )
 
 
 def normalize(s: Union[str, Token]) -> str:
@@ -137,4 +140,3 @@ def normalize(s: Union[str, Token]) -> str:
     if norm == "sainte":
         norm = "ste"
     return norm
-

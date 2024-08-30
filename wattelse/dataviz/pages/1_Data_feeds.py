@@ -39,7 +39,8 @@ def plot_geojson_on_map(df: pd.DataFrame):
     )
     print(df)
     st.map(df.dropna())
-    #st.pydeck_chart(create_pydeck_chart(df.dropna()))
+    # st.pydeck_chart(create_pydeck_chart(df.dropna()))
+
 
 def create_pydeck_chart(geo_dataframe: pd.DataFrame):
     # Create a PyDeck layer with lat,lon  data
@@ -54,8 +55,8 @@ def create_pydeck_chart(geo_dataframe: pd.DataFrame):
 
     # Create a PyDeck view
     view_state = pdk.ViewState(
-        longitude=geo_dataframe['longitude'].mean(),
-        latitude=geo_dataframe['latitude'].mean(),
+        longitude=geo_dataframe["longitude"].mean(),
+        latitude=geo_dataframe["latitude"].mean(),
         zoom=5,
     )
 
@@ -67,6 +68,7 @@ def create_pydeck_chart(geo_dataframe: pd.DataFrame):
     )
 
     return deck
+
 
 @st.cache_resource
 def load_nlp_wrapper():

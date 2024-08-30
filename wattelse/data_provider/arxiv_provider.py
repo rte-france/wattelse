@@ -46,7 +46,12 @@ class ArxivProvider(DataProvider):
         )
 
     def get_articles(
-        self, query: str, after: str, before: str, max_results: int, language: str = None
+        self,
+        query: str,
+        after: str,
+        before: str,
+        max_results: int,
+        language: str = None,
     ) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines.
 
@@ -83,7 +88,13 @@ class ArxivProvider(DataProvider):
         )
         results = self.process_entries(entries, language)
         # post-filtering by date
-        results = [res for res in results if  begin <= datetime.strptime(res["timestamp"],DATE_FORMAT_YYYYMMDD_TIME) <= end]
+        results = [
+            res
+            for res in results
+            if begin
+            <= datetime.strptime(res["timestamp"], DATE_FORMAT_YYYYMMDD_TIME)
+            <= end
+        ]
         # add citations count
         return self.add_citations_count(results)
 
@@ -130,7 +141,8 @@ class ArxivProvider(DataProvider):
         semantic_scholar_items_list = list(
             itertools.chain(
                 [self._request_semantic_scholar_chunk(chunk) for chunk in chunks]
-            ))[0]
+            )
+        )[0]
 
         # merge semantic scholar entries with arxiv entries
 

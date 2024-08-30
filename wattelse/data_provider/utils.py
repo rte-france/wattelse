@@ -15,17 +15,19 @@ from loguru import logger
 # Ref: https://stackoverflow.com/a/59023463/
 
 _ENCODED_URL_PREFIX = "https://news.google.com/rss/articles/"
-_ENCODED_URL_RE = re.compile(fr"^{re.escape(_ENCODED_URL_PREFIX)}(?P<encoded_url>[^?]+)")
+_ENCODED_URL_RE = re.compile(
+    rf"^{re.escape(_ENCODED_URL_PREFIX)}(?P<encoded_url>[^?]+)"
+)
 _DECODED_URL_RE = re.compile(rb'^\x08\x13".+?(?P<primary_url>http[^\xd2]+)\xd2\x01')
 
 
 def _fetch_decoded_batch_execute(id):
     s = (
-            '[[["Fbv4je","[\\"garturlreq\\",[[\\"en-US\\",\\"US\\",[\\"FINANCE_TOP_INDICES\\",\\"WEB_TEST_1_0_0\\"],'
-            'null,null,1,1,\\"US:en\\",null,180,null,null,null,null,null,0,null,null,[1608992183,723341000]],'
-            '\\"en-US\\",\\"US\\",1,[2,3,4,8],1,0,\\"655000234\\",0,0,null,0],\\"'
-            + id
-            + '\\"]",null,"generic"]]]'
+        '[[["Fbv4je","[\\"garturlreq\\",[[\\"en-US\\",\\"US\\",[\\"FINANCE_TOP_INDICES\\",\\"WEB_TEST_1_0_0\\"],'
+        'null,null,1,1,\\"US:en\\",null,180,null,null,null,null,null,0,null,null,[1608992183,723341000]],'
+        '\\"en-US\\",\\"US\\",1,[2,3,4,8],1,0,\\"655000234\\",0,0,null,0],\\"'
+        + id
+        + '\\"]",null,"generic"]]]'
     )
 
     headers = {
@@ -68,7 +70,7 @@ def _decode_google_news_url_v2(source_url):
 
         prefix = b"\x08\x13\x22".decode("latin1")
         if decoded_str.startswith(prefix):
-            decoded_str = decoded_str[len(prefix):]
+            decoded_str = decoded_str[len(prefix) :]
 
         suffix = b"\xd2\x01\x00".decode("latin1")
         if decoded_str.endswith(suffix):
@@ -77,9 +79,9 @@ def _decode_google_news_url_v2(source_url):
         bytes_array = bytearray(decoded_str, "latin1")
         length = bytes_array[0]
         if length >= 0x80:
-            decoded_str = decoded_str[2: length + 1]
+            decoded_str = decoded_str[2 : length + 1]
         else:
-            decoded_str = decoded_str[1: length + 1]
+            decoded_str = decoded_str[1 : length + 1]
 
         if decoded_str.startswith("AU_yqL"):
             return _fetch_decoded_batch_execute(base64_str)
@@ -94,7 +96,9 @@ def _decode_google_news_url(url: str) -> str:
     """Decode encoded Google News entry URLs. (until August 2024)"""
     match = _ENCODED_URL_RE.match(url)
     encoded_text = match.groupdict()["encoded_url"]  # type: ignore
-    encoded_text += "==="  # Fix incorrect padding. Ref: https://stackoverflow.com/a/49459036/
+    encoded_text += (
+        "==="  # Fix incorrect padding. Ref: https://stackoverflow.com/a/49459036/
+    )
     decoded_text = base64.urlsafe_b64decode(encoded_text)
 
     match = _DECODED_URL_RE.match(decoded_text)
@@ -103,9 +107,13 @@ def _decode_google_news_url(url: str) -> str:
     return primary_url
 
 
-def decode_google_news_url(url: str) -> str:  # Not cached because not all Google News URLs are encoded.
+def decode_google_news_url(
+    url: str,
+) -> str:  # Not cached because not all Google News URLs are encoded.
     """Return Google News entry URLs after decoding their encoding as applicable."""
-    return _decode_google_news_url_v2(url) if url.startswith(_ENCODED_URL_PREFIX) else url
+    return (
+        _decode_google_news_url_v2(url) if url.startswith(_ENCODED_URL_PREFIX) else url
+    )
 
 
 def wait(secs):

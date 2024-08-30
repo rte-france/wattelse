@@ -9,7 +9,11 @@ from sklearn.model_selection import train_test_split
 
 import torch
 from torch.utils.data import Dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForLanguageModeling
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    DataCollatorForLanguageModeling,
+)
 from transformers import Trainer, TrainingArguments
 
 from loguru import logger
@@ -18,11 +22,12 @@ from loguru import logger
 MAX_TOKENS = 512
 
 training_args_config_file = ""
-series_tokenized_document_path = "./data/processed_data/series_tokenized_paragraphs_asi-gpt-fr-cased-base.pickle"
+series_tokenized_document_path = (
+    "./data/processed_data/series_tokenized_paragraphs_asi-gpt-fr-cased-base.pickle"
+)
 model_name = "asi/gpt-fr-cased-small"
 tokenizer_name = "asi/gpt-fr-cased-base"
-output_dir = "./models/"+model_name
-
+output_dir = "./models/" + model_name
 
 
 # Training config
@@ -46,31 +51,35 @@ training_args = TrainingArguments(
 )
 
 
-
 # Print available GPUs (by default, Hugging Face Trainer uses every available GPUs for training)
 
-available_gpus = [torch.cuda.get_device_properties(i).name for i in range(torch.cuda.device_count())]
+available_gpus = [
+    torch.cuda.get_device_properties(i).name for i in range(torch.cuda.device_count())
+]
 logger.info(f"Available GPUs: {available_gpus}")
-
 
 
 # Load data and split into train and valid
 
-logger.info("Loading tokenized DataFrame from: "+series_tokenized_document_path+"...")
+logger.info(
+    "Loading tokenized DataFrame from: " + series_tokenized_document_path + "..."
+)
 tokenized_documents = pd.read_pickle(series_tokenized_document_path)
 logger.info("Loaded")
 
-X_train, X_valid = train_test_split(tokenized_documents, test_size = 0.2)
+X_train, X_valid = train_test_split(tokenized_documents, test_size=0.2)
 logger.info(f"Train paragraphs: {len(X_train)}")
 logger.info(f"Valid paragraphs: {len(X_valid)}")
 
 
 # Make PyTorch Dataset
 
+
 class ParagraphsExtractDataset(Dataset):
     """
     Dataset returning a paragraph from a document, troncated to max_tokens.
     """
+
     def __init__(self, tokenized_paragraphs, max_tokens):
         self.tokenized_paragraphs = tokenized_paragraphs
         self.max_tokens = max_tokens
@@ -86,10 +95,9 @@ class ParagraphsExtractDataset(Dataset):
             return paragraph
         else:
             return {
-                "input_ids": paragraph["input_ids"][0:self.max_tokens],
-                "attention_mask": paragraph["attention_mask"][0:self.max_tokens]
+                "input_ids": paragraph["input_ids"][0 : self.max_tokens],
+                "attention_mask": paragraph["attention_mask"][0 : self.max_tokens],
             }
-
 
 
 # Load model
@@ -107,7 +115,7 @@ valid_dataset = ParagraphsExtractDataset(X_valid, model_max_input_length)
 # Train
 
 tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
-data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm= False)
+data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
 trainer = Trainer(
     model=model,
@@ -118,4 +126,3 @@ trainer = Trainer(
 )
 
 trainer.train()
-

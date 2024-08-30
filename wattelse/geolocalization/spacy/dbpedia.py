@@ -93,7 +93,9 @@ class DBPediaEntityLinker(object):
         if self.support:
             params["support"] = self.support
         if self.types:
-            params["types"] = ','.join(self.types) # JP: for proper formatting in the API
+            params["types"] = ",".join(
+                self.types
+            )  # JP: for proper formatting in the API
         if self.sparql:
             params["sparql"] = self.sparql
         if self.policy:
@@ -102,7 +104,9 @@ class DBPediaEntityLinker(object):
         # TODO: application/ld+json would be more detailed? https://github.com/digitalbazaar/pyld
         try:
             response = requests.post(
-                f"{endpoint}/{self.process}", headers={"accept": "application/json"}, data=params
+                f"{endpoint}/{self.process}",
+                headers={"accept": "application/json"},
+                data=params,
             )
         except HTTPError as e:
             # due to too many requests to the endpoint - this happens sometimes with the default public endpoint
@@ -111,7 +115,7 @@ class DBPediaEntityLinker(object):
             )
             logger.trace(str(e))
             return doc
-        except (Exception) as e:  # other erros
+        except Exception as e:  # other erros
             logger.error(
                 f"Endpoint {endpoint} unreachable, please check your connection. Document not updated."
             )
@@ -150,7 +154,7 @@ class DBPediaEntityLinker(object):
                         span_type = t
                         break
 
-            #if ent_kb_id:
+            # if ent_kb_id:
             #    span = doc.char_span(start_ch, end_ch, span_type, ent_kb_id)
             span = doc.char_span(start_ch, end_ch, span_type)
 
@@ -158,7 +162,9 @@ class DBPediaEntityLinker(object):
                 # something strange like "something@bbc.co.uk" where the match is only part of a SpaCy token
                 # 1. find the token to split
                 # tokens also wider than start_ch, end_ch
-                tokens_to_split = [t for t in doc if t.idx >= start_ch or t.idx + len(t) <= end_ch]
+                tokens_to_split = [
+                    t for t in doc if t.idx >= start_ch or t.idx + len(t) <= end_ch
+                ]
                 span = doc.char_span(
                     min(t.idx for t in tokens_to_split),
                     max(t.idx + len(t) for t in tokens_to_split),
@@ -179,7 +185,9 @@ class DBPediaEntityLinker(object):
                 doc.spans["ents_original"] = doc.ents
                 try:
                     doc.ents = ents_data
-                except ValueError:  # if there are overlapping spans in the dbpedia_spotlight entities
+                except (
+                    ValueError
+                ):  # if there are overlapping spans in the dbpedia_spotlight entities
                     doc.ents = spacy.util.filter_spans(ents_data)
             # else don't overwrite
 
