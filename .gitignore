@@ -141,3 +141,17 @@ postman
 
 # Streamlit password
 **/.streamlit/
+
+**/Main_page_old.py
+**/Main_page_copy.py
+**/wattelse.egg-info/
+**/saved_models/
+**/signal_evolution_data/
+**/Figures/
+**/Figures_nyt/
+**/signal_evolution_data*/
+**/cache*/
+**/exported_topics*/
+
+wattelse/bertopic/app/*.html
+wattelse/bertopic/app/*debugging*.txt

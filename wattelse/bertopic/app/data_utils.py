@@ -12,10 +12,15 @@ from pathlib import Path
 
 from wattelse.bertopic.app.app_utils import plot_docs_reparition_over_time
 from wattelse.bertopic.app.state_utils import register_widget, save_widget_state
+from wattelse.bertopic.utils import (
+    TEXT_COLUMN,
+    TIMESTAMP_COLUMN
+)
 
 
 def data_overview(df: pd.DataFrame):
-    with st.expander("Data overview"):
+    with st.container(border=True):
+        col1, col2 = st.columns([0.4, 0.6])
         freq = st.select_slider(
             "Time aggregation",
             options=(
@@ -30,7 +35,11 @@ def data_overview(df: pd.DataFrame):
             ),
             value="1M",
         )
-        plot_docs_reparition_over_time(df, freq)
+        with col1:
+            plot_docs_reparition_over_time(df, freq)
+        with col2:
+            st.dataframe(st.session_state['timefiltered_df'][['index', TEXT_COLUMN, TIMESTAMP_COLUMN]],
+                         use_container_width=True)
 
 
 def choose_data(base_dir: Path, filters: List[str]):
@@ -42,6 +51,7 @@ def choose_data(base_dir: Path, filters: List[str]):
             )
         )
     )
+
     if "data_folder" not in st.session_state:
         st.session_state["data_folder"] = data_folders[0] if data_folders else base_dir
 
@@ -49,34 +59,46 @@ def choose_data(base_dir: Path, filters: List[str]):
         [
             p.name
             for p in itertools.chain.from_iterable(
-                [
-                    list(st.session_state["data_folder"].glob(f"{filter}"))
-                    for filter in filters
-                ]
-            )
+            [
+                list(st.session_state["data_folder"].glob(f"{filter}"))
+                for filter in filters
+            ]
+        )
         ]
     )
 
     if "data_name" not in st.session_state:
         st.session_state["data_name"] = data_options[0]
 
-    register_widget("data_name")
-    register_widget("data_folder")
-    col1, col2 = st.columns([0.4, 0.6])
-    with col1:
-        st.selectbox(
-            "Base folder", data_folders, key="data_folder", on_change=reset_data
-        )
-    with col2:
-        st.selectbox(
-            "Select data to continue",
-            data_options,
-            key="data_name",
-            on_change=reset_all,
-        )
+    if "selected_files" not in st.session_state:
+        st.session_state["selected_files"] = []
 
-    # Stop the app as long as no data is selected
-    if st.session_state["data_name"] == "None":
+    folder_options = [folder.name for folder in data_folders]
+    if not folder_options:
+        st.warning("No data available!")
+        st.stop()
+
+    selected_folder_index = st.selectbox("Base folder", index=0, options=folder_options)
+    selected_folder = data_folders[folder_options.index(selected_folder_index)]
+    st.session_state["data_folder"] = selected_folder
+
+    with st.container(border=True, height=300):
+        data_files = sorted(
+            itertools.chain.from_iterable(
+                [list(selected_folder.glob(f"{filter}")) for filter in filters]
+            ),
+            key=lambda x: x.name
+        )
+        for file in data_files:
+            checkbox_key = f"file-{file.name}"
+            if st.checkbox(file.name, key=checkbox_key):
+                if file not in st.session_state["selected_files"]:
+                    st.session_state["selected_files"].append(file)
+            else:
+                if file in st.session_state["selected_files"]:
+                    st.session_state["selected_files"].remove(file)
+
+    if not st.session_state["selected_files"]:
         st.stop()
 
 

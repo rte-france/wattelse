@@ -18,33 +18,33 @@ from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.summary.summarizer import Summarizer
 from wattelse.summary.abstractive_summarizer import AbstractiveSummarizer
 from wattelse.api.prompts import (
-    FR_USER_GENERATE_TOPIC_LABEL_TITLE,
     FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
     EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
     FR_USER_SUMMARY_MULTIPLE_DOCS,
     EN_USER_SUMMARY_MULTIPLE_DOCS,
 )
 from bertopic._bertopic import BERTopic
+from tqdm import tqdm
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
 
 
 def generate_newsletter(
-        topic_model: BERTopic,
-        df: pd.DataFrame,
-        topics: List[int],
-        df_split: pd.DataFrame = None,
-        top_n_topics: int = 5,
-        top_n_docs: int = 3,
-        top_n_docs_mode: str = "cluster_probability",
-        newsletter_title: str = "Newsletter",
-        summarizer_class: Summarizer = AbstractiveSummarizer,
-        summary_mode: str = "document",
-        prompt_language: str = "fr",
-        improve_topic_description: bool = False,
-        openai_model_name: str = None,
-        nb_sentences: int = 3,
+    topic_model: BERTopic,
+    df: pd.DataFrame,
+    topics: List[int],
+    df_split: pd.DataFrame = None,
+    top_n_topics: int = 5,
+    top_n_docs: int = 3,
+    top_n_docs_mode: str = "cluster_probability",
+    newsletter_title: str = "Newsletter",
+    summarizer_class: Summarizer = AbstractiveSummarizer,
+    summary_mode: str = "document",
+    prompt_language: str = "fr",
+    improve_topic_description: bool = False,
+    openai_model_name: str = None,
+    nb_sentences: int = 3,
 ) -> Tuple[str, Any, Any]:
     """Generates a newsletter based on a trained BERTopic model.
 
@@ -61,6 +61,7 @@ def generate_newsletter(
         summary_mode (str, optional): - `document` : for each topic, summarize top n documents independently
                                       - `topic`   : for each topic, use top n documents to generate a single topic summary
                                                     using OpenAI API
+                                      - `none`    : do not perform any summarization
         prompt_language (str, optional): prompt language
         improve_topic_description (bool, optional): whether to use ChatGPT to transform topic keywords to a more readable description
         openai_model_name (str, optional): OpenAI model called using OpenAI_API, used to improve topic description and when summary_mode=topic
@@ -74,16 +75,17 @@ def generate_newsletter(
     # Adapt language for date
     current_local = locale.getlocale()
     if prompt_language == "en":
-        locale.setlocale(locale.LC_TIME, 'en_US.UTF-8')
+        locale.setlocale(locale.LC_TIME, "en_US.UTF-8")
     elif prompt_language == "fr":
-        locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+        locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
 
     # Instantiates summarizer
     summarizer = summarizer_class()
 
     # Ensure top_n_topics is smaller than number of topics
     topics_info = topic_model.get_topic_info()[1:]
-    if len(topics_info) < top_n_topics:
+
+    if top_n_topics is None or top_n_topics > len(topics_info):
         top_n_topics = len(topics_info)
 
     # Date range
@@ -98,7 +100,7 @@ def generate_newsletter(
         md_lines.append(f"<div class='date_range'>from {date_min} to {date_max}</div>")
 
     # Iterate over topics
-    for i in range(top_n_topics):
+    for i in tqdm(range(top_n_topics), desc="Processing topics..."):
         sub_df = get_most_representative_docs(
             topic_model,
             df,
@@ -110,42 +112,56 @@ def generate_newsletter(
         )
 
         # Compute summary according to summary_mode
-        if summary_mode == 'document':
+        if summary_mode == "document":
             # Generates summaries for articles
             texts = [doc.text for _, doc in sub_df.iterrows()]
-            summaries = summarizer.summarize_batch(texts, prompt_language=prompt_language)
-        elif summary_mode == 'topic':
+            summaries = summarizer.summarize_batch(
+                texts, prompt_language=prompt_language
+            )
+        elif summary_mode == "topic":
             article_list = ""
             for _, doc in sub_df.iterrows():
                 article_list += f"Titre : {doc.title}\nContenu : {doc.text}\n\n"
 
             topic_summary = openai_api.generate(
-                (FR_USER_SUMMARY_MULTIPLE_DOCS if prompt_language == 'fr' else EN_USER_SUMMARY_MULTIPLE_DOCS).format(
-                    keywords=', '.join(topics_info['Representation'].iloc[i]),
+                (
+                    FR_USER_SUMMARY_MULTIPLE_DOCS
+                    if prompt_language == "fr"
+                    else EN_USER_SUMMARY_MULTIPLE_DOCS
+                ).format(
+                    keywords=", ".join(topics_info["Representation"].iloc[i]),
                     article_list=article_list,
                     nb_sentences=nb_sentences,
                 ),
                 model_name=openai_model_name,
             )
+        elif summary_mode == "none":
+            # No summarization is performed
+            pass
         else:
             logger.error(
-                f'{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter')
+                f"{summary_mode} is not a valid parameter for argument summary_mode in function generate_newsletter"
+            )
             exit()
 
         # Improve topic description
         if improve_topic_description:
             titles = [doc.title for _, doc in sub_df.iterrows()]
 
-            improved_topic_description_v2 = (
-                openai_api.generate(
-                    (
-                        FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES if prompt_language == 'fr' else EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES).format(
-                        title_list=(" ; ".join(summaries) if summary_mode == 'document' else topic_summary),
+            improved_topic_description_v2 = openai_api.generate(
+                (
+                    FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES
+                    if prompt_language == "fr"
+                    else EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES
+                ).format(
+                    title_list=(
+                        " ; ".join(summaries)
+                        if summary_mode == "document"
+                        else topic_summary
                     ),
-                    model_name=openai_model_name,
-                )
-                .replace('"', "")
-            )
+                ),
+                model_name=openai_model_name,
+            ).replace('"', "")
 
             if improved_topic_description_v2.endswith("."):
                 improved_topic_description_v2 = improved_topic_description_v2[:-1]
@@ -161,12 +177,11 @@ def generate_newsletter(
             )
 
         # Write summaries + documents
-        if summary_mode == 'topic':
+        if summary_mode == "topic":
             md_lines.append(topic_summary)
         i = 0
         for _, doc in sub_df.iterrows():
             # Write newsletter
-
             md_lines.append(f"### [*{doc.title}*]({doc.url})")
             try:
                 domain = tldextract.extract(doc.url).domain
@@ -176,15 +191,19 @@ def generate_newsletter(
             md_lines.append(
                 f"<div class='timestamp'>{doc.timestamp.strftime('%A %d %b %Y')} | {domain}</div>"
             )
-            if summary_mode == 'document':
+            if summary_mode == "document":
                 md_lines.append(summaries[i])
+            elif summary_mode == "none":
+                md_lines.append(
+                    doc.text
+                )  # Add the full text when no summarization is performed
             i += 1
 
     # Write full file
     md_content = "\n\n".join(md_lines)
 
     # Reset locale
-    locale.setlocale(locale.LC_TIME, '.'.join(current_local))
+    locale.setlocale(locale.LC_TIME, ".".join(current_local))
     return md_content, date_min, date_max
 
 
@@ -226,13 +245,13 @@ def md2html(md: str, css_style: Path = None) -> str:
 
 
 def get_most_representative_docs(
-        topic_model,
-        df,
-        topics,
-        mode="cluster_probability",
-        df_split=None,
-        topic_number=0,
-        top_n_docs=3,
+    topic_model,
+    df,
+    topics,
+    mode="cluster_probability",
+    df_split=None,
+    topic_number=0,
+    top_n_docs=3,
 ):
     """
     Return most representative documents for a given topic.

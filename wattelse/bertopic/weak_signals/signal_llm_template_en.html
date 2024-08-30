@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infrastructure Controversy Analysis Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .dashboard {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .column {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #3498db;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .event, .section {
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .event h3, .section h3 {
+            margin-top: 0;
+            color: #2980b9;
+        }
+        .whats-new {
+            background-color: #fffde7;
+            border-left: 4px solid #fbc02d;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+        .scenario {
+            border-left: 4px solid;
+            padding-left: 10px;
+            margin-bottom: 15px;
+        }
+        .optimistic {
+            border-color: #2ecc71;
+        }
+        .pessimistic {
+            border-color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="column">
+            <h2>Topic Evolution</h2>
+            <div class="event">
+                <h3>{{EVENT_1_DATE}}: {{EVENT_1_TITLE}}</h3>
+                <p>{{EVENT_1_DESCRIPTION}}</p>
+                <div class="whats-new">
+                    <strong>What's New:</strong> {{EVENT_1_WHATS_NEW}}
+                </div>
+            </div>
+            <div class="event">
+                <h3>{{EVENT_2_DATE}}: {{EVENT_2_TITLE}}</h3>
+                <p>{{EVENT_2_DESCRIPTION}}</p>
+                <div class="whats-new">
+                    <strong>What's New:</strong> {{EVENT_2_WHATS_NEW}}
+                </div>
+            </div>
+            <div class="event">
+                <h3>{{EVENT_3_DATE}}: {{EVENT_3_TITLE}}</h3>
+                <p>{{EVENT_3_DESCRIPTION}}</p>
+                <div class="whats-new">
+                    <strong>What's New:</strong> {{EVENT_3_WHATS_NEW}}
+                </div>
+            </div>
+            
+            <h2>Evolution Scenarios</h2>
+            <div class="scenario optimistic">
+                <h3>Optimistic Scenario</h3>
+                <p>{{OPTIMISTIC_SCENARIO_INTRO}}</p>
+                <ul>
+                    <li>{{OPTIMISTIC_POINT_1}}</li>
+                    <li>{{OPTIMISTIC_POINT_2}}</li>
+                    <li>{{OPTIMISTIC_POINT_3}}</li>
+                    <li>{{OPTIMISTIC_POINT_4}}</li>
+                </ul>
+            </div>
+            <div class="scenario pessimistic">
+                <h3>Pessimistic Scenario</h3>
+                <p>{{PESSIMISTIC_SCENARIO_INTRO}}</p>
+                <ul>
+                    <li>{{PESSIMISTIC_POINT_1}}</li>
+                    <li>{{PESSIMISTIC_POINT_2}}</li>
+                    <li>{{PESSIMISTIC_POINT_3}}</li>
+                    <li>{{PESSIMISTIC_POINT_4}}</li>
+                </ul>
+            </div>
+        </div>
+        <div class="column">
+            <h2>Topic Analysis</h2>
+            <div class="grid">
+                <div class="section">
+                    <h3>Short-term Implications</h3>
+                    <ul>
+                        <li>{{SHORT_TERM_1}}</li>
+                        <li>{{SHORT_TERM_2}}</li>
+                        <li>{{SHORT_TERM_3}}</li>
+                        <li>{{SHORT_TERM_4}}</li>
+                    </ul>
+                </div>
+                <div class="section">
+                    <h3>Long-term Implications</h3>
+                    <ul>
+                        <li>{{LONG_TERM_1}}</li>
+                        <li>{{LONG_TERM_2}}</li>
+                        <li>{{LONG_TERM_3}}</li>
+                        <li>{{LONG_TERM_4}}</li>
+                    </ul>
+                </div>
+                <div class="section">
+                    <h3>Ripple Effects</h3>
+                    <ul>
+                        <li>{{RIPPLE_EFFECT_1}}</li>
+                        <li>{{RIPPLE_EFFECT_2}}</li>
+                        <li>{{RIPPLE_EFFECT_3}}</li>
+                        <li>{{RIPPLE_EFFECT_4}}</li>
+                    </ul>
+                </div>
+                <div class="section">
+                    <h3>Interconnections</h3>
+                    <ul>
+                        <li>{{INTERCONNECTION_1}}</li>
+                        <li>{{INTERCONNECTION_2}}</li>
+                        <li>{{INTERCONNECTION_3}}</li>
+                        <li>{{INTERCONNECTION_4}}</li>
+                    </ul>
+                </div>
+                <div class="section">
+                    <h3>Drivers</h3>
+                    <ul>
+                        <li>{{DRIVER_1}}</li>
+                        <li>{{DRIVER_2}}</li>
+                        <li>{{DRIVER_3}}</li>
+                        <li>{{DRIVER_4}}</li>
+                    </ul>
+                </div>
+                <div class="section">
+                    <h3>Inhibitors</h3>
+                    <ul>
+                        <li>{{INHIBITOR_1}}</li>
+                        <li>{{INHIBITOR_2}}</li>
+                        <li>{{INHIBITOR_3}}</li>
+                        <li>{{INHIBITOR_4}}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
