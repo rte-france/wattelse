@@ -28,10 +28,11 @@ BM25 = "bm25"
 ENSEMBLE = "ensemble"
 
 # Config for retriever and generator
-config = configparser.ConfigParser(converters={"literal": parse_literal}, interpolation=EnvInterpolation()) # takes into account environment variables
+config = configparser.ConfigParser(
+    converters={"literal": parse_literal}, interpolation=EnvInterpolation()
+)  # takes into account environment variables
 config.read(Path(__file__).parent / "rag_config.cfg")
 
 retriever_config = parse_literal(dict(config["retriever"]))
 
 generator_config = parse_literal(dict(config["generator"]))
-

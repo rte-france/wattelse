@@ -9,8 +9,13 @@ from typing import List, Iterator
 
 import bs4
 import pandas as pd
-from langchain_community.document_loaders import PyMuPDFLoader, UnstructuredPowerPointLoader, \
-    UnstructuredWordDocumentLoader, WebBaseLoader, TextLoader
+from langchain_community.document_loaders import (
+    PyMuPDFLoader,
+    UnstructuredPowerPointLoader,
+    UnstructuredWordDocumentLoader,
+    WebBaseLoader,
+    TextLoader,
+)
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from pathlib import Path
@@ -105,7 +110,9 @@ def _parse_xslx(file: Path) -> List[Document]:
 
 
 def _parse_md(file: Path) -> List[Document]:
-    loader = TextLoader(file.absolute().as_posix()) #NB. UnstructuredMarkdownLoader removes markdown structure tags
+    loader = TextLoader(
+        file.absolute().as_posix()
+    )  # NB. UnstructuredMarkdownLoader removes markdown structure tags
     data = loader.load()
     # NB. return one document
     return data
@@ -119,7 +126,9 @@ def _parse_csv(file: Path) -> List[Document]:
 
 
 def _parse_html(file: Path) -> List[Document]:
-    loader = TextLoader(file.absolute().as_posix()) # NB. BSHTMLLoader removes html tags
+    loader = TextLoader(
+        file.absolute().as_posix()
+    )  # NB. BSHTMLLoader removes html tags
     data = loader.load()
     # NB. return one document
     return data

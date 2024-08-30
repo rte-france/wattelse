@@ -20,7 +20,7 @@ class Chat(models.Model):
     answer_delay = models.DurationField(null=True, blank=True)  # Optional fields
 
     def __str__(self):
-        return f'{self.user.username}: {self.message}'
+        return f"{self.user.username}: {self.message}"
 
     def calculate_answer_delay(self):
         if self.answer_timestamp and self.question_timestamp:
@@ -28,9 +28,9 @@ class Chat(models.Model):
         return None
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs) # required to have self.*_timestamp set
+        super().save(*args, **kwargs)  # required to have self.*_timestamp set
         self.answer_delay = self.calculate_answer_delay()
-        super().save(*args, **kwargs) # required to save self.answer_delay
+        super().save(*args, **kwargs)  # required to save self.answer_delay
 
 
 class SuperUserPermissions(models.Model):

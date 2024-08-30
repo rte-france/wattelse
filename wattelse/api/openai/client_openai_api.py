@@ -28,11 +28,12 @@ class OpenAI_Client:
             api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             logger.error(
-                "WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services.")
+                "WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services."
+            )
             raise EnvironmentError(f"OPENAI_API_KEY environment variable not found.")
 
         endpoint = endpoint if endpoint else os.getenv("OPENAI_ENDPOINT", None)
-        if endpoint == "": # check empty env var
+        if endpoint == "":  # check empty env var
             endpoint = None
 
         run_on_azure = "azure.com" in endpoint if endpoint else False
@@ -45,10 +46,7 @@ class OpenAI_Client:
         openai_params = {
             "base_url": endpoint,
         }
-        azure_params = {
-            "azure_endpoint": endpoint,
-            "api_version": AZURE_API_VERSION
-        }
+        azure_params = {"azure_endpoint": endpoint, "api_version": AZURE_API_VERSION}
 
         if not run_on_azure:
             self.llm_client = OpenAI(
@@ -64,28 +62,28 @@ class OpenAI_Client:
         self.temperature = DEFAULT_TEMPERATURE
 
     def generate(
-            self,
-            user_prompt,
-            system_prompt=None,
-            model_name=None,
-            temperature=None,
-            max_tokens=512,
-            seed=NOT_GIVEN,
-            stream=NOT_GIVEN,
+        self,
+        user_prompt,
+        system_prompt=None,
+        model_name=None,
+        temperature=None,
+        max_tokens=512,
+        seed=NOT_GIVEN,
+        stream=NOT_GIVEN,
     ) -> ChatCompletion | Stream[ChatCompletionChunk] | str:
         """Call openai model for generation.
 
-            Args:
-                    user_prompt (str): prompt to send to the model with role=user.
-                    system_prompt (str): prompt to send to the model with role=system.
-                    model_name (str, optional): name of the openai model to use for generation.
-                    temperature (float, optional): Temperature for generation.
-                    max_tokens (int, optional): Maximum tokens to be generated.
-                    seed: seed for generation
-                    stream: indicated if the result has to be streamed or not
+        Args:
+                user_prompt (str): prompt to send to the model with role=user.
+                system_prompt (str): prompt to send to the model with role=system.
+                model_name (str, optional): name of the openai model to use for generation.
+                temperature (float, optional): Temperature for generation.
+                max_tokens (int, optional): Maximum tokens to be generated.
+                seed: seed for generation
+                stream: indicated if the result has to be streamed or not
 
-            Returns:
-                    (str or Stream[ChatCompletionChunk]): model answer.
+        Returns:
+                (str or Stream[ChatCompletionChunk]): model answer.
 
         """
         messages = [{"role": "user", "content": user_prompt}]

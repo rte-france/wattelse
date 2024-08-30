@@ -20,13 +20,17 @@ def register_widget(key):
     if key not in st.session_state[STATE_KEYS]:
         st.session_state[STATE_KEYS].append(key)
 
+
 def save_widget_state():
     if STATE_KEYS in st.session_state.keys():
-        st.session_state[WIDGET_STATE] = { key: st.session_state[key]
-                                          for key in st.session_state[STATE_KEYS]
-                                          if key in st.session_state }
+        st.session_state[WIDGET_STATE] = {
+            key: st.session_state[key]
+            for key in st.session_state[STATE_KEYS]
+            if key in st.session_state
+        }
+
 
 def restore_widget_state():
     if WIDGET_STATE in st.session_state.keys():
-        for k,v in st.session_state[WIDGET_STATE].items():
+        for k, v in st.session_state[WIDGET_STATE].items():
             st.session_state[k] = v

@@ -32,9 +32,16 @@ class GoogleNewsProvider(DataProvider):
         self.gn = GoogleNews()
 
     @wait(1)
-    def get_articles(self, query: str, after: str, before: str, max_results: int, language: str = "fr") -> List[Dict]:
+    def get_articles(
+        self,
+        query: str,
+        after: str,
+        before: str,
+        max_results: int,
+        language: str = "fr",
+    ) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
-        #FIXME: this may be blocked by google
+        # FIXME: this may be blocked by google
         if language and language != "en":
             self.gn.lang = language.lower()
             self.gn.country = language.upper()
@@ -44,7 +51,6 @@ class GoogleNewsProvider(DataProvider):
         entries = result["entries"][:max_results]
 
         return self.process_entries(entries, language)
-
 
     def _build_query(self, keywords: str, after: str = None, before: str = None) -> str:
         query = self.URL_ENDPOINT.replace(PATTERN, f"{urllib.parse.quote(keywords)}")
@@ -59,7 +65,6 @@ class GoogleNewsProvider(DataProvider):
 
         return query
 
-
     def _parse_entry(self, entry: Dict) -> Optional[Dict]:
         """Parses a Google news entry"""
         try:
@@ -67,10 +72,12 @@ class GoogleNewsProvider(DataProvider):
             link = entry["link"]
             url = decode_google_news_url(link)
             summary = entry["summary"]
-            published = dateparser.parse(entry["published"]).strftime("%Y-%m-%d %H:%M:%S")
+            published = dateparser.parse(entry["published"]).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
             text, title = self._get_text(url=url)
             text = self._filter_out_bad_text(text)
-            if text is None or text=="":
+            if text is None or text == "":
                 return None
             logger.debug(f"----- Title: {title},\tDate: {published}")
             return {
@@ -82,5 +89,7 @@ class GoogleNewsProvider(DataProvider):
                 "timestamp": published,
             }
         except Exception as e:
-            logger.error(str(e) + f"\nError occurred with text parsing of url in : {entry}")
+            logger.error(
+                str(e) + f"\nError occurred with text parsing of url in : {entry}"
+            )
             return None

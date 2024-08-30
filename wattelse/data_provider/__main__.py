@@ -50,9 +50,7 @@ if __name__ == "__main__":
         save_path: str = typer.Option(
             None, help="Path for writing results. File is in jsonl format."
         ),
-        language: str = typer.Option(
-            None, help="Language filter"
-        ),
+        language: str = typer.Option(None, help="Language filter"),
     ):
         """Scrape data from Arxiv, Google, Bing or NewsCatcher news (single request).
 
@@ -196,16 +194,24 @@ if __name__ == "__main__":
         after = (current_date - timedelta(days=days_to_subtract)).strftime("%Y-%m-%d")
         language = data_feed_cfg.get("data-feed", "language")
         save_path = (
-                FEED_BASE_PATH
-                / data_feed_cfg.get("data-feed", "feed_dir_path")
-                / f"{current_date_str}_{data_feed_cfg.get('data-feed', 'id')}.jsonl"
+            FEED_BASE_PATH
+            / data_feed_cfg.get("data-feed", "feed_dir_path")
+            / f"{current_date_str}_{data_feed_cfg.get('data-feed', 'id')}.jsonl"
         )
         save_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Generate a query file
         with tempfile.NamedTemporaryFile() as query_file:
             if provider == "arxiv":  # already returns batches
-                scrape(keywords = keywords, provider=provider, after= after, before=before, max_results=max_results, save_path=save_path, language=language)
+                scrape(
+                    keywords=keywords,
+                    provider=provider,
+                    after=after,
+                    before=before,
+                    max_results=max_results,
+                    save_path=save_path,
+                    language=language,
+                )
             else:
                 generate_query_file(
                     keywords, after, before, interval=1, save_path=query_file.name
@@ -215,7 +221,7 @@ if __name__ == "__main__":
                     max_results=max_results,
                     provider=provider,
                     save_path=save_path,
-                    language=language
+                    language=language,
                 )
 
     @app.command("schedule-scrapping")
