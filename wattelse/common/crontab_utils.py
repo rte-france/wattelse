@@ -17,15 +17,13 @@ def add_job_to_crontab(schedule, command, env_vars=""):
     logger.info(f"Adding to crontab: {schedule} {command}")
     home = os.getenv("HOME")
     # Create crontab, add command - NB: we use the .bashrc to source all environment variables that may be required by the command
-    cmd = (
-        f'(crontab -l; echo "{schedule} umask 002; source {home}/.bashrc; {env_vars} {command}" ) | crontab -'
-    )
+    cmd = f'(crontab -l; echo "{schedule} umask 002; source {home}/.bashrc; {env_vars} {command}" ) | crontab -'
     returned_value = subprocess.call(cmd, shell=True)  # returns the exit code in unix
     logger.info(f"Crontab updated with status {returned_value}")
 
 
 def schedule_scrapping(
-        feed_cfg: Path,
+    feed_cfg: Path,
 ):
     """Schedule data scrapping on the basis of a feed configuration file"""
     data_feed_cfg = configparser.ConfigParser()
@@ -37,9 +35,9 @@ def schedule_scrapping(
 
 
 def schedule_newsletter(
-        newsletter_cfg_path: Path,
-        data_feed_cfg_path: Path,
-        cuda_devices: str = BEST_CUDA_DEVICE
+    newsletter_cfg_path: Path,
+    data_feed_cfg_path: Path,
+    cuda_devices: str = BEST_CUDA_DEVICE,
 ):
     """Schedule data scrapping on the basis of a feed configuration file"""
     newsletter_cfg = configparser.ConfigParser()

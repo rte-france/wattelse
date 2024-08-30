@@ -13,6 +13,7 @@ import os
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
 
+
 def load_embeddings(cache_path: Path):
     """Loads embeddings as pickle"""
     with open(cache_path, "rb") as f_in:
