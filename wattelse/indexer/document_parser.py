@@ -2,9 +2,10 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-
+import json
 import os
 import re
+from cmath import isnan
 from typing import List, Iterator
 
 import bs4
@@ -166,9 +167,9 @@ class CustomXLSXDocumentLoader(BaseLoader):
         self.file_path = file_path
         dfs = pd.read_excel(self.file_path, sheet_name=None)  # read all excel sheets
         dfs = {
-            sheet: df.astype(
+            sheet: df.ffill().astype(
                 str
-            ).ffill()  # used to resolve merged cells (duplicate content)
+            )  # ffill used to resolve merged cells (duplicate content)
             for sheet, df in dfs.items()
         }
         self.dfs = dfs
@@ -178,13 +179,13 @@ class CustomXLSXDocumentLoader(BaseLoader):
         Returns a generator to yield documents one by one.
         """
         for sheet, df in self.dfs.items():
-            lines = df.to_json(orient="records", lines=True).split("\n")
+            lines = df.to_dict(orient="records")
             for line in lines:
-                if line:
-                    yield Document(
-                        page_content=line,
-                        metadata={
-                            "source": self.file_path,
-                            "sheet": sheet,
-                        },
-                    )
+                line = {key: value for key, value in line.items() if value != "nan"}
+                yield Document(
+                    page_content=str(line),
+                    metadata={
+                        "source": self.file_path,
+                        "sheet": sheet,
+                    },
+                )
