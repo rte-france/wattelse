@@ -164,19 +164,27 @@ class CustomXLSXDocumentLoader(BaseLoader):
             file_path: The path to the file to load.
         """
         self.file_path = file_path
-        df = pd.read_excel(self.file_path)
-        df = df.astype(str)
-        self.df = df
+        dfs = pd.read_excel(self.file_path, sheet_name=None)  # read all excel sheets
+        dfs = {
+            sheet: df.astype(
+                str
+            ).ffill()  # used to resolve merged cells (duplicate content)
+            for sheet, df in dfs.items()
+        }
+        self.dfs = dfs
 
     def lazy_load(self) -> Iterator[Document]:
         """A lazy loader that reads a file line by line.
         Returns a generator to yield documents one by one.
         """
-        with open(self.file_path, encoding="utf-8") as f:
-            for index, row in self.df.iterrows():
-                row_d = row.to_dict()
-                line = " ".join(list(row_d.values()))
-                yield Document(
-                    page_content=line,
-                    metadata={"line_number": index, "source": self.file_path},
-                )
+        for sheet, df in self.dfs.items():
+            lines = df.to_json(orient="records", lines=True).split("\n")
+            for line in lines:
+                if line:
+                    yield Document(
+                        page_content=line,
+                        metadata={
+                            "source": self.file_path,
+                            "sheet": sheet,
+                        },
+                    )
