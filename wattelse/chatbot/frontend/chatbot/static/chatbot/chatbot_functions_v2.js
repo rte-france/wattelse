@@ -46,6 +46,9 @@ const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte g
 MAX_QUESTIONS_WITHOUT_FEEDBACK = 5
 FEEDBACK_TOLERANCE = 5  // random value for reminder messages
 
+// Message timeout
+const timeout = 120000; // 120 seconds timeout
+
 // initialize layout
 initializeLayout();
 
@@ -201,7 +204,6 @@ function isCompleteJSON(buffer) {
 async function postUserMessageToRAG(userMessage) {
     // Handle too long response from backend
     const startTime = Date.now();
-    const timeout = 60000; // 60 seconds timeout
 
     // Question timestamp
     const currentDate = new Date();
