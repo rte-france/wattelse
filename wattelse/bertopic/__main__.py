@@ -216,7 +216,7 @@ if __name__ == "__main__":
         if topic_params.get("nr_topics") == 0:
             topic_params["nr_topics"] = None
 
-        topic_model, topics, _ = train_BERTopic(
+        topic_model, topics, _, _, _, _ = train_BERTopic(
             **topic_params,
             full_dataset=dataset,
             embedding_model_name=embedding_model_name,
