@@ -15,7 +15,7 @@ from wattelse.summary import (
     GPTSummarizer,
     AbstractiveSummarizer,
     ExtractiveSummarizer,
-    EnhancedExtractiveSummarizer
+    EnhancedExtractiveSummarizer,
 )
 
 # Restore widget state
@@ -32,8 +32,16 @@ SUMMARIZER_OPTIONS_MAPPER = {
 
 def generate_newsletter_wrapper():
     """Wrapper function to generate newsletter based on user settings."""
-    top_n_topics = None if st.session_state["newsletter_all_topics"] else st.session_state["newsletter_nb_topics"]
-    top_n_docs = None if st.session_state["newsletter_all_docs"] else st.session_state["newsletter_nb_docs"]
+    top_n_topics = (
+        None
+        if st.session_state["newsletter_all_topics"]
+        else st.session_state["newsletter_nb_topics"]
+    )
+    top_n_docs = (
+        None
+        if st.session_state["newsletter_all_docs"]
+        else st.session_state["newsletter_nb_docs"]
+    )
 
     return generate_newsletter(
         topic_model=st.session_state["topic_model"],
@@ -43,8 +51,10 @@ def generate_newsletter_wrapper():
         top_n_topics=top_n_topics,
         top_n_docs=top_n_docs,
         improve_topic_description=st.session_state["newsletter_improve_description"],
-        summarizer_class=SUMMARIZER_OPTIONS_MAPPER[st.session_state["summarizer_classname"]],
-        summary_mode=st.session_state['summary_mode'],
+        summarizer_class=SUMMARIZER_OPTIONS_MAPPER[
+            st.session_state["summarizer_classname"]
+        ],
+        summary_mode=st.session_state["summary_mode"],
     )
 
 
@@ -61,7 +71,7 @@ default_values = {
     "newsletter_nb_topics": 4,
     "newsletter_nb_docs": 3,
     "summarizer_classname": list(SUMMARIZER_OPTIONS_MAPPER.keys())[0],
-    "summary_mode": 'topic',
+    "summary_mode": "topic",
     "newsletter_all_topics": False,
     "newsletter_all_docs": False,
 }
@@ -80,22 +90,54 @@ with st.sidebar:
     register_widget("summarizer_classname")
     register_widget("summary_mode")
 
-    all_topics = st.checkbox("Include all topics", on_change=save_widget_state, key="newsletter_all_topics")
-    st.slider("Number of topics", min_value=1, max_value=20, on_change=save_widget_state, key="newsletter_nb_topics",
-              disabled=all_topics)
+    all_topics = st.checkbox(
+        "Include all topics", on_change=save_widget_state, key="newsletter_all_topics"
+    )
+    st.slider(
+        "Number of topics",
+        min_value=1,
+        max_value=20,
+        on_change=save_widget_state,
+        key="newsletter_nb_topics",
+        disabled=all_topics,
+    )
 
-    all_documents = st.checkbox("Include all documents per topic", on_change=save_widget_state,
-                                key="newsletter_all_docs")
-    st.slider("Number of docs per topic", min_value=1, max_value=10, on_change=save_widget_state,
-              key="newsletter_nb_docs", disabled=all_documents)
+    all_documents = st.checkbox(
+        "Include all documents per topic",
+        on_change=save_widget_state,
+        key="newsletter_all_docs",
+    )
+    st.slider(
+        "Number of docs per topic",
+        min_value=1,
+        max_value=10,
+        on_change=save_widget_state,
+        key="newsletter_nb_docs",
+        disabled=all_documents,
+    )
 
-    st.toggle("Improve topic description", value=False, on_change=save_widget_state,
-              key="newsletter_improve_description")
-    st.selectbox("Summary mode", ['topic', 'document', 'none'], on_change=save_widget_state, key="summary_mode")
-    st.selectbox("Summarizer class", list(SUMMARIZER_OPTIONS_MAPPER.keys()), on_change=save_widget_state,
-                 key="summarizer_classname")
+    st.toggle(
+        "Improve topic description",
+        value=False,
+        on_change=save_widget_state,
+        key="newsletter_improve_description",
+    )
+    st.selectbox(
+        "Summary mode",
+        ["topic", "document", "none"],
+        on_change=save_widget_state,
+        key="summary_mode",
+    )
+    st.selectbox(
+        "Summarizer class",
+        list(SUMMARIZER_OPTIONS_MAPPER.keys()),
+        on_change=save_widget_state,
+        key="summarizer_classname",
+    )
 
-    generate_newsletter_clicked = st.button("Generate newsletter", type="primary", use_container_width=True)
+    generate_newsletter_clicked = st.button(
+        "Generate newsletter", type="primary", use_container_width=True
+    )
 
 # Generate newsletter when button is clicked
 if generate_newsletter_clicked:

@@ -7,22 +7,22 @@ from pathlib import Path
 
 # Global variables for prompts
 SIGNAL_INTRO = {
-    'en': """As an elite strategic foresight analyst with extensive expertise across multiple domains and industries, your task is to conduct a comprehensive evaluation of a potential signal derived from the following topic summary:
+    "en": """As an elite strategic foresight analyst with extensive expertise across multiple domains and industries, your task is to conduct a comprehensive evaluation of a potential signal derived from the following topic summary:
 
 {summary_from_first_prompt}
 
 Leverage your knowledge and analytical skills to provide an in-depth analysis of this signal's potential impact and evolution:
 """,
-    'fr': """En tant qu'analyste de prospective stratégique d'élite avec une expertise étendue dans de multiples domaines et industries, votre tâche est de mener une évaluation complète d'un signal potentiel dérivé du résumé de sujet suivant :
+    "fr": """En tant qu'analyste de prospective stratégique d'élite avec une expertise étendue dans de multiples domaines et industries, votre tâche est de mener une évaluation complète d'un signal potentiel dérivé du résumé de sujet suivant :
 
 {summary_from_first_prompt}
 
 Utilisez vos connaissances et compétences analytiques pour fournir une analyse approfondie de l'impact potentiel et de l'évolution de ce signal :
-"""
+""",
 }
 
 SIGNAL_INSTRUCTIONS = {
-    'en': """
+    "en": """
 1. Potential Impact Analysis:
    - Examine the potential effects of this signal on various sectors, industries, and societal aspects.
    - Consider both short-term and long-term implications.
@@ -45,7 +45,7 @@ Your analysis should be thorough and nuanced, going beyond surface-level observa
 
 Focus on providing a clear, insightful, and actionable analysis that can inform strategic decision-making and future planning.
 """,
-    'fr': """
+    "fr": """
 1. Analyse de l'Impact Potentiel :
    - Examinez les effets potentiels de ce signal sur divers secteurs, industries et aspects sociétaux.
    - Considérez les implications à court et à long terme.
@@ -67,11 +67,11 @@ Focus on providing a clear, insightful, and actionable analysis that can inform 
 Votre analyse doit être approfondie et nuancée, allant au-delà des observations superficielles. Appuyez-vous sur votre expertise pour fournir des insights qui capturent la complexité et l'importance potentielle de ce signal. N'hésitez pas à faire des prédictions bien raisonnées sur sa trajectoire et son impact potentiels.
 
 Concentrez-vous sur la fourniture d'une analyse claire, perspicace et exploitable qui peut éclairer la prise de décision stratégique et la planification future.
-"""
+""",
 }
 
 TOPIC_SUMMARY_PROMPT = {
-    'en': """
+    "en": """
 As an expert analyst specializing in trend analysis and strategic foresight, your task is to provide a comprehensive evolution summary of Topic {topic_number}. Use only the information provided below:
 
 {content_summary}
@@ -105,7 +105,7 @@ For all subsequent timestamps:
 
 Provide your analysis using only this format, based solely on the information given. Do not include any additional summary or overview sections beyond what is specified in this structure.
 """,
-    'fr': """
+    "fr": """
 En tant qu'analyste expert spécialisé dans l'analyse des tendances et la prospective stratégique, votre tâche est de fournir un résumé complet de l'évolution du Sujet {topic_number}. Utilisez uniquement les informations fournies ci-dessous :
 
 {content_summary}
@@ -138,12 +138,12 @@ Pour tous les timestamps suivants :
 [1-2 phrases soulignant en quoi cette période diffère de la précédente, en se concentrant sur les nouveaux éléments ou les changements significatifs]
 
 Fournissez votre analyse en utilisant uniquement ce format, basé uniquement sur les informations données. N'incluez pas de sections de résumé ou d'aperçu supplémentaires au-delà de ce qui est spécifié dans cette structure.
-"""
+""",
 }
 
 
 HTML_FORMAT_PROMPT = {
-    'en': """You are an expert data analyst tasked with formatting the following strategic foresight analysis into a structured HTML dashboard. Use the provided HTML template to organize the information.
+    "en": """You are an expert data analyst tasked with formatting the following strategic foresight analysis into a structured HTML dashboard. Use the provided HTML template to organize the information.
 
 Topic Evolution Summary:
 {topic_summary}
@@ -164,8 +164,7 @@ HTML Template:
 {html_template}
 
 Please provide the completed HTML with all placeholders replaced by the relevant content from the analysis.""",
-
-    'fr': """Vous êtes un analyste de données expert chargé de formater l'analyse de prospective stratégique suivante dans un tableau de bord HTML structuré. Utilisez le modèle HTML fourni pour organiser les informations.
+    "fr": """Vous êtes un analyste de données expert chargé de formater l'analyse de prospective stratégique suivante dans un tableau de bord HTML structuré. Utilisez le modèle HTML fourni pour organiser les informations.
 
 Résumé de l'Évolution du Sujet :
 {topic_summary}
@@ -185,64 +184,76 @@ Instructions :
 Modèle HTML :
 {html_template}
 
-Veuillez fournir le HTML complété avec tous les espaces réservés remplacés par le contenu pertinent de l'analyse."""
+Veuillez fournir le HTML complété avec tous les espaces réservés remplacés par le contenu pertinent de l'analyse.""",
 }
 
-def get_prompt(language, prompt_type, topic_number=None, content_summary=None, summary_from_first_prompt=None, topic_summary=None, weak_signal_analysis=None, html_template=None):
-    lang = 'en' if language == 'English' else 'fr'
+
+def get_prompt(
+    language,
+    prompt_type,
+    topic_number=None,
+    content_summary=None,
+    summary_from_first_prompt=None,
+    topic_summary=None,
+    weak_signal_analysis=None,
+    html_template=None,
+):
+    lang = "en" if language == "English" else "fr"
 
     if prompt_type == "weak_signal":
         prompt = (
-            SIGNAL_INTRO[lang].format(summary_from_first_prompt=summary_from_first_prompt) +
-            SIGNAL_INSTRUCTIONS[lang]
+            SIGNAL_INTRO[lang].format(
+                summary_from_first_prompt=summary_from_first_prompt
+            )
+            + SIGNAL_INSTRUCTIONS[lang]
         )
-    
+
     elif prompt_type == "topic_summary":
         prompt = TOPIC_SUMMARY_PROMPT[lang].format(
-            topic_number=topic_number,
-            content_summary=content_summary
+            topic_number=topic_number, content_summary=content_summary
         )
-    
+
     elif prompt_type == "html_format":
         # Read the appropriate HTML template based on the language
-        if lang == 'en':
+        if lang == "en":
             template_file = Path(__file__).parent / "signal_llm_template_en.html"
         else:
             template_file = Path(__file__).parent / "signal_llm_template_fr.html"
-        with open(template_file, 'r', encoding='utf-8') as file:
+        with open(template_file, "r", encoding="utf-8") as file:
             html_template = file.read()
 
         prompt = HTML_FORMAT_PROMPT[lang].format(
             topic_summary=topic_summary,
             weak_signal_analysis=weak_signal_analysis,
-            html_template=html_template
+            html_template=html_template,
         )
-    
+
     else:
         raise ValueError(f"Unsupported prompt type: {prompt_type}")
 
     return prompt
 
+
 # Function to parse the model's output and save as HTML
 def save_html_output(model_output, output_file="signal_llm.html"):
     # Clean the HTML content
     cleaned_html = model_output.strip()  # Remove leading/trailing whitespace
-    
+
     # Remove ```html from the beginning if present
     if cleaned_html.startswith("```html"):
         cleaned_html = cleaned_html[7:]
     elif cleaned_html.startswith("```"):
         cleaned_html = cleaned_html[3:]
-    
+
     # Remove ``` from the end if present
     if cleaned_html.endswith("```"):
         cleaned_html = cleaned_html[:-3]
-    
+
     # Final strip to remove any remaining whitespace
     cleaned_html = cleaned_html.strip()
     output_path = Path(__file__).parent / output_file
 
     # Save the cleaned HTML
-    with open(output_path, 'w', encoding='utf-8') as file:
+    with open(output_path, "w", encoding="utf-8") as file:
         file.write(cleaned_html)
     print(f"Cleaned HTML output saved to {output_path}")

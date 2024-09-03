@@ -79,7 +79,9 @@ if __name__ == "__main__":
         logger.info(f"Loading dataset...")
         learning_type = learning_strategy.get("learning_strategy", INFERENCE_ONLY)
         model_path = learning_strategy.get("bertopic_model_path", None)
-        split_data_by_paragraphs= learning_strategy.getboolean("split_data_by_paragraphs", False)
+        split_data_by_paragraphs = learning_strategy.getboolean(
+            "split_data_by_paragraphs", False
+        )
         if model_path:
             model_path = OUTPUT_DIR / model_path
         if learning_type == INFERENCE_ONLY and (
@@ -152,12 +154,16 @@ if __name__ == "__main__":
             summarizer_class=summarizer_class,
             summary_mode=newsletter_params.get("summary_mode"),
             prompt_language=newsletter_params.get("prompt_language", "fr"),
-            improve_topic_description=newsletter_params.getboolean("improve_topic_description", False),
+            improve_topic_description=newsletter_params.getboolean(
+                "improve_topic_description", False
+            ),
             openai_model_name=newsletter_params.get("openai_model_name"),
         )
 
-        if newsletter_params.getboolean("debug",True):
-            conf_dict = {section: dict(config[section]) for section in config.sections()}
+        if newsletter_params.getboolean("debug", True):
+            conf_dict = {
+                section: dict(config[section]) for section in config.sections()
+            }
             newsletter_md += f"\n\n## Debug: config\n\n{conf_dict} \n\n"
 
         output_dir = OUTPUT_DIR / newsletter_params.get("output_directory")
@@ -199,9 +205,7 @@ if __name__ == "__main__":
             ngram_range=config.getliteral(
                 "topic_model.count_vectorizer", "ngram_range"
             ),
-            min_df=config.getint(
-                "topic_model.count_vectorizer", "min_df"
-            )
+            min_df=config.getint("topic_model.count_vectorizer", "min_df"),
         )
         # Step 5 - c-TF-IDF model
         ctfidf_model = ClassTfidfTransformer(
@@ -272,7 +276,9 @@ if __name__ == "__main__":
             help="Path to newsletter config file"
         ),
         data_feed_cfg_path: Path = typer.Argument(help="Path to data feed config file"),
-        cuda_devices: str = typer.Option(BEST_CUDA_DEVICE, help="CUDA_VISIBLE_DEVICES parameters"),
+        cuda_devices: str = typer.Option(
+            BEST_CUDA_DEVICE, help="CUDA_VISIBLE_DEVICES parameters"
+        ),
     ):
         """Schedule data scrapping on the basis of a feed configuration file"""
         schedule_newsletter(newsletter_cfg_path, data_feed_cfg_path, cuda_devices)

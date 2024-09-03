@@ -22,11 +22,13 @@ DBPEDIA_REST_API_URL = os.getenv("DBPEDIA_REST_API_URL", "http://localhost:2222/
 # These logs are just there to force the imports of the factories - DO NOT REMOVE!
 logger.debug(f"{common_factory.__name__} loaded.")
 
+
 def load_nlp(config_path: Union[str, Path] = RTE_NLP_CONFIG_PATH, **kwargs):
     t1 = time.time()
     logger.info("Building nlp...")
     config = Config().from_disk(
-        config_path, overrides={"components.dbpedia.dbpedia_rest_endpoint": DBPEDIA_REST_API_URL}
+        config_path,
+        overrides={"components.dbpedia.dbpedia_rest_endpoint": DBPEDIA_REST_API_URL},
     )
 
     nlp = French.from_config(config, **kwargs)

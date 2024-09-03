@@ -21,15 +21,20 @@ from loguru import logger
 
 from wattelse.common import BASE_DATA_PATH
 
-SCOPES = ["https://mail.google.com/"] # full access to mail API
+SCOPES = ["https://mail.google.com/"]  # full access to mail API
 FROM = "wattelse.ai@gmail.com"
 TOKEN_PATH = BASE_DATA_PATH / "gmail_token.json"
-DEFAULT_GMAIL_CREDENTIALS_PATH = Path(__file__).parent.parent / "config" / "gmail_credentials.json"
+DEFAULT_GMAIL_CREDENTIALS_PATH = (
+    Path(__file__).parent.parent / "config" / "gmail_credentials.json"
+)
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)
 
-def get_credentials(credentials_path: Path = DEFAULT_GMAIL_CREDENTIALS_PATH) -> Credentials:
+
+def get_credentials(
+    credentials_path: Path = DEFAULT_GMAIL_CREDENTIALS_PATH,
+) -> Credentials:
     """Returns credentials for the user"""
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
@@ -68,7 +73,9 @@ def send_email(
         message["Subject"] = subject
 
         # Record the MIME types of both parts - text/plain and text/html.
-        part1 = MIMEText(content, "plain" if content_type in ["md","text","txt"] else content_type)
+        part1 = MIMEText(
+            content, "plain" if content_type in ["md", "text", "txt"] else content_type
+        )
         message.attach(part1)
 
         encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()

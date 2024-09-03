@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("chatbot", "0002_rename_timestamp_chat_answer_timestamp_and_more"),
     ]

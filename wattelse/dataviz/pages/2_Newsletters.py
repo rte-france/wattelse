@@ -17,7 +17,7 @@ with open(st.session_state["data_folder"] / st.session_state["data_name"]) as f:
     html_content = f.read()
 
     st.components.v1.html(
-            html_content,
-            height=800,
-            scrolling=True,
-        )
+        html_content,
+        height=800,
+        scrolling=True,
+    )

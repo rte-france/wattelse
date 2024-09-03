@@ -6,7 +6,8 @@
 import streamlit as st
 from typing import Any, Dict, Optional
 import pandas as pd
-import numpy as np 
+import numpy as np
+
 
 class SessionStateManager:
     @staticmethod
@@ -56,5 +57,5 @@ class SessionStateManager:
         return st.session_state.get(key)
 
     @staticmethod
-    def get_embeddings(key: str = 'embeddings') -> Optional[np.ndarray]:
+    def get_embeddings(key: str = "embeddings") -> Optional[np.ndarray]:
         return st.session_state.get(key)

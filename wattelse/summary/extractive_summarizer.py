@@ -14,7 +14,10 @@ from sentence_transformers.models import Transformer, Pooling
 from torch import Tensor
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.api.prompts import FR_SYSTEM_SUMMARY_SENTENCES, EN_SYSTEM_SUMMARY_SENTENCES
+from wattelse.api.prompts import (
+    FR_SYSTEM_SUMMARY_SENTENCES,
+    EN_SYSTEM_SUMMARY_SENTENCES,
+)
 from wattelse.summary.lexrank import degree_centrality_scores
 from wattelse.summary.summarizer import (
     Summarizer,
@@ -30,9 +33,7 @@ DEFAULT_CHUNKS_NUMBER_SUMMARY = 6
 nltk.download("punkt")
 
 
-def _summarize_based_on_cos_scores(
-        cos_scores, summary_size: int
-) -> List[int]:
+def _summarize_based_on_cos_scores(cos_scores, summary_size: int) -> List[int]:
     """Summarizes "something" on the basis of a cosine similarity matrix.
     This approach may apply to text or a set of chunks.
 
@@ -105,11 +106,11 @@ class ExtractiveSummarizer(Summarizer):
         )
 
     def generate_summary(
-            self,
-            text: str,
-            max_sentences: int = DEFAULT_MAX_SENTENCES,
-            max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
-            **kwargs
+        self,
+        text: str,
+        max_sentences: int = DEFAULT_MAX_SENTENCES,
+        max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
+        **kwargs,
     ) -> str:
         summary = self.summarize_text(text, max_sentences, max_length_ratio)
         return " ".join(summary)
@@ -136,7 +137,7 @@ class ExtractiveSummarizer(Summarizer):
         """
         # filter text according to special tokens __<special>__
         if "__" in text:
-            text = text[text.rindex("__") + 2:]
+            text = text[text.rindex("__") + 2 :]
 
         if use_spacy:
             nlp_doc = self.nlp(text)
@@ -165,10 +166,10 @@ class ExtractiveSummarizer(Summarizer):
         return torch.stack(chunk_embeddings)
 
     def summarize_text(
-            self,
-            text: str,
-            max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
-            percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
+        self,
+        text: str,
+        max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
+        percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         """Summarizes a text using the maximum number of sentences given as parameter
 
@@ -210,9 +211,9 @@ class ExtractiveSummarizer(Summarizer):
         return summary
 
     def summarize_chunks(
-            self,
-            chunks: List[str],
-            max_nb_chunks: Optional[int] = DEFAULT_CHUNKS_NUMBER_SUMMARY,
+        self,
+        chunks: List[str],
+        max_nb_chunks: Optional[int] = DEFAULT_CHUNKS_NUMBER_SUMMARY,
     ) -> List[str]:
         """Summarizes a list of text chunks using their embedding representation
 
@@ -244,12 +245,12 @@ class ExtractiveSummarizer(Summarizer):
         return summary
 
     def summarize_text_with_additional_embeddings(
-            self,
-            text: str,
-            function_to_compute_embeddings: Callable,
-            ratio_for_additional_embeddings: Optional[float] = 0.5,
-            max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
-            percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
+        self,
+        text: str,
+        function_to_compute_embeddings: Callable,
+        ratio_for_additional_embeddings: Optional[float] = 0.5,
+        max_nb: Optional[int] = DEFAULT_MAX_SENTENCES,
+        percentage: Optional[float] = DEFAULT_SUMMARIZATION_RATIO,
     ) -> List[str]:
         """Summarizes a text using the maximum number of sentences given as parameter.
         The summary is based on the combination of two embeddings: the "standard" sentence embeddings obtained by
@@ -303,14 +304,12 @@ class ExtractiveSummarizer(Summarizer):
 
         # Combines the two cosine matrices
         new_cos_scores = (
-                ratio_for_additional_embeddings * cos_scores_additional
-                + (1 - ratio_for_additional_embeddings) * cos_scores
+            ratio_for_additional_embeddings * cos_scores_additional
+            + (1 - ratio_for_additional_embeddings) * cos_scores
         )
 
         # Computes a summary based on the sentence embeddings
-        summary_indices = _summarize_based_on_cos_scores(
-            new_cos_scores, summary_size
-        )
+        summary_indices = _summarize_based_on_cos_scores(new_cos_scores, summary_size)
 
         # Export summary as a list of sentences
         summary = [sentences[idx].strip() for idx in summary_indices]
@@ -336,24 +335,33 @@ class EnhancedExtractiveSummarizer(ExtractiveSummarizer):
     """Combination of extractive summarizer for quality of extraction and LLM for rephrasing and make the text more
     fluid"""
 
-    def __init__(self, api_key: str = None, endpoint: str = None, model_name=DEFAULT_SUMMARIZER_MODEL):
+    def __init__(
+        self,
+        api_key: str = None,
+        endpoint: str = None,
+        model_name=DEFAULT_SUMMARIZER_MODEL,
+    ):
         super().__init__(model_name=model_name)
         self.api = OpenAI_Client(api_key=api_key, endpoint=endpoint)
 
     def generate_summary(
-            self,
-            text,
-            max_sentences=DEFAULT_MAX_SENTENCES,
-            max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
-            prompt_language="fr",
-            model_name: str = None,
+        self,
+        text,
+        max_sentences=DEFAULT_MAX_SENTENCES,
+        max_length_ratio: float = DEFAULT_SUMMARIZATION_RATIO,
+        prompt_language="fr",
+        model_name: str = None,
     ) -> str:
-        base_summary = super().generate_summary(text=text, max_sentences=max_sentences, max_length_ratio=max_length_ratio)
+        base_summary = super().generate_summary(
+            text=text, max_sentences=max_sentences, max_length_ratio=max_length_ratio
+        )
         logger.debug(f"Base summary: {base_summary}")
         improved_summary = self.api.generate(
             system_prompt=(
-                FR_SYSTEM_SUMMARY_SENTENCES if prompt_language == "fr" else EN_SYSTEM_SUMMARY_SENTENCES).format(
-                num_sentences=max_sentences),
+                FR_SYSTEM_SUMMARY_SENTENCES
+                if prompt_language == "fr"
+                else EN_SYSTEM_SUMMARY_SENTENCES
+            ).format(num_sentences=max_sentences),
             user_prompt=base_summary,
             model_name=model_name if model_name else self.api.model_name,
         )
