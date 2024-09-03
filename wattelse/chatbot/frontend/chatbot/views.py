@@ -77,7 +77,8 @@ def main_page(request):
     else:
         admin_group_selection = None
     return render(
-        request, "chatbot/chatbot.html",
+        request,
+        "chatbot/chatbot.html",
         {
             "conversation_id": conversation_id,
             "available_docs": available_docs,
@@ -87,7 +88,7 @@ def main_page(request):
             "user_group": user_group_id,
             "group_usernames_dict": group_usernames_dict,
             "admin_group_selection": admin_group_selection,
-        }
+        },
     )
 
 
@@ -106,7 +107,9 @@ def login(request):
             user_group_id = get_user_group_id(user)
             if user_group_id is None:
                 error_message = "Vous n'appartenez à aucun groupe."
-                return render(request, "chatbot/login.html", {"error_message": error_message})
+                return render(
+                    request, "chatbot/login.html", {"error_message": error_message}
+                )
             else:
                 auth.login(request, user)
                 logger.info(f"[User: {request.user.username}] logged in")
@@ -115,7 +118,9 @@ def login(request):
         # Else return error
         else:
             error_message = "Nom d'utilisateur ou mot de passe invalides"
-            return render(request, "chatbot/login.html", {"error_message": error_message})
+            return render(
+                request, "chatbot/login.html", {"error_message": error_message}
+            )
     else:
         return render(request, "chatbot/login.html")
 
@@ -133,7 +138,9 @@ def register(request):
         # Check username is not already taken
         if User.objects.filter(username=username).exists():
             error_message = "Nom d'utilisateur indisponible"
-            return render(request, "chatbot/register.html", {"error_message": error_message})
+            return render(
+                request, "chatbot/register.html", {"error_message": error_message}
+            )
 
         # Check both password are the same
         if password1 == password2:
@@ -143,10 +150,14 @@ def register(request):
                 return new_user_created(request, username=user.username)
             except:
                 error_message = "Erreur lors de la  création du compte"
-                return render(request, "chatbot/register.html", {"error_message": error_message})
+                return render(
+                    request, "chatbot/register.html", {"error_message": error_message}
+                )
         else:
             error_message = "Mots de passe non identiques"
-            return render(request, "chatbot/register.html", {"error_message": error_message})
+            return render(
+                request, "chatbot/register.html", {"error_message": error_message}
+            )
     return render(request, "chatbot/register.html")
 
 
@@ -188,7 +199,9 @@ def query_rag(request):
         selected_docs = json.loads(selected_docs)
         logger.info(f"[User: {request.user.username}] Selected docs: {selected_docs}")
         if not selected_docs:
-            logger.warning(f"[User: {request.user.username}] No selected docs received, using all available docs")
+            logger.warning(
+                f"[User: {request.user.username}] No selected docs received, using all available docs"
+            )
             selected_docs = []
 
         # Query RAG and stream response
@@ -201,11 +214,17 @@ def query_rag(request):
                 stream=True,
             )
 
-            return StreamingHttpResponse(streaming_generator(response), status=200, content_type='text/event-stream')
+            return StreamingHttpResponse(
+                streaming_generator(response),
+                status=200,
+                content_type="text/event-stream",
+            )
 
         except RAGAPIError as e:
             logger.error(f"[User: {request.user.username}] {e}")
-            return JsonResponse({"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500)
+            return JsonResponse(
+                {"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500
+            )
     else:
         raise Http404()
 
@@ -215,7 +234,11 @@ def save_interaction(request):
     if request.method == "POST":
         # Save query and response in DB
         question_ts_s = request.POST.get("question_timestamp", "")
-        question_ts = datetime.strptime(question_ts_s, "%Y-%m-%dT%H:%M:%S.%fZ") if question_ts_s else None
+        question_ts = (
+            datetime.strptime(question_ts_s, "%Y-%m-%dT%H:%M:%S.%fZ")
+            if question_ts_s
+            else None
+        )
         # Convert to non-naive timedate (required for Django)
         question_ts = pytz.utc.localize(question_ts)
         chat = Chat(
@@ -252,16 +275,20 @@ def upload(request):
     """Main function for delete interface.
     If request method is POST : make a call to RAGOrchestratorClient to upload the specified documents
     """
-    if request.method == 'POST':
+    if request.method == "POST":
         # Get the uploaded file
-        uploaded_file = request.FILES.get('file')
+        uploaded_file = request.FILES.get("file")
 
         if not uploaded_file:
-            logger.warning(f"[User: {request.user.username}] No file to be uploaded, action ignored")
+            logger.warning(
+                f"[User: {request.user.username}] No file to be uploaded, action ignored"
+            )
             return JsonResponse({"error_message": "No file received!"}, status=500)
         else:
             user_group_id = get_user_group_id(request.user)
-            logger.debug(f"[User: {request.user.username}] Received file: {uploaded_file.name}")
+            logger.debug(
+                f"[User: {request.user.username}] Received file: {uploaded_file.name}"
+            )
 
             # Create a temporary directory
             # TODO: investigate in memory temp file, probably a better option
@@ -270,7 +297,7 @@ def upload(request):
                 temp_file_path = Path(temp_dir) / Path(uploaded_file.name)
 
                 # Open the temporary file for writing
-                with open(temp_file_path, 'wb') as f:
+                with open(temp_file_path, "wb") as f:
                     for chunk in uploaded_file.chunks():
                         f.write(chunk)
 
@@ -279,11 +306,18 @@ def upload(request):
                     RAG_API.upload_files(user_group_id, [temp_file_path])
                 except RAGAPIError as e:
                     logger.error(f"[User: {request.user.username}] {e}")
-                    return JsonResponse({"error_message": f"Erreur de téléchargement de {uploaded_file.name}\n{e}"},
-                                        status=500)
+                    return JsonResponse(
+                        {
+                            "error_message": f"Erreur de téléchargement de {uploaded_file.name}\n{e}"
+                        },
+                        status=500,
+                    )
 
             # Returns the list of updated available documents
-            return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
+            return JsonResponse(
+                {"available_docs": RAG_API.list_available_docs(user_group_id)},
+                status=200,
+            )
 
 
 def delete(request):
@@ -293,20 +327,35 @@ def delete(request):
     if request.method == "POST":
         # Select documents for removal
         selected_docs = request.POST.get("selected_docs", None)
-        logger.debug(f"[User: {request.user.username}] Docs selected for removal: {selected_docs}")
+        logger.debug(
+            f"[User: {request.user.username}] Docs selected for removal: {selected_docs}"
+        )
         if not selected_docs:
-            logger.warning(f"[User: {request.user.username}] No docs selected for removal received, action ignored")
+            logger.warning(
+                f"[User: {request.user.username}] No docs selected for removal received, action ignored"
+            )
             return JsonResponse({"warning_message": "No document removed"}, status=202)
         else:
             user_group_id = get_user_group_id(request.user)
             try:
-                rag_response = RAG_API.remove_documents(user_group_id, json.loads(selected_docs))
+                rag_response = RAG_API.remove_documents(
+                    user_group_id, json.loads(selected_docs)
+                )
             except RAGAPIError as e:
-                logger.error(f"[User: {request.user.username}] Error in deleting documents {selected_docs}: {e}")
-                return JsonResponse({"error_message": f"Erreur pour supprimer les documents {selected_docs}"},
-                                    status=500)
+                logger.error(
+                    f"[User: {request.user.username}] Error in deleting documents {selected_docs}: {e}"
+                )
+                return JsonResponse(
+                    {
+                        "error_message": f"Erreur pour supprimer les documents {selected_docs}"
+                    },
+                    status=500,
+                )
             # Returns the list of updated available documents
-            return JsonResponse({"available_docs": RAG_API.list_available_docs(user_group_id)}, status=200)
+            return JsonResponse(
+                {"available_docs": RAG_API.list_available_docs(user_group_id)},
+                status=200,
+            )
 
 
 def file_viewer(request, file_name: str):
@@ -321,10 +370,10 @@ def file_viewer(request, file_name: str):
     if file_path.exists():
         suffix = file_path.suffix.lower()
         if suffix == ".pdf":
-            content_type = 'application/pdf'
-            with open(file_path, 'rb') as f:
+            content_type = "application/pdf"
+            with open(file_path, "rb") as f:
                 response = HttpResponse(f.read(), content_type=content_type)
-                response['Content-Disposition'] = f'inline; filename="{file_path.name}"'
+                response["Content-Disposition"] = f'inline; filename="{file_path.name}"'
                 return response
         elif suffix == ".docx":
             with open(file_path, "rb") as docx_file:
@@ -332,9 +381,9 @@ def file_viewer(request, file_name: str):
                 html = result.value  # The generated HTML
                 return HttpResponse(html)
         elif suffix == ".xlsx":
-            xlsx_file = open(file_path, 'rb')
+            xlsx_file = open(file_path, "rb")
             out_file = io.StringIO()
-            xlsx2html(xlsx_file, out_file, locale='en')
+            xlsx2html(xlsx_file, out_file, locale="en")
             out_file.seek(0)
             return HttpResponse(out_file.read())
     else:
@@ -359,20 +408,25 @@ def add_user_to_group(request):
         if User.objects.filter(username=new_username).exists():
             new_user = User.objects.get(username=new_username)
         else:
-            logger.error(f"[User: {request.user.username}] Username {new_username} not found")
+            logger.error(
+                f"[User: {request.user.username}] Username {new_username} not found"
+            )
             error_message = f"Le nom d'utilisateur {new_username} n'a pas été trouvé"
             return JsonResponse({"error_message": error_message}, status=500)
 
         # If new_user already in a group then return error status code
         if get_user_group_id(new_user) is not None:
             logger.error(
-                f"[User: {request.user.username}] User with username {new_username} already belongs to a group")
+                f"[User: {request.user.username}] User with username {new_username} already belongs to a group"
+            )
             error_message = f"L'utilisateur {new_username} appartient déjà à un groupe"
             return JsonResponse({"error_message": error_message}, status=500)
 
         # If new_user has no group then add it to superuser group
         else:
-            logger.info(f"[User: {request.user.username}] Adding {new_username} to group {superuser_group_id}")
+            logger.info(
+                f"[User: {request.user.username}] Adding {new_username} to group {superuser_group_id}"
+            )
             new_user.groups.add(superuser_group)
             return HttpResponse(status=201)
     else:
@@ -397,7 +451,9 @@ def remove_user_from_group(request):
         if User.objects.filter(username=username_to_remove).exists():
             user_to_remove = User.objects.get(username=username_to_remove)
         else:
-            error_message = f"Le nom d'utilisateur {username_to_remove} n'a pas été trouvé"
+            error_message = (
+                f"Le nom d'utilisateur {username_to_remove} n'a pas été trouvé"
+            )
             return JsonResponse({"error_message": error_message}, status=500)
 
         # Send an error if a user tries to remove himself
@@ -406,7 +462,9 @@ def remove_user_from_group(request):
             return JsonResponse({"error_message": error_message}, status=500)
 
         # Remove user_to_remove
-        logger.info(f"[User: {request.user.username}] Removing {username_to_remove} from group {superuser_group_id}")
+        logger.info(
+            f"[User: {request.user.username}] Removing {username_to_remove} from group {superuser_group_id}"
+        )
         user_to_remove.groups.remove(superuser_group)
         return HttpResponse(status=201)
     else:
@@ -440,8 +498,15 @@ def get_questions_count_since_last_feedback(request):
     """
     if request.method == "POST":
         try:
-            last_feedback = Chat.objects.filter(~Q(short_feedback__exact=''), user=request.user,
-                                                short_feedback__isnull=False).order_by('-question_timestamp').first()
+            last_feedback = (
+                Chat.objects.filter(
+                    ~Q(short_feedback__exact=""),
+                    user=request.user,
+                    short_feedback__isnull=False,
+                )
+                .order_by("-question_timestamp")
+                .first()
+            )
             if last_feedback:
                 last_feedback_date = last_feedback.question_timestamp
             else:
@@ -449,7 +514,9 @@ def get_questions_count_since_last_feedback(request):
         except Chat.DoesNotExist:
             return JsonResponse({"count": 9999})  # arbitrary big value
 
-        count = Chat.objects.filter(user=request.user, question_timestamp__gt=last_feedback_date).count()
+        count = Chat.objects.filter(
+            user=request.user, question_timestamp__gt=last_feedback_date
+        ).count()
         return JsonResponse({"count": count})
 
 
