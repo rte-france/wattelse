@@ -79,7 +79,9 @@ if __name__ == "__main__":
         logger.info(f"Loading dataset...")
         learning_type = learning_strategy.get("learning_strategy", INFERENCE_ONLY)
         model_path = learning_strategy.get("bertopic_model_path", None)
-        split_data_by_paragraphs= learning_strategy.getboolean("split_data_by_paragraphs", False)
+        split_data_by_paragraphs = learning_strategy.getboolean(
+            "split_data_by_paragraphs", False
+        )
         if model_path:
             model_path = OUTPUT_DIR / model_path
         if learning_type == INFERENCE_ONLY and (
@@ -152,12 +154,16 @@ if __name__ == "__main__":
             summarizer_class=summarizer_class,
             summary_mode=newsletter_params.get("summary_mode"),
             prompt_language=newsletter_params.get("prompt_language", "fr"),
-            improve_topic_description=newsletter_params.getboolean("improve_topic_description", False),
+            improve_topic_description=newsletter_params.getboolean(
+                "improve_topic_description", False
+            ),
             openai_model_name=newsletter_params.get("openai_model_name"),
         )
 
-        if newsletter_params.getboolean("debug",True):
-            conf_dict = {section: dict(config[section]) for section in config.sections()}
+        if newsletter_params.getboolean("debug", True):
+            conf_dict = {
+                section: dict(config[section]) for section in config.sections()
+            }
             newsletter_md += f"\n\n## Debug: config\n\n{conf_dict} \n\n"
 
         output_dir = OUTPUT_DIR / newsletter_params.get("output_directory")
@@ -199,9 +205,7 @@ if __name__ == "__main__":
             ngram_range=config.getliteral(
                 "topic_model.count_vectorizer", "ngram_range"
             ),
-            min_df=config.getint(
-                "topic_model.count_vectorizer", "min_df"
-            )
+            min_df=config.getint("topic_model.count_vectorizer", "min_df"),
         )
         # Step 5 - c-TF-IDF model
         ctfidf_model = ClassTfidfTransformer(
@@ -212,7 +216,7 @@ if __name__ == "__main__":
         if topic_params.get("nr_topics") == 0:
             topic_params["nr_topics"] = None
 
-        topic_model, topics, _ = train_BERTopic(
+        topic_model, topics, _, _, _, _ = train_BERTopic(
             **topic_params,
             full_dataset=dataset,
             embedding_model_name=embedding_model_name,
@@ -238,11 +242,11 @@ if __name__ == "__main__":
 
         if learning_strategy == INFERENCE_ONLY or learning_strategy == LEARN_FROM_LAST:
             # use the last data available in the feed dir
-            return load_data(latest_file)
+            return load_data(Path(latest_file))
 
         elif learning_strategy == LEARN_FROM_SCRATCH:
             # use all data available in the feed dir
-            dfs = [load_data(f) for f in list_all_files]
+            dfs = [load_data(Path(f)) for f in list_all_files]
             new_df = pd.concat(dfs).drop_duplicates(
                 subset=["title"], keep="first", inplace=False
             )
@@ -253,7 +257,7 @@ if __name__ == "__main__":
         return loaded_model
 
     def _save_topic_model(
-        topic_model: BERTopic, embedding_model: EmbeddingModel, model_path_dir: Path
+        topic_model: BERTopic, embedding_model: str, model_path_dir: Path
     ):
         full_model_path_dir = OUTPUT_DIR / "models" / model_path_dir
         full_model_path_dir.mkdir(parents=True, exist_ok=True)
@@ -272,7 +276,9 @@ if __name__ == "__main__":
             help="Path to newsletter config file"
         ),
         data_feed_cfg_path: Path = typer.Argument(help="Path to data feed config file"),
-        cuda_devices: str = typer.Option(BEST_CUDA_DEVICE, help="CUDA_VISIBLE_DEVICES parameters"),
+        cuda_devices: str = typer.Option(
+            BEST_CUDA_DEVICE, help="CUDA_VISIBLE_DEVICES parameters"
+        ),
     ):
         """Schedule data scrapping on the basis of a feed configuration file"""
         schedule_newsletter(newsletter_cfg_path, data_feed_cfg_path, cuda_devices)
