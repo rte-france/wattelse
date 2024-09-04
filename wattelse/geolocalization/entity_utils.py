@@ -20,7 +20,7 @@ def geolocalize_data(nlp, df: pd.DataFrame) -> pd.DataFrame:
     logger.info("Geolocalizing data...")
     geojson_data_list = []
 
-    for doc in tqdm(nlp.pipe(df[text_col], n_process=os.cpu_count()-1)):
+    for doc in tqdm(nlp.pipe(df[text_col], n_process=os.cpu_count() - 1)):
         # DBPedia resources
         resources = doc._.dbpedia_raw_result.get("Resources")
         features = []

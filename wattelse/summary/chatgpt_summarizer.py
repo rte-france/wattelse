@@ -6,7 +6,10 @@
 from loguru import logger
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.api.prompts import EN_SYSTEM_SUMMARY_SENTENCES, FR_SYSTEM_SUMMARY_SENTENCES
+from wattelse.api.prompts import (
+    EN_SYSTEM_SUMMARY_SENTENCES,
+    FR_SYSTEM_SUMMARY_SENTENCES,
+)
 from wattelse.summary.summarizer import DEFAULT_MAX_SENTENCES
 
 from wattelse.summary.summarizer import Summarizer
@@ -21,15 +24,14 @@ class GPTSummarizer(Summarizer):
         logger.debug("GPTSummarizer initialized")
 
     def generate_summary(
-            self,
-            article_text: str,
-            max_sentences: int = DEFAULT_MAX_SENTENCES,
-            prompt_language: str = "fr",
-            max_article_length: int = 1500,
-            model_name: str = None,
-            **kwargs
+        self,
+        article_text: str,
+        max_sentences: int = DEFAULT_MAX_SENTENCES,
+        prompt_language: str = "fr",
+        max_article_length: int = 1500,
+        model_name: str = None,
+        **kwargs
     ) -> str:
-
         # Limit input length in case the text is large
         article_text = keep_first_n_words(article_text, max_article_length)
 
@@ -48,12 +50,12 @@ class GPTSummarizer(Summarizer):
 
 def keep_first_n_words(text: str, n: int) -> str:
     """This function keeps the first n words of a text.
-  Args:
-      text: The text string.
-      n: The number of words to keep.
-  Returns:
-      A string containing the first n words of the text.
-  """
+    Args:
+        text: The text string.
+        n: The number of words to keep.
+    Returns:
+        A string containing the first n words of the text.
+    """
     words = text.split()
     if n > len(words):
         return text  # Handle case where n is larger than the number of words

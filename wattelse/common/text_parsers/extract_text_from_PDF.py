@@ -14,17 +14,18 @@ from loguru import logger
 
 from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_PATH
 
+
 def _clean_text(x):
     """
-    Function applied to clean the text column in the DataFrame. 
+    Function applied to clean the text column in the DataFrame.
     """
-    
+
     # Weird behavior of pymupdf
     x = re.sub("ff ", "ff", x)
     x = re.sub("ﬁ ", "fi", x)
     x = re.sub("fi ", "fi", x)
     x = re.sub("�", " ", x)
-    
+
     # Remove PDF structure
     x = re.sub("-\n", "", x)
     x = re.sub(r"(?<!\n)\n(?!\n)", " ", x)
@@ -34,7 +35,7 @@ def _clean_text(x):
     return x
 
 
-def extract_pages_from_pdf(pdf_file_path, filter_value = 10) -> pd.DataFrame:
+def extract_pages_from_pdf(pdf_file_path, filter_value=10) -> pd.DataFrame:
     """Extracts text from PDF. Each extract correspond to the content of 1 PDF page.
 
     Args:
@@ -60,16 +61,21 @@ def extract_pages_from_pdf(pdf_file_path, filter_value = 10) -> pd.DataFrame:
 
     # Clean text
     df[TEXT_COLUMN] = df[TEXT_COLUMN].apply(_clean_text).astype(str)
-    
+
     # Filter blocks to keep paragraphs only
     logger.debug(f"Removing extracts having less than {filter_value} words...")
-    df = df[df[TEXT_COLUMN].str.split().apply(len) > filter_value].reset_index(drop=True)
+    df = df[df[TEXT_COLUMN].str.split().apply(len) > filter_value].reset_index(
+        drop=True
+    )
     logger.debug(f"{len(df)} pages remaining")
     return df
 
-def extract_chunks_from_pdf(pdf_file_path, chunk_size = 200, chunk_overlap = 50) -> pd.DataFrame:
+
+def extract_chunks_from_pdf(
+    pdf_file_path, chunk_size=200, chunk_overlap=50
+) -> pd.DataFrame:
     """Extracts text from PDF. Each extract correspond to a chunk with some overlap with nearby other chunks.
-    
+
     Args:
         pdf_file_path (string): path to the pdf to parse.
         chunk_size (int): chunk size.
@@ -83,11 +89,13 @@ def extract_chunks_from_pdf(pdf_file_path, chunk_size = 200, chunk_overlap = 50)
     with fitz.open(pdf_file_path) as f:
         for page in f:
             full_text += page.get_text()
-    
-    full_text = _clean_text(full_text) # clean text
+
+    full_text = _clean_text(full_text)  # clean text
 
     # split text per sentence using llama_index
-    sentence_parser = SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, paragraph_separator="\n\n")
+    sentence_parser = SentenceSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap, paragraph_separator="\n\n"
+    )
     text_chunks = sentence_parser.split_text(full_text)
 
     # Transform into a pandas DataFrame
@@ -96,7 +104,10 @@ def extract_chunks_from_pdf(pdf_file_path, chunk_size = 200, chunk_overlap = 50)
 
     return df
 
-def parse_pdf(pdf_file: Path, output_path: Path = BASE_DATA_PATH, mode: str = "chunk") -> Path:
+
+def parse_pdf(
+    pdf_file: Path, output_path: Path = BASE_DATA_PATH, mode: str = "chunk"
+) -> Path:
     """Parse a pdf file using defined mode.
 
     Args:
@@ -111,9 +122,9 @@ def parse_pdf(pdf_file: Path, output_path: Path = BASE_DATA_PATH, mode: str = "c
     output_file = pdf_file.stem + ".csv"
     full_output_path = output_path / output_file
 
-    if mode=="chunk":
+    if mode == "chunk":
         df = extract_chunks_from_pdf(pdf_file)
-    elif mode=="page":
+    elif mode == "page":
         df = extract_pages_from_pdf(pdf_file)
 
     df[FILENAME_COLUMN] = pdf_file
@@ -121,6 +132,7 @@ def parse_pdf(pdf_file: Path, output_path: Path = BASE_DATA_PATH, mode: str = "c
     logger.info(f"Saved data file: {full_output_path}")
 
     return full_output_path
+
 
 if __name__ == "__main__":
     typer.run(parse_pdf)

@@ -30,18 +30,10 @@ class AbstractiveSummarizer(Summarizer):
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
         self.model = self.model.to(device)
 
-    def generate_summary(
-        self,
-        article_text,
-        **kwargs
-    ) -> str:
+    def generate_summary(self, article_text, **kwargs) -> str:
         return self.summarize_batch([article_text])[0]
 
-    def summarize_batch(
-        self,
-        article_texts: List[str],
-        **kwargs
-    ) -> List[str]:
+    def summarize_batch(self, article_texts: List[str], **kwargs) -> List[str]:
         inputs = self.tokenizer(
             [self.WHITESPACE_HANDLER(text) for text in article_texts],
             return_tensors="pt",
@@ -64,9 +56,12 @@ class AbstractiveSummarizer(Summarizer):
             num_beams=4,
         )
 
-        summaries = [self.tokenizer.decode(
-            output_id, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        ) for output_id in output_ids]
+        summaries = [
+            self.tokenizer.decode(
+                output_id, skip_special_tokens=True, clean_up_tokenization_spaces=False
+            )
+            for output_id in output_ids
+        ]
         return summaries
 
 
