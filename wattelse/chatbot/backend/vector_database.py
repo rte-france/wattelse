@@ -6,16 +6,17 @@
 # These 3 lines are used in case the default sqlite3 version of the system is too old for ChromaDB
 # It requires to install first 'pip install pysqlite3-binary'
 # these three lines swap the stdlib sqlite3 lib with the pysqlite3 package
-__import__('pysqlite3')
+__import__("pysqlite3")
 import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 
 from typing import Optional, List, Dict
 
 import chromadb
 from chromadb import Embeddings
-from langchain_community.vectorstores.chroma import Chroma
+from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from loguru import logger
 
@@ -44,12 +45,14 @@ def format_docs(docs: Document) -> str:
 
 
 class DocumentCollection:
-    def __init__(self, collection_name: str, embedding_function: Optional[Embeddings] = EmbeddingAPI()):
+    def __init__(
+        self,
+        collection_name: str,
+        embedding_function: Optional[Embeddings] = EmbeddingAPI(),
+    ):
         self.collection_name = collection_name
         self.embedding_function = embedding_function
-        self.client = chromadb.PersistentClient(
-            str(DATABASE_PERSISTENCE_PATH)
-        )
+        self.client = chromadb.PersistentClient(str(DATABASE_PERSISTENCE_PATH))
         self.collection = self.get_db_client()
 
     def get_db_client(self) -> Chroma:
@@ -60,7 +63,7 @@ class DocumentCollection:
             client=self.client,
             collection_name=self.collection_name,
             embedding_function=self.embedding_function,
-            collection_metadata={"hnsw:space": "cosine"} # l2 is the default
+            collection_metadata={"hnsw:space": "cosine"},  # l2 is the default
         )
         return langchain_chroma
 
@@ -79,7 +82,9 @@ class DocumentCollection:
 
     def get_ids(self, file_name: str) -> List[str]:
         """Return all the chunks of the collection matching the file name passed as parameter"""
-        data = self.collection.get(where={"file_name": file_name}, include=["metadatas"])
+        data = self.collection.get(
+            where={"file_name": file_name}, include=["metadatas"]
+        )
         return data["ids"]
 
     def is_present(self, file_name: str):
