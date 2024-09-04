@@ -12,10 +12,7 @@ from pathlib import Path
 
 from wattelse.bertopic.app.app_utils import plot_docs_reparition_over_time
 from wattelse.bertopic.app.state_utils import register_widget, save_widget_state
-from wattelse.bertopic.utils import (
-    TEXT_COLUMN,
-    TIMESTAMP_COLUMN
-)
+from wattelse.bertopic.utils import TEXT_COLUMN, TIMESTAMP_COLUMN
 
 
 def data_overview(df: pd.DataFrame):
@@ -38,8 +35,12 @@ def data_overview(df: pd.DataFrame):
         with col1:
             plot_docs_reparition_over_time(df, freq)
         with col2:
-            st.dataframe(st.session_state['timefiltered_df'][['index', TEXT_COLUMN, TIMESTAMP_COLUMN]],
-                         use_container_width=True)
+            st.dataframe(
+                st.session_state["timefiltered_df"][
+                    ["index", TEXT_COLUMN, TIMESTAMP_COLUMN]
+                ],
+                use_container_width=True,
+            )
 
 
 def choose_data(base_dir: Path, filters: List[str]):
@@ -59,11 +60,11 @@ def choose_data(base_dir: Path, filters: List[str]):
         [
             p.name
             for p in itertools.chain.from_iterable(
-            [
-                list(st.session_state["data_folder"].glob(f"{filter}"))
-                for filter in filters
-            ]
-        )
+                [
+                    list(st.session_state["data_folder"].glob(f"{filter}"))
+                    for filter in filters
+                ]
+            )
         ]
     )
 
@@ -87,7 +88,7 @@ def choose_data(base_dir: Path, filters: List[str]):
             itertools.chain.from_iterable(
                 [list(selected_folder.glob(f"{filter}")) for filter in filters]
             ),
-            key=lambda x: x.name
+            key=lambda x: x.name,
         )
         for file in data_files:
             checkbox_key = f"file-{file.name}"

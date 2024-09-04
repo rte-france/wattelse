@@ -10,7 +10,7 @@ from loguru import logger
 
 from wattelse.api.rag_orchestrator import ENDPOINT_QUERY_RAG, ENDPOINT_CREATE_SESSION
 
-HOST = "10.132.6.110" # gpu_pole
+HOST = "10.132.6.110"  # gpu_pole
 URL = f"http://{HOST}:1978"
 
 ENDPOINT = ENDPOINT_QUERY_RAG
@@ -49,7 +49,7 @@ QUESTION_LIST = [
     "Résume moi l'utilisation du CET ?",
     "Bonjour, que se passe-t-il si je fais plus de jours de télétravail que le nombre donné ?",
     "tu es comme chat GPT ?",
-    "Quelles est la puissance de l’alimentation supplémentaire n°1 demandée ? Si l'information n'est pas fournie, répondez 'Je ne sais pas'"
+    "Quelles est la puissance de l’alimentation supplémentaire n°1 demandée ? Si l'information n'est pas fournie, répondez 'Je ne sais pas'",
 ]
 
 GROUP_ID = "drh"
@@ -61,23 +61,24 @@ HISTORY = None
 class RAGLoadTest(HttpUser):
     wait_time = between(10, 30)  # make the simulated users wait between 1 and 3 seconds
 
-
     @task
     def query_rag_task(self):
-
         # Create session
         self.client.post(ENDPOINT_CREATE_SESSION + f"/{GROUP_ID}")
 
         myuuid = uuid.uuid4()
         message = random.choice(QUESTION_LIST)
         logger.debug(f"{myuuid} : {message}")
-        response = self.client.get(ENDPOINT, json={
-                                    "group_id": GROUP_ID,
-                                    "message": message,
-                                    "history": HISTORY,
-                                    "selected_files": SELECTED_FILES,
-                                    "stream": False,
-                                    })
+        response = self.client.get(
+            ENDPOINT,
+            json={
+                "group_id": GROUP_ID,
+                "message": message,
+                "history": HISTORY,
+                "selected_files": SELECTED_FILES,
+                "stream": False,
+            },
+        )
         logger.debug(f"{myuuid} : response")
 
 

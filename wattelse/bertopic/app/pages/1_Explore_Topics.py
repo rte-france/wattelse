@@ -21,10 +21,16 @@ from loguru import logger
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.bertopic.app.state_utils import restore_widget_state
 from wattelse.bertopic.newsletter_features import get_most_representative_docs
-from wattelse.bertopic.app.app_utils import compute_topics_over_time, plot_topics_over_time, \
-    print_docs_for_specific_topic
-from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG, TEXT_COLUMN, TIMESTAMP_COLUMN
-
+from wattelse.bertopic.app.app_utils import (
+    compute_topics_over_time,
+    plot_topics_over_time,
+    print_docs_for_specific_topic,
+)
+from wattelse.bertopic.utils import (
+    PLOTLY_BUTTON_SAVE_CONFIG,
+    TEXT_COLUMN,
+    TIMESTAMP_COLUMN,
+)
 
 
 def generate_topic_description(topic_model, topic_number, filtered_docs):
@@ -35,10 +41,17 @@ def generate_topic_description(topic_model, topic_number, filtered_docs):
 
     # Get topic representation
     topic_words = topic_model.get_topic(topic_number)
-    topic_representation = ", ".join([word for word, _ in topic_words[:10]])  # Get top 10 words
+    topic_representation = ", ".join(
+        [word for word, _ in topic_words[:10]]
+    )  # Get top 10 words
 
     # Prepare the documents text
-    docs_text = "\n\n".join([f"Document {i + 1}: {doc.text}..." for i, doc in filtered_docs.head(3).iterrows()])
+    docs_text = "\n\n".join(
+        [
+            f"Document {i + 1}: {doc.text}..."
+            for i, doc in filtered_docs.head(3).iterrows()
+        ]
+    )
 
     # Prepare the prompt
     prompt = f"""En tant qu'expert en analyse thématique, votre tâche est de générer un titre et une description pour un thème spécifique.
@@ -70,10 +83,10 @@ def generate_topic_description(topic_model, topic_number, filtered_docs):
 
 
 # Set locale for French date names
-locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
 
 # Constants
-EXPORT_BASE_FOLDER = Path(__file__).parent.parent / 'exported_topics'
+EXPORT_BASE_FOLDER = Path(__file__).parent.parent / "exported_topics"
 
 # Restore widget state
 restore_widget_state()
@@ -87,7 +100,10 @@ def check_model_and_prepare_topics():
         st.error("Train a model to explore generated topics.", icon="🚨")
         st.stop()
 
-    if "topics_over_time" not in st.session_state and TIMESTAMP_COLUMN in st.session_state["timefiltered_df"]:
+    if (
+        "topics_over_time" not in st.session_state
+        and TIMESTAMP_COLUMN in st.session_state["timefiltered_df"]
+    ):
         st.session_state["topics_over_time"] = compute_topics_over_time(
             st.session_state["parameters"],
             st.session_state["topic_model"],
@@ -103,7 +119,9 @@ def set_topic_selection(selected_topic_number):
 
 def find_similar_topic():
     """Find a topic similar to the search terms."""
-    similar_topics, _ = st.session_state["topic_model"].find_topics(st.session_state["search_terms"], top_n=1)
+    similar_topics, _ = st.session_state["topic_model"].find_topics(
+        st.session_state["search_terms"], top_n=1
+    )
     st.session_state["selected_topic_number"] = similar_topics[0]
 
 
@@ -111,7 +129,9 @@ def display_sidebar():
     """Display the sidebar with search functionality and topic list."""
     with st.sidebar:
         # Search bar
-        search_terms = st.text_input("Search topic", on_change=find_similar_topic, key="search_terms")
+        search_terms = st.text_input(
+            "Search topic", on_change=find_similar_topic, key="search_terms"
+        )
 
         # Topics list
         for index, topic in st.session_state["topics_info"].iterrows():
@@ -121,15 +141,26 @@ def display_sidebar():
             if "new_topics" in st.session_state:
                 new_docs_number = st.session_state["new_topics"].count(topic_number)
                 button_title += f" :red[+{new_docs_number}]"
-            st.button(button_title, use_container_width=True, on_click=set_topic_selection, args=(topic_number,))
+            st.button(
+                button_title,
+                use_container_width=True,
+                on_click=set_topic_selection,
+                args=(topic_number,),
+            )
 
 
 def display_topic_info():
     """Display the main topic information."""
-    topic_docs_number = st.session_state["topics_info"].iloc[st.session_state["selected_topic_number"]]["Count"]
-    topic_words = st.session_state["topics_info"].iloc[st.session_state["selected_topic_number"]]["Representation"]
+    topic_docs_number = st.session_state["topics_info"].iloc[
+        st.session_state["selected_topic_number"]
+    ]["Count"]
+    topic_words = st.session_state["topics_info"].iloc[
+        st.session_state["selected_topic_number"]
+    ]["Representation"]
 
-    st.write(f"# Thème {st.session_state['selected_topic_number']} : {topic_docs_number} documents")
+    st.write(
+        f"# Thème {st.session_state['selected_topic_number']} : {topic_docs_number} documents"
+    )
     st.markdown(f"## #{' #'.join(topic_words)}")
 
 
@@ -152,7 +183,9 @@ def plot_topic_over_time():
                     st.session_state["new_topics_over_time"],
                     str(st.session_state["selected_topic_number"]),
                     st.session_state["topic_model"],
-                    time_split=st.session_state["timefiltered_df"][TIMESTAMP_COLUMN].max(),
+                    time_split=st.session_state["timefiltered_df"][
+                        TIMESTAMP_COLUMN
+                    ].max(),
                 ),
                 config=PLOTLY_BUTTON_SAVE_CONFIG,
                 use_container_width=True,
@@ -187,38 +220,41 @@ def get_representative_documents(top_n_docs):
             mode="ctfidf_representation",
             top_n_docs=top_n_docs,
         )
-        return pd.concat([docs_by_cluster_probability, docs_by_ctfidf_similarity]).drop_duplicates()
+        return pd.concat(
+            [docs_by_cluster_probability, docs_by_ctfidf_similarity]
+        ).drop_duplicates()
 
 
 def display_source_distribution(representative_df, selected_sources):
     """Display the distribution of sources in a pie chart."""
 
-    source_counts = representative_df['url'].apply(get_website_name).value_counts()
+    source_counts = representative_df["url"].apply(get_website_name).value_counts()
 
     # Create a list to store the 'pull' values for each slice
     pull = []
 
     # Determine which slices should be pulled out
     for source in source_counts.index:
-        if source in selected_sources and 'Tous' not in selected_sources:
+        if source in selected_sources and "Tous" not in selected_sources:
             pull.append(0.2)
         else:
             pull.append(0)
 
-    fig = go.Figure(data=[go.Pie(
-        labels=source_counts.index,
-        values=source_counts.values,
-        pull=pull,
-        textposition='inside',
-        textinfo='percent+label',
-        hole=0.3,
-    )])
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=source_counts.index,
+                values=source_counts.values,
+                pull=pull,
+                textposition="inside",
+                textinfo="percent+label",
+                hole=0.3,
+            )
+        ]
+    )
 
     fig.update_layout(
-        showlegend=False,
-        height=600,
-        width=500,
-        margin=dict(t=0, b=0, l=0, r=0)
+        showlegend=False, height=600, width=500, margin=dict(t=0, b=0, l=0, r=0)
     )
 
     st.plotly_chart(fig, config=PLOTLY_BUTTON_SAVE_CONFIG, use_container_width=True)
@@ -229,7 +265,10 @@ def get_website_name(url):
     if pd.isna(url) or url is None or isinstance(url, float):
         return "Unknown Source"
     try:
-        return urlparse(str(url)).netloc.replace("www.", "").split(".")[0] or "Unknown Source"
+        return (
+            urlparse(str(url)).netloc.replace("www.", "").split(".")[0]
+            or "Unknown Source"
+        )
     except:
         return "Unknown Source"
 
@@ -255,11 +294,16 @@ def display_new_documents():
     """Display new documents if remaining data is processed."""
     if "new_topics_over_time" in st.session_state:
         st.write("## New documents")
-        print_docs_for_specific_topic(st.session_state["remaining_df"], st.session_state["new_topics"],
-                                      st.session_state["selected_topic_number"])
+        print_docs_for_specific_topic(
+            st.session_state["remaining_df"],
+            st.session_state["new_topics"],
+            st.session_state["selected_topic_number"],
+        )
 
 
-def create_topic_documents(filtered_df, topic_model, granularity_days, TIMESTAMP_COLUMN, TEXT_COLUMN):
+def create_topic_documents(
+    filtered_df, topic_model, granularity_days, TIMESTAMP_COLUMN, TEXT_COLUMN
+):
     """Create topic documents grouped by a given time granularity."""
     topic_docs = filtered_df.sort_values(by=TIMESTAMP_COLUMN)
     documents = []
@@ -268,8 +312,10 @@ def create_topic_documents(filtered_df, topic_model, granularity_days, TIMESTAMP
         topic_number = st.session_state["selected_topic_number"]
         topic_words = [word for word, _ in topic_model.get_topic(topic_number)]
 
-        folder_name = f"topic_{topic_number}_{' '.join(topic_words[:3])}_{granularity_days}days"
-        folder_name = re.sub(r'[^\w\-_\. ]', '_', folder_name)
+        folder_name = (
+            f"topic_{topic_number}_{' '.join(topic_words[:3])}_{granularity_days}days"
+        )
+        folder_name = re.sub(r"[^\w\-_\. ]", "_", folder_name)
 
         start_date = topic_docs[TIMESTAMP_COLUMN].min()
         end_date = topic_docs[TIMESTAMP_COLUMN].max()
@@ -278,7 +324,9 @@ def create_topic_documents(filtered_df, topic_model, granularity_days, TIMESTAMP
         while current_date <= end_date:
             next_date = current_date + timedelta(days=granularity_days)
             period_docs = topic_docs[
-                (topic_docs[TIMESTAMP_COLUMN] >= current_date) & (topic_docs[TIMESTAMP_COLUMN] < next_date)]
+                (topic_docs[TIMESTAMP_COLUMN] >= current_date)
+                & (topic_docs[TIMESTAMP_COLUMN] < next_date)
+            ]
 
             if not period_docs.empty:
                 file_name = f"{current_date.strftime('%Y%m%d')}-{(next_date - timedelta(days=1)).strftime('%Y%m%d')}.txt"
@@ -304,27 +352,36 @@ def main():
     st.divider()
 
     # Number of articles to display
-    top_n_docs = st.number_input("Nombre d'articles à afficher", min_value=1, max_value=
-    st.session_state["topics_info"].iloc[st.session_state["selected_topic_number"]]["Count"],
-                                 value=st.session_state["topics_info"].iloc[st.session_state["selected_topic_number"]][
-                                     "Count"], step=1)
+    top_n_docs = st.number_input(
+        "Nombre d'articles à afficher",
+        min_value=1,
+        max_value=st.session_state["topics_info"].iloc[
+            st.session_state["selected_topic_number"]
+        ]["Count"],
+        value=st.session_state["topics_info"].iloc[
+            st.session_state["selected_topic_number"]
+        ]["Count"],
+        step=1,
+    )
 
     representative_df = get_representative_documents(top_n_docs)
     representative_df = representative_df.sort_values(by="timestamp", ascending=False)
 
     # Get unique sources
-    sources = representative_df['url'].apply(get_website_name).unique()
+    sources = representative_df["url"].apply(get_website_name).unique()
 
     # Multi-select for sources
     selected_sources = st.multiselect(
         "Sélectionnez les sources à afficher",
-        options=['Tous'] + list(sources),
-        default=['Tous']
+        options=["Tous"] + list(sources),
+        default=["Tous"],
     )
 
     # Filter the dataframe based on selected sources
-    if 'Tous' not in selected_sources:
-        filtered_df = representative_df[representative_df['url'].apply(get_website_name).isin(selected_sources)]
+    if "Tous" not in selected_sources:
+        filtered_df = representative_df[
+            representative_df["url"].apply(get_website_name).isin(selected_sources)
+        ]
     else:
         filtered_df = representative_df
 
@@ -337,8 +394,10 @@ def main():
 
     with col2:
         # Filter the dataframe only for document display
-        if 'Tous' not in selected_sources:
-            filtered_df = representative_df[representative_df['url'].apply(get_website_name).isin(selected_sources)]
+        if "Tous" not in selected_sources:
+            filtered_df = representative_df[
+                representative_df["url"].apply(get_website_name).isin(selected_sources)
+            ]
         else:
             filtered_df = representative_df
         display_representative_documents(filtered_df)
@@ -348,12 +407,16 @@ def main():
     st.divider()
 
     # GPT description button
-    if st.button("Générer une description courte du thème", type="primary", use_container_width=True):
+    if st.button(
+        "Générer une description courte du thème",
+        type="primary",
+        use_container_width=True,
+    ):
         with st.spinner("Génération de la description en cours..."):
             gpt_description = generate_topic_description(
                 st.session_state["topic_model"],
                 st.session_state["selected_topic_number"],
-                filtered_df
+                filtered_df,
             )
         with st.container(border=True):
             st.markdown(gpt_description)
@@ -366,19 +429,28 @@ def main():
         "Choose export method:",
         ("Download as ZIP", "Save to folder"),
         index=0,
-        help="Select whether to download documents as a ZIP file or save them directly to a folder on the server."
+        help="Select whether to download documents as a ZIP file or save them directly to a folder on the server.",
     )
 
-    granularity_days = st.number_input("Granularity (number of days)", min_value=1, value=3, step=1)
+    granularity_days = st.number_input(
+        "Granularity (number of days)", min_value=1, value=3, step=1
+    )
 
     if export_method == "Download as ZIP":
         # Prepare ZIP file
-        folder_name, documents = create_topic_documents(filtered_df, st.session_state["topic_model"], granularity_days,
-                                                        TIMESTAMP_COLUMN, TEXT_COLUMN)
+        folder_name, documents = create_topic_documents(
+            filtered_df,
+            st.session_state["topic_model"],
+            granularity_days,
+            TIMESTAMP_COLUMN,
+            TEXT_COLUMN,
+        )
 
         if documents:
             zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+            with zipfile.ZipFile(
+                zip_buffer, "a", zipfile.ZIP_DEFLATED, False
+            ) as zip_file:
                 for file_name, content in documents:
                     zip_file.writestr(file_name, content)
 
@@ -389,14 +461,19 @@ def main():
                 label="Export Topic Documents",
                 data=zip_buffer,
                 file_name=zip_filename,
-                mime="application/zip"
+                mime="application/zip",
             )
         else:
             st.warning("No documents found for the selected topic.")
     else:
         if st.button("Export Topic Documents"):
-            folder_name, documents = create_topic_documents(filtered_df, st.session_state["topic_model"],
-                                                            granularity_days, TIMESTAMP_COLUMN, TEXT_COLUMN)
+            folder_name, documents = create_topic_documents(
+                filtered_df,
+                st.session_state["topic_model"],
+                granularity_days,
+                TIMESTAMP_COLUMN,
+                TEXT_COLUMN,
+            )
 
             if documents:
                 export_folder = EXPORT_BASE_FOLDER / folder_name
@@ -404,10 +481,12 @@ def main():
 
                 for file_name, content in documents:
                     file_path = export_folder / file_name
-                    with open(file_path, 'w', encoding='utf-8') as f:
+                    with open(file_path, "w", encoding="utf-8") as f:
                         f.write(content)
 
-                st.success(f"Successfully exported documents to folder: {export_folder}")
+                st.success(
+                    f"Successfully exported documents to folder: {export_folder}"
+                )
             else:
                 st.warning("No documents found for the selected topic.")
 

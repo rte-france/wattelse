@@ -12,7 +12,6 @@ CONFIG_FEEDS_PATH = CONFIG_PATH / "feeds"
 CONFIGS_NEWSLETTERS_PATH = CONFIG_PATH / "newsletters"
 
 if __name__ == "__main__":
-
     # Install feed crontabs
     logger.info("*** Installing feeds crontabs ***")
     for f in CONFIG_FEEDS_PATH.iterdir():
@@ -23,6 +22,8 @@ if __name__ == "__main__":
     logger.info("*** Installing newsletters crontabs ***")
     for f in CONFIGS_NEWSLETTERS_PATH.iterdir():
         logger.info(f"Installing crontab for {f.stem}")
-        associated_feed = CONFIG_FEEDS_PATH / (f.stem.split("_newsletter")[0]+"_feed.cfg")
+        associated_feed = CONFIG_FEEDS_PATH / (
+            f.stem.split("_newsletter")[0] + "_feed.cfg"
+        )
         logger.debug(f"Associated feed: {associated_feed}")
         schedule_newsletter(Path(f), associated_feed)

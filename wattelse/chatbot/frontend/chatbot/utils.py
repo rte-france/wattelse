@@ -17,7 +17,7 @@ from django.http import HttpResponse, Http404, JsonResponse
 
 from .models import Chat
 
-from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError 
+from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
 
 # RAG API
 RAG_API = RAGOrchestratorClient()
@@ -33,6 +33,7 @@ WRONG = "wrong"
 
 # Long feedback FAQ file
 FAQ_FILE_PATTERN = "_FAQ.xlsx"
+
 
 def get_user_group_id(user: User) -> str:
     """
@@ -78,7 +79,9 @@ def get_group_usernames_list(group_id: str) -> dict[str, bool]:
     return users_dict
 
 
-def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dict[str, str]] | None:
+def get_conversation_history(
+    user: User, conversation_id: uuid.UUID
+) -> List[Dict[str, str]] | None:
     """
     Return chat history following OpenAI API format :
     [
@@ -96,6 +99,7 @@ def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dic
         history.append({"role": "assistant", "content": chat.response})
     return None if len(history) == 0 else history
 
+
 def new_user_created(request, username=None):
     """
     Webpage rendered when a new user is created.
@@ -106,6 +110,7 @@ def new_user_created(request, username=None):
     else:
         return render(request, "chatbot/new_user_created.html", {"username": username})
 
+
 def streaming_generator(data_stream):
     """Generator to decode the chunks received from RAGOrchestratorClient"""
     with data_stream as r:
@@ -114,12 +119,14 @@ def streaming_generator(data_stream):
             # frontend can receive multiple chunks in one pass, so we need to split them.
             yield chunk.decode("utf-8") + SPECIAL_SEPARATOR
 
+
 def streaming_generator_llm(data_stream):
     """Generator to decode the chunks received from RAGOrchestratorClient"""
     for chunk in data_stream:
         token = chunk.choices[0].delta.content
         if token is not None:
             yield token
+
 
 def insert_feedback(request, short: bool):
     """
@@ -139,15 +146,22 @@ def insert_feedback(request, short: bool):
 
         # Try to find the matching Chat object based on user, message, and response
         try:
-            chat_message = (Chat.objects.filter(user=user, message=user_message, response=bot_message)
-                            .order_by('-question_timestamp').first()) # in case multiple chat messages match, take the newest
+            chat_message = (
+                Chat.objects.filter(
+                    user=user, message=user_message, response=bot_message
+                )
+                .order_by("-question_timestamp")
+                .first()
+            )  # in case multiple chat messages match, take the newest
             if short:
                 chat_message.short_feedback = feedback
             else:
                 if feedback:
                     chat_message.long_feedback = feedback
                     update_FAQ(chat_message)
-            logger.info(f'[User: {request.user.username}] Feedback: "{feedback}" for question "{chat_message.message}"')
+            logger.info(
+                f'[User: {request.user.username}] Feedback: "{feedback}" for question "{chat_message.message}"'
+            )
             chat_message.save()
             return HttpResponse(status=200)
         except Chat.DoesNotExist:
@@ -157,6 +171,7 @@ def insert_feedback(request, short: bool):
     else:
         raise Http404()
 
+
 def update_FAQ(chat_message: Chat):
     """Update a FAQ file with the long feedback"""
     # Retrieve current FAQ file if it exists
@@ -165,19 +180,25 @@ def update_FAQ(chat_message: Chat):
         temp_file_path = Path(temp_dir) / FAQ_FILE_PATTERN
 
         try:
-            RAG_API.download_to_dir(chat_message.group_id, FAQ_FILE_PATTERN, temp_file_path)
+            RAG_API.download_to_dir(
+                chat_message.group_id, FAQ_FILE_PATTERN, temp_file_path
+            )
             df = pd.read_excel(temp_file_path)
         except RAGAPIError:
             # No file available, create new one
             df = pd.DataFrame(columns=["question", "answer"])
 
         # Update the feedback data and file
-        df.loc[len(df)] =  {"question": chat_message.message, "answer": chat_message.long_feedback}
+        df.loc[len(df)] = {
+            "question": chat_message.message,
+            "answer": chat_message.long_feedback,
+        }
         df.to_excel(temp_file_path, index=False)
 
         # Uploads the file and updates its embeddings in the collection
         RAG_API.remove_documents(chat_message.group_id, [FAQ_FILE_PATTERN])
         RAG_API.upload_files(chat_message.group_id, [temp_file_path])
+
 
 def to_short_feedback(feedback: str) -> str:
     """

@@ -125,7 +125,7 @@ def filter_data():
     if st.session_state["user"]:
         filtered = filtered[filtered.username == st.session_state["user"]]
     if st.session_state["group"]:
-        if st.session_state["group"]==METIERS_GROUP_NAME:
+        if st.session_state["group"] == METIERS_GROUP_NAME:
             filtered = filtered[filtered.group_id.isin(GROUP_NAMES_LIST)]
         else:
             filtered = filtered[filtered.group_id == st.session_state["group"]]
@@ -140,7 +140,7 @@ def filter_data():
 
 
 def _compute_file_indicators():
-    if st.session_state["group"] and st.session_state["group"]!=METIERS_GROUP_NAME:
+    if st.session_state["group"] and st.session_state["group"] != METIERS_GROUP_NAME:
         bak = RAGBackEnd(st.session_state["group"])
         nb_files = len(bak.get_available_docs())
         nb_chunks = len(bak.document_collection.collection)
@@ -213,15 +213,9 @@ def display_indicators():
         f"{median_answer_delay:.2f}s",
     )
 
-    col7.metric(
-        "Number of files",
-        f"{number_of_files}"
-    )
+    col7.metric("Number of files", f"{number_of_files}")
 
-    col8.metric(
-        "Number of chunks",
-        f"{number_of_chunks}"
-    )
+    col8.metric("Number of chunks", f"{number_of_chunks}")
 
 
 def display_questions_over_time():
@@ -253,7 +247,9 @@ def display_feedback_charts():
     filtered_df = df[df["short_feedback"].isin(FEEDBACK_COLORS.keys())]
 
     # Count occurrences of each short_feedback value in the filtered data
-    short_feedback_counts = filtered_df["short_feedback"].value_counts().reindex(FEEDBACK_COLORS.keys())
+    short_feedback_counts = (
+        filtered_df["short_feedback"].value_counts().reindex(FEEDBACK_COLORS.keys())
+    )
 
     # Create a bar chart for total counts with custom colors
     fig_short_feedback_total = bar(
@@ -315,7 +311,9 @@ def display_feedback_charts_over_time():
 def display_feedback_rates():
     filtered_df = st.session_state["filtered_data"]
     short_feedback_counts = filtered_df["short_feedback"].value_counts()
-    total_short_feedback = (st.session_state["filtered_data"].short_feedback != "").sum()
+    total_short_feedback = (
+        st.session_state["filtered_data"].short_feedback != ""
+    ).sum()
     cols = st.columns(4)
     for i, feedback_type in enumerate(FEEDBACK_COLORS.keys()):
         if feedback_type in short_feedback_counts.keys():
@@ -366,7 +364,11 @@ def main():
 
     if side_bar():
         with st.expander("Raw data"):
-            st.write(st.session_state["filtered_data"].sort_values(by="answer_timestamp", ascending=False))
+            st.write(
+                st.session_state["filtered_data"].sort_values(
+                    by="answer_timestamp", ascending=False
+                )
+            )
 
         # High level indicators per user / group depending on the selection
         with st.expander("High level indicators", expanded=True):

@@ -10,7 +10,21 @@ from pathlib import Path
 from wattelse.common import BASE_CACHE_PATH, BASE_DATA_PATH
 
 # Stopwords
-STOP_WORDS_RTE = ["w", "kw", "mw", "gw", "tw", "wh", "kwh", "mwh", "gwh", "twh", "volt", "volts", "000"]
+STOP_WORDS_RTE = [
+    "w",
+    "kw",
+    "mw",
+    "gw",
+    "tw",
+    "wh",
+    "kwh",
+    "mwh",
+    "gwh",
+    "twh",
+    "volt",
+    "volts",
+    "000",
+]
 COMMON_NGRAMS = [
     "éléctricité",
     "RTE",
@@ -32,11 +46,11 @@ COMMON_NGRAMS = [
     "Réseau transport",
     "RTE gestionnaire",
     "électricité France",
-    "système électrique"
+    "système électrique",
 ]
 
-stopwords_fr_file = Path(__file__).parent / 'stopwords-fr.json'
-with open(stopwords_fr_file, 'r', encoding='utf-8') as file:
+stopwords_fr_file = Path(__file__).parent / "stopwords-fr.json"
+with open(stopwords_fr_file, "r", encoding="utf-8") as file:
     FRENCH_STOPWORDS = json.load(file)
 
 STOPWORDS = STOP_WORDS_RTE + COMMON_NGRAMS + FRENCH_STOPWORDS
@@ -49,29 +63,33 @@ ZEROSHOT_TOPICS_DATA_DIR = CACHE_PATH / "zeroshot_topics_data"
 SIGNAL_EVOLUTION_DATA_DIR = CACHE_PATH / "signal_evolution_data"
 
 # File names
-STATE_FILE = 'app_state.pkl'
-EMBEDDINGS_FILE = 'embeddings.npy'
-DOC_GROUPS_FILE = 'doc_groups.pkl'
-EMB_GROUPS_FILE = 'emb_groups.pkl'
-GRANULARITY_FILE = 'granularity.pkl'
-HYPERPARAMS_FILE = 'hyperparams.pkl'
-DOC_INFO_DF_FILE = 'doc_info_df.pkl'
-TOPIC_INFO_DF_FILE = 'topic_info_df.pkl'
-MODELS_TRAINED_FILE = 'models_trained_flag.pkl'
+STATE_FILE = "app_state.pkl"
+EMBEDDINGS_FILE = "embeddings.npy"
+DOC_GROUPS_FILE = "doc_groups.pkl"
+EMB_GROUPS_FILE = "emb_groups.pkl"
+GRANULARITY_FILE = "granularity.pkl"
+HYPERPARAMS_FILE = "hyperparams.pkl"
+DOC_INFO_DF_FILE = "doc_info_df.pkl"
+TOPIC_INFO_DF_FILE = "topic_info_df.pkl"
+MODELS_TRAINED_FILE = "models_trained_flag.pkl"
 
 # Model file names
-ZEROSHOT_TOPICS_DATA_FILE = 'zeroshot_topics_data.json'
-INDIVIDUAL_MODEL_TOPIC_COUNTS_FILE = 'individual_topic_counts.json'
-CUMULATIVE_MERGED_TOPIC_COUNTS_FILE = 'cumulative_topic_counts.json'
+ZEROSHOT_TOPICS_DATA_FILE = "zeroshot_topics_data.json"
+INDIVIDUAL_MODEL_TOPIC_COUNTS_FILE = "individual_topic_counts.json"
+CUMULATIVE_MERGED_TOPIC_COUNTS_FILE = "cumulative_topic_counts.json"
 
 # Embedding models
-ENGLISH_EMBEDDING_MODELS = ["all-mpnet-base-v2", 
-                            "Alibaba-NLP/gte-base-en-v1.5", 
-                            "all-MiniLM-L12-v2"]
-FRENCH_EMBEDDING_MODELS = ["OrdalieTech/Solon-embeddings-base-0.1", 
-                           "OrdalieTech/Solon-embeddings-large-0.1", 
-                           "dangvantuan/sentence-camembert-large", 
-                           "antoinelouis/biencoder-distilcamembert-mmarcoFR"]
+ENGLISH_EMBEDDING_MODELS = [
+    "all-mpnet-base-v2",
+    "Alibaba-NLP/gte-base-en-v1.5",
+    "all-MiniLM-L12-v2",
+]
+FRENCH_EMBEDDING_MODELS = [
+    "OrdalieTech/Solon-embeddings-base-0.1",
+    "OrdalieTech/Solon-embeddings-large-0.1",
+    "dangvantuan/sentence-camembert-large",
+    "antoinelouis/biencoder-distilcamembert-mmarcoFR",
+]
 
 # BERTopic Hyperparameters
 DEFAULT_UMAP_N_COMPONENTS = 5
@@ -83,10 +101,10 @@ DEFAULT_MIN_DF = 1
 DEFAULT_GRANULARITY = 2
 DEFAULT_MIN_SIMILARITY = 0.7
 DEFAULT_ZEROSHOT_MIN_SIMILARITY = 0.5
-BERTOPIC_SERIALIZATION = "safetensors" # or pickle
+BERTOPIC_SERIALIZATION = "safetensors"  # or pickle
 DEFAULT_MMR_DIVERSITY = 0.3
 DEFAULT_UMAP_MIN_DIST = 0.0
-OUTLIER_REDUCTION_STRATEGY = "c-tf-idf" # or "embeddings"
+OUTLIER_REDUCTION_STRATEGY = "c-tf-idf"  # or "embeddings"
 
 # Embedding Settings
 EMBEDDING_DTYPES = ["float32", "float16", "bfloat16"]
@@ -134,7 +152,9 @@ SIGNAL_CLASSIF_UPPER_BOUND = 75
 NO_DATA_WARNING = "No data available for the selected granularity."
 NO_MODELS_WARNING = "No saved models found."
 NO_CACHE_WARNING = "No cache found."
-TOPIC_NOT_FOUND_WARNING = "Topic {topic_number} not found in the merge histories within the specified window."
+TOPIC_NOT_FOUND_WARNING = (
+    "Topic {topic_number} not found in the merge histories within the specified window."
+)
 
 # Success Messages
 STATE_SAVED_MESSAGE = "Application state saved."
@@ -150,4 +170,3 @@ CACHE_PURGED_MESSAGE = "Cache purged."
 # Other Constants
 DEFAULT_ZEROSHOT_TOPICS = ""  # Empty string or a default list of topics
 PROGRESS_BAR_DESCRIPTION = "Batches processed"
-

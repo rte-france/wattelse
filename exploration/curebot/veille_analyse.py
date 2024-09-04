@@ -47,7 +47,6 @@ def parse_data_from_files(files: List[UploadedFile]) -> pd.DataFrame:
     dataframes = []
 
     with TemporaryDirectory() as tmpdir:
-
         for f in files:
             with open(tmpdir + "/" + f.name, "wb") as tmp_file:
                 tmp_file.write(f.getvalue())
@@ -110,14 +109,19 @@ def split_data():
 
 
 def train_model():
-    st.session_state["topic_model"], st.session_state["topics"], _, _, _, _ = (
-        train_BERTopic(
-            full_dataset=st.session_state["df_split"],
-            indices=None,
-            embedding_model_name=EMBEDDING_MODEL_NAME,
-            use_cache=False,
-            top_n_words=TOP_N_WORDS,
-        )
+    (
+        st.session_state["topic_model"],
+        st.session_state["topics"],
+        _,
+        _,
+        _,
+        _,
+    ) = train_BERTopic(
+        full_dataset=st.session_state["df_split"],
+        indices=None,
+        embedding_model_name=EMBEDDING_MODEL_NAME,
+        use_cache=False,
+        top_n_words=TOP_N_WORDS,
     )
 
 
