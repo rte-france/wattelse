@@ -19,16 +19,18 @@ from .utils import streaming_generator_llm
 api_key = os.getenv("LOCAL_OPENAI_API_KEY")
 if not api_key:
     logger.error(
-        "WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services.")
+        "WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services."
+    )
     raise EnvironmentError(f"LOCAL_OPENAI_API_KEY environment variable not found.")
 endpoint = os.getenv("LOCAL_OPENAI_ENDPOINT", None)
 if endpoint == "":  # check empty env var
     endpoint = None
 model_name = os.getenv("LOCAL_OPENAI_DEFAULT_MODEL_NAME", None)
 
-llm_config = {"api_key": api_key,
-              "base_url": endpoint,
-              }
+llm_config = {
+    "api_key": api_key,
+    "base_url": endpoint,
+}
 LLM_CLIENT = OpenAI(**llm_config)
 
 
@@ -50,7 +52,9 @@ def request_client(request):
             logger.warning(f"[User: {request.user.username}] No user message received")
             error_message = "Veuillez saisir une question"
             return JsonResponse({"error_message": error_message}, status=500)
-        logger.info(f"[User: {request.user.username}] Message: {history[-1]['content']}")
+        logger.info(
+            f"[User: {request.user.username}] Message: {history[-1]['content']}"
+        )
 
         # Query LLM
         try:
@@ -59,10 +63,18 @@ def request_client(request):
                 model=model_name,
                 stream=True,
             )
-            return StreamingHttpResponse(streaming_generator_llm(response), status=200, content_type='text/event-stream')
+            return StreamingHttpResponse(
+                streaming_generator_llm(response),
+                status=200,
+                content_type="text/event-stream",
+            )
 
         except Exception as e:
             logger.error(f"[User: {request.user.username}] {e}")
-            return JsonResponse({"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500)
+            return JsonResponse(
+                {"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500
+            )
     else:
-        return render(request, "chatbot/secureGPT.html", context={"llm_name": model_name})
+        return render(
+            request, "chatbot/secureGPT.html", context={"llm_name": model_name}
+        )

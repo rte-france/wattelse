@@ -36,9 +36,7 @@ def get_summarizer(summary_model):
         kwargs["api_key"] = st.session_state.openai_api_key
         kwargs["endpoint"] = st.session_state.openai_endpoint
 
-    summarizer_class = SUMMARIZER_OPTIONS_MAPPER[
-        summary_model
-    ]
+    summarizer_class = SUMMARIZER_OPTIONS_MAPPER[summary_model]
     return summarizer_class(**kwargs)
 
 
@@ -50,13 +48,29 @@ def app():
         "Otherwise, use it EXCLUSIVELY on public data."
     )
 
-    summary_model = st.selectbox("summary model", SUMMARIZER_OPTIONS_MAPPER.keys(), key="summary_model")
-    summary_ratio = st.number_input("summary ratio", min_value=1, max_value=100, value=20, key="summary_ratio") / 100
-    st.text_input("Openai API key", key="openai_api_key", value=os.getenv("OPENAI_API_KEY"),
-                  type="password")
-    st.text_input("Openai endpoint", key="openai_endpoint", value=os.getenv("OPENAI_ENDPOINT"))
-    st.text_input("Openai model name", key="openai_model_name",
-                  value=os.getenv("OPENAI_DEFAULT_MODEL_NAME"))
+    summary_model = st.selectbox(
+        "summary model", SUMMARIZER_OPTIONS_MAPPER.keys(), key="summary_model"
+    )
+    summary_ratio = (
+        st.number_input(
+            "summary ratio", min_value=1, max_value=100, value=20, key="summary_ratio"
+        )
+        / 100
+    )
+    st.text_input(
+        "Openai API key",
+        key="openai_api_key",
+        value=os.getenv("OPENAI_API_KEY"),
+        type="password",
+    )
+    st.text_input(
+        "Openai endpoint", key="openai_endpoint", value=os.getenv("OPENAI_ENDPOINT")
+    )
+    st.text_input(
+        "Openai model name",
+        key="openai_model_name",
+        value=os.getenv("OPENAI_DEFAULT_MODEL_NAME"),
+    )
 
     col1, col2 = st.columns(2)
     with col1:
@@ -66,7 +80,9 @@ def app():
 
     def on_click():
         summarizer = get_summarizer(summary_model)
-        st.session_state.summary = summarizer.generate_summary(st.session_state.text, max_length_ratio=summary_ratio)
+        st.session_state.summary = summarizer.generate_summary(
+            st.session_state.text, max_length_ratio=summary_ratio
+        )
         logger.debug(st.session_state.summary)
 
     st.button("Summarize", on_click=on_click)

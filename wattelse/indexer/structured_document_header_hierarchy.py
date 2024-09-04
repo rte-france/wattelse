@@ -50,7 +50,6 @@ def get_html_hierarchy(docs: List[Document]):
 
 
 def get_markdown_hierarchy(docs: List[Document]):
-
     processed_documents = []
 
     for i in range(len(docs)):

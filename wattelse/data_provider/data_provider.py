@@ -47,7 +47,12 @@ class DataProvider(ABC):
 
     @abstractmethod
     def get_articles(
-            self, query: str, after: str, before: str, max_results: int, language: str = None
+        self,
+        query: str,
+        after: str,
+        before: str,
+        max_results: int,
+        language: str = None,
     ) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines.
 
@@ -72,15 +77,20 @@ class DataProvider(ABC):
         pass
 
     def get_articles_batch(
-            self, queries_batch: List[List], max_results: int, language: str = None
+        self, queries_batch: List[List], max_results: int, language: str = None
     ) -> List[Dict]:
         """Requests the news data provider for a list of queries, collects a set of URLs to be parsed,
         return results as json lines"""
         articles = []
         for entry in queries_batch:
             logger.info(f"Processing query: {entry}")
-            articles += self.get_articles(query=entry[0], after=entry[1], before=entry[2], max_results=max_results,
-                                          language=language)
+            articles += self.get_articles(
+                query=entry[0],
+                after=entry[1],
+                before=entry[2],
+                max_results=max_results,
+                language=language,
+            )
         # remove duplicates
         articles = [dict(t) for t in {tuple(d.items()) for d in articles}]
         logger.info(f"Collected {len(articles)} articles")
@@ -134,10 +144,10 @@ class DataProvider(ABC):
 
     def _filter_out_bad_text(self, text):
         if (
-                "[if" in text
-                or "javascript" in text
-                or "cookie" in text
-                or "pour lire la suite, rejoignez notre communauté d'abonnés" in text
+            "[if" in text
+            or "javascript" in text
+            or "cookie" in text
+            or "pour lire la suite, rejoignez notre communauté d'abonnés" in text
         ):
             logger.warning(f"Bad text: {text}")
             return None
@@ -158,7 +168,11 @@ class DataProvider(ABC):
         )
         results = [res for res in results if res is not None]
         if lang_filter is not None:
-            results = [res for res in results if res["text"] and lang_filter == langdetect.detect(res["text"])]
+            results = [
+                res
+                for res in results
+                if res["text"] and lang_filter == langdetect.detect(res["text"])
+            ]
 
         logger.info(f"Returned: {len(results)} entries")
         return results

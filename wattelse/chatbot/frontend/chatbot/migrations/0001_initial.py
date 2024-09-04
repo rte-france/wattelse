@@ -11,7 +11,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -20,28 +19,54 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='SuperUserPermissions',
+            name="SuperUserPermissions",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
             ],
             options={
-                'permissions': (('can_upload_documents', 'Can upload documents'), ('can_remove_documents', 'Can remove documents'), ('can_manage_users', 'Can manage users')),
-                'managed': False,
-                'default_permissions': (),
+                "permissions": (
+                    ("can_upload_documents", "Can upload documents"),
+                    ("can_remove_documents", "Can remove documents"),
+                    ("can_manage_users", "Can manage users"),
+                ),
+                "managed": False,
+                "default_permissions": (),
             },
         ),
         migrations.CreateModel(
-            name='Chat',
+            name="Chat",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('group_id', models.TextField()),
-                ('conversation_id', models.UUIDField()),
-                ('message', models.TextField()),
-                ('response', models.TextField()),
-                ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('short_feedback', models.TextField(default='')),
-                ('long_feedback', models.TextField(default='')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("group_id", models.TextField()),
+                ("conversation_id", models.UUIDField()),
+                ("message", models.TextField()),
+                ("response", models.TextField()),
+                ("timestamp", models.DateTimeField(auto_now_add=True)),
+                ("short_feedback", models.TextField(default="")),
+                ("long_feedback", models.TextField(default="")),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]
