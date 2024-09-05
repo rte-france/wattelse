@@ -2,10 +2,8 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-import json
 import os
 import re
-from cmath import isnan
 from typing import List, Iterator
 
 import bs4
@@ -18,7 +16,6 @@ from langchain_community.document_loaders import (
     TextLoader,
 )
 from langchain_community.document_loaders.csv_loader import CSVLoader
-from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from pathlib import Path
 
 from langchain_core.document_loaders import BaseLoader
