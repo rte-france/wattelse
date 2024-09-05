@@ -2,7 +2,6 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-
 import os
 import re
 from typing import List, Iterator
@@ -17,7 +16,6 @@ from langchain_community.document_loaders import (
     TextLoader,
 )
 from langchain_community.document_loaders.csv_loader import CSVLoader
-from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from pathlib import Path
 
 from langchain_core.document_loaders import BaseLoader
@@ -164,19 +162,27 @@ class CustomXLSXDocumentLoader(BaseLoader):
             file_path: The path to the file to load.
         """
         self.file_path = file_path
-        df = pd.read_excel(self.file_path)
-        df = df.astype(str)
-        self.df = df
+        dfs = pd.read_excel(self.file_path, sheet_name=None)  # read all excel sheets
+        dfs = {
+            sheet: df.ffill().astype(
+                str
+            )  # ffill used to resolve merged cells (duplicate content)
+            for sheet, df in dfs.items()
+        }
+        self.dfs = dfs
 
     def lazy_load(self) -> Iterator[Document]:
         """A lazy loader that reads a file line by line.
         Returns a generator to yield documents one by one.
         """
-        with open(self.file_path, encoding="utf-8") as f:
-            for index, row in self.df.iterrows():
-                row_d = row.to_dict()
-                line = " ".join(list(row_d.values()))
+        for sheet, df in self.dfs.items():
+            lines = df.to_dict(orient="records")
+            for line in lines:
+                line = {key: value for key, value in line.items() if value != "nan"}
                 yield Document(
-                    page_content=line,
-                    metadata={"line_number": index, "source": self.file_path},
+                    page_content=str(line),
+                    metadata={
+                        "source": self.file_path,
+                        "sheet": sheet,
+                    },
                 )
