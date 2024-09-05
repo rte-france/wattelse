@@ -16,7 +16,7 @@ from typing import Optional, List, Dict
 
 import chromadb
 from chromadb import Embeddings
-from langchain_community.vectorstores.chroma import Chroma
+from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from loguru import logger
 
