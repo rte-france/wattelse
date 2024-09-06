@@ -143,7 +143,7 @@ def _compute_file_indicators():
     if st.session_state["group"] and st.session_state["group"] != METIERS_GROUP_NAME:
         bak = RAGBackEnd(st.session_state["group"])
         nb_files = len(bak.get_available_docs())
-        nb_chunks = len(bak.document_collection.collection)
+        nb_chunks = len(bak.document_collection.collection.get()["documents"])
     else:
         nb_files = np.NaN
         nb_chunks = np.NaN
