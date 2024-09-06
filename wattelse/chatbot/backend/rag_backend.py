@@ -275,7 +275,7 @@ class RAGBackEnd:
         # Raise error if query is empty or not str
         if not isinstance(message, str):
             raise ValueError("RAGBackend.query_rag: query is not a string")
-        if message=="":
+        if message == "":
             raise ValueError("RAGBackend.query_rag(): query is empty")
 
         # Get document filter
