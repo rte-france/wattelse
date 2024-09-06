@@ -272,6 +272,12 @@ class RAGBackEnd:
         if self.document_collection is None:
             raise RAGError("No active document collection!")
 
+        # Raise error if query is empty or not str
+        if not isinstance(message, str):
+            raise ValueError("RAGBackend.query_rag: query is not a string")
+        if message == "":
+            raise ValueError("RAGBackend.query_rag(): query is empty")
+
         # Get document filter
         document_filter = self.get_document_filter(selected_files)
 
@@ -338,9 +344,9 @@ class RAGBackEnd:
         # returns both answer and sources
         rag_chain = RunnableParallel(
             {
-                "context": retriever
-                if not self.multi_query_mode
-                else multi_query_retriever,
+                "context": (
+                    retriever if not self.multi_query_mode else multi_query_retriever
+                ),
                 "history": (lambda _: get_history_as_text(history)),
                 "query": (lambda _: message),
                 "contextualized_query": RunnablePassthrough(),
