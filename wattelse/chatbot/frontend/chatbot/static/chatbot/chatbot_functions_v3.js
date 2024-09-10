@@ -217,6 +217,12 @@ async function postUserMessageToRAG(userMessage) {
     botDiv.classList.add("waiting-div", "animate");
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
+    // Get selected files
+    let selectedFiles = getSelectedFileNames("available-list");
+    if (selectedFiles.length === availableDocs.length) {
+        selectedFiles = [];
+    }
+
     // Fetch response
     const response = await fetch('query_rag/', {
         method: 'POST',
@@ -224,7 +230,7 @@ async function postUserMessageToRAG(userMessage) {
         body: new URLSearchParams({
             'csrfmiddlewaretoken': csrfmiddlewaretoken,
             'message': userMessage,
-            'selected_docs': JSON.stringify(getSelectedFileNames("available-list")),
+            'selected_docs': JSON.stringify(selectedFiles),
             'conversation_id': conversationId,
         })
     });
