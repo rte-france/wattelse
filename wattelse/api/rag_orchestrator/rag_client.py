@@ -119,6 +119,7 @@ class RAGOrchestratorClient:
         group_id: str,
         message: str,
         history: List[Dict[str, str]] = None,
+        secondary_system_prompt: str = None,
         selected_files: List[str] = None,
         stream: str = False,
     ) -> Dict:
@@ -133,6 +134,7 @@ class RAGOrchestratorClient:
                     "group_id": group_id,
                     "message": message,
                     "history": history,
+                    "secondary_system_prompt": secondary_system_prompt,
                     "selected_files": selected_files,
                     "stream": stream,
                 }
