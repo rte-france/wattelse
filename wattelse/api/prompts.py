@@ -205,7 +205,9 @@ FR_SYSTEM_RAG_LLAMA3 = (
     "You help users answer questions based on internal RTE documents. "
     "Based on the documents provided and the conversation history, answer the user query. "
     'Don\'t start your answer with sentences like "According to documents...", '
-    "answer the query directly. Your answer must be in french."
+    "answer the query directly. Your answer must be in french.\n\n"
+    "Here are additional instructions the user wants you to follow:\n"
+    "{secondary_system_prompt}"
 )
 
 FR_USER_RAG_LLAMA3 = (
