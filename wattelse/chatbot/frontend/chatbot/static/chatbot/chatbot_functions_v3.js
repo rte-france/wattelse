@@ -20,6 +20,8 @@ const removalDocumentList = document.querySelector('.removal-list');
 
 const selectAll = document.getElementById('select-all');
 
+const groupSystemPromptArea = document.getElementById('group-system-prompt');
+
 // variables related to the upload area
 const dropArea = document.querySelector('.drop-section')
 const uploadedSection = document.querySelector('.uploaded-section')
@@ -875,4 +877,22 @@ function checkFeedbackCountSinceLastFeedback() {
         console.error('Error:', error);
       });
     return response;
+}
+
+function updateGroupSystemPrompt() {
+     const newGroupSystemPrompt = groupSystemPromptArea.value
+     response = fetch('/update_group_system_prompt/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+        body: JSON.stringify({
+            'group_system_prompt': newGroupSystemPrompt,
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
+    })
 }

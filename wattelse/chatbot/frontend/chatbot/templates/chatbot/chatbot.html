@@ -49,6 +49,7 @@
         <!-- All users have access to these tabs -->
         <div class="tab" data-content="extracts">Extraits</div>
         <div class="tab active" data-content="documents">Documents</div>
+        <div class="tab" data-content="system-prompt">System prompt</div>
 
         <!-- These tabs need specific rights to be displayed -->
         {% if can_upload_documents %}
@@ -83,6 +84,14 @@
                 <ul class="document-list available-list"></ul>
             </div>
         </div>
+
+        <!-- System prompt tab content -->
+         <div class="tab-content system-prompt">
+            <p>Vous pouvez modifier ici le system prompt de votre groupe. ATTENTION: le system prompt est commun à tout votre groupe. Le modifier aura un impact sur les autres utilistaeurs de votre groupe.</p>
+            <textarea id="group-system-prompt">{{ group_system_prompt }}</textarea>
+            <button id="group-system-prompt-button" onclick="updateGroupSystemPrompt()">Enregistrer</button>
+         </div>
+         
 
         <!-- Upload document tab content -->
         {% if can_upload_documents %}
