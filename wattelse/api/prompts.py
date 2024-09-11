@@ -207,7 +207,7 @@ FR_SYSTEM_RAG_LLAMA3 = (
     'Don\'t start your answer with sentences like "According to documents...", '
     "answer the query directly. Your answer must be in french.\n\n"
     "Here are additional instructions the user wants you to follow:\n"
-    "{secondary_system_prompt}"
+    "{group_system_prompt}"
 )
 
 FR_USER_RAG_LLAMA3 = (
