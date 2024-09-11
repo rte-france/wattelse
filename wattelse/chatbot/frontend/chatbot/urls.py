@@ -47,6 +47,11 @@ urlpatterns = [
         views.manage_superuser_permission,
         name="manage_superuser_permission",
     ),
+    path(
+        "update_group_system_prompt/",
+        views.update_group_system_prompt,
+        name="update_group_system_prompt",
+    ),
     # Dashboard
     path("dashboard/", views.dashboard, name="dashboard"),
     # Basic chat

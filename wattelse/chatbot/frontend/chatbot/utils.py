@@ -15,7 +15,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.models import User, Group
 from django.http import HttpResponse, Http404, JsonResponse
 
-from .models import Chat
+from .models import Chat, GroupSystemPrompt
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
 
@@ -98,6 +98,15 @@ def get_conversation_history(
         history.append({"role": "user", "content": chat.message})
         history.append({"role": "assistant", "content": chat.response})
     return None if len(history) == 0 else history
+
+
+def get_group_system_prompt(group_id: str) -> str:
+    """
+    Gets the group system prompt of a group.
+    Returns empty string if not found.
+    """
+    group_system_prompt = GroupSystemPrompt.objects.filter(group_id=group_id).first()
+    return group_system_prompt.system_prompt if group_system_prompt else ""
 
 
 def new_user_created(request, username=None):

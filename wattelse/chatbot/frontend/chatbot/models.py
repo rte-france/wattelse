@@ -33,6 +33,14 @@ class Chat(models.Model):
         super().save(*args, **kwargs)  # required to save self.answer_delay
 
 
+class GroupSystemPrompt(models.Model):
+    group_id = models.TextField(primary_key=True)
+    system_prompt = models.TextField()
+
+    def __str__(self) -> str:
+        return f"{self.group_id}: {self.system_prompt}"
+
+
 class SuperUserPermissions(models.Model):
     """
     Dummy model for managing users permissions.
