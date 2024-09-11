@@ -33,25 +33,25 @@ topic_model = BERTopic()
 topics, probs = topic_model.fit_transform(documents)
 
 # Initialize TempTopic with the BERTopic model, documents, and timestamps
-temptopic = TempTopic(topic_model=topic_model, docs=documents, timestamps=timestamps)
+metrics = TempTopic(topic_model=topic_model, docs=documents, timestamps=timestamps)
 
 # Calculate Temporal Topic Coherence
-ttc_scores_df, avg_ttc = temptopic.calculate_temporal_coherence()
+ttc_scores_df, avg_ttc = metrics.calculate_temporal_coherence()
 
 # Calculate Temporal Topic Smoothness
-tts_scores_df, avg_tts = temptopic.calculate_temporal_smoothness()
+tts_scores_df, avg_tts = metrics.calculate_temporal_smoothness()
 
 # Calculate Temporal Topic Quality
-ttq_scores_df, avg_ttq = temptopic.calculate_temporal_quality()
+ttq_scores_df, avg_ttq = metrics.calculate_temporal_quality()
 
 # Plot temporal topic coherence
-temptopic.plot_temporal_topic_metrics(metric='coherence')
+metrics.plot_temporal_topic_metrics(metric='coherence')
 
 # Plot temporal topic smoothness
-temptopic.plot_temporal_topic_metrics(metric='smoothness')
+metrics.plot_temporal_topic_metrics(metric='smoothness')
 
 # Plot temporal topic quality
-temptopic.plot_temporal_topic_quality()
+metrics.plot_temporal_topic_quality()
 """
 
 #  Copyright (c) 2024, RTE (https://www.rte-france.com)

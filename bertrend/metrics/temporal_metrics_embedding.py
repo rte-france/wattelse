@@ -29,15 +29,15 @@ topic_model = BERTopic()
 topics, probs = topic_model.fit_transform(documents)
 
 # Initialize TempTopic with the BERTopic model, documents, embeddings, and timestamps
-temptopic = TempTopic(topic_model=topic_model, docs=documents, embeddings=embeddings, 
+metrics = TempTopic(topic_model=topic_model, docs=documents, embeddings=embeddings,
                       word_embeddings=word_embeddings, token_strings=token_strings, timestamps=timestamps)
 
 # Fit the TempTopic model
-temptopic.fit(window_size=2, k=1)
+metrics.fit(window_size=2, k=1)
 
 # Calculate and plot stability metrics
-temptopic.calculate_temporal_representation_stability()
-temptopic.calculate_topic_embedding_stability()
+metrics.calculate_temporal_representation_stability()
+metrics.calculate_topic_embedding_stability()
 """
 
 #  Copyright (c) 2024, RTE (https://www.rte-france.com)
@@ -251,10 +251,10 @@ class TempTopic:
             detailed_topic_aggregated_docs["Timestamp"] = timestamp
 
             # Calculate mean embeddings for each topic
-            detailed_topic_aggregated_docs[
-                "Embedding"
-            ] = detailed_topic_aggregated_docs["Document_Embeddings"].apply(
-                lambda x: np.mean(x, axis=0)
+            detailed_topic_aggregated_docs["Embedding"] = (
+                detailed_topic_aggregated_docs["Document_Embeddings"].apply(
+                    lambda x: np.mean(x, axis=0)
+                )
             )
 
             document_per_topic_list.append(detailed_topic_aggregated_docs)

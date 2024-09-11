@@ -21,7 +21,7 @@ from bertrend.app.state_utils import (
     register_widget,
     save_widget_state,
 )
-from bertrend.temporal_metrics import TempTopic
+from bertrend.metrics.temporal_metrics import TempTopic
 from bertrend.utils import TEXT_COLUMN, TIMESTAMP_COLUMN
 
 

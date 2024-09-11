@@ -22,7 +22,7 @@ from bertrend.app.state_utils import (
     save_widget_state,
     restore_widget_state,
 )
-from bertrend.temporal_metrics import TempTopic
+from bertrend.metrics.temporal_metrics import TempTopic
 from bertrend.utils import TIMESTAMP_COLUMN, TEXT_COLUMN, PLOTLY_BUTTON_SAVE_CONFIG
 
 # Set locale for French date names
@@ -770,7 +770,7 @@ def main():
             st.error("Please select a valid granularity before applying.")
 
     # Display visualizations only if TempTopic has been fitted
-    if "temptopic" in st.session_state:
+    if "metrics" in st.session_state:
         display_topic_evolution_dataframe()
         display_topic_info_dataframe()
         display_documents_per_date_dataframe()

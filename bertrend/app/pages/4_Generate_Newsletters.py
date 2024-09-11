@@ -11,7 +11,7 @@ from bertrend.app.state_utils import (
     register_widget,
     save_widget_state,
 )
-from bertrend.newsletter_features import generate_newsletter, md2html
+from bertrend_apps.newsletter.newsletter_features import generate_newsletter, md2html
 from wattelse.summary import (
     GPTSummarizer,
     AbstractiveSummarizer,

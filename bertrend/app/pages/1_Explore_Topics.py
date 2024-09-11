@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 from loguru import logger
 
 from bertrend.app.state_utils import restore_widget_state
-from bertrend.newsletter_features import get_most_representative_docs
+from bertrend_apps.newsletter.newsletter_features import get_most_representative_docs
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from bertrend.app.app_utils import (
     compute_topics_over_time,

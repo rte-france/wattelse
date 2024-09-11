@@ -23,7 +23,7 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
-from bertrend.newsletter_features import generate_newsletter, export_md_string
+from bertrend_apps.newsletter.newsletter_features import generate_newsletter, export_md_string
 from bertrend.train import EmbeddingModel, train_BERTopic
 from bertrend.utils import (
     load_data,

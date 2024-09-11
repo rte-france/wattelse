@@ -31,7 +31,7 @@ from bertrend.app.state_utils import (
     restore_widget_state,
 )
 
-from bertrend.topic_metrics import get_coherence_value, get_diversity_value
+from bertrend.metrics.topic_metrics import get_coherence_value, get_diversity_value
 from bertrend.train import train_BERTopic
 from bertrend.utils import (
     TIMESTAMP_COLUMN,
