@@ -5,7 +5,7 @@
 from pathlib import Path
 from loguru import logger
 
-from wattelse.common.crontab_utils import schedule_scrapping, schedule_newsletter
+from bertrend_apps.common.crontab_utils import schedule_scrapping, schedule_newsletter
 
 CONFIG_PATH = Path(__file__).parent / "wattelse" / "config"
 CONFIG_FEEDS_PATH = CONFIG_PATH / "feeds"

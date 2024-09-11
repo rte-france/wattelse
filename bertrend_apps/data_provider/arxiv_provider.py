@@ -14,8 +14,8 @@ from loguru import logger
 import requests
 
 from wattelse.common import TEXT_COLUMN
-from wattelse.data_provider.data_provider import DataProvider
-from wattelse.data_provider.utils import wait
+from bertrend_apps.data_provider.data_provider import DataProvider
+from bertrend_apps.data_provider.utils import wait
 
 PAGE_SIZE = 2000
 DELAY_SECONDS = 3

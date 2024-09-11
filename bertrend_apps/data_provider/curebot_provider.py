@@ -8,7 +8,7 @@ from typing import List, Dict, Optional
 import pandas as pd
 from loguru import logger
 
-from wattelse.data_provider.data_provider import DataProvider
+from bertrend_apps.data_provider.data_provider import DataProvider
 import feedparser
 
 

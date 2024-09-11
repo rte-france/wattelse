@@ -10,8 +10,8 @@ import dateparser
 from loguru import logger
 from pygooglenews import GoogleNews
 
-from wattelse.data_provider.data_provider import DataProvider
-from wattelse.data_provider.utils import wait, decode_google_news_url
+from bertrend_apps.data_provider.data_provider import DataProvider
+from bertrend_apps.data_provider.utils import wait, decode_google_news_url
 
 PATTERN = "{QUERY}"
 BEFORE = "+before:today"

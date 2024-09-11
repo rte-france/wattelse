@@ -46,17 +46,17 @@ def generate_newsletter(
     openai_model_name: str = None,
     nb_sentences: int = 3,
 ) -> Tuple[str, Any, Any]:
-    """Generates a newsletter based on a trained BERTopic model.
+    """Generates a newsletters based on a trained BERTopic model.
 
     Args:
         topic_model (BERTopic): trained BERTopic model
         df (pd.DataFrame): DataFrame containing documents
         topics (List[int]): list of length len(df) containing the topic number for every document
         df_split (pd.DataFrame, optional): DataFrame containing split documents
-        top_n_topics (int, optional): Number of topics to use for newsletter
+        top_n_topics (int, optional): Number of topics to use for newsletters
         top_n_docs (int, optional): Number of document to use to summarize each topic
         top_n_docs_mode (str, optional): algorithm used to recover top n documents (see `get_most_representative_docs` function)
-        newsletter_title (str, optional): newsletter title
+        newsletter_title (str, optional): newsletters title
         summarizer_class (Summarizer, optional): type of summarizer to use (see `wattelse/summary`)
         summary_mode (str, optional): - `document` : for each topic, summarize top n documents independently
                                       - `topic`   : for each topic, use top n documents to generate a single topic summary
@@ -70,7 +70,7 @@ def generate_newsletter(
     Returns:
         str: Newsletter in Markdown format
     """
-    logger.debug("Generating newsletter...")
+    logger.debug("Generating newsletters...")
     openai_api = OpenAI_Client()
     # Adapt language for date
     current_local = locale.getlocale()
@@ -181,7 +181,7 @@ def generate_newsletter(
             md_lines.append(topic_summary)
         i = 0
         for _, doc in sub_df.iterrows():
-            # Write newsletter
+            # Write newsletters
             md_lines.append(f"### [*{doc.title}*]({doc.url})")
             try:
                 domain = tldextract.extract(doc.url).domain
@@ -215,7 +215,7 @@ def export_md_string(newsletter_md: str, path: Path, format="md"):
     # elif format == "pdf":
     #    md2pdf(path, md_content=newsletter_md)
     elif format == "html":
-        result = md2html(newsletter_md, Path(__file__).parent / "newsletter.css")
+        result = md2html(newsletter_md, Path(__file__).parent / "newsletters.css")
         with open(path, "w") as f:
             f.write(result)
 

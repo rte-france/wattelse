@@ -10,8 +10,8 @@ import dateparser
 import feedparser
 from loguru import logger
 
-from wattelse.data_provider.data_provider import DataProvider
-from wattelse.data_provider.utils import wait
+from bertrend_apps.data_provider.data_provider import DataProvider
+from bertrend_apps.data_provider.utils import wait
 
 PATTERN = "{QUERY}"
 

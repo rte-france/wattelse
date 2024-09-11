@@ -11,7 +11,7 @@ from bertrend.app.state_utils import (
     register_widget,
     save_widget_state,
 )
-from bertrend_apps.newsletter.newsletter_features import generate_newsletter, md2html
+from bertrend_apps.newsletters.newsletter_features import generate_newsletter, md2html
 from wattelse.summary import (
     GPTSummarizer,
     AbstractiveSummarizer,
@@ -32,7 +32,7 @@ SUMMARIZER_OPTIONS_MAPPER = {
 
 
 def generate_newsletter_wrapper():
-    """Wrapper function to generate newsletter based on user settings."""
+    """Wrapper function to generate newsletters based on user settings."""
     top_n_topics = (
         None
         if st.session_state["newsletter_all_topics"]
@@ -65,7 +65,7 @@ if "topic_model" not in st.session_state:
     st.stop()
 
 # Title
-st.title("Automatic newsletter generation")
+st.title("Automatic newsletters generation")
 
 # Initialize session state variables
 default_values = {
@@ -137,10 +137,10 @@ with st.sidebar:
     )
 
     generate_newsletter_clicked = st.button(
-        "Generate newsletter", type="primary", use_container_width=True
+        "Generate newsletters", type="primary", use_container_width=True
     )
 
-# Generate newsletter when button is clicked
+# Generate newsletters when button is clicked
 if generate_newsletter_clicked:
     if st.session_state["split_by_paragraphs"]:
         df = st.session_state["initial_df"]
@@ -149,15 +149,15 @@ if generate_newsletter_clicked:
         df = st.session_state["timefiltered_df"]
         df_split = None
 
-    with st.spinner("Generating newsletter..."):
-        st.session_state["newsletter"] = generate_newsletter_wrapper()
+    with st.spinner("Generating newsletters..."):
+        st.session_state["newsletters"] = generate_newsletter_wrapper()
 
-# Display generated newsletter
-if "newsletter" in st.session_state:
+# Display generated newsletters
+if "newsletters" in st.session_state:
     st.components.v1.html(
         md2html(
-            st.session_state["newsletter"][0],
-            Path(__file__).parent.parent.parent / "newsletter.css",
+            st.session_state["newsletters"][0],
+            Path(__file__).parent.parent.parent / "newsletters.css",
         ),
         height=800,
         scrolling=True,

@@ -23,7 +23,11 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
-from bertrend_apps.newsletter.newsletter_features import generate_newsletter, export_md_string
+from bertrend import FEED_BASE_PATH, BEST_CUDA_DEVICE
+from bertrend_apps.newsletters.newsletter_features import (
+    generate_newsletter,
+    export_md_string,
+)
 from bertrend.train import EmbeddingModel, train_BERTopic
 from bertrend.utils import (
     load_data,
@@ -33,14 +37,13 @@ from bertrend.utils import (
     split_df_by_paragraphs,
 )
 from wattelse.common.config_utils import parse_literal
-from wattelse.common.mail_utils import get_credentials, send_email
-from wattelse.common.crontab_utils import schedule_newsletter
-from wattelse.common import FEED_BASE_PATH, BEST_CUDA_DEVICE
+from bertrend_apps.common.mail_utils import get_credentials, send_email
+from bertrend_apps.common.crontab_utils import schedule_newsletter
 
 # Config sections
 BERTOPIC_CONFIG_SECTION = "bertopic_config"
 LEARNING_STRATEGY_SECTION = "learning_strategy"
-NEWSLETTER_SECTION = "newsletter"
+NEWSLETTER_SECTION = "newsletters"
 
 # Learning strategies
 LEARN_FROM_SCRATCH = (
@@ -55,19 +58,19 @@ os.umask(0o002)
 if __name__ == "__main__":
     app = typer.Typer()
 
-    @app.command("newsletter")
+    @app.command("newsletters")
     def newsletter_from_feed(
         newsletter_cfg_path: Path = typer.Argument(
-            help="Path to newsletter config file"
+            help="Path to newsletters config file"
         ),
         data_feed_cfg_path: Path = typer.Argument(help="Path to data feed config file"),
     ):
         """
-        Creates a newsletter associated to a data feed.
+        Creates a newsletters associated to a data feed.
         """
-        logger.info(f"Reading newsletter configuration file: {newsletter_cfg_path}")
+        logger.info(f"Reading newsletters configuration file: {newsletter_cfg_path}")
 
-        # read newsletter & data feed configuration
+        # read newsletters & data feed configuration
         config = configparser.ConfigParser(converters={"literal": parse_literal})
         config.read(newsletter_cfg_path)
         data_feed_cfg = configparser.ConfigParser()
@@ -140,8 +143,8 @@ if __name__ == "__main__":
 
         summarizer_class = locate(newsletter_params.get("summarizer_class"))
 
-        # generate newsletter
-        logger.info(f"Generating newsletter...")
+        # generate newsletters
+        logger.info(f"Generating newsletters...")
         title = newsletter_params.get("title")
         newsletter_md, date_from, date_to = generate_newsletter(
             topic_model=topic_model,
@@ -176,7 +179,7 @@ if __name__ == "__main__":
         export_md_string(newsletter_md, output_path, format=output_format)
         logger.info(f"Newsletter exported in {output_format} format: {output_path}")
 
-        # send newsletter by email
+        # send newsletters by email
         mail_title = title + f" ({date_from}/{date_to})"
         recipients = newsletter_params.getliteral("recipients", [])
         try:
@@ -270,10 +273,10 @@ if __name__ == "__main__":
             save_embedding_model=embedding_model,
         )
 
-    @app.command("schedule-newsletter")
+    @app.command("schedule-newsletters")
     def automate_newsletter(
         newsletter_cfg_path: Path = typer.Argument(
-            help="Path to newsletter config file"
+            help="Path to newsletters config file"
         ),
         data_feed_cfg_path: Path = typer.Argument(help="Path to data feed config file"),
         cuda_devices: str = typer.Option(
@@ -290,12 +293,12 @@ if __name__ == "__main__":
         """
         logger.error("Not implemented yet!")
 
-    @app.command("remove-newsletter")
+    @app.command("remove-newsletters")
     def remove_newsletter(
-        newsletter_cfg: Path = typer.Argument(help="Path to newsletter config file"),
+        newsletter_cfg: Path = typer.Argument(help="Path to newsletters config file"),
     ):
         """
-        Removes from crontab an automatic newsletter creation
+        Removes from crontab an automatic newsletters creation
         """
         logger.error("Not implemented yet!")
 

@@ -9,8 +9,8 @@ import dateparser
 from loguru import logger
 from newscatcherapi import NewsCatcherApiClient
 
-from wattelse.data_provider.data_provider import DataProvider
-from wattelse.data_provider.utils import wait
+from bertrend_apps.data_provider.data_provider import DataProvider
+from bertrend_apps.data_provider.utils import wait
 
 API_KEY = "ajY3f53bIUECMKxE-Q5DvH2Etrq8QYYiC5GRWh8AIx4"  # Free API key
 

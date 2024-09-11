@@ -17,7 +17,7 @@ from joblib import delayed, Parallel
 from loguru import logger
 from newspaper import Article
 
-from wattelse.data_provider.utils import wait_if_seen_url
+from bertrend_apps.data_provider.utils import wait_if_seen_url
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)

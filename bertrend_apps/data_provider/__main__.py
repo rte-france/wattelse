@@ -12,12 +12,12 @@ import typer
 from loguru import logger
 from pathlib import Path
 
-from wattelse.common.crontab_utils import schedule_scrapping
-from wattelse.common import FEED_BASE_PATH
-from wattelse.data_provider.arxiv_provider import ArxivProvider
-from wattelse.data_provider.bing_news_provider import BingNewsProvider
-from wattelse.data_provider.google_news_provider import GoogleNewsProvider
-from wattelse.data_provider.newscatcher_provider import NewsCatcherProvider
+from bertrend import FEED_BASE_PATH
+from bertrend_apps.common.crontab_utils import schedule_scrapping
+from bertrend_apps.data_provider.arxiv_provider import ArxivProvider
+from bertrend_apps.data_provider.bing_news_provider import BingNewsProvider
+from bertrend_apps.data_provider.google_news_provider import GoogleNewsProvider
+from bertrend_apps.data_provider.newscatcher_provider import NewsCatcherProvider
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)

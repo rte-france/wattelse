@@ -20,7 +20,7 @@ from wattelse.bertopic import (
     split_df_by_paragraphs,
     load_data,
 )
-from wattelse.data_provider.curebot_provider import CurebotProvider
+from bertrend_apps.data_provider.curebot_provider import CurebotProvider
 from wattelse.summary import GPTSummarizer
 
 COLUMN_URL = "url"
@@ -29,7 +29,7 @@ EMBEDDING_MODEL_NAME = "dangvantuan/sentence-camembert-large"
 TOP_N_WORDS = 5
 # EMBEDDING_MODEL_NAME = "antoinelouis/biencoder-camembert-base-mmarcoFR"
 
-css_style = Path(inspect.getfile(generate_newsletter)).parent / "newsletter.css"
+css_style = Path(inspect.getfile(generate_newsletter)).parent / "newsletters.css"
 
 if "topic_detection_disabled" not in st.session_state:
     st.session_state.topic_detection_disabled = False
@@ -126,8 +126,8 @@ def train_model():
 
 
 def create_newsletter():
-    with st.spinner("Création de la newsletter..."):
-        st.session_state["newsletter"], _, _ = generate_newsletter(
+    with st.spinner("Création de la newsletters..."):
+        st.session_state["newsletters"], _, _ = generate_newsletter(
             topic_model=st.session_state["topic_model"],
             df=st.session_state["df"],
             df_split=st.session_state["df_split"],
@@ -219,21 +219,21 @@ def newsletter_creation():
     # Newsletter creation
     if "topic_model" in st.session_state.keys():
         st.session_state.topic_expanded = False
-        with st.expander("**Création de la newsletter**", expanded=True):
+        with st.expander("**Création de la newsletters**", expanded=True):
             # st.session_state.topic_detection_disabled = True
             generation_button = st.button(
-                "Génération de newsletter",
+                "Génération de newsletters",
                 on_click=create_newsletter,
                 type="primary",
                 disabled=st.session_state.newsletter_disabled,
             )
 
-            # Edit manually newsletter
-            if "newsletter" in st.session_state.keys():
+            # Edit manually newsletters
+            if "newsletters" in st.session_state.keys():
                 st.text_area(
-                    "Contenu éditable de la newsletter (faire CTRL+ENTREE pour prendre en compte les modifications)",
+                    "Contenu éditable de la newsletters (faire CTRL+ENTREE pour prendre en compte les modifications)",
                     value=(
-                        st.session_state["newsletter"]
+                        st.session_state["newsletters"]
                         if (
                             "final_newsletter" not in st.session_state
                             or generation_button
@@ -252,7 +252,7 @@ def newsletter_creation():
                         # Newsletter download
                         st.download_button(
                             "Téléchargement",
-                            file_name="newsletter.html",
+                            file_name="newsletters.html",
                             data=md2html(
                                 st.session_state["final_newsletter"],
                                 css_style=css_style,
