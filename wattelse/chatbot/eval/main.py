@@ -3,6 +3,7 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
+import re
 import typer
 import json
 from loguru import logger
@@ -19,16 +20,21 @@ from wattelse.chatbot.eval.prompt import EVAL_LLM_PROMPT
 QUERY_COLUMN = "query"
 ANSWER_COLUMN = "answer"
 DOC_LIST_COLUMN = "doc_list"
+# These characters will be removed from `relavant_extracts` for better readability
+SPECIAL_CHARACTER_FILTER = (
+    r"[\t\n\r\x07\x08\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009]"
+)
 
 
 def main(
     qr_df_path: Path,
     eval_corpus_path: Path,
     output_path: Path = Path(__file__).parent / "eval_output.xlsx",
+    compute_bertscores: bool = True,
 ):
     """
     Function to evaluate the generation part of the RAG pipeline.
-    Currently uses BERTScore and LLM as a judge as metrics.
+    Currently supports BERTScore and LLM as a judge as metrics.
     """
 
     # Initialize RAG backend and LLM client
@@ -53,16 +59,15 @@ def main(
     all_eval_corpus_files = set([doc.name for doc in eval_corpus_path.iterdir()])
     for doc in all_doc_list:
         if doc not in all_eval_corpus_files:
-            logger.warning(f"Document {doc} not found in eval corpus folder")
+            raise ValueError(f"Document {doc} not found in eval corpus folder")
 
     # Load eval docs in RAG backend
     for doc in eval_corpus_path.iterdir():
-        if doc.is_file():
+        # Only add documents that are in the `doc_list`
+        if doc.name in all_doc_list:
             with open(doc, "rb") as f:
                 RAG_EVAL_BACKEND.add_file_to_collection(doc.name, f)
                 logger.info(f"Added {doc.name} to collection")
-        else:
-            logger.warning(f"{doc} is not a file")
 
     # Get RAG predictions
     rag_answers = []
@@ -73,15 +78,18 @@ def main(
         )
         answer = response[ANSWER_COLUMN]
         relevant_extracts = [
-            extract["content"] for extract in response["relevant_extracts"]
+            re.sub(SPECIAL_CHARACTER_FILTER, " ", extract["content"])
+            for extract in response["relevant_extracts"]
         ]
         rag_answers.append(answer)
         rag_relevant_extracts.append(relevant_extracts)
 
-    # Compute BERTscore
+    # Get reference answers (ground truth) as a list
     refs = eval_df[ANSWER_COLUMN].tolist()
 
-    P, R, F1 = score(rag_answers, refs, lang="fr")
+    # Compute BERTscore
+    if compute_bertscores:
+        P, R, F1 = score(rag_answers, refs, lang="fr")
 
     # Compute LLM as a judge score
     llm_scores = []
@@ -99,19 +107,22 @@ def main(
     llm_scores = [int(score.split(":")[1].strip()) for score in llm_scores]
 
     # Log scores info
-    logger.info(f"BERTScore P: {P.mean().item():.3f}")
-    logger.info(f"BERTScore R: {R.mean().item():.3f}")
-    logger.info(f"BERTScore F1: {F1.mean().item():.3f}")
+    if compute_bertscores:
+        logger.info(f"BERTScore P: {P.mean().item():.3f}")
+        logger.info(f"BERTScore R: {R.mean().item():.3f}")
+        logger.info(f"BERTScore F1: {F1.mean().item():.3f}")
     logger.info(f"LLM as a judge mean score: {np.mean(llm_scores):.3f}")
 
     # Update eval_df with RAG predictions and scores
     eval_df["rag_answer"] = rag_answers
     eval_df["rag_relevant_extracts"] = [
-        json.dumps(extract, ensure_ascii=False) for extract in rag_relevant_extracts
+        "\n\n".join([f"Extract {i+1}: {extract}" for i, extract in enumerate(sublist)])
+        for sublist in rag_relevant_extracts
     ]
-    eval_df["bert_score_P"] = P.tolist()
-    eval_df["bert_score_R"] = R.tolist()
-    eval_df["bert_score_F1"] = F1.tolist()
+    if compute_bertscores:
+        eval_df["bert_score_P"] = P.tolist()
+        eval_df["bert_score_R"] = R.tolist()
+        eval_df["bert_score_F1"] = F1.tolist()
     eval_df["llm_score"] = llm_scores
 
     # Save updated eval_df
