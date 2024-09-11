@@ -26,11 +26,12 @@ from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGAPIError
 from wattelse.chatbot.backend import DATA_DIR
-from .models import Chat, SuperUserPermissions
+from .models import Chat, GroupSystemPrompt, SuperUserPermissions
 
 from .utils import (
     get_user_group_id,
     get_group_usernames_list,
+    get_group_system_prompt,
     new_user_created,
     get_conversation_history,
     streaming_generator,
@@ -51,6 +52,9 @@ def main_page(request):
 
     # Get user group_id
     user_group_id = get_user_group_id(request.user)
+
+    # Get group system prompt
+    group_system_prompt = get_group_system_prompt(user_group_id)
 
     # Generate a new conversation_id
     conversation_id = str(uuid.uuid4())
@@ -87,6 +91,7 @@ def main_page(request):
             "can_remove_documents": can_remove_documents,
             "can_manage_users": can_manage_users,
             "user_group": user_group_id,
+            "group_system_prompt": group_system_prompt,
             "group_usernames_dict": group_usernames_dict,
             "admin_group_selection": admin_group_selection,
         },
@@ -194,6 +199,9 @@ def query_rag(request):
         # Get posted message
         message = data.get("message", None)
 
+        # Get group system prompt
+        group_system_prompt = get_group_system_prompt(user_group_id)
+
         # Check message is not empty
         if not message:
             logger.warning(f"[User: {request.user.username}] No user message received")
@@ -217,6 +225,7 @@ def query_rag(request):
                 user_group_id,
                 message,
                 history=history,
+                group_system_prompt=group_system_prompt,
                 selected_files=selected_docs,
                 stream=True,
             )
@@ -624,8 +633,40 @@ def manage_superuser_permission(request):
         except Exception as e:
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
-                {"message": "Erreur serveur : échec lors de la modification"},
+                {
+                    "message": "Une erreur s'est produite, modifications non sauvegardées."
+                },
                 status=500,
             )
+    else:
+        raise Http404()
+
+
+def update_group_system_prompt(request):
+    """
+    Updates the group system prompt (secondary system prompt).
+    """
+    if request.method == "POST":
+        # Get request data
+        data = json.loads(request.body)
+        user = request.user
+        group_id = get_user_group_id(user)
+        new_system_prompt = data.get("group_system_prompt", None)
+
+        # Set new group system prompt
+        try:
+            group_system_prompt = GroupSystemPrompt.objects.get_or_create(
+                group_id=group_id, defaults={"system_prompt": ""}
+            )[0]
+            logger.debug(group_system_prompt)
+            group_system_prompt.system_prompt = new_system_prompt
+            group_system_prompt.save()
+            logger.debug(
+                f"Group {group_id}: Succesfully changed system prompt to: {group_system_prompt.system_prompt}"
+            )
+            return JsonResponse({"message": f"Nouveau system prompt sauvegardé."})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse({"message": f"Un problème est survenu."})
     else:
         raise Http404()

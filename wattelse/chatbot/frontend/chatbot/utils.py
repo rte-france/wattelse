@@ -19,7 +19,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.models import User, Group
 from django.http import Http404, JsonResponse
 
-from .models import Chat, GPTChat
+from .models import Chat, GPTChat, GroupSystemPrompt
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
 
@@ -153,6 +153,24 @@ def get_conversation_first_message(
     """
     first_message = ChatModel.objects.filter(conversation_id=conversation_id).first()
     return first_message.message, first_message.question_timestamp
+
+
+def get_group_system_prompt(group_id: str) -> str:
+    """
+    Gets the group system prompt of a group.
+    Returns empty string if not found.
+    """
+    group_system_prompt = GroupSystemPrompt.objects.filter(group_id=group_id).first()
+    return group_system_prompt.system_prompt if group_system_prompt else ""
+
+
+def get_group_system_prompt(group_id: str) -> str:
+    """
+    Gets the group system prompt of a group.
+    Returns empty string if not found.
+    """
+    group_system_prompt = GroupSystemPrompt.objects.filter(group_id=group_id).first()
+    return group_system_prompt.system_prompt if group_system_prompt else ""
 
 
 def new_user_created(request, username=None):

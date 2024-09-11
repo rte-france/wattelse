@@ -49,6 +49,14 @@ class GPTChat(models.Model):
         return f"{self.user.username}: {self.message}"
 
 
+class GroupSystemPrompt(models.Model):
+    group_id = models.TextField(primary_key=True)
+    system_prompt = models.TextField()
+
+    def __str__(self) -> str:
+        return f"{self.group_id}: {self.system_prompt}"
+
+
 class SuperUserPermissions(models.Model):
     """
     Dummy model for managing users permissions.
