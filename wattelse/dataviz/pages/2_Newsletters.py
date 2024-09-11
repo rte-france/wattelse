@@ -5,8 +5,8 @@
 
 import streamlit as st
 
-from wattelse.bertopic.app.data_utils import choose_data
-from wattelse.bertopic.utils import OUTPUT_DIR
+from bertrend.app.data_utils import choose_data
+from bertrend.utils import OUTPUT_DIR
 
 st.title("Browse generated newsletters")
 

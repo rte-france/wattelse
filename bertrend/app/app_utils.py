@@ -10,8 +10,8 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from wattelse.bertopic.app.state_utils import register_widget
-from wattelse.bertopic.utils import (
+from bertrend.app.state_utils import register_widget
+from bertrend.utils import (
     PLOTLY_BUTTON_SAVE_CONFIG,
     TEXT_COLUMN,
     TIMESTAMP_COLUMN,

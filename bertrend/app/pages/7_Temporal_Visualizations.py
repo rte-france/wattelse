@@ -13,18 +13,17 @@ import plotly.graph_objects as go
 import streamlit as st
 import umap
 
-from wattelse.bertopic.app.app_utils import (
+from bertrend.app.app_utils import (
     plot_topics_over_time,
     compute_topics_over_time,
 )
-from wattelse.bertopic.app.state_utils import (
+from bertrend.app.state_utils import (
     register_widget,
     save_widget_state,
     restore_widget_state,
 )
-from wattelse.bertopic.temporal_metrics_embedding import TempTopic
-from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
-from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
+from bertrend.temporal_metrics import TempTopic
+from bertrend.utils import TIMESTAMP_COLUMN, TEXT_COLUMN, PLOTLY_BUTTON_SAVE_CONFIG
 
 # Set locale for French date names
 locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")

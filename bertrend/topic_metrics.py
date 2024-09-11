@@ -10,7 +10,6 @@ import pandas as pd
 import gensim.corpora as corpora
 from gensim.models.coherencemodel import CoherenceModel
 from bertopic import BERTopic
-from loguru import logger
 
 
 def get_coherence_value(

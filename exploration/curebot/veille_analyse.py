@@ -3,7 +3,7 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 from pathlib import Path
-from tempfile import TemporaryDirectory, NamedTemporaryFile
+from tempfile import TemporaryDirectory
 from typing import List
 
 import inspect
@@ -12,9 +12,9 @@ import streamlit as st
 from loguru import logger
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-from wattelse.bertopic.newsletter_features import generate_newsletter, md2html
-from wattelse.bertopic.train import train_BERTopic
-from wattelse.bertopic.utils import (
+from wattelse.bertopic import generate_newsletter, md2html
+from wattelse.bertopic import train_BERTopic
+from wattelse.bertopic import (
     TIMESTAMP_COLUMN,
     clean_dataset,
     split_df_by_paragraphs,

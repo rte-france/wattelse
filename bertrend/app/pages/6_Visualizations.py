@@ -16,12 +16,11 @@ import streamlit.components.v1 as components
 from loguru import logger
 from umap import UMAP
 
-from wattelse.bertopic.app.app_utils import (
+from bertrend.app.app_utils import (
     plot_2d_topics,
 )
-from wattelse.bertopic.app.state_utils import restore_widget_state
-from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
-from wattelse.bertopic.utils import TEXT_COLUMN
+from bertrend.app.state_utils import restore_widget_state
+from bertrend.utils import TEXT_COLUMN, PLOTLY_BUTTON_SAVE_CONFIG
 
 # Set locale for French date names
 locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
@@ -64,11 +63,13 @@ def create_topic_info_dataframe():
 
     topic_info_agg.columns = ["topic", "number_of_documents", "list_of_documents"]
     topic_info_agg["topic"] = topic_info_agg["topic"].apply(
-        lambda x: ", ".join(
-            [word for word, _ in st.session_state["topic_model"].get_topic(x)]
+        lambda x: (
+            ", ".join(
+                [word for word, _ in st.session_state["topic_model"].get_topic(x)]
+            )
+            if x != -1
+            else "Outlier"
         )
-        if x != -1
-        else "Outlier"
     )
 
     return topic_info_agg[topic_info_agg["topic"] != "Outlier"]
@@ -147,9 +148,9 @@ def create_datamap(include_outliers):
 
     df["is_noise"] = df["topic_representation"].str.contains("-1")
     df["topic_representation"] = df.apply(
-        lambda row: ""
-        if row["is_noise"]
-        else topic_representations.get(row["topic_num"], ""),
+        lambda row: (
+            "" if row["is_noise"] else topic_representations.get(row["topic_num"], "")
+        ),
         axis=1,
     )
     df["topic_color"] = df.apply(

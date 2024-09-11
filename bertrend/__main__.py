@@ -23,8 +23,9 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
-from wattelse.bertopic.newsletter_features import generate_newsletter, export_md_string
-from wattelse.bertopic.utils import (
+from bertrend.newsletter_features import generate_newsletter, export_md_string
+from bertrend.train import EmbeddingModel, train_BERTopic
+from bertrend.utils import (
     load_data,
     OUTPUT_DIR,
     TEXT_COLUMN,
@@ -32,7 +33,6 @@ from wattelse.bertopic.utils import (
     split_df_by_paragraphs,
 )
 from wattelse.common.config_utils import parse_literal
-from wattelse.bertopic.train import train_BERTopic, EmbeddingModel
 from wattelse.common.mail_utils import get_credentials, send_email
 from wattelse.common.crontab_utils import schedule_newsletter
 from wattelse.common import FEED_BASE_PATH, BEST_CUDA_DEVICE

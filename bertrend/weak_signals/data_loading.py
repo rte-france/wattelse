@@ -10,7 +10,7 @@ from typing import Dict, Tuple
 import pandas as pd
 
 from global_vars import DATA_PATH
-from wattelse.bertopic.utils import (
+from bertrend.utils import (
     preprocess_french_text,
     TEXT_COLUMN,
     TIMESTAMP_COLUMN,

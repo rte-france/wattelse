@@ -8,20 +8,19 @@ from statistics import StatisticsError
 import pandas as pd
 import streamlit as st
 
-from wattelse.bertopic.app.app_utils import (
+from bertrend.app.app_utils import (
     plot_remaining_docs_repartition_over_time,
     transform_new_data,
     compute_topics_over_time,
     plot_topics_over_time,
 )
-from wattelse.bertopic.app.state_utils import (
+from bertrend.app.state_utils import (
     restore_widget_state,
     register_widget,
     save_widget_state,
 )
-from wattelse.bertopic.metrics import TopicMetrics, TIME_WEIGHT, TEM_x, TEM_y
-from wattelse.bertopic.utils import TIMESTAMP_COLUMN
-
+from bertrend.metrics import TIME_WEIGHT, TopicMetrics, TEM_x, TEM_y
+from bertrend.utils import TIMESTAMP_COLUMN
 
 # Restore widget state
 restore_widget_state()
@@ -33,7 +32,9 @@ if "tw" not in st.session_state.keys():
 def main():
     # Stop script if no model is trained
     if "topic_model" not in st.session_state.keys():
-        st.error("Train a model to explore the impact of new data on topics.", icon="🚨")
+        st.error(
+            "Train a model to explore the impact of new data on topics.", icon="🚨"
+        )
         st.stop()
 
     if "topics_over_time" not in st.session_state.keys():

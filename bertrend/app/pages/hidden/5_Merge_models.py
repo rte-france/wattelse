@@ -8,8 +8,7 @@ from pathlib import Path
 from bertopic import BERTopic
 from typing import List, Optional, Union
 
-
-from wattelse.bertopic.app.state_utils import restore_widget_state
+from bertrend.app.state_utils import restore_widget_state
 
 
 def list_saved_models(saved_models_dir: Union[str, Path]) -> List[Path]:

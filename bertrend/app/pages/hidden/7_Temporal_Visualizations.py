@@ -4,56 +4,25 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import streamlit as st
-import pandas as pd
 import locale
-from loguru import logger
-
-
-from typing import List
-import numpy as np
-from sklearn.manifold import TSNE
-import plotly.express as px
 
 # from langchain_openai import ChatOpenAI
 # from langchain_core.messages import HumanMessage, SystemMessage
 
-
-from wattelse.bertopic.temporal_metrics_embedding import TempTopic
-
-
-import plotly.graph_objects as go
-
-from wattelse.bertopic.utils import TIMESTAMP_COLUMN, TEXT_COLUMN
-from app_utils import plot_topics_over_time
-from state_utils import restore_widget_state, register_widget, save_widget_state
-
-from wattelse.bertopic.app.app_utils import (
-    plot_2d_topics,
+from bertrend.app.app_utils import (
     plot_topics_over_time,
     compute_topics_over_time,
 )
 
-from sklearn.preprocessing import normalize
-from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
-from typing import List, Union, Tuple, Dict
-from tqdm import tqdm
-from bertopic import BERTopic
-import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer
-from scipy.sparse import lil_matrix
-import itertools
-import plotly.graph_objects as go
-import plotly.express as px
-import torch
-import umap
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.manifold import TSNE
-from loguru import logger
 
-import plotly.express as px
-import numpy as np
-import plotly.graph_objs as go
+from bertrend.app.state_utils import (
+    restore_widget_state,
+    register_widget,
+    save_widget_state,
+)
+from bertrend.temporal_metrics import TempTopic
+from bertrend.utils import TEXT_COLUMN, TIMESTAMP_COLUMN
 
 
 def display_documents_on_click(clicked_point):

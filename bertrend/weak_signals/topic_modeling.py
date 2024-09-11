@@ -19,7 +19,7 @@ from global_vars import *
 import streamlit as st
 import torch
 from tqdm import tqdm
-from wattelse.bertopic.utils import TEXT_COLUMN
+from bertrend.utils import TEXT_COLUMN
 
 
 def create_topic_model(

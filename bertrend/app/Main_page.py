@@ -14,7 +14,7 @@ from loguru import logger
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer
 
-from wattelse.bertopic.app.app_utils import (
+from bertrend.app.app_utils import (
     embedding_model_options,
     bertopic_options,
     umap_options,
@@ -24,15 +24,16 @@ from wattelse.bertopic.app.app_utils import (
     representation_model_options,
     load_data_wrapper,
 )
-from wattelse.bertopic.app.data_utils import data_overview, choose_data
-from wattelse.bertopic.app.state_utils import (
+from bertrend.app.data_utils import data_overview, choose_data
+from bertrend.app.state_utils import (
     register_widget,
     save_widget_state,
     restore_widget_state,
 )
-from wattelse.bertopic.topic_metrics import get_coherence_value, get_diversity_value
-from wattelse.bertopic.train import train_BERTopic
-from wattelse.bertopic.utils import (
+
+from bertrend.topic_metrics import get_coherence_value, get_diversity_value
+from bertrend.train import train_BERTopic
+from bertrend.utils import (
     TIMESTAMP_COLUMN,
     clean_dataset,
     split_df_by_paragraphs,
@@ -316,9 +317,11 @@ def train_model():
                 full_dataset=full_dataset,
                 indices=indices,
                 form_parameters=form_parameters,
-                cache_base_name=st.session_state["data_name"]
-                if st.session_state["split_method"] == "No split"
-                else f'{st.session_state["data_name"]}_split_by_paragraphs',
+                cache_base_name=(
+                    st.session_state["data_name"]
+                    if st.session_state["split_method"] == "No split"
+                    else f'{st.session_state["data_name"]}_split_by_paragraphs'
+                ),
             )
 
         st.success("Model trained successfully!")

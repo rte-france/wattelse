@@ -5,12 +5,13 @@
 
 import streamlit as st
 from pathlib import Path
-from wattelse.bertopic.newsletter_features import generate_newsletter, md2html
-from wattelse.bertopic.app.state_utils import (
+
+from bertrend.app.state_utils import (
     restore_widget_state,
     register_widget,
     save_widget_state,
 )
+from bertrend.newsletter_features import generate_newsletter, md2html
 from wattelse.summary import (
     GPTSummarizer,
     AbstractiveSummarizer,

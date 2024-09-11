@@ -10,9 +10,9 @@ import pandas as pd
 import streamlit as st
 from pathlib import Path
 
-from wattelse.bertopic.app.app_utils import plot_docs_reparition_over_time
-from wattelse.bertopic.app.state_utils import register_widget, save_widget_state
-from wattelse.bertopic.utils import TEXT_COLUMN, TIMESTAMP_COLUMN
+from bertrend.app.app_utils import plot_docs_reparition_over_time
+from bertrend.app.state_utils import save_widget_state
+from bertrend.utils import TEXT_COLUMN, TIMESTAMP_COLUMN
 
 
 def data_overview(df: pd.DataFrame):

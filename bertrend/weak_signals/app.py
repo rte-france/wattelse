@@ -3,7 +3,6 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-import os
 import pickle
 import shutil
 
@@ -31,7 +30,7 @@ from visualizations import (
     plot_newly_emerged_topics,
     create_sankey_diagram,
 )
-from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG, TEXT_COLUMN
+from bertrend.utils import PLOTLY_BUTTON_SAVE_CONFIG, TEXT_COLUMN
 from weak_signals import (
     detect_weak_signals_zeroshot,
     calculate_signal_popularity,

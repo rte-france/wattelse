@@ -12,7 +12,7 @@ import streamlit as st
 from bertopic import BERTopic
 from plotly_resampler import FigureWidgetResampler
 
-from wattelse.bertopic.utils import PLOTLY_BUTTON_SAVE_CONFIG
+from bertrend.utils import PLOTLY_BUTTON_SAVE_CONFIG
 from global_vars import SIGNAL_CLASSIF_LOWER_BOUND, SIGNAL_CLASSIF_UPPER_BOUND
 from weak_signals import classify_signals
 
@@ -36,11 +36,13 @@ def plot_num_topics_and_outliers(topic_models: Dict[pd.Timestamp, BERTopic]) -> 
     )
 
     outlier_sizes = [
-        model.get_topic_info()
-        .loc[model.get_topic_info()["Topic"] == -1]["Count"]
-        .values[0]
-        if -1 in model.get_topic_info()["Topic"].values
-        else 0
+        (
+            model.get_topic_info()
+            .loc[model.get_topic_info()["Topic"] == -1]["Count"]
+            .values[0]
+            if -1 in model.get_topic_info()["Topic"].values
+            else 0
+        )
         for model in topic_models.values()
     ]
     fig_outlier_sizes = go.Figure(

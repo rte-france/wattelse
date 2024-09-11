@@ -13,7 +13,7 @@ import arxiv
 from loguru import logger
 import requests
 
-from wattelse.bertopic.utils import TEXT_COLUMN
+from wattelse.common import TEXT_COLUMN
 from wattelse.data_provider.data_provider import DataProvider
 from wattelse.data_provider.utils import wait
 

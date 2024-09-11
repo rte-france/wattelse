@@ -26,7 +26,7 @@ from umap import UMAP
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.api.prompts import FRENCH_TOPIC_REPRESENTATION_PROMPT
-from wattelse.bertopic.utils import (
+from bertrend.utils import (
     TEXT_COLUMN,
     BASE_CACHE_PATH,
 )
