@@ -45,6 +45,7 @@ class RAGQuery(BaseModel):
     group_id: str
     message: str
     history: List[Dict[str, str]] | None
+    secondary_system_prompt: str | None
     selected_files: List[str] | None
     stream: bool = False
 
@@ -146,6 +147,7 @@ async def query_rag(rag_query: RAGQuery) -> StreamingResponse:
     response = RAG_SESSIONS[rag_query.group_id].query_rag(
         rag_query.message,
         history=rag_query.history,
+        secondary_system_prompt=rag_query.secondary_system_prompt,
         selected_files=rag_query.selected_files,
         stream=rag_query.stream,
     )
