@@ -263,7 +263,7 @@ class RAGBackEnd:
         self,
         message: str,
         history: List[dict[str, str]] = None,
-        secondary_system_prompt: str = None,
+        group_system_prompt: str = None,
         selected_files: List[str] = None,
         stream: bool = False,
     ) -> Union[Dict, StreamingResponse]:
@@ -318,11 +318,11 @@ class RAGBackEnd:
         # Definition of RAG chain
         # - prompt
         prompt = ChatPromptTemplate(
-            input_variables=["context", "history", "query", "secondary_system_prompt"],
+            input_variables=["context", "history", "query", "group_system_prompt"],
             messages=[
                 SystemMessagePromptTemplate(
                     prompt=PromptTemplate(
-                        input_variables=["secondary_system_prompt"],
+                        input_variables=["group_system_prompt"],
                         template=self.system_prompt,
                     )
                 ),
@@ -351,7 +351,7 @@ class RAGBackEnd:
                 "history": (lambda _: get_history_as_text(history)),
                 "query": (lambda _: message),
                 "contextualized_query": RunnablePassthrough(),
-                "secondary_system_prompt": (lambda _: secondary_system_prompt),
+                "group_system_prompt": (lambda _: group_system_prompt),
             }
         ).assign(answer=rag_chain_from_docs)
 

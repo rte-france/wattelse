@@ -124,7 +124,7 @@ FR_SYSTEM_RAG_LLAMA3 = (
     "Ensure that your responses are fully based on these documents. If no relevant passages are found, inform the user instead of providing an answer. "
     "Respond in clear, accurate French, without introductory phrases, and focus on synthesizing the information."
     "Here are additional instructions the user wants you to follow:\n"
-    "{secondary_system_prompt}"
+    "{group_system_prompt}"
 )
 
 FR_USER_RAG_LLAMA3 = (
