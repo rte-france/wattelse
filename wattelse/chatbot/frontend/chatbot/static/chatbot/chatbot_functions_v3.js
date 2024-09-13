@@ -875,7 +875,42 @@ function checkFeedbackCountSinceLastFeedback() {
         }
       })
       .catch(error => {
-        console.error('Error:', error);
-      });
-    return response;
+
+let popupTimeout; // needed to avoid removing popup that is already removed
+
+function showPopup(message, error = false) {
+    // Delete any existing popups
+    const existingPopups = document.querySelector('.popup');
+    if (existingPopups) {
+        existingPopups.remove(); // Remove the old popup immediately
+        clearTimeout(popupTimeout); // Cancel any timeout if a new popup is created
+    }
+
+    // Create a new popup element
+    const popup = document.createElement('div');
+    popup.className = 'popup';
+    popup.innerHTML = message;
+    if (error) {
+        popup.style.backgroundColor = "crimson";
+    } else {
+        popup.style.backgroundColor = "mediumseagreen";
+    }
+    document.body.appendChild(popup);
+
+    // Show the popup with a fade-in effect
+    setTimeout(() => {
+        popup.style.display = 'block';
+        popup.style.opacity = '1';
+    }, 100); // Slight delay for smoother transition
+
+    // Set a timeout to hide and remove the popup
+    popupTimeout = setTimeout(() => {
+        popup.style.opacity = '0'; // Fade out
+        setTimeout(() => {
+            popup.style.display = 'none';
+            if (popup.parentNode) {
+                document.body.removeChild(popup); // Remove the popup from DOM after fading out
+            }
+        }, 500); // Wait for fade-out to finish
+    }, 3000);
 }
