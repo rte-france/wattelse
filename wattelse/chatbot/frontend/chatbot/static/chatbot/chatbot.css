@@ -232,7 +232,7 @@
 .panel-container .tab {
     display: inline-block;
     padding: 0.4rem 0.6rem; /* Increase padding for better readability */
-    font-size: 0.9rem; /* Slightly smaller font for tabs */
+    font-size: 0.8rem; /* Slightly smaller font for tabs */
     font-weight: 600;
     cursor: pointer;
     text-align: center; /* Center text within tabs */
