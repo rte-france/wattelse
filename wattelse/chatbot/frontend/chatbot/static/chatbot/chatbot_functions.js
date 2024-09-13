@@ -733,7 +733,7 @@ function removeUserFromGroup(userNameToDelete) {
 
 function updateGroupSystemPrompt() {
      const newGroupSystemPrompt = groupSystemPromptArea.value
-     response = fetch('/update_group_system_prompt/', {
+     fetch('/update_group_system_prompt/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -743,8 +743,22 @@ function updateGroupSystemPrompt() {
             'group_system_prompt': newGroupSystemPrompt,
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        console.log(data);
+    .then((response) => {
+        // Handle successful requests
+        if (response.ok) {
+            response.json().then(data => {
+                showPopup(data.message);
+            })
+        }
+        else {
+            // Handle errors caught in python backend
+            response.json().then(data => {
+                showPopup(data.message, error=true);
+            })
+            // Handle uncaught errors
+            .catch(error => {
+                showPopup("Erreur non interceptée", error=true);
+            })
+        }
     })
 }
