@@ -3,6 +3,7 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
+import json
 import uuid
 import tempfile
 import pandas as pd
@@ -134,18 +135,23 @@ def insert_feedback(request, short: bool):
     interaction (matching between the user question and the bot answer).
     """
     if request.method == "POST":
+        # Get request data
+        data = json.loads(request.body)
+
         # Get user info
         user = request.user
 
         # Get feedback info from the request
-        feedback = request.POST.get("feedback", None)
+        feedback = data.get("feedback", None)
         if short:
             feedback = to_short_feedback(feedback)
-        user_message = request.POST.get("user_message", None)
-        bot_message = request.POST.get("bot_message", None)
+        user_message = data.get("user_message", None)
+        bot_message = data.get("bot_message", None)
 
-        # Try to find the matching Chat object based on user, message, and response
-        try:
+        # Find the matching Chat object based on user, message, and response
+        if Chat.objects.filter(
+            user=user, message=user_message, response=bot_message
+        ).exists():
             chat_message = (
                 Chat.objects.filter(
                     user=user, message=user_message, response=bot_message
@@ -153,21 +159,30 @@ def insert_feedback(request, short: bool):
                 .order_by("-question_timestamp")
                 .first()
             )  # in case multiple chat messages match, take the newest
-            if short:
-                chat_message.short_feedback = feedback
-            else:
-                if feedback:
-                    chat_message.long_feedback = feedback
-                    update_FAQ(chat_message)
+        else:
+            return JsonResponse({"message": "Conversation non trouvée"}, status=500)
+
+        # Handle feedback and save it in the database
+        if short:
+            chat_message.short_feedback = feedback
+        else:
+            if feedback:
+                chat_message.long_feedback = feedback
+                update_FAQ(chat_message)
+        try:
+            chat_message.save()
             logger.info(
                 f'[User: {request.user.username}] Feedback: "{feedback}" for question "{chat_message.message}"'
             )
-            chat_message.save()
-            return HttpResponse(status=200)
-        except Chat.DoesNotExist:
-            # Handle case where message not found (log error, display message, etc.)
-            error_message = f"Chat message not found for user: {user}, message: {user_message}, response: {bot_message}"
-            return JsonResponse({"error_message": error_message}, status=500)
+            return JsonResponse({"message": "Feedback enregistré"})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse(
+                {
+                    "message": "Erreur serveur : échec lors de l'enregistrement du feedback"
+                },
+                status=500,
+            )
     else:
         raise Http404()
 
