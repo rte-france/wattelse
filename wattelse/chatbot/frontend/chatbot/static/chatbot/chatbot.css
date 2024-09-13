@@ -415,6 +415,11 @@ color: var(--complementary-color);
   color: var(--main-color);
 }
 
+/* System prompt content */
+.tab-content.system-prompt {
+  text-align: center;
+}
+
 
 /* File upload style */
 .drop-section{
@@ -641,6 +646,31 @@ color: var(--complementary-color);
 }
 .rating-wrong:hover, .rating-wrong.selected {
     color: indianred;
+}
+
+/* System prompt area*/
+.system-prompt-text-area {
+  width: 90%;
+  height: 50%;
+  line-height: 1.5;
+  border-radius: 5px;
+  border: 1px solid black;
+  box-shadow: 1px 1px 1px grey;
+}
+
+.system-prompt-save-button {
+  color: white;
+  background-color: var(--main-color);
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid var(--main-color);
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+  padding: 10px;
+  margin-left: 10px;
+}
+
+.system-prompt-save-button:hover {
+  background-image: linear-gradient(rgb(0 0 0/10%) 0 0);
 }
 
 /* *********************** */
