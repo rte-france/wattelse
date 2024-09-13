@@ -36,6 +36,7 @@ from .utils import (
     get_conversation_history,
     streaming_generator,
     insert_feedback,
+    is_superuser,
     RAG_API,
     get_chat_model,
 )
@@ -70,6 +71,8 @@ def main_page(request):
     can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
     can_manage_users = request.user.has_perm("chatbot.can_manage_users")
 
+    can_edit_system_prompt = is_superuser(request.user)
+
     # If can manage users, find usernames of its group
     if can_manage_users:
         group_usernames_dict = get_group_usernames_list(user_group_id)
@@ -90,6 +93,7 @@ def main_page(request):
             "can_upload_documents": can_upload_documents,
             "can_remove_documents": can_remove_documents,
             "can_manage_users": can_manage_users,
+            "can_edit_system_prompt": can_edit_system_prompt,
             "user_group": user_group_id,
             "group_system_prompt": group_system_prompt,
             "group_usernames_dict": group_usernames_dict,
