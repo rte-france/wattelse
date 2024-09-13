@@ -297,7 +297,6 @@ function saveInteraction(conversationId, userMessage, botResponse, queryStartTim
             'X-CSRFToken': csrfmiddlewaretoken,
         },
         body: JSON.stringify({
-            'csrfmiddlewaretoken': csrfmiddlewaretoken,
             'conversation_id': conversationId,
             'message': userMessage,
             'answer': botResponse,
@@ -910,7 +909,6 @@ function sendFeedback(endpoint, feedback, user_message, bot_message){
             'X-CSRFToken': csrfmiddlewaretoken,
         },
         body: JSON.stringify({
-              'csrfmiddlewaretoken': csrfmiddlewaretoken,
               'feedback': feedback,
               'user_message': user_message,
               'bot_message': bot_message,
