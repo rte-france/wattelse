@@ -660,24 +660,30 @@ def update_group_system_prompt(request):
     if request.method == "POST":
         # Get request data
         data = json.loads(request.body)
+        new_system_prompt = data.get("group_system_prompt", None)
+
+        # Get group id
         user = request.user
         group_id = get_user_group_id(user)
-        new_system_prompt = data.get("group_system_prompt", None)
 
         # Set new group system prompt
         try:
             group_system_prompt = GroupSystemPrompt.objects.get_or_create(
                 group_id=group_id, defaults={"system_prompt": ""}
             )[0]
-            logger.debug(group_system_prompt)
             group_system_prompt.system_prompt = new_system_prompt
             group_system_prompt.save()
-            logger.debug(
+            logger.info(
                 f"Group {group_id}: Succesfully changed system prompt to: {group_system_prompt.system_prompt}"
             )
-            return JsonResponse({"message": f"Nouveau system prompt sauvegardé."})
+            return JsonResponse({"message": f"System prompt sauvegardé"})
         except Exception as e:
-            logger.error(e)
-            return JsonResponse({"message": f"Un problème est survenu."})
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {
+                    "message": f"Erreur serveur : échec lors de la sauvegarde du system prompt"
+                },
+                status=500,
+            )
     else:
         raise Http404()
