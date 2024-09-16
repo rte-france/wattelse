@@ -8,7 +8,7 @@ import uuid
 import json
 import socket
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import mammoth
 import pytz
@@ -233,21 +233,23 @@ def save_interaction(request):
     """Function called to save query and response in DB once response streaming is finished."""
     if request.method == "POST":
         # Save query and response in DB
-        question_ts_s = request.POST.get("question_timestamp", "")
-        question_ts = (
-            datetime.strptime(question_ts_s, "%Y-%m-%dT%H:%M:%S.%fZ")
-            if question_ts_s
-            else None
+        question_timestamp = request.POST.get("question_timestamp", None)
+        question_timestamp = datetime.fromisoformat(
+            question_timestamp.replace("Z", "+00:00")
         )
-        # Convert to non-naive timedate (required for Django)
-        question_ts = pytz.utc.localize(question_ts)
+
+        answer_delay = timedelta(
+            milliseconds=int(request.POST.get("answer_delay", None))
+        )
+
         chat = Chat(
             user=request.user,
             group_id=get_user_group_id(request.user),
             conversation_id=request.POST.get("conversation_id", ""),
             message=request.POST.get("message", ""),
             response=request.POST.get("answer", ""),
-            question_timestamp=question_ts,
+            question_timestamp=question_timestamp,
+            answer_delay=answer_delay,
         )
         chat.save()
         return HttpResponse(status=200)
