@@ -239,14 +239,15 @@ def save_interaction(request):
         # Get request data
         data = json.loads(request.body)
 
-        # Convert timestamp to non-naive timedate (required for Django)
-        question_ts_s = data.get("question_timestamp", "")
-        question_ts = (
-            datetime.strptime(question_ts_s, "%Y-%m-%dT%H:%M:%S.%fZ")
-            if question_ts_s
-            else None
+        # Transform timestamps to datetime objects
+        question_timestamp = data.get("question_timestamp", None)
+        question_timestamp = datetime.fromisoformat(
+            question_timestamp.replace("Z", "+00:00")
         )
-        question_ts = pytz.utc.localize(question_ts)
+
+        # Transform delay to timedelta
+        answer_delay = data.get("answer_delay", None)
+        answer_delay = timedelta(milliseconds=answer_delay)
 
         # Save interaction
         try:
@@ -256,11 +257,14 @@ def save_interaction(request):
                 conversation_id=data.get("conversation_id", ""),
                 message=data.get("message", ""),
                 response=data.get("answer", ""),
-                question_timestamp=question_ts,
+                question_timestamp=question_timestamp,
+                answer_delay=answer_delay,
             )
             chat.save()
+
             # No need to show a pop up message to the user
             return HttpResponse(status=200)
+
         except Exception as e:
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
