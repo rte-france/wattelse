@@ -1,0 +1,60 @@
+Dockerfile 
+#model folder
+RAG/LLM/fastchat/fp16/
+
+#data
+RAG_DIR/
+#let's ignore all RAG_DIR so it won't be built into site-package during non-editable installation
+#instead we'll create it in the Dockerfile
+RAG_DIR/cache/
+RAG_DIR/data/chatbot/
+RAG_DIR/data/rag_database/
+RAG_DIR/log/
+
+#remove django config file
+django_config/
+
+Evaluation/
+
+./RAG.egg-info
+
+
+# Ignore all .log files
+*.log
+*.log.*
+
+# Ignore log files in all directories and subdirectories
+**/*.log
+**/*.log.*
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+**/*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Test files

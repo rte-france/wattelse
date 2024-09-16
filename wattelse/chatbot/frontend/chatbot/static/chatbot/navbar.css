@@ -1,0 +1,105 @@
+
+/* Navbar Styles */
+.main-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #0d4c93; /* Dark background */
+    color: #fff; /* White text */
+    box-shadow: 0 2px 4px rgba(28, 49, 165, 0.2);
+}
+
+/* Title Styles */
+.chatbot-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ffffff; /* Custom main color */
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
+.chatbot-title i {
+    margin-right: 10px;
+}
+
+/* Admin Form Styles */
+form {
+    display: inline-block;
+    margin-right: 20px;
+}
+
+select {
+    background-color: #2a2a2a;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    font-size: 1rem;
+    border-radius: 5px;
+    outline: none;
+    cursor: pointer;
+}
+
+select option {
+    background-color: #2a2a2a;
+}
+
+/* Top Right Tabs Styles */
+.top-right-tabs-list {
+    display: flex;
+    align-items: center;
+}
+
+.tabs {
+    color: #ffffff; /* Custom main color */
+    text-decoration: none;
+    margin-left: 15px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.tabs i {
+    margin-right: 5px;
+}
+
+.tabs:hover {
+    background-color: #ffffff;
+    color: #1a1a1a; /* Dark text */
+}
+
+/* Logout Button Specific Styles */
+.tabs.logout {
+    color: #ff6666; /* Custom logout color */
+}
+
+.tabs.logout:hover {
+    background-color: #ff6666;
+    color: #1a1a1a;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .main-navbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .top-right-tabs-list {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .tabs {
+        margin-left: 0;
+        margin-top: 10px;
+        width: 100%;
+        text-align: left;
+    }
+
+    form {
+        margin-bottom: 10px;
+    }
+}

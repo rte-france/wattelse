@@ -3,6 +3,7 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
+
 import configparser
 import json
 from typing import List, Dict
@@ -14,7 +15,8 @@ from loguru import logger
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, ENDPOINT_QUERY_RAG, \
     ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, \
-    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD
+    ENDPOINT_SELECT_BY_KEYWORDS, ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD, \
+    ENDPOINT_DOCUMENT_UPDATE
 
 
 class RAGAPIError(Exception):
@@ -112,6 +114,33 @@ class RAGOrchestratorClient:
         else:
             logger.error(f"[Group: {group_id}] Error: {response.status_code, response.text}")
             raise RAGAPIError(f"[Group: {group_id}] Error: {response.status_code, response.text}")
+        
+        
+    def update_extract(self, 
+                       group_id: str,
+                       relevant_extract_uuids: List[str], 
+                       wrong_answer: str, 
+                       correction: str) -> Dict:
+        """Update the extract and store the previous version"""
+        logger.debug(f"[Group: {group_id}] Extract update has been started")
+
+        response = requests.get(url=self.url + ENDPOINT_DOCUMENT_UPDATE,
+                                data=json.dumps({
+                                    "group_id": group_id,   
+                                    "relevant_extract_uuids": relevant_extract_uuids,
+                                    "wrong_answer": wrong_answer,
+                                    "correction": correction,
+                                    }))
+    
+        if response.status_code == 200:
+            
+            rag_answer = response.json()
+            logger.debug(f"Response: {rag_answer}")
+            logger.debug(f"Type of client object is {type(rag_answer)}")
+            return rag_answer
+        else:
+            logger.error(f" Error: {response.status_code, response.text}")
+            raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
     def get_current_sessions(self) -> List[str]:
         """Returns current sessions ids"""

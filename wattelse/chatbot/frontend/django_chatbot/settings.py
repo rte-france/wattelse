@@ -36,6 +36,15 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-wsa9k4v_goql%t8rn@q4*5flo+xnnxa%8!^p2g(4g-=py==ur)'
 
+"""
+## When deploying with Docker, remove the secret key from above line and paste it in django_superuser.cfg
+## in django config (this is automatically treated by entrypoint.sh if exists) or pass it as an environment variable for docker
+
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("DJANGO_SECRET_KEY environment variable is not set.")
+"""
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 

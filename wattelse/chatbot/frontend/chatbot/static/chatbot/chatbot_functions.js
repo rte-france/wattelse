@@ -17,6 +17,7 @@ const contentSections = documentPanel.querySelectorAll('.tab-content');
 const extractList = document.getElementById('extract-list');
 const availableDocumentList = document.querySelector('.available-list');
 const removalDocumentList = document.querySelector('.removal-list');
+const updatedDocumentList = document.querySelector('.updated-file-list');
 
 const selectAll = document.getElementById('select-all');
 
@@ -40,7 +41,7 @@ const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]')
 const SPECIAL_SEPARATOR = '¤¤¤¤¤';
 
 // messages
-const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte généré peut contenir des erreurs."
+const NO_EXTRACT_MSG = "No relevant extracts found in the documents, the generated text may contain errors."
 
 // initialize layout
 initializeLayout();
@@ -139,6 +140,9 @@ function updateAvailableDocuments(){
     if (removalDocumentList) {
         removalDocumentList.innerHTML="";
     }
+    if (updatedDocumentList) {
+        updatedDocumentList.innerHTML="";
+    }
     
     // Display documents to be selected
     availableDocs.forEach((document) =>{
@@ -146,13 +150,22 @@ function updateAvailableDocuments(){
         availableDocumentList.appendChild(listItem);
     });
 
-    // Display documents that can be removed
+    // Display documents that can be removed , and that might have updates
     availableDocs.forEach((document) =>{
         const listItem = createDocumentListItem(document);
         if (removalDocumentList) {
             removalDocumentList.appendChild(listItem);
         }
     });
+
+    // Display all documents whose updates can be downloaded
+    availableDocs.forEach((document) =>{
+        const listItem = createDocumentListItem(document);
+        if (updatedDocumentList) {
+            updatedDocumentList.appendChild(listItem)
+        }
+    });
+    
 
     // intersection of previous selection with  new available docs
     newly_selected =  previously_selected.filter(x => availableDocs.includes(x));
@@ -162,7 +175,7 @@ function updateAvailableDocuments(){
 
 function handleUserMessage(userMessage) {
     if (getSelectedFileNames("available-list").length ===0){
-        createWarningMessage("Aucun document sélectionné.")
+        createWarningMessage("No documents have been selected.")
         return
     }
     // Remove last feedback div
@@ -237,7 +250,7 @@ async function postUserMessageToRAG(userMessage) {
         if (Date.now() - startTime > timeout) {
             reader.cancel();
             botDiv.classList.remove("animate"); // remove generation animation
-            createErrorMessage("Erreur : réponse du serveur trop lente.");
+            createErrorMessage("Error: Server response too slow.");
             return;
         }
         // Read streaming chunks
@@ -288,7 +301,9 @@ async function postUserMessageToRAG(userMessage) {
     }
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
-    saveInteraction(conversationId, userMessage, botDiv.innerHTML, questionTimestampString);
+    const regex = botDiv.innerHTML.replace(/<[^>]*>/g, '');  // html tag <p> was not removed without this
+    
+    saveInteraction(conversationId, userMessage, regex, questionTimestampString);
 }
 
 function saveInteraction(conversationId, userMessage, botResponse, questionTimestampString) {
@@ -312,10 +327,10 @@ function saveInteraction(conversationId, userMessage, botResponse, questionTimes
 function deleteDocumentsInCollection(){
     const selectedFileNames = getSelectedFileNames("removal-list")
     if (selectedFileNames.length === 0  ) {
-        alert("Aucun document à supprimer.");
+        alert("No document to delete.");
     } else {
         // TODO: improve confirm popup look & feel
-        if (confirm("Confirmer la suppression des fichiers sélectionnés?")){
+        if (confirm("Do you want to delete the selected files?")){
             fetch('delete/', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -338,16 +353,74 @@ function deleteDocumentsInCollection(){
     }
 }
 
+
+
+// Function to handle downloading updates
+function downloadUpdates() {
+    // Initialize flatpickr on date inputs
+
+    const startDate = flatpickr("#calendar-start", {});
+    const endDate = flatpickr("#calendar-end", {});
+
+    // Retrieve selected file names
+    const selectedFileName = getSelectedFileNames("updated-file-list");
+
+    
+    if (selectedFileName.length === 0) {
+        alert("No document selected.");
+    } else if (!startDate || !endDate) {
+        alert("Please specify both start and end dates.");
+    } else {
+        fetch('download_updates/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'csrfmiddlewaretoken': csrfmiddlewaretoken,
+                'selected_file': selectedFileName[0],
+                'start_date': moment(startDate.selectedDates[0]).format("DD-MM-YYYY"),
+                'end_date': moment(endDate.selectedDates[0]).format("DD-MM-YYYY"),
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.blob(); // Assuming the server responds with a file
+            }
+            else {
+                response.json().then(data => {
+                    window.alert(data.error_message);
+                });
+            };
+        })
+        .then(blob => {
+            // Create a link element, use it to download the file, and then remove it
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = `updates_${startDate}_${endDate}.csv`; // Customize filename
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        })
+        .catch(error => {
+            createErrorMessage(error.message);
+            console.error('There was a problem with the Fetch operation:', error);
+        });
+    }
+}
+
+
 function updateRelevantExtracts(relevantExtracts){
     extractList.innerHTML = "";
     if (relevantExtracts.length>0) {
         relevantExtracts.forEach((extract) => {
             const url = `file_viewer/${extract["metadata"]["file_name"]}#page=${parseInt(extract["metadata"]["page"] ?? 0)+1}`
-            const listItem = createExtract(extract.content, url, extract.metadata.file_name);
+            const listItem = createExtract(extract.content, extract.metadata.document_id,
+                extract.metadata.unique_id, url, extract.metadata.file_name);
             extractList.appendChild(listItem);
         });
     } else {
-         const listItem = createExtract("Aucun extrait trouvé !", "", "");
+         const listItem = createExtract("No extract was found !", "", "");
          extractList.appendChild(listItem);
     }
 }
@@ -394,7 +467,7 @@ function typeWriter(botDiv, message, typingSpeed, callback) {
 function createWelcomeMessage() {
     chatHistory.innerHTML = `
     <div class="welcome-container">
-        <div class="welcome-message">Bonjour <span class="username">${userName}</span> !<br>Posez une question sur les documents.</div>
+        <div class="welcome-message">Hello <span class="username">${userName}</span> !<br>Ask a question about the documents.</div>
     </div>
     `;
 }
@@ -428,19 +501,26 @@ function activateTab(tabName) {
   tabToBeActivated.click();
 }
 
-function createExtract(text, sourceUrl, fileName) {
+function createExtract(text, document_id, unique_id, sourceUrl, fileName) {
     const listItem = document.createElement('li');
     const paragraph = document.createElement('p');
     const link = document.createElement('a');
     const horizontalLine = document.createElement('hr');
+    const extractUUID = document.createElement('p'); // New element for document_id
+    extractUUID.classList.add('unique-id'); // Adding class extract-id to extractId element
+
 
     paragraph.textContent = text;
+    extractUUID.textContent = unique_id; // Set document_id text content
+
     link.href = sourceUrl;
     link.target = '_blank';
-    link.textContent = 'Source : ' + fileName;
+    link.textContent = 'Source: ' + fileName;
     link.classList.add('source-link'); // Optional styling class
 
     listItem.appendChild(paragraph);
+    listItem.appendChild(extractUUID); // Append document_id below the text paragraph
+
     if (sourceUrl) {
         listItem.appendChild(horizontalLine);
         listItem.appendChild(link);
@@ -448,6 +528,7 @@ function createExtract(text, sourceUrl, fileName) {
 
     return listItem;
 }
+
 
 function createDocumentListItem(title) {
   const listItem = document.createElement('li');
@@ -701,18 +782,18 @@ function newConversation() {
     activateTab("documents");
 }
 
-// Functions to collect user feedback
+// Function to collect user feedback
 function provideFeedback() {
     const feedbackSection = document.createElement('div');
     feedbackSection.classList.add('feedback-section');
 
     feedbackSection.innerHTML = `
-          <span class="emoji-rating"><span class="rating-great" title="Réponse parfaite"><i class="fa-solid fa-circle-check fa-xl"></i></span></span>
-          <span class="emoji-rating"><span class="rating-ok" title="Réponse acceptable"><i class="fa-solid fa-circle-half-stroke fa-xl"></i></span></span>
-          <span class="emoji-rating"><span class="rating-missing" title="Réponse incomplète"><i class="fa-solid fa-circle-minus fa-xl"></i></span></span>
-          <span class="emoji-rating"><span class="rating-wrong" title="Réponse fausse"><i class="fa-solid fa-circle-exclamation fa-xl"></i></span></span>
-          <button id="open-text-feedback">Réponse attendue</button> 
-        `;
+        <span class="emoji-rating"><span class="rating-great" title="The answer was great"><i class="fa-solid fa-circle-check fa-xl"></i></span></span>
+        <span class="emoji-rating"><span class="rating-ok" title="The answer was ok"><i class="fa-solid fa-circle-half-stroke fa-xl"></i></span></span>
+        <span class="emoji-rating"><span class="rating-missing" title="The answer was incomplete"><i class="fa-solid fa-circle-exclamation fa-xl"></i></span></span>
+        <span class="emoji-rating"><span class="rating-wrong" title="The answer was incorrect"><i class="fa-solid fa-circle-xmark fa-xl"></i></span></span>
+        <button id="open-text-feedback" style="display: none;">Provide the correct answer</button> 
+    `;
 
     chatHistory.appendChild(feedbackSection);
 
@@ -720,105 +801,242 @@ function provideFeedback() {
     const emojiRatings = document.querySelectorAll('.emoji-rating');
     emojiRatings.forEach(emojiRating => emojiRating.addEventListener('click', handleEmojiRatingClick));
 
+    // Add click event listener to text feedback button
     const textFeedbackButton = document.getElementById('open-text-feedback');
     textFeedbackButton.addEventListener('click', handleTextFeedbackClick);
 }
 
+
+
 function handleEmojiRatingClick(event) {
-  // Get the parent element (emoji-rating) of the clicked element
-  const ratingElement = event.currentTarget;
+    const ratingElement = event.currentTarget;
+    const feedbackName = ratingElement.querySelector('span').classList[0]; // Get the first class of the span
 
-  // Highlight the clicked element and remove highlight from siblings
-  const feedbackName = ratingElement.querySelector('span').className;
-  ratingElement.querySelector('span').classList.add('selected');
+    // Highlight the clicked element and remove highlight from siblings
+    const ratings = ratingElement.parentElement.querySelectorAll('.emoji-rating');
+    ratings.forEach(r => r.querySelector('span').classList.remove('selected'));
+    ratingElement.querySelector('span').classList.add('selected');
 
-  const ratings = ratingElement.parentElement.querySelectorAll('.emoji-rating');
-  for (const r of ratings){
-      if (r !== ratingElement){
-          r.querySelector('span').classList.remove('selected');
-      }
-  }
+    // Show/hide long feedback button based on selected feedback
+    const textFeedbackButton = document.getElementById('open-text-feedback');
+    if (feedbackName === 'rating-missing' || feedbackName === 'rating-wrong') {
+        textFeedbackButton.style.display = 'inline-block';
+    } else {
+        textFeedbackButton.style.display = 'none';
+    }
 
-  let previousElement =  ratingElement.parentElement.previousSibling;
-  while (previousElement && !previousElement.classList.contains('bot-message')) {
-    previousElement = previousElement.previousSibling;
-  }
-  let bot_answer = "";
-  if (previousElement) {
-      bot_answer = previousElement.textContent;
-  }
+        let previousElement =  ratingElement.parentElement.previousSibling;
+    while (previousElement && !previousElement.classList.contains('bot-message')) {
+        previousElement = previousElement.previousSibling;
+    }
+    let bot_answer = "";
+    if (previousElement) {
+        bot_answer = previousElement.textContent;
+    }
 
-  previousElement =  ratingElement.parentElement.previousSibling;
-  while (previousElement && !previousElement.classList.contains('user-message')) {
-    previousElement = previousElement.previousSibling;
-  }
-  let user_question = "";
-  if (previousElement) {
-      user_question = previousElement.textContent;
-  }
+    previousElement =  ratingElement.parentElement.previousSibling;
+    while (previousElement && !previousElement.classList.contains('user-message')) {
+        previousElement = previousElement.previousSibling;
+    }
+    let user_question = "";
+    if (previousElement) {
+        user_question = previousElement.textContent;
+    }
 
-  // send feedback for processing
-  if (feedbackName) {
+
+    // Log feedback details
+    console.log(`Feedback: ${feedbackName}, User Question: ${user_question}, Bot Answer: ${bot_answer}`);
+
+    // Send short feedback for processing
     sendFeedback("send_short_feedback/", feedbackName, user_question, bot_answer);
-  }
 }
 
 // Function to handle click on the text feedback button (optional)
 function handleTextFeedbackClick(event) {
-  const feedbackButton = event.currentTarget;
-  feedbackButton.classList.add('selected');
+    const feedbackButton = event.currentTarget;
+    feedbackButton.classList.add('selected');
 
-  // Implement your logic for opening a text feedback form or modal here
-  let feedback = prompt("Veuillez saisir la réponse attendue. \nVotre réponse sera ajoutée à la FAQ du groupe.", "");
+    // Implement your logic for opening a text feedback form or modal here
+    let correction = prompt("Please provide the correct answer. \nYour answer will be used to make necessary updates in the document.", "");
 
-  // Search for related messages (bot and user)
-  let previousElement =  feedbackButton.parentElement.previousSibling;
-  while (previousElement && !previousElement.classList.contains('bot-message')) {
-    previousElement = previousElement.previousSibling;
-  }
-  let bot_answer = "";
-  if (previousElement) {
-      bot_answer = previousElement.textContent;
-  }
+    // Get the extract uuids that have potentially generated the wrong answer
+    const unique_ids = getAllUniqueIds()
+    console.log("Unique IDs retrieved: ", unique_ids);
 
-  previousElement =  feedbackButton.parentElement.previousSibling;
-  while (previousElement && !previousElement.classList.contains('user-message')) {
-    previousElement = previousElement.previousSibling;
-  }
-  let user_question = "";
-  if (previousElement) {
-      user_question = previousElement.textContent;
-  }
+     // Search for related messages (bot and user)
+    let previousElement =  feedbackButton.parentElement.previousSibling;
+    while (previousElement && !previousElement.classList.contains('bot-message')) {
+        previousElement = previousElement.previousSibling;
+    }
+    let bot_answer = "";
+    if (previousElement) {
+        bot_answer = previousElement.textContent;
+    }
 
-  // send back answer
-  if (feedback){
-      sendFeedback("send_long_feedback/", feedback, user_question, bot_answer);
-  }
+    previousElement =  feedbackButton.parentElement.previousSibling;
+    while (previousElement && !previousElement.classList.contains('user-message')) {
+        previousElement = previousElement.previousSibling;
+    }
+    let user_question = "";
+    if (previousElement) {
+        user_question = previousElement.textContent;
+    }
+
+    // save correction to the interaction database
+    if (correction){
+        sendFeedback("suggest_update/", correction, user_question, bot_answer);
+        console.log("user_question: ",user_question, "wrong answer: " , bot_answer,"Correction provided: ", correction,);
+    }
+
+    // Use correction to update the extract
+    if (correction) {
+        console.log("Unique ids retrieved: ",unique_ids, "wrong answer: " , bot_answer,"Correction provided: ", correction,);
+        fetch('get_chat_id/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                'csrfmiddlewaretoken': csrfmiddlewaretoken,
+                'user_question': user_question,
+                "bot_answer": bot_answer,
+            })
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        }) // Parse the JSON response
+        .then(data => {
+            console.log("Data received from send_correction endpoint: ", data);
+            // Extract values from the response
+            const chat_id = data.chat_id;
+            updateExtract(unique_ids, bot_answer, correction, chat_id);
+        })
+        .catch(error => {
+            console.error('There was a problem with saving the modification to database : ', error);
+        });
+    };
+
+       // Hide the feedback button after feedback is provided
+       feedbackButton.style.display = 'none';
 }
+
 
 
 // Common function that sends feedback message
-function sendFeedback(endpoint, feedback, user_message, bot_message){
+function sendFeedback(endpoint, feedback, user_message, bot_message) {
     fetch(endpoint, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: new URLSearchParams({
-              'csrfmiddlewaretoken': csrfmiddlewaretoken,
-              'feedback': feedback,
-              'user_message': user_message,
-              'bot_message': bot_message,
-          })
-      })
-          .then(response => {
-              if (response.ok) {
-                  console.info("Feedback reçu!");
-              } else {
-                  response.json().then(data => {
-                      window.alert(data.error_message);
-                  });
-              }
-          });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+            'feedback': feedback,
+            'user_message': user_message,
+            'bot_message': bot_message,
+        })
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log("Feedback received!");
+        } else {
+            response.json().then(data => {
+                window.alert(data.error_message);
+            });
+        }
+    });
 }
+
+// Initialize feedback collection UI
+provideFeedback();
+//This structure ensures that when your JavaScript file is loaded, the provideFeedback() function is 
+//immediately called, setting up the UI for collecting user feedback as defined in your original function.
+
+
+// Function to retrieve all uniqueIDs from the list
+function getAllUniqueIds() {
+    // Assuming you have a list element with id 'extract-list'
+    const uniqueIds = [];
+    const listItems = extractList.querySelectorAll('li'); // Select all <li> elements with data-unique-id attribute
+
+    listItems.forEach(item => {
+        const uniqueIdElement = item.querySelector('.unique-id'); // Select the element with class 'unique-id'
+        if (uniqueIdElement) {
+            const uniqueId = uniqueIdElement.textContent.trim();
+            uniqueIds.push(uniqueId);
+        }
+    });
+    //return JSON.stringify(uniqueIds);
+    return uniqueIds;
+    }
+    
+
+// Function to update an extract with the wrong information
+function updateExtract(uniqueIds, wrongAnswer, correction, chat_id) {
+    // Question timestamp
+    const currentDate = new Date();
+    const updateTimestampString = currentDate.toISOString();
+    const chatID = chat_id;
+
+
+    // Fetch update endpoint
+    fetch('send_correction/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+            'unique_ids': JSON.stringify(uniqueIds),
+            'wrong_answer': wrongAnswer,
+            'correction': correction,
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    }) // Parse the JSON response
+    .then(data => {
+        console.log("Data received from send_correction endpoint: ", data);
+        // Extract values from the response
+        const previousExtract = data.previous_extract;
+        const updatedExtract = data.updated_extract;
+        const extractId = data.extract_id;
+        const documentName = data.document;
+
+        // Call saveModification with extracted values
+        saveModification(previousExtract, updatedExtract, extractId, documentName, updateTimestampString, chatID );
+    })
+    .catch(error => {
+        console.error('There was a problem with saving the modification to database : ', error);
+    });
+}
+
+// Function to save the modification in the database
+function saveModification(previousExtract, updatedExtract, extractId, documentName, updateTimestampString, chatID) {
+    fetch('save_modification/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+           // 'conversation_id': conversationId,
+            'previous_version': previousExtract,
+            'updated_extract': updatedExtract,
+            'extract_id': extractId,
+            'document_name': documentName,
+            'update_timestamp': updateTimestampString,
+            'chat_id': chatID,
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        console.log("Modification saved successfully.");
+    })
+    .catch(error => {
+        console.error('There was a problem saving modification: ', error);
+    });
+}
+
 
 function uuid4() {
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>

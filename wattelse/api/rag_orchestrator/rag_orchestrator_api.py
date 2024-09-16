@@ -14,7 +14,7 @@ from starlette.responses import FileResponse, StreamingResponse
 
 from wattelse.api.rag_orchestrator import ENDPOINT_CHECK_SERVICE, ENDPOINT_CREATE_SESSION, \
     ENDPOINT_QUERY_RAG, ENDPOINT_UPLOAD_DOCS, ENDPOINT_REMOVE_DOCS, ENDPOINT_CURRENT_SESSIONS, \
-    ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD
+    ENDPOINT_LIST_AVAILABLE_DOCS, ENDPOINT_CLEAN_SESSIONS, ENDPOINT_DOWNLOAD, ENDPOINT_DOCUMENT_UPDATE
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
 SESSION_TIMEOUT = 30  # in minutes
@@ -37,6 +37,14 @@ class RAGQuery(BaseModel):
     history: List[Dict[str, str]] | None
     selected_files: List[str] | None
     stream: bool = False
+    
+class RAGUpdate(BaseModel):
+    group_id: str
+    relevant_extract_uuids: List[str]
+    wrong_answer: str
+    correction: str
+    
+
 
 
 @app.get(ENDPOINT_CHECK_SERVICE)
@@ -78,7 +86,7 @@ def upload(group_id: str, files: List[UploadFile] = File(...)):
                 f"skipping indexing and chunking")
             continue
 
-        RAG_SESSIONS[group_id].add_file_to_collection(file.filename, file.file)
+        RAG_SESSIONS[group_id].add_file_to_collection(file.filename, file.file) #onlarinkinde filename de var
 
     return {"message": f"[Group: {group_id}] Successfully uploaded {[file.filename for file in files]}"}
 
@@ -153,6 +161,21 @@ def download_file(group_id: str, file_name: str):
         if file_path:
             return FileResponse(file_path, media_type="application/octet-stream", filename=file_name)
     raise HTTPException(status_code=404, detail=f"File: {file_name} not found.")
+
+@app.get(ENDPOINT_DOCUMENT_UPDATE)
+def update_extract(rag_update: RAGUpdate) -> Dict:
+    check_if_session_exists(rag_update.group_id)
+    logger.debug(f"[Group: {rag_update.group_id}] Extract modification suggested")
+    response = RAG_SESSIONS[rag_update.group_id].update_extract(
+        rag_update.relevant_extract_uuids, 
+        rag_update.wrong_answer, 
+        rag_update.correction)
+    logger.info(f"The object type of response is {type(response)}")
+    return response #json.dumps(response) yapinca olmadi
+    
+
+
+
 
 # to run the API (reload each time the python is changed)
 # uvicorn rag_orchestrator_api:app --reload

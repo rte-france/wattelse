@@ -1,7 +1,3 @@
-import uuid
-import tempfile
-import pandas as pd
-
 from pathlib import Path
 from typing import List, Dict
 from loguru import logger
@@ -11,14 +7,10 @@ from django.contrib.auth.models import User, Group
 from django.http import HttpResponse, Http404, JsonResponse
 
 from .models import Chat
+import uuid
+
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError 
-
-# RAG API
-RAG_API = RAGOrchestratorClient()
-
-# Separator to split json object from streaming chunks
-SPECIAL_SEPARATOR = "¤¤¤¤¤"
 
 # Feedback identifiers in the database
 GREAT = "great"
@@ -26,8 +18,11 @@ OK = "ok"
 MISSING = "missing_info"
 WRONG = "wrong"
 
-# Long feedback FAQ file
-FAQ_FILE_PATTERN = "_FAQ.xlsx"
+# RAG API
+RAG_API = RAGOrchestratorClient()
+
+# Separator to split json object from streaming chunks
+SPECIAL_SEPARATOR = "¤¤¤¤¤"
 
 def get_user_group_id(user: User) -> str:
     """
@@ -43,6 +38,7 @@ def get_user_group_id(user: User) -> str:
         return None
     else:
         return group_list[0].name
+    
 
 def get_group_usernames_list(group_id: str) -> List[str]:
     """
@@ -53,6 +49,18 @@ def get_group_usernames_list(group_id: str) -> List[str]:
     usernames_list = [user.username for user in users_list]
     return usernames_list
 
+
+def new_user_created(request, username=None):
+    """
+    Webpage rendered when a new user is created.
+    It warns the user that no group is associated yet and need to contact an administrator.
+    """
+    if username is None:
+        return redirect("/login")
+    else:
+        return render(request, "chatbot/new_user_created.html", {"username": username})
+    
+    
 def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dict[str, str]] | None:
     """
     Return chat history following OpenAI API format :
@@ -71,15 +79,6 @@ def get_conversation_history(user: User, conversation_id: uuid.UUID) -> List[Dic
         history.append({"role": "assistant", "content": chat.response})
     return None if len(history) == 0 else history
 
-def new_user_created(request, username=None):
-    """
-    Webpage rendered when a new user is created.
-    It warns the user that no group is associated yet and need to contact an administrator.
-    """
-    if username is None:
-        return redirect("/login")
-    else:
-        return render(request, "chatbot/new_user_created.html", {"username": username})
 
 def streaming_generator(data_stream):
     """Generator to decode the chunks received from RAGOrchestratorClient"""
@@ -104,17 +103,18 @@ def insert_feedback(request, short: bool):
             feedback = to_short_feedback(feedback)
         user_message = request.POST.get("user_message", None)
         bot_message = request.POST.get("bot_message", None)
+        print("feedback:", feedback, "\n user_message:", user_message, "\n bot_message:", bot_message)
 
         # Try to find the matching Chat object based on user, message, and response
         try:
             chat_message = (Chat.objects.filter(user=user, message=user_message, response=bot_message)
-                            .order_by('-question_timestamp').first()) # in case multiple chat messages match, take the newest
+                            .order_by('-question_timestamp').first())
+            # in case multiple chat messages match, take the newest
             if short:
                 chat_message.short_feedback = feedback
             else:
                 if feedback:
-                    chat_message.long_feedback = feedback
-                    update_FAQ(chat_message)
+                    chat_message.suggested_update = feedback
             logger.info(f'[User: {request.user.username}] Feedback: "{feedback}" for question "{chat_message.message}"')
             chat_message.save()
             return HttpResponse(status=200)
@@ -125,27 +125,6 @@ def insert_feedback(request, short: bool):
     else:
         raise Http404()
 
-def update_FAQ(chat_message: Chat):
-    """Update a FAQ file with the long feedback"""
-    # Retrieve current FAQ file if it exists
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Construct the full path for the downloaded file within the temporary directory
-        temp_file_path = Path(temp_dir) / FAQ_FILE_PATTERN
-
-        try:
-            RAG_API.download_to_dir(chat_message.group_id, FAQ_FILE_PATTERN, temp_file_path)
-            df = pd.read_excel(temp_file_path)
-        except RAGAPIError:
-            # No file available, create new one
-            df = pd.DataFrame(columns=["question", "answer"])
-
-        # Update the feedback data and file
-        df.loc[len(df)] =  {"question": chat_message.message, "answer": chat_message.long_feedback}
-        df.to_excel(temp_file_path, index=False)
-
-        # Uploads the file and updates its embeddings in the collection
-        RAG_API.remove_documents(chat_message.group_id, [FAQ_FILE_PATTERN])
-        RAG_API.upload_files(chat_message.group_id, [temp_file_path])
 
 def to_short_feedback(feedback: str) -> str:
     """
@@ -161,3 +140,4 @@ def to_short_feedback(feedback: str) -> str:
     if feedback == "rating-wrong":
         return WRONG
     return feedback
+

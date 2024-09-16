@@ -6,9 +6,13 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+# User is not an object per se, 
+# but rather a model provided by Django itself. It's part of Django's built-in authentication system
 
 class Chat(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE) #why is this a FK ?
+    # ForeignKey is a field used to define a many-to-one relationship.
+    # single user can be associated with multiple chat instances, but each chat is associated with only one user.
     group_id = models.TextField()
     conversation_id = models.UUIDField()
     message = models.TextField()
@@ -16,7 +20,7 @@ class Chat(models.Model):
     question_timestamp = models.DateTimeField()
     answer_timestamp = models.DateTimeField(auto_now_add=True)
     short_feedback = models.TextField(default="")
-    long_feedback = models.TextField(default="")
+    suggested_update = models.TextField(default="")
     answer_delay = models.DurationField(null=True, blank=True)  # Optional fields
 
     def __str__(self):
@@ -50,4 +54,29 @@ class SuperUserPermissions(models.Model):
             ("can_upload_documents", "Can upload documents"),
             ("can_remove_documents", "Can remove documents"),
             ("can_manage_users", "Can manage users"),
+           ("can_download_updates", "Can download updates"),
         )
+        
+        
+class Update(models.Model):
+    """
+    Model for storing user suggestions for updates.
+    """
+    extract_id = models.CharField(max_length=50)
+    previous_version= models.TextField(default="")
+    updated_extract = models.TextField(default="")
+    document_name = models.CharField(max_length=100)
+    update_timestamp = models.DateTimeField()
+    user = models.ForeignKey(User, default="User deleted", on_delete=models.SET_DEFAULT)
+    group_id = models.TextField(null=True)
+    chat = models.ForeignKey(Chat, null=True, blank=True, on_delete=models.SET_NULL)
+
+
+
+    def __str__(self):
+        return f'{self.extract_id}: {self.document_name}'
+
+
+
+
+    

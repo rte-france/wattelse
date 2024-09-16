@@ -5,56 +5,52 @@
   ~ This file is part of Wattelse, a NLP application suite.
   -->
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <title>WattElse</title>
-    {% load static %}
-
-    <!-- Use FonteAwsome icons : https://fontawesome.com/ -->
-    <script src="https://kit.fontawesome.com/63730a0977.js" crossorigin="anonymous"></script>
-
-    <!-- Load WattElse favicon -->
-    <link rel="icon" type="image/x-icon" href="{% static 'chatbot/favicon.ico' %}">
-
-    <!-- Use Open Sans Google font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
-        rel="stylesheet">
-</head>
-
-<body>
-    <!-- Load styles for every pages -->
-    <link rel="stylesheet" href="{% static 'chatbot/global.css' %}">
-    <link rel="stylesheet" href="{% static 'chatbot/chatbot.css' %}">
-    <link rel="stylesheet" href="{% static 'chatbot/login_register.css' %}">
-
-    <!-- Main top navigation bar -->
-    <div class="main-navbar">
-
-        <!-- WattElse title on the top-left -->
-        <a href="/" class="wattelse-title">
-            <i class="fa-solid fa-bolt-lightning" style="color: var(--main-color);"></i>WattElse
-        </a>
-
-        <!-- If admin, add changing group form -->
-        {% if user.is_superuser %}
-            <form method="post" action="admin_change_group/">
-                {% csrf_token %}
-                <select name="new_group" onchange="this.form.submit()">
-                    {% for group in admin_group_selection %}
-                        {% if group == user_group %}
-                            <option selected="selected">{{ group }}</option>
-                        {% else %}
-                            <option>{{ group }}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-            </form>
-        {% endif %}
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="utf-8">
+      <title>Chat RTEi</title>
+      {% load static %}
+  
+      <!-- Use FonteAwsome icons : https://fontawesome.com/ -->
+      <script src="https://kit.fontawesome.com/63730a0977.js" crossorigin="anonymous"></script>
+  
+      <!-- Link to Google Fonts -->
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+  
+      <!-- Load styles for every page -->
+      <link rel="stylesheet" href="{% static 'chatbot/global.css' %}">
+      <link rel="stylesheet" href="{% static 'chatbot/chatbot.css' %}">
+      <link rel="stylesheet" href="{% static 'chatbot/login_register.css' %}">
+      <link rel="stylesheet" href="{% static 'chatbot/navbar.css' %}"> <!-- Ensure this line is added -->
+  </head>
+  
+  <body>
+      <!-- Main top navigation bar -->
+      <div class="main-navbar">
+  
+          <!-- Title on the top-left -->
+          <a href="/" class="chatbot-title">
+              <i class="fa-solid fa-bolt-lightning" style="color: var(--main-color);"></i>Chat RTEi
+          </a>
+  
+          <!-- If admin, add changing group form -->
+          {% if user.is_superuser %}
+              <form method="post" action="admin_change_group/">
+                  {% csrf_token %}
+                  <select name="new_group" onchange="this.form.submit()">
+                      {% for group in admin_group_selection %}
+                          {% if group == user_group %}
+                              <option selected="selected">{{ group }}</option>
+                          {% else %}
+                              <option>{{ group }}</option>
+                          {% endif %}
+                      {% endfor %}
+                  </select>
+              </form>
+          {% endif %}
         
         <!-- Buttons on the top-right -->
         <div class="top-right-tabs-list">

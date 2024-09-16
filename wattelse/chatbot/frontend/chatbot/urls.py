@@ -8,22 +8,26 @@ from . import basic_chat_views, views
 
 app_name = 'chatbot'
 urlpatterns = [
-	# Web pages
+    path("admin/", admin.site.urls),
     path('', views.main_page, name='main_page'),
-	path('login/', views.login, name='login'),
+    path('login/', views.login, name='login'),
     path('register/', views.register, name='register'),
     path('logout/', views.logout, name='logout'),
-	
-	# Chatbot
+   
+   # Chatbot
 	path('query_rag/', views.query_rag, name='query_rag'),
 	path('save_interaction/', views.save_interaction, name='save_interaction'),
 	path('send_short_feedback/', views.manage_short_feedback, name="manage_short_feedback"),
-    path('send_long_feedback/', views.manage_long_feedback, name="manage_long_feedback"),
+    path('suggest_update/', views.suggest_update, name="suggest_update"),
+    path('send_correction/', views.update_extract, name="update_extract"),
+    path('save_modification/', views.save_modification, name="save_modification"),
+    path('get_chat_id/', views.get_chat_id, name='get_chat_id'),
 	
 	# Files
 	path('upload/', views.upload, name='upload'),
     path('delete/', views.delete, name='delete'),
     path('file_viewer/<str:file_name>', views.file_viewer, name='file_viewer'),
+    path('download_updates/', views.download_updates, name='download_updates'),
 	
     # Users
     path('add_user_to_group/', views.add_user_to_group, name='add_user_to_group'),
@@ -31,8 +35,8 @@ urlpatterns = [
 	path('admin_change_group/', views.admin_change_group, name="admin_change_group"),
 	
     # Dashboard
-	path('dashboard/', views.dashboard, name="dashboard"),
+	# path('dashboard/', views.dashboard, name="dashboard"),
 	
     # Basic chat
-    path('llm/', basic_chat_views.basic_chat, name='basic_chat'),
+    # path('llm/', basic_chat_views.basic_chat, name='basic_chat'),
 ]

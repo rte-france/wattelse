@@ -3,6 +3,21 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
+from django.shortcuts import render, redirect
+from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
+
+from django.contrib.auth.models import User, Group
+from django.contrib import auth
+from .forms import  RegistrationForm, LoginForm
+from django.contrib.auth import authenticate, login as auth_login
+from .models import Chat, Update
+
+from loguru import logger
+
+import pytz
+import mammoth
+import csv
+
 import io
 import uuid
 import json
@@ -10,21 +25,14 @@ import socket
 import tempfile
 from datetime import datetime
 
-import mammoth
-import pytz
-from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
-
-from django.contrib import auth
-from django.contrib.auth.models import User, Group
-from loguru import logger
 from pathlib import Path
-
+from uuid import UUID
 from xlsx2html import xlsx2html
 
-from wattelse.api.rag_orchestrator.rag_client import RAGAPIError
+from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError 
 from wattelse.chatbot.backend import DATA_DIR
-from .models import Chat
+
+# Create your views here.
 
 from .utils import (
     get_user_group_id,
@@ -33,9 +41,8 @@ from .utils import (
     get_conversation_history,
     streaming_generator,
     insert_feedback,
-    RAG_API,
+    RAG_API
 )
-
 
 def main_page(request):
     """
@@ -43,7 +50,7 @@ def main_page(request):
     Render chatbot.html webpage with associated context.
     """
     # If user is not authenticated, redirect to login
-    if not request.user.is_authenticated:
+    if not request.user.is_authenticated: #see this on django documentation
         return redirect("/login")
 
     # Get user group_id
@@ -62,6 +69,7 @@ def main_page(request):
     can_upload_documents = request.user.has_perm("chatbot.can_upload_documents")
     can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
     can_manage_users = request.user.has_perm("chatbot.can_manage_users")
+    can_download_updates = request.user.has_perm("chatbot.can_download_updates")
 
     # If can manage users, find usernames of its group
     if can_manage_users:
@@ -75,82 +83,69 @@ def main_page(request):
         group_usernames_list = None
 
     # Special case for admin
-    if request.user.is_superuser:
+    if request.user.is_superuser: 
         admin_group_selection = [group.name for group in Group.objects.filter()]
     else:
         admin_group_selection = None
     return render(
-        request, "chatbot/chatbot.html",
+        request, "chatbot/main_chatbot.html",
         {
             "conversation_id": conversation_id,
             "available_docs": available_docs,
             "can_upload_documents": can_upload_documents,
             "can_remove_documents": can_remove_documents,
             "can_manage_users": can_manage_users,
+            "can_download_updates": can_download_updates,
             "user_group": user_group_id,
             "group_usernames_list": group_usernames_list,
             "admin_group_selection": admin_group_selection,
         }
     )
-
+    
 
 def login(request):
     """Main function for login page.
-    If request method is GET : render login.html
-    If request method is POST : log the user in and redirect to chatbot.html
+    If request method is GET: render login.html
+    If request method is POST: log the user in and redirect to chatbot.html
     """
     if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        user = auth.authenticate(request, username=username, password=password)
-        # If user exists: check group, login and redirect to chatbot
-        if user is not None:
-            # If user doesn't belong to a group, return error
-            user_group_id = get_user_group_id(user)
-            if user_group_id is None:
-                error_message = "Vous n'appartenez à aucun groupe."
-                return render(request, "chatbot/login.html", {"error_message": error_message})
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password']
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                # Check if the user belongs to a group
+                user_group_id = get_user_group_id(user)
+                if user_group_id is None:
+                    error_message = "You do not belong to any group."
+                    return render(request, "chatbot/login.html", {"form": form, "error_message": error_message})
+                else:
+                    auth_login(request, user)
+                    logger.info(f"[User: {user.username}] logged in")
+                    RAG_API.create_session(user_group_id)
+                    return redirect("/")
             else:
-                auth.login(request, user)
-                logger.info(f"[User: {request.user.username}] logged in")
-                RAG_API.create_session(user_group_id)
-                return redirect("/")
-        # Else return error
-        else:
-            error_message = "Nom d'utilisateur ou mot de passe invalides"
-            return render(request, "chatbot/login.html", {"error_message": error_message})
+                error_message = "Invalide username or password."
+                return render(request, "chatbot/login.html", {"form": form, "error_message": error_message})
     else:
-        return render(request, "chatbot/login.html")
+        form = LoginForm()
+
+    return render(request, "chatbot/login.html", {"form": form})
+
 
 
 def register(request):
-    """Main function for register page.
-    If request method is GET : render register.html
-    If request method is POST : create a new user and print an new_user_created webpage
-    """
     if request.method == "POST":
-        username = request.POST.get("username")
-        password1 = request.POST.get("password1")
-        password2 = request.POST.get("password2")
-
-        # Check username is not already taken
-        if User.objects.filter(username=username).exists():
-            error_message = "Nom d'utilisateur indisponible"
-            return render(request, "chatbot/register.html", {"error_message": error_message})
-
-        # Check both password are the same
-        if password1 == password2:
-            try:
-                user = User.objects.create_user(username, password=password1)
-                user.save()
-                return new_user_created(request, username=user.username)
-            except:
-                error_message = "Erreur lors de la  création du compte"
-                return render(request, "chatbot/register.html", {"error_message": error_message})
+        form = RegistrationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return new_user_created(request, username=form.cleaned_data['username'])
         else:
-            error_message = "Mots de passe non identiques"
-            return render(request, "chatbot/register.html", {"error_message": error_message})
-    return render(request, "chatbot/register.html")
+            return render(request, "chatbot/register.html", {"form": form, "error_message": form.errors})
+    else:
+        form = RegistrationForm()
+    return render(request, "chatbot/register.html", {"form": form})
 
 
 def logout(request):
@@ -158,6 +153,7 @@ def logout(request):
     logger.info(f"[User: {request.user.username}] logged out")
     auth.logout(request)
     return redirect("/login")
+
 
 
 def query_rag(request):
@@ -182,7 +178,7 @@ def query_rag(request):
 
         if not message:
             logger.warning(f"[User: {request.user.username}] No user message received")
-            error_message = "Veuillez saisir une question"
+            error_message = "Please raise a question"
             return JsonResponse({"error_message": error_message}, status=500)
         logger.info(f"[User: {request.user.username}] Query: {message}")
 
@@ -242,9 +238,9 @@ def manage_short_feedback(request):
     """
     return insert_feedback(request, short=True)
 
-def manage_long_feedback(request):
+def suggest_update(request):
     """
-    Function that collects long feedback sent from the user interface about the last
+    Function that collects short feedback sent from the user interface about the last
     interaction (matching between the user question and the bot answer).
     """
     return insert_feedback(request, short=False)
@@ -342,6 +338,75 @@ def file_viewer(request, file_name: str):
     else:
         raise Http404()
 
+def update_extract(request):
+    if request.method == "POST":
+        user_group_id = get_user_group_id(request.user)
+        relevant_unique_ids = request.POST.get("unique_ids", None)
+        wrong_answer=request.POST.get("wrong_answer", "")
+        correction = request.POST.get("correction", "")
+        
+        unique_ids = json.loads(relevant_unique_ids.replace('\\', '\\\\'))
+
+        
+        
+        # Query update RAG and use LLM to generate the new extract
+        try:
+            response = RAG_API.update_extract(
+                user_group_id,
+                unique_ids,
+                wrong_answer,
+                correction
+            )
+
+            return JsonResponse(response, status=200)
+        except RAGAPIError as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse({"error_message": f"Error during the extract update: {e}"}, status=500)
+    else:
+        raise Http404()
+
+def save_modification(request):
+    """Function called to save the modifications in the DB once the update is finished."""
+    if request.method == "POST":
+        # Save query and response in DB
+        update_ts_s = request.POST.get("update_timestamp", "")
+        update_ts = datetime.strptime(update_ts_s, "%Y-%m-%dT%H:%M:%S.%fZ") if update_ts_s else None
+        # Convert to non-naive timedate (required for Django)
+        update_ts = pytz.utc.localize(update_ts)
+        chat_id = request.POST.get("chat_id", "")
+        chat = Chat.objects.filter(pk = chat_id).first()
+        
+        update = Update(
+            extract_id = request.POST.get("extract_id", ""),
+            previous_version= request.POST.get("previous_version", ""),
+            updated_extract = request.POST.get("updated_extract", ""),
+            document_name = request.POST.get("document_name", ""),
+            update_timestamp = update_ts,
+            user = request.user,
+            group_id=get_user_group_id(request.user),
+            chat = chat
+        )
+        update.save()
+        return HttpResponse(status=200)
+    else:
+        raise Http404()
+    
+    
+def get_chat_id(request):
+    if request.method == "POST":
+        user_question = request.POST.get("user_question", "")
+        bot_answer = request.POST.get("bot_answer", "")
+        chat_id = Chat.objects.filter(
+            user=request.user, 
+            message=user_question, 
+            response=bot_answer).order_by('-question_timestamp').first().id
+        
+        response = {"chat_id": chat_id}
+        return JsonResponse(response, status=200)
+        
+    
+    
+        
 
 def add_user_to_group(request):
     """
@@ -362,14 +427,14 @@ def add_user_to_group(request):
             new_user = User.objects.get(username=new_username)
         else:
             logger.error(f"[User: {request.user.username}] Username {new_username} not found")
-            error_message = f"Le nom d'utilisateur {new_username} n'a pas été trouvé"
+            error_message = f"Username {new_username} was not found"
             return JsonResponse({"error_message": error_message}, status=500)
 
         # If new_user already in a group then return error status code
         if get_user_group_id(new_user) is not None:
             logger.error(
                 f"[User: {request.user.username}] User with username {new_username} already belongs to a group")
-            error_message = f"L'utilisateur {new_username} appartient déjà à un groupe"
+            error_message = f"User {new_username} already belongs to a group"
             return JsonResponse({"error_message": error_message}, status=500)
 
         # If new_user has no group then add it to superuser group
@@ -399,12 +464,12 @@ def remove_user_from_group(request):
         if User.objects.filter(username=username_to_remove).exists():
             user_to_remove = User.objects.get(username=username_to_remove)
         else:
-            error_message = f"Le nom d'utilisateur {username_to_remove} n'a pas été trouvé"
+            error_message = f"Username {username_to_remove} was not found"
             return JsonResponse({"error_message": error_message}, status=500)
 
         # Send an error if a user tries to remove himself
         if request.user.username == username_to_remove:
-            error_message = f"Vous ne pouvez pas vous supprimer du groupe"
+            error_message = f"You cannot remove yourself from the group"
             return JsonResponse({"error_message": error_message}, status=500)
 
         # Remove user_to_remove
@@ -428,7 +493,72 @@ def admin_change_group(request):
             raise Http404()
     else:
         raise Http404()
+    
+def download_updates(request):
+    if request.method == 'POST':
+        selected_file = request.POST.get('selected_file', '[]')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        
+        logger.info(f'Received POST request with start_date: "{start_date}", end_date: "{end_date}", file_name: "{selected_file}"')
+
+        
+             # Debugging: print retrieved values
+        print(f"Selected file: {selected_file}")
+        print(f"Start date: {start_date}")
+        print(f"End date: {end_date}")
+        
+        # Parse JSON and handle dates here
+        
+        logger.debug(f"[User: {request.user.username}] File selected for update track: {selected_file}")
+        if not selected_file:
+            logger.warning(f"[User: {request.user.username}] No file selected for update tracking received, action ignored")
+            return JsonResponse({"warning_message": "No file downloaded"}, status=202)
+        else:
+            # Initialize the query set
+            updates = Update.objects.all()
+            
+            start_date = datetime.strptime(start_date, '%d-%m-%Y')
+            end_date = datetime.strptime(end_date, '%d-%m-%Y')
+
+            # Filter updates based on the provided date range and file name
+            updates = Update.objects.filter(
+                update_timestamp__range=[start_date, end_date],
+                document_name=selected_file
+            )
+
+          
+            # Check if there are any updates
+            if updates.count() == 0:
+                # Return a response indicating no updates found
+                return JsonResponse({"error_message":'No updates found for the specified criteria.'},
+                                        status=202)
+            else:
+
+                # Create CSV response
+                # Convert dates to string format for the filename
+                start_date_str = start_date.strftime('%d-%m-%Y')
+                end_date_str = end_date.strftime('%d-%m-%Y')
+                selected_file_name = selected_file.split(".")[0]
+                
+                response = HttpResponse(content_type='text/csv; charset=utf-8')
+                filename = '{}_updates_{}_{}.csv'.format(selected_file_name,start_date_str, end_date_str)
+                print("Selected file name: '{}'".format(selected_file_name))
+
+                response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+                # Debugging: Print headers to ensure correct assignment
+                print("Content-Disposition header: '{}'".format(response['Content-Disposition']))
+                response.write(u'\ufeff'.encode('utf8'))
 
 
-def dashboard(request):
-    return redirect(f"http://{socket.gethostbyname(socket.gethostname())}:9090")
+                writer = csv.writer(response, delimiter=';')
+
+               # Write CSV headers
+                field_names = [field.name for field in Update._meta.fields]
+                writer.writerow(field_names)
+
+                # Write data rows
+                for update in updates:
+                    writer.writerow([getattr(update, field) for field in field_names])
+
+                return response

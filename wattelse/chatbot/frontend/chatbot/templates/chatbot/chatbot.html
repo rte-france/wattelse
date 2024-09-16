@@ -33,12 +33,12 @@
             {% csrf_token %}
             <div class="chat-input">
                 <input type="text" class="input-field"
-                    placeholder="Entrez votre question en lien avec les documents fournis..." />
+                    placeholder="Ask a question related to the documents provided." />
                 <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
                 <button class="new-conversation-button" onclick="newConversation()"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
             </div>
             <div class="disclaimer">
-                WattElse peut afficher des informations inexactes. Vérifiez ses réponses.
+                The chatbot can return imprecise answers. Please refer to the documents provided for more accurate information.
             </div>
         </div>
     </div>
@@ -47,25 +47,29 @@
     <div class="panel-container">
 
         <!-- All users have access to these tabs -->
-        <div class="tab" data-content="extracts">Extraits</div>
+        <div class="tab" data-content="extracts">Extracts</div>
         <div class="tab active" data-content="documents">Documents</div>
 
         <!-- These tabs need specific rights to be displayed -->
         {% if can_upload_documents %}
-            <div class="tab superuser-tab" data-content="upload">Ajouter</div>
+            <div class="tab superuser-tab" data-content="upload">Add</div>
         {% endif %}
         {% if can_remove_documents %}
-            <div class="tab superuser-tab" data-content="remove">Supprimer</div>
+            <div class="tab superuser-tab" data-content="remove">Remove</div>
+        {% endif %}
+        {% if can_download_updates %}
+            <div class="tab superuser-tab" data-content="track-updates">Updates</div>
         {% endif %}
         {% if can_manage_users %}
-            <div class="tab superuser-tab" data-content="users-management">Utilisateurs</div>
+            <div class="tab superuser-tab" data-content="users-management">Users</div>
         {% endif %}
+        
 
         <hr>
 
         <!-- Extracts tab content -->
         <div class="tab-content extracts">
-            <h2 class="tab-title">Extraits pertinents</h2>
+            <h2 class="tab-title">Relevant extracts</h2>
             <div class="extracts-section">
                 <ul id="extract-list"></ul>
             </div>
@@ -73,11 +77,11 @@
 
         <!-- Available documents tab content -->
         <div class="tab-content documents">
-            <h2 class="tab-title">Sélection des documents disponibles</h2>
-            <h3>Groupe de travail : <span class="groupname">{{ user_group }}</span></h3>
+            <h2 class="tab-title">Available document selection</h2>
+            <h3>Work team : <span class="groupname">{{ user_group }}</span></h3>
             <div class="available-section">
                 <span class="tab-small-title select-all" id="select-all">
-                    Tout sélectionner / désélectionner : <i class="fa-regular fa-square-check fa-xl"></i>
+                    Select / Unselect all: <i class="fa-regular fa-square-check fa-xl"></i>
                 </span>
                 
                 <ul class="document-list available-list"></ul>
@@ -87,19 +91,19 @@
         <!-- Upload document tab content -->
         {% if can_upload_documents %}
             <div class="tab-content upload">
-                <h2 class="tab-title">Télécharger des documents</h2>
+                <h2 class="tab-title">Upload documents</h2>
                 <div class="header-section">
-                    <p>Téléchargez les fichiers à partager dans votre groupe</p>
-                    <p>Formats supportés: PDF, DOCX, PPTX, XLSX, CSV, HTML, MD, TXT</p>
+                    <p>Upload files to be shared with your group</p>
+                    <p>Supported formats: PDF, DOCX, PPTX, XLSX, CSV, HTML, MD, TXT</p>
                 </div>
                 <div class="drop-section">
                     <div class="col">
                         <div class="cloud-icon">
                             <i class="fa-solid fa-cloud-arrow-up fa-2xl " style="color: var(--main-color);"></i>
                         </div>
-                        <span>Glisser-déposer vos fichiers</span>
-                        <span>OU</span>
-                        <button class="file-selector">Sélectionner les fichiers</button>
+                        <span>Drag and drop your files</span>
+                        <span>Or</span>
+                        <button class="file-selector">Select the files</button>
                         <input type="file" class="file-selector-input" multiple>
                     </div>
                     <div class="col">
@@ -115,9 +119,9 @@
         <!-- Remove document tab content -->
         {% if can_remove_documents %}
             <div class="tab-content remove">
-                <h2 class="tab-title">Supprimer des documents</h2>
+                <h2 class="tab-title">Remove documents</h2>
                 <div class="removal-section">
-                    <span class="tab-small-title">Fichiers à supprimer</span>
+                    <span class="tab-small-title">Files to remove</span>
                     <ul class="document-list removal-list"></ul>
                     <div class="trash-button-div">
                         <button class="trash-button" onclick="deleteDocumentsInCollection()">
@@ -128,11 +132,43 @@
             </div>
         {% endif %}
 
+        <!-- Track document updates tab content -->
+        {% if can_download_updates %}
+            <div class="tab-content track-updates">
+                <h2 class="tab-title">Track updates</h2>
+                <div class="header-section">
+                    <p>Select the file for which you want to track updates</p>
+                </div>
+                <div class="download-section">
+                    <span class="tab-small-title">Available files</span>
+                    <ul class="document-list updated-file-list"></ul>
+
+
+                    <div class="date-range-section">
+                        <span>Specify a date range to track updates</span>
+                        <div class="calendar-container">
+                            <div class="calendar">
+                                <input id="calendar-start" placeholder="Extract updates since..." data-enable-time=true data-date-format="d-m-Y">
+                            </div>
+                            <div class="calendar">
+                                <input id="calendar-end" placeholder="until..." data-enable-time=true data-date-format="d-m-Y">
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+                <div class="action-button-div">
+                    <button class="download-button" onclick="downloadUpdates()">
+                        <i class="fa-solid fa-download fa-2xl"></i> Download Updates
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+
         <!-- Users management tab content -->
         {% if can_manage_users %}
             <div class="tab-content users-management">
-                <h2 class="tab-title">Gestion des utilisateurs</h2>
-                <h3>Groupe de travail : <span class="groupname">{{ user_group }}</span></h3>
+                <h2 class="tab-title">Users management</h2>
+                <h3>Work team : <span class="groupname">{{ user_group }}</span></h3>
                 <div class="users-management-section">
                     <ul class="user-list" id="group-usernames-list">
                         {% for group_username in group_usernames_list %}
@@ -151,8 +187,8 @@
                     </ul>
                 </div>
                 <div class="div-add-users-input-field">
-                    <div class="tab-small-title">Ajouter un utilisateur à votre groupe :</div>
-                    <input class="add-users-input-field" type="text" id="add-users-input-field" placeholder="Nom d'utilisateur">
+                    <div class="tab-small-title">Add a user to your group :</div>
+                    <input class="add-users-input-field" type="text" id="add-users-input-field" placeholder="Username">
                     <button class="add-users-button"><i class="fa-solid fa-plus"></i></button>
                 </div>
                 
@@ -166,7 +202,28 @@
 {% load static %}
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="{% static 'chatbot/chatbot_functions.js' %}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+
+<!-- Flatpickr JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<!-- Initialize Flatpickr -->
+    <script>
+         // Initialize flatpickr directly
+         flatpickr("#calendar-start", {
+            minDate: new Date().fp_incr(-600),
+            maxDate: new Date(),
+           
+            
+        });
+
+        flatpickr("#calendar-end", {
+            minDate: new Date().fp_incr(-600),
+            maxDate: new Date(),
+            
+        });
+        
+    </script>
 
 {% endblock %}
-
-

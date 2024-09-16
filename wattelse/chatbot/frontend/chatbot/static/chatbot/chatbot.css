@@ -5,581 +5,654 @@
  * This file is part of Wattelse, a NLP application suite.
  */
 
-@import url("global.css");
 
-/* ************ */
-/* CHATBOT PAGE */
-/* ************ */
-
- /* Wrapper for the whole page */
-.wrapper {
-  display: flex;
-  height: 89%;
-}
-
-/* ******************************** */
-/* Main containers : chat and panel */
-/* ******************************** */
-.chat-container,
-.panel-container {
-    height: 90%;
-    padding: 1.5%;
-    margin: 1%;
-    border-radius: 10px;
-    background-color: #fff;
-    box-shadow: 0 5px 10px 0 rgba(0,0,0,.1);
-}
-
-.chat-container {
-  display: flex;
-  flex-direction: column;
-  width: 55%;
-  justify-content: space-between;
-}
-
-.panel-container {
-  width: 35%;
-}
-
-/* ************** */
-/* Chat container */
-/* ************** */
-.chat-history {
-  width: 100%;
-  overflow-y: auto;
-  flex-grow: 1;
-}
-
-.chat-container-bottom { /* Everything in this div will stick at the bottom of the chat container */
-  width: 100%;
-}
-
-@keyframes fadeIn {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-}
-
-.welcome-container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 1.5s;
-}
-
-.welcome-message {
-    font-size: 2em;
-    font-weight: 800;
-    color: #c4c7c5;
-}
-
-.user-message,
-.bot-message,
-.error-message,
-.warning-message{
-    width: 98%;
-    margin-bottom: 30px;
-}
-
-.error-message {
-  color: red;
-}
-
-.warning-message {
-  color: var(--complementary-color);
-}
-
-.user-message::before { /* Add content before the message */
-    content: "\f007"; /* Font Awesome icon code for user */
-    font-family: FontAwesome; /* Font family for the icon library */
-    font-size: 20px; /* Adjust font size as needed */
-    margin-right: 1rem;
-    color: black; /* Set icon color */
-}
-
-.bot-message::before { /* Add content before the message */
-    content: "\e0b7"; /* Font Awesome icon code for robot */
-    font-family: FontAwesome; /* Font family for the icon library */
-    font-size: 20px; /* Adjust font size as needed */
-    margin-right: 1rem;
-    color: var(--main-color); /* Set icon color */
-    display: inline;
-}
-
-.bot-message p {
-  display: inline;
-}
-
-.bot-message.animate::before { /* Animation while generation in progress */
-  animation: pulse 1s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.3;
-    }
-    100% {
-      opacity: 1;
-    }
-}
-
-.error-message::before { /* Add content before the message */
-    content: "\f188"; /* Font Awesome icon code for bug */
-    font-family: FontAwesome; /* Font family for the icon library */
-    font-size: 20px; /* Adjust font size as needed */
-    margin-right: 1rem;
-    color: red; /* Set icon color */
-}
-
-.warning-message::before { /* Add content before the message */
-    content: "\f071";
-    font-family: FontAwesome; /* Font family for the icon library */
-    font-size: 20px; /* Adjust font size as needed */
-    margin-right: 1rem;
-    color:  var(--complementary-color); /* Set icon color */
-}
-
-
-.chat-input {
-    width: 100%;
-    align-items: center;
-}
-
-.input-field {
-    width: 84%;
-    padding: 1%;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    margin-bottom: 10px;
-    background-color: #e7e7e7;
-}
-
-.send-button,
-.new-conversation-button {
-    width: 5% ;
-    padding: 0.5rem 0.5rem;
-    border: none;
-    border-radius: 5px;
-    background-color: var(--main-color);
-    color: white;
-    font-weight: 600;
-}
-
-.new-conversation-button {
-  background-color: var(--complementary-color);
-}
-
-.disclaimer{
-    color: darkgrey;
-    text-align: center;
-    font-size: 0.7rem;
-}
-
-/* *************** */
-/* Panel container */
-/* *************** */
-
-/* Panel tabs */
-.panel-container .tab {
-    display: inline-block;
-    padding: 0.4rem 0.6rem; /* Increase padding for better readability */
-    font-size: 0.9rem; /* Slightly smaller font for tabs */
-    font-weight: 600;
-    cursor: pointer;
-    text-align: center; /* Center text within tabs */
-    border-radius: 5px;
-    color: #333; /* Darker text color for better contrast */
-    transition: background-color 0.2s ease-in-out; /* Smooth transition on hover */
-}
-
-.panel-container .superuser-tab {
-color: var(--complementary-color);
-}
-
-.panel-container .tab:hover {
-    color: var(--main-color);
-}
-
-.panel-container .superuser-tab:hover {
-  color: rgb(216, 35, 15);
-}
-
-.panel-container .tab.active {
-    background-color: var(--main-color); /* Blue background for active tab */
-    color: #fff; /* White text color for active tab */
-    box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
-}
-
-.panel-container .superuser-tab.active {
-  background-color: var(--complementary-color);
-  color: #fff; /* White text color for active tab */
-  box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
-}
-
-/* Panel tabs content */
-.panel-container .tab-content {
-    width: 100%;
-    height: 90%;
-    overflow-y: scroll;
-
-}
-
-.tab-content .tab-title {
-  padding: 0px;
-}
-
-.tab-content .tab-small-title {
-  font-size: 0.95rem;
-  color: #707EA0;
-}
-
-
-/* Documents list main element */
-.document-list,
-.user-list {
-  padding: 0;
-  list-style-type: none;
-  text-align: left;
-  margin: 0px 35px;
-  padding-bottom: 20px;
-}
-
-.document-list li,
-.user-list li {
-  display: flex;
-  margin: 15px 0px;
-  padding: 4px 0px;
-  border-radius: 8px;
-  background-color: #f2f2f2;
-  transition-duration: 0.2s;
-  align-items: center;
-  transition: all .1s ease-in-out;
-}
-
-.document-list li:hover,
-.user-list li:hover {
-  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
-  cursor: pointer;
-  transform: scale(1.02);
-}
-
-.document-list li .col,
-.user-list li .col {
-  flex: .1;
-}
-
-.document-list li .col:nth-child(1),
-.user-list li .col:nth-child(1) {
-  flex: .15;
-  text-align: center;
-}
-
-.document-list li .col:nth-child(2),
-.user-list li .col:nth-child(2) {
-  flex: .75;
-  text-align: left;
-  font-size: 0.9rem;
-  color: #3e4046;
-  padding: 8px 10px;
-}
-
-.document-list li .col:nth-child(2) div.name,
-.user-list li .col:nth-child(2) div.name {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  max-width: 250px;
-  display: inline-block;
-}
-
-.document-list li .col .file-name span,
-.user-list li .col .file-name span {
-  color: #707EA0;
-  float: right;
-}
-
-.document-list li .col svg.tick {
-  fill: green;
-  background-color: transparent;
-}
-
-.available-section .document-list li .col svg.tick,
-.removal-section .document-list li .col svg.tick {
-    display: none;
-}
-
-.document-list li.selected .col svg.tick {
-  display: block;
-}
-
-
-
-/* Extracts list content */
-.extract-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.tab-content.extracts ul {
-  list-style: none; /* Remove default bullet points */
-  padding: 0; /* Reset padding for better spacing */
-}
-
-.tab-content.extracts li {
-  background: #f2f2f2;
-  margin-bottom: 1rem; /* Add space between list items */
-  border-radius: 10px;
-  padding: 10px;
-  box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 6px;
-}
-
-.tab-content.extracts p {
-  margin-bottom: 0.5rem; /* Space between paragraph and link */
-  font-size: 0.9rem; /* Slightly smaller font for extracts */
-}
-
-.tab-content.extracts .source-link {
-  color: var(--main-color); /* Blue color for the source link */
-  text-decoration: none; /* Underline the link */
-  font-weight: bold; /* Make the link slightly bolder */
-}
-
-.tab-content.extracts .source-link::before { /* Add content before the message */
-    content: "\f0c1"; /* Font Awesome icon code for user */
-    font-family: FontAwesome; /* Font family for the icon library */
-    font-size: 20px; /* Adjust font size as needed */
-    margin-right: 1rem;
-    color: var(--main-color); /* Set icon color */
-}
-
-/* Documents list content*/
-.tab-content .available-section .select-all {
-  color : #707EA0;
-}
-
-.tab-content .available-section .select-all:hover{
-  cursor: pointer;
-  color: var(--main-color);
-}
-
-
-/* File upload style */
-.drop-section{
-  min-height: 170px;
-  border: 1px dashed darkgrey;
-  margin: 5px 35px 35px 35px;
-  border-radius: 12px;
-  position: relative;
-  text-align: center;
-}
-
-.drop-section div.col:first-child{
-  opacity: 1;
-  visibility: visible;
-  transition-duration: 0.2s;
-  transform: scale(1);
-  width: 200px;
-  margin: auto;
-}
-
-.drop-section div.col:last-child{
-  font-size: 40px;
-  font-weight: 700;
-  color: #c0cae1;
-  position: absolute;
-  top: 0px;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  margin: auto;
-  width: 200px;
-  height: 55px;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transform: scale(0.6);
-  transition-duration: 0.2s;
-}
-
-/* we will use "drag-over-effect" class in js */
-.drag-over-effect div.col:first-child{
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: scale(1.1);
-}
-
-.drag-over-effect div.col:last-child{
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-}
-
-.drop-section .cloud-icon{
-  margin-top: 25px;
-  margin-bottom: 20px;
-}
-
-.drop-section span,
-.drop-section button{
-  display: block;
-  margin: auto;
-  color: #707EA0;
-  margin-bottom: 10px;
-}
-
-.drop-section button{
-  color: white;
-  background-color: var(--main-color);
-  border: none;
-  outline: none;
-  padding: 7px 20px;
-  border-radius: 8px;
-  margin-top: 20px;
-  cursor: pointer;
-}
-
-.drop-section input{
-  display: none;
-}
-
-.uploaded-section li .file-progress{
-  width: 100%;
-  height: 5px;
-  margin-top: 8px;
-  border-radius: 8px;
-  background-color: #dee6fd;
-}
-
-.uploaded-section li .file-progress span{
-  display: block;
-  width: 0%;
-  height: 100%;
-  border-radius: 8px;
-  background-image: linear-gradient(120deg, #6b99fd, #9385ff);
-  transition-duration: 0.4s;
-}
-
-.uploaded-section li .col .file-size{
-  font-size: 0.75rem;
-  margin-top: 3px;
-  color: #707EA0;
-}
-
-.uploaded-section li.complete span,
-.uploaded-section li.complete .file-progress,
-.uploaded-section li.complete svg.cross{
-  display: none;
-}
-
-.uploaded-section li.in-prog .file-size,
-.uploaded-section li.in-prog svg.tick{
-  display: none;
-}
-
-
-/* Removal section */
-
-.removal-section .trash-button-div {
-  text-align: center;
-}
-
-.removal-section .trash-button{
-    color: red;
-    text-align: center;
-    background-color: inherit;
-    border: none;
-    transition: all 0.05s ease-in-out;
-}
-
-.removal-section .trash-button:hover{
-    cursor: pointer;
-    transform: scale(1.05);
-}
-
-
-/* Users management section */
-.remove-user-button {
-  background-color: inherit;
-  border: None;
-  color: red;
-  font-size: 1.3rem;
-}
-
-.div-add-users-input-field {
-  text-align: center;
-}
-
-.add-users-input-field {
-  padding: 5px;
-  margin: 10px 0px;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  background-color: #e7e7e7;
-}
-
-.add-users-button {
-  border: none;
-  background-color: inherit;
-}
-
-
-/* Feedback section */
-.feedback-section {
-  display: flex; /* Arrange buttons and/or textarea horizontally */
-  align-items: center; /* Align content vertically in the center */
-  margin-top: 1rem; /* Add some space above the feedback section */
-  padding: 1rem; /* Add padding for spacing within the section */
-  border-radius: 5px; /* Add rounded corners for a softer look */
-}
-
-.feedback-section button {
-  margin-right: 1rem; /* Add space between buttons */
-  padding: 0.5rem 1rem; /* Set appropriate padding for buttons */
-  background-color: #fff; /* White background for buttons */
-  border: 1px solid #ccc; /* Add a solid border */
-  border-radius: 4px; /* Add rounded corners for buttons */
-  cursor: pointer; /* Indicate clickable behavior */
-}
-
-.feedback-section button:hover, .feedback-section button.selected {
-    color: white;
-    background-color: var(--main-color);
-}
-
-.feedback-section textarea {
-  flex: 1; /* Allow textarea to expand and fill remaining space */
-  padding: 0.5rem 1rem; /* Set padding for the textarea */
-  border: 1px solid #ccc; /* Add a light gray border */
-  border-radius: 4px; /* Add rounded corners for the textarea */
-  resize: none; /* Disable resizing of textarea */ /* Optional: Allow resizing if needed */
-}
-
-.feedback-section:last-child { /* Target the last feedback section */
-  margin-bottom: 1rem; /* Add extra space at the bottom of the last section */
-}
-
-.emoji-rating{
-    margin-right: 1.5rem;
-    cursor: pointer;
-    color: black;
-}
-
-.rating-great:hover, .rating-great.selected {
-    color: mediumseagreen;
-}
-.rating-ok:hover, .rating-ok.selected {
-    color: var(--main-color);
-}
-.rating-missing:hover, .rating-missing.selected {
-    color: var(--complementary-color);
-}
-.rating-wrong:hover, .rating-wrong.selected {
-    color: indianred;
-}
+ @import url("global.css");
+ @import "https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.2.3/flatpickr.css";
+ @import "https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.2.3/themes/dark.css";
+ 
+ /* ************ */
+ /* CHATBOT PAGE */
+ /* ************ */
+ 
+  /* Wrapper for the whole page */
+ .wrapper {
+   display: flex;
+   height: 89%;
+ }
+ 
+ /* ******************************** */
+ /* Main containers : chat and panel */
+ /* ******************************** */
+ .chat-container,
+ .panel-container {
+     height: 90%;
+     padding: 1.5%;
+     margin: 1%;
+     border-radius: 10px;
+     background-color: #fff;
+     box-shadow: 0 5px 10px 0 rgba(0,0,0,.1);
+ }
+ 
+ .chat-container {
+   display: flex;
+   flex-direction: column;
+   width: 55%;
+   justify-content: space-between;
+ }
+ 
+ .panel-container {
+   width: 35%;
+ }
+ 
+ /* ************** */
+ /* Chat container */
+ /* ************** */
+ .chat-history {
+   width: 100%;
+   overflow-y: auto;
+   flex-grow: 1;
+ }
+ 
+ .chat-container-bottom { /* Everything in this div will stick at the bottom of the chat container */
+   width: 100%;
+ }
+ 
+ @keyframes fadeIn {
+     0% { opacity: 0; }
+     100% { opacity: 1; }
+ }
+ 
+ .welcome-container {
+     width: 100%;
+     height: 100%;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     animation: fadeIn 1.5s;
+ }
+ 
+ .welcome-message {
+     font-size: 2em;
+     font-weight: 800;
+     color: #c4c7c5;
+ }
+ 
+ .user-message,
+ .bot-message,
+ .error-message,
+ .warning-message{
+     width: 98%;
+     margin-bottom: 30px;
+ }
+ 
+ .error-message {
+   color: red;
+ }
+ 
+ .warning-message {
+   color: var(--complementary-color);
+ }
+ 
+ .user-message::before { /* Add content before the message */
+     content: "\f007"; /* Font Awesome icon code for user */
+     font-family: FontAwesome; /* Font family for the icon library */
+     font-size: 20px; /* Adjust font size as needed */
+     margin-right: 1rem;
+     color: black; /* Set icon color */
+ }
+ 
+ .bot-message::before { /* Add content before the message */
+     content: "\e0b7"; /* Font Awesome icon code for robot */
+     font-family: FontAwesome; /* Font family for the icon library */
+     font-size: 20px; /* Adjust font size as needed */
+     margin-right: 1rem;
+     color: var(--main-color); /* Set icon color */
+     display: inline;
+ }
+ 
+ .bot-message p {
+   display: inline;
+ }
+ 
+ .bot-message.animate::before { /* Animation while generation in progress */
+   animation: pulse 1s ease-in-out infinite;
+ }
+ 
+ @keyframes pulse {
+     0% {
+       opacity: 1;
+     }
+     50% {
+       opacity: 0.3;
+     }
+     100% {
+       opacity: 1;
+     }
+ }
+ 
+ .error-message::before { /* Add content before the message */
+     content: "\f188"; /* Font Awesome icon code for bug */
+     font-family: FontAwesome; /* Font family for the icon library */
+     font-size: 20px; /* Adjust font size as needed */
+     margin-right: 1rem;
+     color: red; /* Set icon color */
+ }
+ 
+ .warning-message::before { /* Add content before the message */
+     content: "\f071";
+     font-family: FontAwesome; /* Font family for the icon library */
+     font-size: 20px; /* Adjust font size as needed */
+     margin-right: 1rem;
+     color:  var(--complementary-color); /* Set icon color */
+ }
+ 
+ 
+ .chat-input {
+     width: 100%;
+     align-items: center;
+ }
+ 
+ .input-field {
+     width: 84%;
+     padding: 1%;
+     border: 1px solid #ccc;
+     border-radius: 10px;
+     margin-bottom: 10px;
+     background-color: #e7e7e7;
+ }
+ 
+ .send-button,
+ .new-conversation-button {
+     width: 5% ;
+     padding: 0.5rem 0.5rem;
+     border: none;
+     border-radius: 5px;
+     background-color: var(--main-color);
+     color: white;
+     font-weight: 600;
+ }
+ 
+ .new-conversation-button {
+   background-color: var(--complementary-color);
+ }
+ 
+ .disclaimer{
+     color: darkgrey;
+     text-align: center;
+     font-size: 0.7rem;
+ }
+ 
+ /* *************** */
+ /* Panel container */
+ /* *************** */
+ 
+ /* Panel tabs */
+ .panel-container .tab {
+     display: inline-block;
+     padding: 0.4rem 0.6rem; /* Increase padding for better readability */
+     font-size: 0.8rem; /* Slightly smaller font for tabs */
+     font-weight: 600;
+     cursor: pointer;
+     text-align: center; /* Center text within tabs */
+     border-radius: 5px;
+     color: #333; /* Darker text color for better contrast */
+     transition: background-color 0.2s ease-in-out; /* Smooth transition on hover */
+ }
+ 
+ .panel-container .superuser-tab {
+ color: var(--complementary-color);
+ }
+ 
+ .panel-container .tab:hover {
+     color: var(--main-color);
+ }
+ 
+ .panel-container .superuser-tab:hover {
+   color: rgb(216, 35, 15);
+ }
+ 
+ .panel-container .tab.active {
+     background-color: var(--main-color); /* Blue background for active tab */
+     color: #fff; /* White text color for active tab */
+     box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
+ }
+ 
+ .panel-container .superuser-tab.active {
+   background-color: var(--complementary-color);
+   color: #fff; /* White text color for active tab */
+   box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
+ }
+ 
+ /* Panel tabs content */
+ .panel-container .tab-content {
+     width: 100%;
+     height: 90%;
+     overflow-y: scroll;
+ 
+ }
+ 
+ .tab-content .tab-title {
+   padding: 0px;
+ }
+ 
+ .tab-content .tab-small-title {
+   font-size: 0.95rem;
+   color: #707EA0;
+ }
+ 
+ 
+ /* Documents list main element */
+ .document-list,
+ .user-list {
+   padding: 0;
+   list-style-type: none;
+   text-align: left;
+   margin: 0px 35px;
+   padding-bottom: 20px;
+ }
+ 
+ .document-list li,
+ .user-list li {
+   display: flex;
+   margin: 15px 0px;
+   padding: 4px 0px;
+   border-radius: 8px;
+   background-color: #f2f2f2;
+   transition-duration: 0.2s;
+   align-items: center;
+   transition: all .1s ease-in-out;
+ }
+ 
+ .document-list li:hover,
+ .user-list li:hover {
+   box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+   cursor: pointer;
+   transform: scale(1.02);
+ }
+ 
+ .document-list li .col,
+ .user-list li .col {
+   flex: .1;
+ }
+ 
+ .document-list li .col:nth-child(1),
+ .user-list li .col:nth-child(1) {
+   flex: .15;
+   text-align: center;
+ }
+ 
+ .document-list li .col:nth-child(2),
+ .user-list li .col:nth-child(2) {
+   flex: .75;
+   text-align: left;
+   font-size: 0.9rem;
+   color: #3e4046;
+   padding: 8px 10px;
+ }
+ 
+ .document-list li .col:nth-child(2) div.name,
+ .user-list li .col:nth-child(2) div.name {
+   overflow: hidden;
+   white-space: nowrap;
+   text-overflow: ellipsis;
+   max-width: 250px;
+   display: inline-block;
+ }
+ 
+ .document-list li .col .file-name span,
+ .user-list li .col .file-name span {
+   color: #707EA0;
+   float: right;
+ }
+ 
+ .document-list li .col svg.tick {
+   fill: green;
+   background-color: transparent;
+ }
+ 
+ .available-section .document-list li .col svg.tick,
+ .removal-section .document-list li .col svg.tick {
+     display: none;
+ }
+ 
+ .download-section .document-list li .col svg.tick {
+     display: none;
+ }
+ 
+ .document-list li.selected .col svg.tick {
+   display: block;
+ }
+ 
+ 
+ 
+ /* Extracts list content */
+ .extract-list {
+   list-style: none;
+   padding: 0;
+   margin: 0;
+ }
+ 
+ .tab-content.extracts ul {
+   list-style: none; /* Remove default bullet points */
+   padding: 0; /* Reset padding for better spacing */
+ }
+ 
+ .tab-content.extracts li {
+   background: #f2f2f2;
+   margin-bottom: 1rem; /* Add space between list items */
+   border-radius: 10px;
+   padding: 10px;
+   box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 6px;
+ }
+ 
+ .tab-content.extracts p {
+   margin-bottom: 0.5rem; /* Space between paragraph and link */
+   font-size: 0.9rem; /* Slightly smaller font for extracts */
+ }
+ 
+ .tab-content.extracts .source-link {
+   color: var(--main-color); /* Blue color for the source link */
+   text-decoration: none; /* Underline the link */
+   font-weight: bold; /* Make the link slightly bolder */
+ }
+ 
+ .tab-content.extracts .source-link::before { /* Add content before the message */
+     content: "\f0c1"; /* Font Awesome icon code for user */
+     font-family: FontAwesome; /* Font family for the icon library */
+     font-size: 20px; /* Adjust font size as needed */
+     margin-right: 1rem;
+     color: var(--main-color); /* Set icon color */
+ }
+ 
+ /* Documents list content*/
+ .tab-content .available-section .select-all {
+   color : #707EA0;
+ }
+ 
+ .tab-content .available-section .select-all:hover{
+   cursor: pointer;
+   color: var(--main-color);
+ }
+ 
+ 
+ /* File upload style */
+ .drop-section{
+   min-height: 170px;
+   border: 1px dashed darkgrey;
+   margin: 5px 35px 35px 35px;
+   border-radius: 12px;
+   position: relative;
+   text-align: center;
+ }
+ 
+ .drop-section div.col:first-child{
+   opacity: 1;
+   visibility: visible;
+   transition-duration: 0.2s;
+   transform: scale(1);
+   width: 200px;
+   margin: auto;
+ }
+ 
+ .drop-section div.col:last-child{
+   font-size: 40px;
+   font-weight: 700;
+   color: #c0cae1;
+   position: absolute;
+   top: 0px;
+   bottom: 0px;
+   left: 0px;
+   right: 0px;
+   margin: auto;
+   width: 200px;
+   height: 55px;
+   pointer-events: none;
+   opacity: 0;
+   visibility: hidden;
+   transform: scale(0.6);
+   transition-duration: 0.2s;
+ }
+ 
+ /* we will use "drag-over-effect" class in js */
+ .drag-over-effect div.col:first-child{
+   opacity: 0;
+   visibility: hidden;
+   pointer-events: none;
+   transform: scale(1.1);
+ }
+ 
+ .drag-over-effect div.col:last-child{
+   opacity: 1;
+   visibility: visible;
+   transform: scale(1);
+ }
+ 
+ .drop-section .cloud-icon{
+   margin-top: 25px;
+   margin-bottom: 20px;
+ }
+ 
+ .drop-section span,
+ .drop-section button{
+   display: block;
+   margin: auto;
+   color: #707EA0;
+   margin-bottom: 10px;
+ }
+ 
+ .drop-section button{
+   color: white;
+   background-color: var(--main-color);
+   border: none;
+   outline: none;
+   padding: 7px 20px;
+   border-radius: 8px;
+   margin-top: 20px;
+   cursor: pointer;
+ }
+ 
+ .drop-section input{
+   display: none;
+ }
+ 
+ .uploaded-section li .file-progress{
+   width: 100%;
+   height: 5px;
+   margin-top: 8px;
+   border-radius: 8px;
+   background-color: #dee6fd;
+ }
+ 
+ .uploaded-section li .file-progress span{
+   display: block;
+   width: 0%;
+   height: 100%;
+   border-radius: 8px;
+   background-image: linear-gradient(120deg, #6b99fd, #9385ff);
+   transition-duration: 0.4s;
+ }
+ 
+ .uploaded-section li .col .file-size{
+   font-size: 0.75rem;
+   margin-top: 3px;
+   color: #707EA0;
+ }
+ 
+ .uploaded-section li.complete span,
+ .uploaded-section li.complete .file-progress,
+ .uploaded-section li.complete svg.cross{
+   display: none;
+ }
+ 
+ .uploaded-section li.in-prog .file-size,
+ .uploaded-section li.in-prog svg.tick{
+   display: none;
+ }
+ 
+ 
+ /* Removal section */
+ 
+ .removal-section .trash-button-div {
+   text-align: center;
+ }
+ 
+ .removal-section .trash-button{
+     color: red;
+     text-align: center;
+     background-color: inherit;
+     border: none;
+     transition: all 0.05s ease-in-out;
+ }
+ 
+ .removal-section .trash-button:hover{
+     cursor: pointer;
+     transform: scale(1.05);
+ }
+ 
+ /* Download Updates Section */
+ 
+ .download-section .tab-small-title {
+   font-weight: bold;
+   font-size: 1.2em;
+   margin-bottom: 10px;
+ }
+ 
+ .download-section .document-list {
+   list-style-type: none;
+   padding: 0;
+   margin: 0;
+ }
+ 
+ .download-section .document-list li {
+   margin: 5px 0;
+   padding: 10px;
+   border: 1px solid #ddd;
+   border-radius: 4px;
+   background-color: #f9f9f9;
+ }
+ 
+ /*Calendar*/
+ .date-range-section {
+   display: flex;
+   flex-direction: column;
+   gap: 10px;
+ }
+ 
+ .calendar-container {
+   display: flex;
+   gap: 10px;
+ }
+ 
+ .calendar-start,
+ .calendar-end {
+   flex: 1;
+ }
+ 
+ .calendar-start input.calendar,
+ .calendar-end input.calendar {
+   width: 100%;
+   padding: 8px;
+   box-sizing: border-box;
+ }
+ 
+ 
+ .action-button-div {
+   display: flex;
+   justify-content: center; /* Center the button horizontally */
+   margin-top: 20px; /* Add space above the button */
+ }
+ 
+ .download-button {
+   padding: 10px 20px;
+   font-size: 16px;
+   cursor: pointer;
+   border: none;
+   background-color: var(--main-color);
+   color: white;
+   border-radius: 5px;
+ }
+ 
+ .download-button i {
+   margin-right: 5px;
+ }
+ 
+ /* Users management section */
+ .remove-user-button {
+   background-color: inherit;
+   border: None;
+   color: red;
+   font-size: 1.3rem;
+ }
+ 
+ .div-add-users-input-field {
+   text-align: center;
+ }
+ 
+ .add-users-input-field {
+   padding: 5px;
+   margin: 10px 0px;
+   border: 1px solid #ccc;
+   border-radius: 10px;
+   margin-bottom: 10px;
+   background-color: #e7e7e7;
+ }
+ 
+ .add-users-button {
+   border: none;
+   background-color: inherit;
+ }
+ 
+ 
+ /* Feedback section */
+ .feedback-section {
+   display: flex; /* Arrange buttons and/or textarea horizontally */
+   align-items: center; /* Align content vertically in the center */
+   margin-top: 1rem; /* Add some space above the feedback section */
+   padding: 1rem; /* Add padding for spacing within the section */
+   border-radius: 5px; /* Add rounded corners for a softer look */
+ }
+ 
+ .feedback-section button {
+   margin-right: 1rem; /* Add space between buttons */
+   padding: 0.5rem 1rem; /* Set appropriate padding for buttons */
+   background-color: #fff; /* White background for buttons */
+   border: 1px solid #a5a2a2; /* Add a solid border */
+   border-radius: 4px; /* Add rounded corners for buttons */
+   cursor: pointer; /* Indicate clickable behavior */
+ }
+ 
+ .feedback-section button:hover, .feedback-section button.selected {
+     color: white;
+     background-color: var(--main-color);
+ }
+ 
+ .feedback-section textarea {
+   flex: 1; /* Allow textarea to expand and fill remaining space */
+   padding: 0.5rem 1rem; /* Set padding for the textarea */
+   border: 1px solid #ccc; /* Add a light gray border */
+   border-radius: 4px; /* Add rounded corners for the textarea */
+   resize: none; /* Disable resizing of textarea */ /* Optional: Allow resizing if needed */
+ }
+ 
+ .feedback-section:last-child { /* Target the last feedback section */
+   margin-bottom: 1rem; /* Add extra space at the bottom of the last section */
+ }
+ 
+ .emoji-rating{
+     margin-right: 1.5rem;
+     cursor: pointer;
+     color: black;
+ }
+ 
+ .rating-great:hover, .rating-great.selected {
+     color: mediumseagreen;
+ }
+ .rating-ok:hover, .rating-ok.selected {
+     color: rgb(122, 175, 237);
+ }
+ .rating-missing:hover, .rating-missing.selected {
+     color: rgb(226, 191, 52);
+ }
+ .rating-wrong:hover, .rating-wrong.selected {
+     color: indianred;
+ }
