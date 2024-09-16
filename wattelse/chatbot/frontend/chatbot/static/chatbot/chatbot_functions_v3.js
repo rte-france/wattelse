@@ -206,8 +206,7 @@ async function postUserMessageToRAG(userMessage) {
     const startTime = Date.now();
 
     // Question timestamp
-    const currentDate = new Date();
-    const questionTimestampString = currentDate.toISOString();
+    const queryStartTimestamp = new Date();
 
     // Get conversation id
     const conversationId = chatHistory.id;
@@ -294,16 +293,19 @@ async function postUserMessageToRAG(userMessage) {
     } while (true);
 
     // When streaming is done, show feedback section and save interaction
+    const queryEndTimestamp = new Date();
+    const answerDelay = queryEndTimestamp - queryStartTimestamp;
+
     botDiv.classList.remove("animate"); // remove generation animation
     if (!noExtract){
         provideFeedback(userMessage, streamResponse);
     }
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
-    saveInteraction(conversationId, userMessage, streamResponse, questionTimestampString);
+    saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay)
 }
 
-function saveInteraction(conversationId, userMessage, botResponse, questionTimestampString) {
+function saveInteraction(conversationId, userMessage, botResponse, queryStartTimestamp, answerDelay) {
     fetch('save_interaction/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -312,7 +314,8 @@ function saveInteraction(conversationId, userMessage, botResponse, questionTimes
             'conversation_id': conversationId,
             'message': userMessage,
             'answer': botResponse,
-            'question_timestamp': questionTimestampString,
+            'question_timestamp': queryStartTimestamp,
+            'answer_delay': answerDelay,
         })
     })
     .catch(error => {
