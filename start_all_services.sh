@@ -5,7 +5,7 @@ export WATTELSE_LOGS_DIR=$WATTELSE_BASE_DIR/logs/wattelse
 mkdir -p $WATTELSE_LOGS_DIR
 
 echo "Starting LLM service"
-screen -dmS llm bash -c 'bash `pwd`/wattelse/api/fastchat/start_vllm.sh 2>&1 | tee -a $WATTELSE_LOGS_DIR/llm.log; bash'
+screen -dmS llm bash -c 'bash `pwd`/wattelse/api/vllm/start.sh 2>&1 | tee -a $WATTELSE_LOGS_DIR/llm.log; bash'
 sleep 3  # Waits 5 seconds.
 
 echo "Starting Embedding service..."

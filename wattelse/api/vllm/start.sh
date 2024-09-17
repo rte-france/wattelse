@@ -13,7 +13,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Specify the relative path to the config file
-CONFIG_FILE="$SCRIPT_DIR/fastchat_api.cfg"
+CONFIG_FILE="$SCRIPT_DIR/vllm_api.cfg"
 
 # Use grep to extract config from the config file
 HOST=$(grep -Po '(?<!#)host=\K.*' "$CONFIG_FILE")
