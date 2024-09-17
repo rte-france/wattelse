@@ -37,21 +37,6 @@ WattElse uses embedding models for *RAG* and *BERTopic*. It also uses larger gen
 - 1 GPU with > 20Go (or several smaller GPUs)
 
 
-## Launching the NLP services
-
-To start all services:
-```bash
-./start_all_services.sh
-```
-
-It will create a separate screen for each service running in the background.
-
-To stop stop all services:
-```bash
-./stop_all_services.sh
-```
-
-
 ### Embedding service
 The Embedding service returns a vectorized representation of the data provided as inputs.
 - The encoder to be used by the embedding service is described in `wattelse/api/embedding/embedding_api.cfg`.

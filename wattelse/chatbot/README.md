@@ -1,32 +1,27 @@
-# QA chatbot main ideas
+# RAG
 
-QA_chatbot is a directory to explore the implementation of a chatbot that answers questions about a corpus of documents.
-The main goal is to use LLM as a way to complement Information Retrieval within documents.
+This folder is an implementation of a RAG (Retrieval-Augmented Generation) system.
 
+## Folders description
 
-## General approach
-There are 3 main steps in the implementation.
+- [backend](backend): implementation of the `RAGBackend` class. It allows to manage the RAG pipeline through a single class, including document parsing and chunking, embedding, information retrieval and answer generation.
+- [frontend](frontend): RAG application front interface using [Django](https://www.djangoproject.com/) and dashboard to monitor the usage.
+- [eval](eval): Evaluation scripts for the RAG system.
 
-### 1. Text extraction
+## How to launch RAG system
 
-Given a corpus of documents (PDFs, words, websites...), parse them and store them as a list of (short) extracts.
+Ensure you have WattElse installed in your python environment. Then go to the root of this repository and launch the following script:
 
-### 2. Information retrieval
-
-Given a list of extracts and a user query, we need to find the top n relevant extracts to answer the query. Each extract and the query are embedded by a model trained to map similar text to similar embeddings (typically SentenceBERT). Cosine similarity is computed between each extract and the query, and top n highest scores are returned.
-
-### 3. Answer generation
-
-Using a generative model (typically instruct models), build a prompt based on relevant extracts to answer user query. A simple prompt could be:
-
-```
-Context: concatenation of top n relevant extracts
-Question: user query
-Instruction: Using the given context, answer the query.
+```bash
+./start_all_services.sh
 ```
 
-## How to run to PoC (proof-of concept)?
+This will launch all services for the RAG system to work in separated `screens`: embedding, LLM, RAG Orchestrator, Django frontend and dashboard.
 
-***TO BE UPDATED !***
+To stop the RAG system:
 
-**Important**: on the R&D server, this PoC requires at least 2 GPUs!
+```bash
+./stop_all_services.sh
+```
+
+**Warning: All models are loaded on GPU by default (LLM and embedding), ensure you have enought GPU memory for the models you want to serve.**

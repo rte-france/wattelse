@@ -1,6 +1,6 @@
 # RAG Orchastrator API
 
-This API is used in the RAG application. It provides a simple interface to handle multiple instances of `RAGBackend()`, see [rag_backend.py](../chatbot/backend/rag_backend.py). Multiple instances of `RAGBackend()` or needed to cleanly separate the different groups of users in the RAG application: each group of user should have access to its collection of document only.
+This API is used in the RAG application. It provides a simple interface to handle multiple instances of `RAGBackend()`, see [rag_backend.py](../../chatbot/backend/rag_backend.py). Multiple instances of `RAGBackend()` are needed to cleanly separate the different groups of users in the RAG application: each group of users should have access to its collection of documents only.
 
 ## How to use
 
