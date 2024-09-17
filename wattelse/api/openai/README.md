@@ -14,7 +14,11 @@ Here is a quick example of how to use it:
 
 ```python
 from wattelse.api.openai.client_openai_api import OpenAI_Client
+
+# Initialize the API
 api = OpenAI_Client()
+
+# Generate a completion for the given prompt
 api.generate("C'est quoi RTE ?")
 ```
 

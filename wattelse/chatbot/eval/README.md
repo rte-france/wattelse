@@ -7,7 +7,7 @@ The evaluation pipeline currently evaluates the generation part of the RAG only.
 
 The metrics used are:
 - **BERTScore**, using the official [https://github.com/Tiiiger/bert_score](bert-score) implementation. As specified [here](https://github.com/Tiiiger/bert_score?tab=readme-ov-file#default-behavior), the default model used for french is `bert-base-multilingual-cased`.
-- **LLM as a judge**, using a prompt defined in [wattelse/chatbot/eval/prompt.py](https://github.com/rte-france/wattelse/tree/main/wattelse/chatbot/eval/prompt.py). The LLM used for evaluating answers can be specified using environment variables (see [wattelse/api/openai](https://github.com/rte-france/wattelse/tree/main/wattelse/api/openai))
+- **LLM as a judge**, using a prompt defined in [wattelse/chatbot/eval/prompt.py](prompt.py). The LLM used for evaluating answers can be specified using environment variables (see [wattelse/api/openai](../api/openai))
 
 ## Usage
 
@@ -23,7 +23,7 @@ Run this command to show infos:
 python main.py --help
 ```
 
-The script takes two arguments as input:
+The script takes two mandatory arguments as input:
 - `qr_df_path`: path to the evaluation QR dataframe. The file must be a `.xlsx` file. It must contains the columns:
     - `query`: the query to be evaluated
     - `answser`: the ground truth

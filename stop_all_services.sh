@@ -18,5 +18,5 @@ cd `pwd`/wattelse/api/embedding; ./stop.sh; cd -
 screen -X -S embedding quit
 
 echo "Stopping LLM service"
-cd `pwd`/wattelse/api/fastchat; ./stop.sh; cd -
+cd `pwd`/wattelse/api/vllm; ./stop.sh; cd -
 screen -X -S llm quit
