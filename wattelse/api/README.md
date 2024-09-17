@@ -1,14 +1,35 @@
-# Installation de différents services comme API
+# APIs
 
-Buts :
-- mettre à disposition de tous les services qui en ont besoin un accès au modèle de langage
-- éviter de charger plusieurs fois le même modèle pour des applications différentes
+Some services are used by several applications/users at the same time. To optimize resource use, these services are implemented in the form of APIs.
 
-API disponibles :
-- embedding : modèle SentenceTransformer pour transformer un texte en embedding
-- fastchat : LLM pour générer du texte à partir d'un prompt
-- ollama : identique à fastchat mais permet de quantifier les modèles (utile notamment pour utiliser Mixtral 8*7B)
-- openai : identique a fastchat mais permet de requêter l'api d'openai
+## APIs description
+
+Available APIs:
+
+- [embedding](embedding): uses a SentenceTransformer model to transform text into embeddings
+- [vllm](vllm): uses a LLM for text generation by starting an OpenAI API like endpoint
+- [rag_orchestrator](rag_orchastrator): used for multi-user RAG, redirects queries to the appropriate RAG instance
+- [openai](openai): provides a simple interface to interact with the OpenAI API
+- [fastchat](fastchat): deprecated
+- [ollama](ollama): deprecated
+
+## How to launch
+
+To launch an API, go to the specific API folder and run the `start.sh` script. For example:
+
+```bash
+cd wattelse/api/embedding
+./start.sh
+```
+
+To stop an API, run the `stop.sh` script:
+
+```bash
+./stop.sh
+```
+
+All parameters used to manage the API are in the config file: `wattelse/api/{nom_api}/{nom_api}_api.cfg`
+
 
 ## Fonctionnement commun aux API
 
@@ -19,8 +40,8 @@ Pour arrêter une API :
 ```source wattelse/api/{nom_api}/stop.sh```
 (nécessite les droits sudo pour arrêter les API lancées par d'autres utilisateurs)
 
-Tous les paramètres permettant de gérer l'API sont dans le fichier de configuration :
-```wattelse/api/{nom_api}/{nom_api}_api.cfg```
+
+
 
 ### EmbeddingAPI
 

@@ -1,67 +1,56 @@
-# Wattelse project
+# WattElse project
 
 ## Short description
 
-Wattelse is a NLP suite developed for the needs of RTE (Réseau de Transport d'Electricité).
+WattElse is a NLP suite developed for the needs of RTE (Réseau de Transport d'Electricité).
 
-It is composed of several modules:
-- a RAG (Retrieval Augmented Generation) application
-- a module to study topic evolution over time
-- helper modules that provide additional functionalities such as summaries
+It is composed of two main modules:
+- a Retrieval Augmented Generation (RAG) application -> [wattelse/chatbot](wattelse/chatbot)
+- a module to study topic evolution over time -> [wattelse/bertopic](wattelse/bertopic)
 
-## Requirements
+Some services are used by several applications/users at the same time. To optimize resource use, these services are implemented in the form of APIs. A description of these services is available in [wattelse/api](wattelse/api).
 
-### Hardware requirements
-
-- 1 GPU with > 20Go (or several smaller GPUs) for RAG features
-
-### Software requirements
-
-- Python >= 3.10
-- sqlite3 >= 3.35
-
-## Environment variables
-
-Wattelse uses several environment variables that shall be configured:
-
-- openai variables: define which openai-compatible server to use: it can be either the official openai API (in this case, no need to set the `OPENAI_ENDPOINT` variable; it can be an MS Azure openai endpoint, or a local deployment). Set the following variables accordingly.
-  
-  * `OPENAI_API_KEY` defines the key to use based on your openai setup
-  * `OPENAI_ENDPOINT` defines the endpoint to connect with, mandatory for Azure and local deployments
-  * `OPENAI_DEFAULT_MODEL_NAME` defines the name of the preferred model to use with the API
- 
-- other variables
-
-  * `WATTELSE_BASE_DIR` indicates the base directory where to store data, cache and logs
-
-
+WattElse also includes helper modules that provide additional functionalities such as summaries, web scrapping, and document parsing.
 
 ## Installation
 
-- create a Python virtual environment
-- install the package in development mode (local installation) using the following command:
+Before trying to install WattElse, you first need to ensure you have:
+- python >= 3.10
+- sqlite3 >= 3.35
 
-```:~/dev/wattelse/ $ pip install -e .```
+Then, create a virtual environnement:
+
+```bash
+python3 -m venv ~/.venv/wattelse-venv
+source ~/.venv/wattelse-venv/bin/activate
+```
+
+You can then install the project dependencies with the following command:
+
+```bash
+./install.sh
+```
+
+## Hardware requirements
+
+WattElse uses embedding models for *RAG* and *BERTopic*. It also uses larger generative models for *RAG* responses. By default, all models are loaded on GPU. For *RAG*, you will for example need:
+- 1 GPU with > 20Go (or several smaller GPUs)
+
 
 ## Launching the NLP services
 
-### LLM service
-The LLM service is a ChatGPT-like API that allows to run on local GPU(s) a LLM that can then be used by any application.
-Two kind of APIs are available:
+To start all services:
+```bash
+./start_all_services.sh
+```
 
-- an OpenAI compatible service 
-  - see `wattelse/api/fastchat`
-  - `fastchat_api.cfg` provides the information about which LLM to use (by default a French LLM) and on which port the 
-  API is accessible. This file can be edited if you want to try another LLM or change the host and port.
-  - the `start.sh` and `stop.sh` scripts allow to start/stop the service.
-  - a Python client for this API is also provided in order to simplify the usage of the API
+It will create a separate screen for each service running in the background.
 
-- a OLLAMA compatible service
-  - see `wattelse/api/ollama`
-  - `ollama_api.cfg` provides the information about which LLM to use (by default a French LLM) and on which port the 
-  API is accessible. This file can be edited if you want to try another LLM or change the host and port.
-  - the `start.sh` and `stop.sh` scripts allow to start/stop the service.
-  - a Python client for this API is also provided in order to simplify the usage of the API
+To stop stop all services:
+```bash
+./stop_all_services.sh
+```
+
 
 ### Embedding service
 The Embedding service returns a vectorized representation of the data provided as inputs.
