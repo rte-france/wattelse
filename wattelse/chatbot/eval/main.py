@@ -124,6 +124,7 @@ def main(
         eval_df["bert_score_R"] = R.tolist()
         eval_df["bert_score_F1"] = F1.tolist()
     eval_df["llm_score"] = llm_scores
+    logger.info(eval_df.groupby("category")["llm_score"].mean())
 
     # Save updated eval_df
     eval_df.to_excel(output_path, index=False)
