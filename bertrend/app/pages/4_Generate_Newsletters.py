@@ -11,13 +11,14 @@ from bertrend.app.state_utils import (
     register_widget,
     save_widget_state,
 )
-from bertrend_apps.newsletters.newsletter_features import generate_newsletter, md2html
-from wattelse.summary import (
-    GPTSummarizer,
-    AbstractiveSummarizer,
+from bertrend.summary import AbstractiveSummarizer
+from bertrend.summary.chatgpt_summarizer import GPTSummarizer
+from bertrend.summary.extractive_summarizer import (
     ExtractiveSummarizer,
     EnhancedExtractiveSummarizer,
 )
+from bertrend_apps.newsletters.newsletter_features import generate_newsletter, md2html
+
 
 # Restore widget state
 restore_widget_state()

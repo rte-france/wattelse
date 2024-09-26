@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 
-from wattelse.common import BASE_CACHE_PATH, BASE_DATA_PATH
+from bertrend import BASE_CACHE_PATH, BASE_DATA_PATH
 
 # Stopwords
 STOP_WORDS_RTE = [

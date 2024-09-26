@@ -20,6 +20,16 @@ BASE_PATH = (
 
 BASE_DATA_PATH = BASE_PATH / "data"
 BASE_CACHE_PATH = BASE_PATH / "cache"
+BASE_OUTPUT_PATH = BASE_PATH / "output"
 FEED_BASE_PATH = BASE_DATA_PATH / "bertrend" / "feeds"
 BERTREND_LOG_PATH = BASE_PATH / "logs" / "bertrend"
 BERTREND_LOG_PATH.mkdir(parents=True, exist_ok=True)
+
+# Define directories
+DATA_DIR = BASE_DATA_PATH / "bertrend"
+OUTPUT_DIR = BASE_OUTPUT_PATH / "bertrend"
+CACHE_DIR = BASE_CACHE_PATH / "bertrend"
+
+# Create directories if they do not exist
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+CACHE_DIR.mkdir(parents=True, exist_ok=True)

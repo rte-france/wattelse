@@ -24,6 +24,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
 from bertrend import FEED_BASE_PATH, BEST_CUDA_DEVICE
+from bertrend_apps.common.config_utils import parse_literal
 from bertrend_apps.newsletters.newsletter_features import (
     generate_newsletter,
     export_md_string,
@@ -36,7 +37,6 @@ from bertrend.utils import (
     TIMESTAMP_COLUMN,
     split_df_by_paragraphs,
 )
-from wattelse.common.config_utils import parse_literal
 from bertrend_apps.common.mail_utils import get_credentials, send_email
 from bertrend_apps.common.crontab_utils import schedule_newsletter
 

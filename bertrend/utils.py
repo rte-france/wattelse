@@ -14,7 +14,6 @@ import pandas as pd
 from transformers import AutoTokenizer
 from loguru import logger
 
-from wattelse.common import BASE_DATA_PATH, BASE_OUTPUT_PATH, BASE_CACHE_PATH
 
 # Ensures files are written with +rw permissions for both user and groups
 os.umask(0o002)
@@ -28,11 +27,6 @@ else:
     ssl._create_default_https_context = _create_unverified_https_context
 nltk.download("stopwords")
 
-# Define directories
-DATA_DIR = BASE_DATA_PATH / "bertopic"
-OUTPUT_DIR = BASE_OUTPUT_PATH / "bertopic"
-CACHE_DIR = BASE_CACHE_PATH / "bertopic"
-
 # Define column names
 TEXT_COLUMN = "text"
 TIMESTAMP_COLUMN = "timestamp"
@@ -41,9 +35,6 @@ URL_COLUMN = "url"
 TITLE_COLUMN = "title"
 CITATION_COUNT_COL = "citation_count"
 
-# Create directories if they do not exist
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 PLOTLY_BUTTON_SAVE_CONFIG = {
     "toImageButtonOptions": {

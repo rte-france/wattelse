@@ -14,15 +14,15 @@ import pandas as pd
 import tldextract
 from loguru import logger
 
+from bertrend.common.prompts import (
+    FR_USER_SUMMARY_MULTIPLE_DOCS,
+    EN_USER_SUMMARY_MULTIPLE_DOCS,
+    FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
+    EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
+)
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from bertrend.summary.summarizer import Summarizer
 from bertrend.summary.abstractive_summarizer import AbstractiveSummarizer
-from wattelse.api.prompts import (
-    FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
-    EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
-    FR_USER_SUMMARY_MULTIPLE_DOCS,
-    EN_USER_SUMMARY_MULTIPLE_DOCS,
-)
 from bertopic._bertopic import BERTopic
 from tqdm import tqdm
 
@@ -57,7 +57,7 @@ def generate_newsletter(
         top_n_docs (int, optional): Number of document to use to summarize each topic
         top_n_docs_mode (str, optional): algorithm used to recover top n documents (see `get_most_representative_docs` function)
         newsletter_title (str, optional): newsletters title
-        summarizer_class (Summarizer, optional): type of summarizer to use (see `wattelse/summary`)
+        summarizer_class (Summarizer, optional): type of summarizer to use (see `bertrend/summary`)
         summary_mode (str, optional): - `document` : for each topic, summarize top n documents independently
                                       - `topic`   : for each topic, use top n documents to generate a single topic summary
                                                     using OpenAI API

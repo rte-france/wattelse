@@ -24,13 +24,13 @@ from sklearn.feature_extraction.text import CountVectorizer
 from tqdm import tqdm
 from umap import UMAP
 
+from bertrend import BASE_CACHE_PATH
+from bertrend.common.prompts import FRENCH_TOPIC_REPRESENTATION_PROMPT
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.api.prompts import FRENCH_TOPIC_REPRESENTATION_PROMPT
 from bertrend.utils import (
     TEXT_COLUMN,
-    BASE_CACHE_PATH,
 )
-from wattelse.common.cache_utils import load_embeddings, save_embeddings, get_hash
+from bertrend.common.cache_utils import load_embeddings, save_embeddings, get_hash
 
 # Parameters:
 DEFAULT_EMBEDDING_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
