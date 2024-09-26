@@ -1,6 +1,6 @@
 # BERTopic
 
-This folder contains the code for the topic modeling part of WattELse. It mainly uses [BERTopic](https://github.com/MaartenGr/BERTopic), a topic modeling technique that uses BERT embeddings to create topics.
+This folder contains the code for the topic modeling part of BERTrend. It mainly uses [BERTopic](https://github.com/MaartenGr/BERTopic), a topic modeling technique that uses BERT embeddings to create topics.
 
 ## Topic modeling using BERTopic
 
@@ -36,12 +36,12 @@ To generate a newsletter, you should first create the following configuration fi
 Generate just one newsletter based on a specific dataset. You can use the following command to show help:
 
 ```bash
-python -m wattelse.bertopic newsletter --help
+python -m bertrend_apps.newsletters newsletter --help
 ```
 
 Then create a single newsletter based on your configuration files:
 ```bash
-python -m wattelse.bertopic newsletter newsletter.cfg feed.cfg
+python -m bertrend_apps.newsletters newsletter newsletter.cfg feed.cfg
 ```
 
 ### Scheduled creation
@@ -53,7 +53,7 @@ To automatically send a newsletter at regular intervals, you should define a job
 Follow this example:
 
 ```bash
-python -m wattelse.data_provider schedule-scrapping feed.cfg
+python -m bertrend_apps.data_provider schedule-scrapping feed.cfg
 ```
 
 #### New automatic newsletter installation
@@ -61,5 +61,5 @@ python -m wattelse.data_provider schedule-scrapping feed.cfg
 Follow this example:
 
 ```bash
-python -m wattelse.bertopic schedule-newsletter newsletter.cfg feed.cfg
+python -m bertrend_apps.newsletters schedule-newsletter newsletter.cfg feed.cfg
 ```

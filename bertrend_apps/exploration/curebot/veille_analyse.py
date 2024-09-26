@@ -12,15 +12,15 @@ import streamlit as st
 from loguru import logger
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-from wattelse.bertopic import generate_newsletter, md2html
-from wattelse.bertopic import train_BERTopic
-from wattelse.bertopic import (
-    TIMESTAMP_COLUMN,
-    clean_dataset,
-    split_df_by_paragraphs,
+from bertrend.train import train_BERTopic
+from bertrend.utils import (
     load_data,
+    TIMESTAMP_COLUMN,
+    split_df_by_paragraphs,
+    clean_dataset,
 )
 from bertrend_apps.data_provider.curebot_provider import CurebotProvider
+from bertrend_apps.newsletters.newsletter_features import generate_newsletter, md2html
 from wattelse.summary import GPTSummarizer
 
 COLUMN_URL = "url"

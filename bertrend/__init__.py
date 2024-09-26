@@ -19,9 +19,7 @@ BASE_PATH = (
 )
 
 BASE_DATA_PATH = BASE_PATH / "data"
-BASE_OUTPUT_PATH = BASE_PATH / "output"
 BASE_CACHE_PATH = BASE_PATH / "cache"
-MODEL_BASE_PATH = BASE_PATH / "models"
-FEED_BASE_PATH = BASE_DATA_PATH / "bertopic" / "feeds"
-BERTOPIC_LOG_PATH = BASE_PATH / "logs" / "bertopic"
-BERTOPIC_LOG_PATH.mkdir(parents=True, exist_ok=True)
+FEED_BASE_PATH = BASE_DATA_PATH / "bertrend" / "feeds"
+BERTREND_LOG_PATH = BASE_PATH / "logs" / "bertrend"
+BERTREND_LOG_PATH.mkdir(parents=True, exist_ok=True)

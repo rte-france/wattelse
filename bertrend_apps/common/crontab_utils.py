@@ -10,7 +10,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from bertrend import BEST_CUDA_DEVICE, BERTOPIC_LOG_PATH
+from bertrend import BEST_CUDA_DEVICE, BERTREND_LOG_PATH
 
 
 def add_job_to_crontab(schedule, command, env_vars=""):
@@ -30,7 +30,7 @@ def schedule_scrapping(
     data_feed_cfg.read(feed_cfg)
     schedule = data_feed_cfg.get("data-feed", "update_frequency")
     id = data_feed_cfg.get("data-feed", "id")
-    command = f"{sys.prefix}/bin/python -m wattelse.data_provider scrape-feed {feed_cfg.resolve()} > {BERTOPIC_LOG_PATH}/cron_feed_{id}.log 2>&1"
+    command = f"{sys.prefix}/bin/python -m bertrend_apps.data_provider scrape-feed {feed_cfg.resolve()} > {BERTREND_LOG_PATH}/cron_feed_{id}.log 2>&1"
     add_job_to_crontab(schedule, command, "")
 
 
@@ -44,6 +44,6 @@ def schedule_newsletter(
     newsletter_cfg.read(newsletter_cfg_path)
     schedule = newsletter_cfg.get("newsletters", "update_frequency")
     id = newsletter_cfg.get("newsletters", "id")
-    command = f"{sys.prefix}/bin/python -m wattelse.bertopic newsletters {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {BERTOPIC_LOG_PATH}/cron_newsletter_{id}.log 2>&1"
+    command = f"{sys.prefix}/bin/python -m bertrend_apps.newsletters newsletters {newsletter_cfg_path.resolve()} {data_feed_cfg_path.resolve()} > {BERTREND_LOG_PATH}/cron_newsletter_{id}.log 2>&1"
     env_vars = f"CUDA_VISIBLE_DEVICES={cuda_devices}"
     add_job_to_crontab(schedule, command, env_vars)

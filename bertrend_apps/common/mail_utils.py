@@ -19,7 +19,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from loguru import logger
 
-from wattelse.common import BASE_DATA_PATH
+from bertrend import BASE_DATA_PATH
 
 SCOPES = ["https://mail.google.com/"]  # full access to mail API
 FROM = "wattelse.ai@gmail.com"

@@ -7,7 +7,7 @@ from loguru import logger
 
 from bertrend_apps.common.crontab_utils import schedule_scrapping, schedule_newsletter
 
-CONFIG_PATH = Path(__file__).parent / "wattelse" / "config"
+CONFIG_PATH = Path(__file__).parent / "config"
 CONFIG_FEEDS_PATH = CONFIG_PATH / "feeds"
 CONFIGS_NEWSLETTERS_PATH = CONFIG_PATH / "newsletters"
 

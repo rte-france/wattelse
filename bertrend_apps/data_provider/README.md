@@ -12,7 +12,7 @@ Several data providers are supported:
 
 # Usage
 ```                                                                                                                                                 
-(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m bertrend_apps.data_provider --help
                                                                                                                                                       
                                                                                                                                                        
  Usage: python -m data_provider [OPTIONS] COMMAND [ARGS]...                                                                                           
@@ -35,7 +35,7 @@ Several data providers are supported:
  ```
 
 ```
-(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider --help auto-scrape --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m bertrend_apps.data_provider --help auto-scrape --help
                                                                                                                                                       
 Usage: python -m data_provider auto-scrape [OPTIONS] [REQUESTS_FILE]                                                                                 
                                                                                                                                                       
@@ -59,7 +59,7 @@ Usage: python -m data_provider auto-scrape [OPTIONS] [REQUESTS_FILE]
 ```
 
 ```
-(weak_signals) jerome@linux:~/dev/weak-signals$ python -m wattelse.data_provider generate-query-file --help
+(weak_signals) jerome@linux:~/dev/weak-signals$ python -m bertrend_apps.data_provider generate-query-file --help
                                                                                                                                                       
  Usage: python -m data_provider generate-query-file [OPTIONS] [KEYWORDS]                                                                              
                                                                                                                                                       
