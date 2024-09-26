@@ -9,11 +9,11 @@ from typing import List
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-from wattelse.summary.summarizer import Summarizer
+from bertrend.summary.summarizer import Summarizer
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-# DEFAULT_ABSTRACTIVE_MODEL =  "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
+# DEFAULT_ABSTRACTIVE_MODEL = "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
 # DEFAULT_ABSTRACTIVE_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
 # NB. Les 2 modèles précédents ont des tendances à halluciner en rajoutant des informations qui ne sont pas dans le texte de départ!
 DEFAULT_ABSTRACTIVE_MODEL = "facebook/mbart-large-50"

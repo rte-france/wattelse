@@ -10,9 +10,9 @@ from wattelse.api.prompts import (
     EN_SYSTEM_SUMMARY_SENTENCES,
     FR_SYSTEM_SUMMARY_SENTENCES,
 )
-from wattelse.summary.summarizer import DEFAULT_MAX_SENTENCES
+from bertrend.summary.summarizer import DEFAULT_MAX_SENTENCES
 
-from wattelse.summary.summarizer import Summarizer
+from bertrend.summary.summarizer import Summarizer
 
 
 class GPTSummarizer(Summarizer):

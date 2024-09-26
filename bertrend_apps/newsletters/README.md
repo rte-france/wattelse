@@ -28,8 +28,8 @@ It is possible to generate a newsletter based on the topics found by a BERTopic 
 
 To generate a newsletter, you should first create the following configuration files:
 
-- `newsletter.cfg`: sets parameters for the newsletter and the topic model. You can follow examples in [wattelse/config/newsletters](../config/newsletters).
-- `feed.cfg`: define on which feed you want to generate the newsletter and at which frequency. You can follow examples in [wattelse/config/feeds](../config/feeds).
+- `newsletter.cfg`: sets parameters for the newsletter and the topic model. You can follow examples in [bertrend_apps/config/newsletters](../config/newsletters).
+- `feed.cfg`: define on which feed you want to generate the newsletter and at which frequency. You can follow examples in [bertrend_apps/config/feeds](../config/feeds).
 
 ### One-shot creation
 

@@ -12,6 +12,7 @@ import streamlit as st
 from loguru import logger
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
+from bertrend.summary.chatgpt_summarizer import GPTSummarizer
 from bertrend.train import train_BERTopic
 from bertrend.utils import (
     load_data,
@@ -21,7 +22,6 @@ from bertrend.utils import (
 )
 from bertrend_apps.data_provider.curebot_provider import CurebotProvider
 from bertrend_apps.newsletters.newsletter_features import generate_newsletter, md2html
-from wattelse.summary import GPTSummarizer
 
 COLUMN_URL = "url"
 MIN_TEXT_LENGTH = 150

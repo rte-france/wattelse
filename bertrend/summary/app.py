@@ -6,9 +6,13 @@ import os
 
 import streamlit as st
 from loguru import logger
-from abstractive_summarizer import AbstractiveSummarizer
-from extractive_summarizer import ExtractiveSummarizer, EnhancedExtractiveSummarizer
-from wattelse.summary.chatgpt_summarizer import GPTSummarizer
+
+from bertrend.summary import AbstractiveSummarizer
+from bertrend.summary.chatgpt_summarizer import GPTSummarizer
+from bertrend.summary.extractive_summarizer import (
+    EnhancedExtractiveSummarizer,
+    ExtractiveSummarizer,
+)
 
 SUMMARIZER_OPTIONS_MAPPER = {
     "GPTSummarizer": GPTSummarizer,

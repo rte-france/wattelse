@@ -15,8 +15,8 @@ import tldextract
 from loguru import logger
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.summary.summarizer import Summarizer
-from wattelse.summary.abstractive_summarizer import AbstractiveSummarizer
+from bertrend.summary.summarizer import Summarizer
+from bertrend.summary.abstractive_summarizer import AbstractiveSummarizer
 from wattelse.api.prompts import (
     FR_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
     EN_USER_GENERATE_TOPIC_LABEL_SUMMARIES,
