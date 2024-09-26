@@ -13,12 +13,12 @@ from sentence_transformers import SentenceTransformer, util
 from sentence_transformers.models import Transformer, Pooling
 from torch import Tensor
 
+from bertrend.common.openai_client import OpenAI_Client
 from bertrend.summary.lexrank import degree_centrality_scores
 from bertrend.common.prompts import (
     FR_SYSTEM_SUMMARY_SENTENCES,
     EN_SYSTEM_SUMMARY_SENTENCES,
 )
-from wattelse.api.openai.client_openai_api import OpenAI_Client
 from bertrend.summary.summarizer import (
     Summarizer,
     DEFAULT_MAX_SENTENCES,

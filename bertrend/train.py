@@ -25,8 +25,8 @@ from tqdm import tqdm
 from umap import UMAP
 
 from bertrend import BASE_CACHE_PATH
+from bertrend.common.openai_client import OpenAI_Client
 from bertrend.common.prompts import FRENCH_TOPIC_REPRESENTATION_PROMPT
-from wattelse.api.openai.client_openai_api import OpenAI_Client
 from bertrend.utils import (
     TEXT_COLUMN,
 )

@@ -16,6 +16,7 @@ from bertopic import BERTopic
 from loguru import logger
 from tqdm import tqdm
 
+from bertrend.common.openai_client import OpenAI_Client
 from global_vars import (
     GPT_MODEL,
     GPT_TEMPERATURE,
@@ -26,7 +27,6 @@ from global_vars import (
     SIGNAL_CLASSIF_UPPER_BOUND,
 )
 from prompts import get_prompt, save_html_output
-from wattelse.api.openai.client_openai_api import OpenAI_Client
 
 
 def detect_weak_signals_zeroshot(
@@ -166,11 +166,11 @@ def filter_data(data, window_end, keep_documents):
             for ts, rep in zip(data["Timestamps"], data["Representations"])
             if ts <= window_end
         ],
-        "Documents": [
-            doc for ts, docs in data["Documents"] if ts <= window_end for doc in docs
-        ]
-        if keep_documents
-        else [],
+        "Documents": (
+            [doc for ts, docs in data["Documents"] if ts <= window_end for doc in docs]
+            if keep_documents
+            else []
+        ),
         "Sources": [sources for ts, sources in data["Sources"] if ts <= window_end],
         "Docs_Count": [
             count

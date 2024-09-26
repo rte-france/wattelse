@@ -5,11 +5,11 @@
 
 from loguru import logger
 
+from bertrend.common.openai_client import OpenAI_Client
 from bertrend.common.prompts import (
     FR_SYSTEM_SUMMARY_SENTENCES,
     EN_SYSTEM_SUMMARY_SENTENCES,
 )
-from wattelse.api.openai.client_openai_api import OpenAI_Client
 from bertrend.summary.summarizer import DEFAULT_MAX_SENTENCES
 
 from bertrend.summary.summarizer import Summarizer
