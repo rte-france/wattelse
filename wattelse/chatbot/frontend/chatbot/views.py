@@ -176,27 +176,31 @@ def query_rag(request):
     other chunks contain streamed answer tokens.
     """
     if request.method == "POST":
+        # Get request data
+        data = json.loads(request.body)
+
         # Get user group_id
         user_group_id = get_user_group_id(request.user)
 
         # Get conversation id
-        conversation_id = uuid.UUID(request.POST.get("conversation_id"))
+        conversation_id = uuid.UUID(data.get("conversation_id"))
 
         # Get user chat history
         history = get_conversation_history(request.user, conversation_id)
 
         # Get posted message
-        message = request.POST.get("message", None)
+        message = data.get("message", None)
 
+        # Check message is not empty
         if not message:
             logger.warning(f"[User: {request.user.username}] No user message received")
-            error_message = "Veuillez saisir une question"
-            return JsonResponse({"error_message": error_message}, status=500)
+            return JsonResponse({"message": "Aucune question reçue"}, status=500)
+
+        # Log message
         logger.info(f"[User: {request.user.username}] Query: {message}")
 
         # Select documents for RAG
-        selected_docs = request.POST.get("selected_docs", None)
-        selected_docs = json.loads(selected_docs)
+        selected_docs = data.get("selected_docs", None)
         logger.info(f"[User: {request.user.username}] Selected docs: {selected_docs}")
         if not selected_docs:
             logger.warning(
@@ -232,27 +236,43 @@ def query_rag(request):
 def save_interaction(request):
     """Function called to save query and response in DB once response streaming is finished."""
     if request.method == "POST":
-        # Save query and response in DB
-        question_timestamp = request.POST.get("question_timestamp", None)
+        # Get request data
+        data = json.loads(request.body)
+
+        # Transform timestamps to datetime objects
+        question_timestamp = data.get("question_timestamp", None)
         question_timestamp = datetime.fromisoformat(
             question_timestamp.replace("Z", "+00:00")
         )
 
-        answer_delay = timedelta(
-            milliseconds=int(request.POST.get("answer_delay", None))
-        )
+        # Transform delay to timedelta
+        answer_delay = data.get("answer_delay", None)
+        answer_delay = timedelta(milliseconds=answer_delay)
 
-        chat = Chat(
-            user=request.user,
-            group_id=get_user_group_id(request.user),
-            conversation_id=request.POST.get("conversation_id", ""),
-            message=request.POST.get("message", ""),
-            response=request.POST.get("answer", ""),
-            question_timestamp=question_timestamp,
-            answer_delay=answer_delay,
-        )
-        chat.save()
-        return HttpResponse(status=200)
+        # Save interaction
+        try:
+            chat = Chat(
+                user=request.user,
+                group_id=get_user_group_id(request.user),
+                conversation_id=data.get("conversation_id", ""),
+                message=data.get("message", ""),
+                response=data.get("answer", ""),
+                question_timestamp=question_timestamp,
+                answer_delay=answer_delay,
+            )
+            chat.save()
+
+            # No need to show a pop up message to the user
+            return HttpResponse(status=200)
+
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {
+                    "message": "Erreur serveur : échec lors de l'enregistrement de la conversation"
+                },
+                status=500,
+            )
     else:
         raise Http404()
 
@@ -324,40 +344,43 @@ def upload(request):
 
 def delete(request):
     """Main function for delete interface.
-    If request method is POST : make a call to RAGOrchestratorClient to delete the specified documents
+    If request method is POST : make a call to RAGOrchestratorClient to delete the specified documents.
     """
     if request.method == "POST":
+        # Get request data
+        data = json.loads(request.body)
+
         # Select documents for removal
-        selected_docs = request.POST.get("selected_docs", None)
-        logger.debug(
+        selected_docs = data.get("selected_docs", None)
+        logger.info(
             f"[User: {request.user.username}] Docs selected for removal: {selected_docs}"
         )
         if not selected_docs:
             logger.warning(
                 f"[User: {request.user.username}] No docs selected for removal received, action ignored"
             )
-            return JsonResponse({"warning_message": "No document removed"}, status=202)
+            return JsonResponse({"message": "Aucun document sélectionné"}, status=500)
         else:
             user_group_id = get_user_group_id(request.user)
             try:
-                rag_response = RAG_API.remove_documents(
-                    user_group_id, json.loads(selected_docs)
-                )
-            except RAGAPIError as e:
-                logger.error(
-                    f"[User: {request.user.username}] Error in deleting documents {selected_docs}: {e}"
-                )
+                RAG_API.remove_documents(user_group_id, selected_docs)
                 return JsonResponse(
                     {
-                        "error_message": f"Erreur pour supprimer les documents {selected_docs}"
+                        "available_docs": RAG_API.list_available_docs(user_group_id),
+                        "message": "Documents supprimés",
+                    },
+                    status=200,
+                )
+            except Exception as e:
+                logger.error(f"[User: {request.user.username}] {e}")
+                return JsonResponse(
+                    {
+                        "message": f"Erreur serveur : échec lors de la suppression des documents"
                     },
                     status=500,
                 )
-            # Returns the list of updated available documents
-            return JsonResponse(
-                {"available_docs": RAG_API.list_available_docs(user_group_id)},
-                status=200,
-            )
+    else:
+        raise Http404()
 
 
 def file_viewer(request, file_name: str):
@@ -406,31 +429,44 @@ def add_user_to_group(request):
         superuser_group = Group.objects.get(name=superuser_group_id)
 
         # Get new_username user object if it exists
-        new_username = request.POST.get("new_username", None)
+        data = json.loads(request.body)
+        new_username = data.get("new_username", None)
         if User.objects.filter(username=new_username).exists():
             new_user = User.objects.get(username=new_username)
         else:
             logger.error(
                 f"[User: {request.user.username}] Username {new_username} not found"
             )
-            error_message = f"Le nom d'utilisateur {new_username} n'a pas été trouvé"
-            return JsonResponse({"error_message": error_message}, status=500)
+            return JsonResponse(
+                {"message": f"{new_username} non trouvé"},
+                status=500,
+            )
 
         # If new_user already in a group then return error status code
         if get_user_group_id(new_user) is not None:
             logger.error(
-                f"[User: {request.user.username}] User with username {new_username} already belongs to a group"
+                f"[User: {request.user.username}] Username {new_username} already belongs to a group"
             )
-            error_message = f"L'utilisateur {new_username} appartient déjà à un groupe"
-            return JsonResponse({"error_message": error_message}, status=500)
+            return JsonResponse(
+                {"message": f"{new_username} appartient déjà à un groupe"},
+                status=500,
+            )
 
         # If new_user has no group then add it to superuser group
-        else:
-            logger.info(
-                f"[User: {request.user.username}] Adding {new_username} to group {superuser_group_id}"
-            )
+        try:
             new_user.groups.add(superuser_group)
-            return HttpResponse(status=201)
+            logger.info(
+                f"[User: {request.user.username}] Added {new_username} to group {superuser_group_id}"
+            )
+            return JsonResponse(
+                {"message": f"{new_username} ajouté au groupe"},
+            )
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {"message": "Erreur serveur : échec lors de l'ajout de l'utilisateur"},
+                status=500,
+            )
     else:
         raise Http404()
 
@@ -449,26 +485,32 @@ def remove_user_from_group(request):
         superuser_group = Group.objects.get(name=superuser_group_id)
 
         # Get username_to_remove user object if it exists
-        username_to_remove = request.POST.get("username_to_delete", None)
+        data = json.loads(request.body)
+        username_to_remove = data.get("username_to_delete", None)
         if User.objects.filter(username=username_to_remove).exists():
             user_to_remove = User.objects.get(username=username_to_remove)
         else:
-            error_message = (
-                f"Le nom d'utilisateur {username_to_remove} n'a pas été trouvé"
+            return JsonResponse(
+                {"message": f"{username_to_remove} non trouvé"},
+                status=500,
             )
-            return JsonResponse({"error_message": error_message}, status=500)
 
         # Send an error if a user tries to remove himself
         if request.user.username == username_to_remove:
-            error_message = f"Vous ne pouvez pas vous supprimer du groupe"
-            return JsonResponse({"error_message": error_message}, status=500)
+            return JsonResponse({"message": "Impossible de vous supprimer"}, status=500)
 
         # Remove user_to_remove
-        logger.info(
-            f"[User: {request.user.username}] Removing {username_to_remove} from group {superuser_group_id}"
-        )
-        user_to_remove.groups.remove(superuser_group)
-        return HttpResponse(status=201)
+        try:
+            user_to_remove.groups.remove(superuser_group)
+            logger.info(
+                f"[User: {request.user.username}] Removed {username_to_remove} from group {superuser_group_id}"
+            )
+            return JsonResponse({"message": f"{username_to_remove} supprimé"})
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {"message": "Erreur serveur : échec lors de la suppression"}, status=500
+            )
     else:
         raise Http404()
 
@@ -498,7 +540,7 @@ def get_questions_count_since_last_feedback(request):
     Returns:
         int: The number of entries without feedback since the last feedback.
     """
-    if request.method == "POST":
+    if request.method == "GET":
         try:
             last_feedback = (
                 Chat.objects.filter(
@@ -520,6 +562,8 @@ def get_questions_count_since_last_feedback(request):
             user=request.user, question_timestamp__gt=last_feedback_date
         ).count()
         return JsonResponse({"count": count})
+    else:
+        raise Http404()
 
 
 def manage_superuser_permission(request):
@@ -551,16 +595,14 @@ def manage_superuser_permission(request):
                     logger.info(
                         f"[User: {user.username}] Removed permission: {permission.name}"
                     )
+            return JsonResponse({"message": f"Modifications validées"})
 
         # Return error message if something goes wrong with permissions assignment
-        except:
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
-                {
-                    "message": "Une erreur s'est produite, modifications non sauvegardées."
-                }
+                {"message": "Erreur serveur : échec lors de la modification"},
+                status=500,
             )
-
-        # Return success message
-        return JsonResponse({"message": f"Modifications validées."})
     else:
         raise Http404()

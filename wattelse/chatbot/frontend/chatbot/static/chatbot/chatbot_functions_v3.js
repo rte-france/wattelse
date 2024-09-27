@@ -110,25 +110,7 @@ function initializeLayout(){
             if (event.key === "Enter") {
                 const newUsername = addUsersInputField.value;
                 if (newUsername !== "") {
-                    fetch('add_user_to_group/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            'csrfmiddlewaretoken': csrfmiddlewaretoken,
-                            'new_username': newUsername,
-                        })
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            addUserToUserList(newUsername);
-                        }
-                        else {
-                            response.json().then(data => {
-                                window.alert(data.error_message);
-                            });
-                        }
-                    });
-                    addUsersInputField.value = "";
+                    addUserToGroup(newUsername);
                 }
             }
         });
@@ -225,11 +207,13 @@ async function postUserMessageToRAG(userMessage) {
     // Fetch response
     const response = await fetch('query_rag/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+        body: JSON.stringify({
             'message': userMessage,
-            'selected_docs': JSON.stringify(selectedFiles),
+            'selected_docs': selectedFiles,
             'conversation_id': conversationId,
         })
     });
@@ -248,7 +232,7 @@ async function postUserMessageToRAG(userMessage) {
         if (Date.now() - startTime > timeout) {
             reader.cancel();
             botDiv.classList.remove("animate"); // remove generation animation
-            createErrorMessage("Erreur : réponse du serveur trop lente.");
+            showPopup("Réponse du serveur trop lente", error=true);
             return;
         }
         // Read streaming chunks
@@ -308,9 +292,11 @@ async function postUserMessageToRAG(userMessage) {
 function saveInteraction(conversationId, userMessage, botResponse, queryStartTimestamp, answerDelay) {
     fetch('save_interaction/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            'csrfmiddlewaretoken': csrfmiddlewaretoken,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+        body: JSON.stringify({
             'conversation_id': conversationId,
             'message': userMessage,
             'answer': botResponse,
@@ -318,37 +304,64 @@ function saveInteraction(conversationId, userMessage, botResponse, queryStartTim
             'answer_delay': answerDelay,
         })
     })
-    .catch(error => {
-        console.error('There was a problem saving interaction :', error);
-    });
+    .then((response) => {
+        // Handle successful requests
+        if (response.ok) {
+            // pass
+        }
+        else {
+            // Handle errors caught in python backend
+            response.json().then(data => {
+                showPopup(data.message, error=true);
+            })
+            // Handle uncaught errors
+            .catch(error => {
+                showPopup("Erreur non interceptée", error=true);
+            })
+        }
+    })
 }
 
 
 function deleteDocumentsInCollection(){
     const selectedFileNames = getSelectedFileNames("removal-list")
     if (selectedFileNames.length === 0  ) {
-        alert("Aucun document à supprimer.");
-    } else {
+        showPopup("Aucun document sélectionné", error=true);
+    }
+    else {
         // TODO: improve confirm popup look & feel
         if (confirm("Confirmer la suppression des fichiers sélectionnés?")){
             fetch('delete/', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: new URLSearchParams({
-                    'csrfmiddlewaretoken': csrfmiddlewaretoken,
-                    'selected_docs': JSON.stringify(selectedFileNames),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfmiddlewaretoken,
+                },
+                body: JSON.stringify({
+                    'selected_docs': selectedFileNames,
                 })
             })
-                .then(response => response.json())
-                .then(data => {
-                    // update available docs
-                    availableDocs = data.available_docs
-                    updateAvailableDocuments();
-                })
-                .catch(error => {
-                    createErrorMessage(error.message);
-                    console.error('There was a problem with the Fetch operation:', error);
-                });
+            .then((response) => {
+                // Handle successful requests
+                if (response.ok) {
+                    response.json().then(data => {
+                        // Update available docs
+                        availableDocs = data.available_docs
+                        updateAvailableDocuments();
+                        showPopup(data.message);
+                    })
+                }
+                else {
+                    // Handle errors caught in python backend
+                    response.json().then(data => {
+                        showPopup(data.message, error=true);
+                    })
+                    // Handle uncaught errors
+                    .catch(error => {
+                        showPopup("Erreur non interceptée", error=true);
+                    })
+                }
+            })
         }
     }
 }
@@ -670,7 +683,9 @@ function addUserToUserList(username) {
     listItem.id = `group_user_${username}`
     listItem.innerHTML = `
     <div class="col">
-        <i class="fa-solid fa-user-secret fa-xl"></i>
+        <button class="user-icon" title="Augmenter les permissions de l'utilisateur" onclick="manageUserPermissions('${username}', true)">
+            <i class="fa-solid fa-user-plus"></i>
+        </button>
     </div>
     <div class="col">
         ${username}
@@ -692,6 +707,7 @@ function manageUserPermissions(username, upgrade) {
     else {
         confirmMessage = `Voulez-vous vraiment enlever les droits administrateurs à ${username} ?`;
     }
+
     // Call back function if user confirms the action
     if (confirm(confirmMessage)) {
         fetch('/manage_superuser_permission/', {
@@ -705,34 +721,77 @@ function manageUserPermissions(username, upgrade) {
                 'upgrade': upgrade,
             })
         })
-        .then(response => response.json())
-        .then(data => {
-            // Change icon to match the new permissions
-            const userItem = document.getElementById(`group_user_${username}`);
-            
-            if (upgrade) {
-                const userIcon = userItem.querySelector('.user-icon').parentElement;
-                userIcon.innerHTML = `
-                <button class="superuser-icon" title="Diminuer les permissions de l'utilisateur" onclick="manageUserPermissions('${username}', false)">
-                    <i class="fa-solid fa-user-secret"></i>
-                </button>
-                `;
+        .then(response => {
+            // Handle successful requests
+            if (response.ok) {
+                response.json().then(data => {
+                    // Change icon to match the new permissions
+                    const userItem = document.getElementById(`group_user_${username}`);
+                    if (upgrade) {
+                        const userIcon = userItem.querySelector('.user-icon').parentElement;
+                        userIcon.innerHTML = `
+                        <button class="superuser-icon" title="Diminuer les permissions de l'utilisateur" onclick="manageUserPermissions('${username}', false)">
+                            <i class="fa-solid fa-user-secret"></i>
+                        </button>
+                        `;
+                    }
+                    else {
+                        const userIcon = userItem.querySelector('.superuser-icon').parentElement;
+                        userIcon.innerHTML = `
+                        <button class="user-icon" title="Augmenter les permissions de l'utilisateur" onclick="manageUserPermissions('${username}', true)">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </button>
+                        `;
+                    }
+                    showPopup(data.message);
+                })
             }
             else {
-                const userIcon = userItem.querySelector('.superuser-icon').parentElement;
-                userIcon.innerHTML = `
-                <button class="user-icon" title="Augmenter les permissions de l'utilisateur" onclick="manageUserPermissions('${username}', true)">
-                    <i class="fa-solid fa-user-plus"></i>
-                </button>
-                `;
-                
+                // Handle errors caught in python backend
+                response.json().then(data => {
+                    showPopup(data.message, error=true);
+                })
+                // Handle uncaught errors
+                .catch(error => {
+                    showPopup("Erreur non interceptée", error=true);
+                })
             }
-            alert(data.message);
         })
     }
+}
 
-    
-    
+// Add users to group
+function addUserToGroup(newUsername) {
+    fetch('add_user_to_group/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+        body: JSON.stringify({
+            'new_username': newUsername,
+        })
+    })
+    // Handle successful requests
+    .then(response => {
+        if (response.ok) {
+            response.json().then(data => {
+                addUserToUserList(newUsername);
+                showPopup(data.message);
+            })
+        }
+        else {
+            // Handle errors caught in python backend
+            response.json().then(data => {
+                showPopup(data.message, error=true);
+            })
+            // Handle uncaught errors
+            .catch(error => {
+                showPopup("Erreur non interceptée", error=true);
+            })
+        }
+    })
+    addUsersInputField.value = "";
 }
 
 
@@ -741,23 +800,34 @@ function removeUserFromGroup(userNameToDelete) {
     if (confirm(`Voulez-vous vraiment supprimer ${userNameToDelete} ?`)) {
         fetch('remove_user_from_group/', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                'csrfmiddlewaretoken': csrfmiddlewaretoken,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfmiddlewaretoken,
+            },
+            body: JSON.stringify({
                 'username_to_delete': userNameToDelete,
             })
         })
-        .then(response => {
+        .then((response) => {
+            // Handle successful requests
             if (response.ok) {
-                const userToDeleteItem = document.getElementById(`group_user_${userNameToDelete}`);
-                userToDeleteItem.remove();
+                response.json().then(data => {
+                    const userToDeleteItem = document.getElementById(`group_user_${userNameToDelete}`);
+                    userToDeleteItem.remove();
+                    showPopup(data.message);
+                })
             }
             else {
+                // Handle errors caught in python backend
                 response.json().then(data => {
-                    window.alert(data.error_message);
-                });
+                    showPopup(data.message, error=true);
+                })
+                // Handle uncaught errors
+                .catch(error => {
+                    showPopup("Erreur non interceptée", error=true);
+                })
             }
-        });
+        })
     }
 }
 
@@ -833,24 +903,35 @@ function handleTextFeedbackClick(event, userMessage, botMessage) {
 // Common function that sends feedback message
 function sendFeedback(endpoint, feedback, user_message, bot_message){
     fetch(endpoint, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: new URLSearchParams({
-              'csrfmiddlewaretoken': csrfmiddlewaretoken,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+        body: JSON.stringify({
               'feedback': feedback,
               'user_message': user_message,
               'bot_message': bot_message,
           })
       })
-          .then(response => {
-              if (response.ok) {
-                  console.info("Feedback reçu!");
-              } else {
-                  response.json().then(data => {
-                      window.alert(data.error_message);
-                  });
-              }
-          });
+      .then((response) => {
+        // Handle successful requests
+        if (response.ok) {
+            response.json().then(data => {
+                showPopup(data.message);
+            })
+        }
+        else {
+            // Handle errors caught in python backend
+            response.json().then(data => {
+                showPopup(data.message, error=true);
+            })
+            // Handle uncaught errors
+            .catch(error => {
+                showPopup("Erreur non interceptée", error=true);
+            })
+        }
+    })
 }
 
 function uuid4() {
@@ -860,22 +941,71 @@ function uuid4() {
 }
 
 function checkFeedbackCountSinceLastFeedback() {
-    response = fetch('/get_questions_count_since_last_feedback/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            'csrfmiddlewaretoken': csrfmiddlewaretoken,
-                        })
-                    })
-      .then(response => response.json())
-      .then(data => {
-        console.log("Number of questions without feedback since last feedback: " + data.count);
-        if (data.count  > MAX_QUESTIONS_WITHOUT_FEEDBACK +  Math.floor(Math.random() * FEEDBACK_TOLERANCE)) {
-            createWarningMessage("N'oubliez pas de donner du feedback svp !")
+    fetch('/get_questions_count_since_last_feedback/', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+    })
+    .then((response) => {
+        // Handle successful requests
+        if (response.ok) {
+            response.json().then(data => {
+                if (data.count  > MAX_QUESTIONS_WITHOUT_FEEDBACK +  Math.floor(Math.random() * FEEDBACK_TOLERANCE)) {
+                    createWarningMessage("N'oubliez pas de donner du feedback svp !")
+                }
+            })
         }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-      });
-    return response;
+        else {
+            // Handle errors caught in python backend
+            response.json().then(data => {
+                showPopup(data.message, error=true);
+            })
+            // Handle uncaught errors
+            .catch(error => {
+                showPopup("Erreur non interceptée", error=true);
+            })
+        }
+    })
+}
+
+
+let popupTimeout; // needed to avoid removing popup that is already removed
+
+function showPopup(message, error = false) {
+    // Delete any existing popups
+    const existingPopups = document.querySelector('.popup');
+    if (existingPopups) {
+        existingPopups.remove(); // Remove the old popup immediately
+        clearTimeout(popupTimeout); // Cancel any timeout if a new popup is created
+    }
+
+    // Create a new popup element
+    const popup = document.createElement('div');
+    popup.className = 'popup';
+    popup.innerHTML = message;
+    if (error) {
+        popup.style.backgroundColor = "crimson";
+    } else {
+        popup.style.backgroundColor = "mediumseagreen";
+    }
+    document.body.appendChild(popup);
+
+    // Show the popup with a fade-in effect
+    setTimeout(() => {
+        popup.style.display = 'block';
+        popup.style.opacity = '1';
+    }, 100); // Slight delay for smoother transition
+
+    // Set a timeout to hide and remove the popup
+    popupTimeout = setTimeout(() => {
+        popup.style.opacity = '0'; // Fade out
+        setTimeout(() => {
+            popup.style.display = 'none';
+            if (popup.parentNode) {
+                document.body.removeChild(popup); // Remove the popup from DOM after fading out
+            }
+        }, 500); // Wait for fade-out to finish
+    }, 3000);
 }

@@ -93,3 +93,18 @@ a {
   color: var(--main-color);
   font-weight: 800;
 }
+
+.popup {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  color: white;
+  font-weight: 400;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  z-index: 1000; /* Ensure it appears on top of other elements */
+}
+
