@@ -13,6 +13,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk
 MAX_ATTEMPTS = 3
 TIMEOUT = 60.0
 DEFAULT_TEMPERATURE = 0.1
+DEFAULT_MAX_TOKENS = 512
 
 AZURE_API_VERSION = "2024-02-01"
 
@@ -60,16 +61,13 @@ class OpenAI_Client:
             )
         self.model_name = os.getenv("OPENAI_DEFAULT_MODEL_NAME")
         self.temperature = DEFAULT_TEMPERATURE
+        self.max_tokens = DEFAULT_MAX_TOKENS
 
     def generate(
         self,
         user_prompt,
         system_prompt=None,
-        model_name=None,
-        temperature=None,
-        max_tokens=512,
-        seed=NOT_GIVEN,
-        stream=NOT_GIVEN,
+        **kwargs,
     ) -> ChatCompletion | Stream[ChatCompletionChunk] | str:
         """Call openai model for generation.
 
@@ -86,21 +84,27 @@ class OpenAI_Client:
                 (str or Stream[ChatCompletionChunk]): model answer.
 
         """
+        # Transform messages into OpenAI API compatible format
         messages = [{"role": "user", "content": user_prompt}]
-        # add system prompt if one is provided
+        # Add system prompt if one is provided
         if system_prompt:
             messages.insert(0, {"role": "system", "content": system_prompt})
+
+        # For important parameters, set default value if not given
+        model = kwargs.get("model", self.model_name)
+        temperature = kwargs.get("temperature", self.temperature)
+        max_tokens = kwargs.get("max_tokens", self.max_tokens)
+
         try:
             answer = self.llm_client.chat.completions.create(
-                model=model_name if model_name else self.model_name,
                 messages=messages,
+                model=model,
+                temperature=temperature,
                 max_tokens=max_tokens,
-                seed=seed,
-                temperature=temperature if temperature else self.temperature,
-                stream=stream,
+                **kwargs,
             )
             logger.debug(f"API returned: {answer}")
-            if stream:
+            if kwargs.get("stream", False):
                 return answer
             else:
                 return answer.choices[0].message.content
