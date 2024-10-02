@@ -22,6 +22,3 @@ sleep 3  # Waits 5 seconds.
 
 echo "Starting Dashboard..."
 screen -dmS dashboard bash -c 'cd `pwd`/wattelse/chatbot/frontend/dashboard && ./dashboard.sh 2>&1 | tee -a $WATTELSE_LOGS_DIR/dashboard.log; bash'
-
-echo "Starting Wattelse Veille & Analyse"
-screen -dmS curebot bash -c 'cd `pwd`/exploration/curebot && ./start_newsletter_generator.sh 2>&1 | tee -a $WATTELSE_LOGS_DIR/curebot.log; bash'

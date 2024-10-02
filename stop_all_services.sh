@@ -1,8 +1,5 @@
 #!/bin/bash
 
-echo "Stopping Wattelse Veille & Analyse"
-screen -X -S curebot quit
-
 echo "Stopping Dashboard..."
 screen -X -S dashboard quit
 
