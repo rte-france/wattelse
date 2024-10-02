@@ -52,7 +52,6 @@ from wattelse.indexer.document_parser import parse_file
 logging.basicConfig()
 logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
-DEFAULT_TEMPERATURE = 0.1
 AZURE_API_VERSION = "2024-02-01"
 
 
@@ -67,7 +66,7 @@ def get_chat_model() -> BaseChatModel:
             "openai_api_key": generator_config["openai_api_key"],
             "openai_api_base": generator_config["openai_endpoint"],
             "model_name": generator_config["openai_default_model"],
-            "temperature": DEFAULT_TEMPERATURE,
+            "temperature": generator_config["temperature"],
         }
         return ChatOpenAI(**llm_config)
     else:
@@ -76,7 +75,7 @@ def get_chat_model() -> BaseChatModel:
             "azure_endpoint": generator_config["openai_endpoint"],
             "azure_deployment": generator_config["openai_default_model"],
             "api_version": AZURE_API_VERSION,
-            "temperature": DEFAULT_TEMPERATURE,
+            "temperature": generator_config["temperature"],
         }
         llm = AzureChatOpenAI(**llm_config)
         llm.model_name = generator_config[
