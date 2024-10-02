@@ -35,9 +35,9 @@ class GoogleNewsProvider(DataProvider):
     def get_articles(
         self,
         query: str,
-        after: str,
-        before: str,
-        max_results: int,
+        after: str = None,
+        before: str = None,
+        max_results: int = 50,
         language: str = "fr",
     ) -> List[Dict]:
         """Requests the news data provider, collects a set of URLs to be parsed, return results as json lines"""
