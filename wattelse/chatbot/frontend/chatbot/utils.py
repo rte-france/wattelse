@@ -71,7 +71,7 @@ def get_group_usernames_list(group_id: str) -> dict[str, bool]:
     whether they are superuser as values.
     """
     group = Group.objects.get(name=group_id)
-    users_list = User.objects.filter(groups=group)
+    users_list = User.objects.filter(groups=group).exclude(is_superuser=True)
     users_dict = {user.username: is_superuser(user) for user in users_list}
     # Sort dictionnary so superusers are first and alphabetically sorted
     users_dict = dict(
