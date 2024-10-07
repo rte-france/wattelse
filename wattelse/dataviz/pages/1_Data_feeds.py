@@ -2,14 +2,14 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
+import math
 
 import pandas as pd
 import streamlit as st
-from numpy import NaN
 import pydeck as pdk
-from wattelse.bertopic.app.app_utils import load_data_wrapper
-from wattelse.bertopic.app.data_utils import data_overview, choose_data
-from wattelse.bertopic.utils import DATA_DIR, TIMESTAMP_COLUMN
+from bertrend.app.app_utils import load_data_wrapper
+from bertrend.app.data_utils import data_overview, choose_data
+from bertrend.utils import DATA_DIR, TIMESTAMP_COLUMN
 from wattelse.geolocalization.entity_utils import geolocalize_data, geojson_to_dataframe
 
 from wattelse.geolocalization.spacy.utils import load_nlp
@@ -28,7 +28,7 @@ def get_coords(geojson_data):
             geo_df.iloc[0]["label"],
         )
     else:
-        return NaN, NaN, NaN
+        return math.nan, math.nan, math.nan
 
 
 def plot_geojson_on_map(df: pd.DataFrame):

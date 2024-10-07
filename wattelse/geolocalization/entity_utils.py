@@ -11,7 +11,7 @@ import os
 from loguru import logger
 from tqdm import tqdm
 
-from wattelse.bertopic.utils import TEXT_COLUMN
+from wattelse.common import TEXT_COLUMN
 
 
 def geolocalize_data(nlp, df: pd.DataFrame) -> pd.DataFrame:
