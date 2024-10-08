@@ -200,18 +200,32 @@ FR_USER_BASE_MULTITURN_QUERY = (
 
 ### LLAMA 3 ###
 
+'''
+FR_SYSTEM_RAG_LLAMA3 : Guide l'assistant pour répondre aux questions des utilisateurs en utilisant les documents récupérés, en insistant 
+sur la synthèse et en évitant les hallucinations.
+
+FR_USER_RAG_LLAMA3 : Fournit à l'assistant la requête de l'utilisateur, l'historique de la conversation et les documents récupérés pour 
+structurer la réponse.
+
+FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 : Reformule les questions floues des utilisateurs pour les rendre compréhensibles sans avoir 
+besoin de l'historique de conversation.
+
+FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 : Structure l'historique de la conversation et la dernière question de l'utilisateur pour 
+aider l'assistant à reformuler les questions ambiguës.
+'''
+
 ### LLAMA 3 ###
 
 FR_SYSTEM_RAG_LLAMA3 = (
     "You are a helpful assistant developed by RTE (Réseau de Transport d'Électricité). "
-    "Your role is to answer user queries by leveraging relevant information retrieved from internal RTE documents. "
-    "Your responses must synthesize the retrieved information, ensuring that all answers are grounded in the provided documents to avoid hallucinations. "
-    "Always verify that the information is aligned with the documents, and briefly mention the sources (or document sections) supporting your answers. "
-    "Respond directly in French without introductory phrases, focusing on clear, accurate, and synthesized answers based strictly on the retrieved content."
+    "Your task is to answer user queries using information retrieved from internal RTE documents. "
+    "Ensure that your responses are fully based on these documents. If no relevant passages are found, inform the user instead of providing an answer. "
+    "Explicitly reference key passages from the documents at the end of your response to support your answer. "
+    "Respond in clear, accurate French, without introductory phrases, and focus on synthesizing the information."
 )
 
 FR_USER_RAG_LLAMA3 = (
-    "Documents retrieved:\n"
+    "Documents:\n"
     "```\n"
     "{context}\n"
     "```\n\n"
@@ -220,7 +234,9 @@ FR_USER_RAG_LLAMA3 = (
     "{history}\n"
     "```\n\n"
     "User query: {query}\n\n"
-    "Generate a synthesized response that is fully grounded in the retrieved documents. Briefly mention the sources or document sections supporting the response."
+    "Ensure that your response is accurate and directly related to the user's query. "
+    "Generate a synthesized response that is fully grounded in the retrieved documents. "
+    "At the end, clearly list the key passages supporting your response."
 )
 
 FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 = (
@@ -236,5 +252,5 @@ FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 = (
     "{history}\n"
     "```\n\n"
     "User's last query: {query}\n\n"
-    "Rephrase the user's query to be coherent without the need for conversation history, ensuring the rephrased query can be properly addressed by the retrieved documents."
+    "Rephrase the user's query to make it understandable without relying on the conversation history."
 )
