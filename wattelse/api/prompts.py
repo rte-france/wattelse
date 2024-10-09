@@ -198,6 +198,7 @@ FR_USER_BASE_MULTITURN_QUERY = (
     "Question finale : {query}"
 )
 
+
 ### LLAMA 3 ###
 
 '''
@@ -214,13 +215,10 @@ FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 : Structure l'historique de la conversati
 aider l'assistant à reformuler les questions ambiguës.
 '''
 
-### LLAMA 3 ###
-
 FR_SYSTEM_RAG_LLAMA3 = (
     "You are a helpful assistant developed by RTE (Réseau de Transport d'Électricité). "
     "Your task is to answer user queries using information retrieved from internal RTE documents. "
     "Ensure that your responses are fully based on these documents. If no relevant passages are found, inform the user instead of providing an answer. "
-    "Explicitly reference key passages from the documents at the end of your response to support your answer. "
     "Respond in clear, accurate French, without introductory phrases, and focus on synthesizing the information."
 )
 
@@ -236,14 +234,12 @@ FR_USER_RAG_LLAMA3 = (
     "User query: {query}\n\n"
     "Ensure that your response is accurate and directly related to the user's query. "
     "Generate a synthesized response that is fully grounded in the retrieved documents. "
-    "At the end, clearly list the key passages supporting your response."
 )
 
 FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 = (
     "You are a helpful assistant for query contextualization. "
     "Your task is to rephrase the user's last query based on the conversation history, making sure the query is understandable in isolation, without prior context. "
     "If the query references elements from the conversation, clearly rephrase it for standalone understanding; otherwise, use the original query. "
-    "Ensure that the rephrased query is coherent and directly related to the retrieved documents."
 )
 
 FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 = (
