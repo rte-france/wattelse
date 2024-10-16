@@ -35,22 +35,16 @@ function initializeLayout(){
     createWelcomeMessage(WELCOME_MSG);
 }
 
-function handleUserMessage(userMessage) {
-    // Remove welcome message if it exists
-    removeWelcomeMessage();
-
-    // Diplsay user message
-    createUserMessage(userMessage);
-
-    // Post Message to RAG
-    postUserMessageToRAG(history);
-
-    // Clean user input field
-    userInput.value = '';
-}
-
-
 async function postUserMessageToRAG(history) {
+    // Handle too long response from backend
+    const startTime = Date.now();
+
+    // Question timestamp
+    const queryStartTimestamp = new Date();
+
+    // Get conversation id
+    const conversationId = chatHistory.id;
+
     // Create bot waiting div
     const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
     botDiv.classList.add("waiting-div", "animate");
@@ -82,8 +76,15 @@ async function postUserMessageToRAG(history) {
     }
 
     // When streaming is done, show feedback section and save interaction
+    const queryEndTimestamp = new Date();
+    const answerDelay = queryEndTimestamp - queryStartTimestamp;
+
+    // When streaming is done, show feedback section and save interaction
     botDiv.classList.remove("animate"); // remove generation animation
+    provideFeedback(userMessage, streamResponse);
     chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay)
 }
 
 
