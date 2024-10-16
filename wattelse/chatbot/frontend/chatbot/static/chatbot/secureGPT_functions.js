@@ -7,7 +7,7 @@
 
 
 // variables
-const WELCOME_MSG = "Bonjour <span class='username'>${userName}</span> !"
+const WELCOME_MSG = "Bonjour <span class='username'>"+userName+"</span> !"
 
 // initialize layout
 initializeLayout();
@@ -35,7 +35,7 @@ function initializeLayout(){
     createWelcomeMessage(WELCOME_MSG);
 }
 
-async function postUserMessageToRAG(history) {
+async function postUserMessageToRAG(userMessage) {
     // Handle too long response from backend
     const startTime = Date.now();
 
@@ -57,7 +57,7 @@ async function postUserMessageToRAG(history) {
             'Content-Type': 'application/json',
             'X-CSRFToken': csrfmiddlewaretoken,
         },
-        body: JSON.stringify(history)
+        body: JSON.stringify(userMessage)
     });
 
     const decoder = new TextDecoder();

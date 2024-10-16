@@ -129,10 +129,6 @@ function newConversation() {
 
 // Manage user input message
 function handleUserMessage(userMessage) {
-    if (getSelectedFileNames("available-list").length ===0){
-        createWarningMessage("Aucun document sélectionné.")
-        return
-    }
     // Remove last feedback div
     const lastFeedbackDiv = document.querySelector('.feedback-section');
     if (lastFeedbackDiv) {

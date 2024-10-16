@@ -35,7 +35,7 @@ const SPECIAL_SEPARATOR = '¤¤¤¤¤';
 
 // messages
 const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte généré peut contenir des erreurs."
-const WELCOME_MSG = "Bonjour <span class='username'>${userName}</span> !"
+const WELCOME_MSG = "Bonjour <span class='username'>"+userName+"</span> !"
 
 // feedback
 MAX_QUESTIONS_WITHOUT_FEEDBACK = 5
