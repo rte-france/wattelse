@@ -14,9 +14,12 @@ const sendButton = document.querySelector('.send-button');
 const userName =  JSON.parse(document.getElementById('user_name').textContent);
 const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
+// Feedback vars
+MAX_QUESTIONS_WITHOUT_FEEDBACK = 5
+FEEDBACK_TOLERANCE = 5  // random value for reminder messages
+
 // management of display timeout
 let popupTimeout; // needed to avoid removing popup that is already removed
-
 
 ///////////////////////// GENERIC FUNCTIONS ///////////////////////////////
 

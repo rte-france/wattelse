@@ -37,9 +37,6 @@ const SPECIAL_SEPARATOR = '¤¤¤¤¤';
 const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte généré peut contenir des erreurs."
 const WELCOME_MSG = "Bonjour <span class='username'>"+userName+"</span> !"
 
-// feedback
-MAX_QUESTIONS_WITHOUT_FEEDBACK = 5
-FEEDBACK_TOLERANCE = 5  // random value for reminder messages
 
 // Message timeout
 const timeout = 120000; // 120 seconds timeout
