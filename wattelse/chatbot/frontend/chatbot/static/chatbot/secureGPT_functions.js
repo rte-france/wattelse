@@ -5,14 +5,9 @@
  * This file is part of Wattelse, a NLP application suite.
  */
 
-// variables related to the page
-const chatHistory = document.querySelector('.chat-history');
-const userInput = document.querySelector('.input-field');
-const sendButton = document.querySelector('.send-button');
 
-// variables related to Django templates
-const userName =  JSON.parse(document.getElementById('user_name').textContent);
-const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+// variables
+const WELCOME_MSG = "Bonjour <span class='username'>${userName}</span> !"
 
 // initialize layout
 initializeLayout();
@@ -37,30 +32,7 @@ function initializeLayout(){
     });
 
     //  Create welcome message
-    createWelcomeMessage();
-}
-
-function getChatHistory() {
-    // Get the current chat history
-    // Returns an array of messages in the format:
-    // [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}, ...]
-    let history = [];
-    chatHistory.querySelectorAll(':scope > div').forEach(element => {
-        if (element.classList.contains("user-message")) {
-            history.push({
-                "role": "user",
-                "content": element.innerText.trim()
-            });
-        }
-        else if (element.classList.contains("bot-message")) {
-            history.push({
-                "role": "assistant",
-                "content": element.innerText.trim()
-            });
-        }
-    });
-
-    return history;
+    createWelcomeMessage(WELCOME_MSG);
 }
 
 function handleUserMessage(userMessage) {
@@ -71,7 +43,6 @@ function handleUserMessage(userMessage) {
     createUserMessage(userMessage);
 
     // Post Message to RAG
-    const history = getChatHistory();
     postUserMessageToRAG(history);
 
     // Clean user input field
@@ -116,63 +87,3 @@ async function postUserMessageToRAG(history) {
 }
 
 
-function createUserMessage(message) {
-    const userDiv = document.createElement('div');
-    userDiv.classList.add('user-message');
-    userDiv.innerHTML = message;
-    chatHistory.appendChild(userDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-}
-
-function createBotMessage(message, nextTab="extracts") {
-    const botDiv = document.createElement('div');
-    botDiv.classList.add('bot-message');
-    botDiv.innerHTML = message;
-    chatHistory.appendChild(botDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-
-    return botDiv;
-}
-
-function createWelcomeMessage() {
-    chatHistory.innerHTML = `
-    <div class="welcome-container">
-        <div class="welcome-message">Bonjour <span class="username">${userName}</span> !</div>
-    </div>
-    `;
-}
-
-function removeWelcomeMessage() {
-    const welcomeMessage = document.querySelector(".welcome-container");
-    if (welcomeMessage) {
-        welcomeMessage.remove();
-    }
-}
-
-function createErrorMessage(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.classList.add('error-message');
-    errorDiv.innerHTML = message;
-    chatHistory.appendChild(errorDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-}
-
-function createWarningMessage(message) {
-    const warningDiv = document.createElement('div');
-    warningDiv.classList.add('warning-message');
-    warningDiv.innerHTML = message;
-    chatHistory.appendChild(warningDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-}
-
-// Create a new conversation
-function newConversation() {
-    chatHistory.id = uuid4();
-    createWelcomeMessage();
-}
-
-function uuid4() {
-    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-      (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
-    );
-}

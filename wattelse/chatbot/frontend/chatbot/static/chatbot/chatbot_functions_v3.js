@@ -5,10 +5,6 @@
  * This file is part of Wattelse, a NLP application suite.
  */
 
-// variables related to the page
-const chatHistory = document.querySelector('.chat-history');
-const userInput = document.querySelector('.input-field');
-const sendButton = document.querySelector('.send-button');
 
 const documentPanel = document.querySelector('.panel-container');
 const tabs = documentPanel.querySelectorAll('.tab');
@@ -32,15 +28,14 @@ const groupUsernamesList = document.getElementById("group-usernames-list");
 const addUsersInputField = document.getElementById("add-users-input-field");
 
 // variables related to Django templates
-const userName =  JSON.parse(document.getElementById('user_name').textContent);
 let availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
-const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
 // separator used for streaming
 const SPECIAL_SEPARATOR = '¤¤¤¤¤';
 
 // messages
 const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte généré peut contenir des erreurs."
+const WELCOME_MSG = "Bonjour <span class='username'>${userName}</span> !"
 
 // feedback
 MAX_QUESTIONS_WITHOUT_FEEDBACK = 5
@@ -116,7 +111,7 @@ function initializeLayout(){
         });
     }
     //  Create welcome message
-    createWelcomeMessage();
+    createWelcomeMessage(WELCOME_MSG);
 }
 
 function updateAvailableDocuments(){
@@ -163,7 +158,7 @@ function handleUserMessage(userMessage) {
     // Remove welcome message if it exists
     removeWelcomeMessage();
 
-    // Diplsay user message
+    // Display user message
     createUserMessage(userMessage);
 
     // Post Message to RAG
@@ -194,6 +189,8 @@ async function postUserMessageToRAG(userMessage) {
     const conversationId = chatHistory.id;
 
     // Create bot waiting div
+    // - Call first the function to activate the "Extracts" tab
+    activateTab("extracts");
     const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
     botDiv.classList.add("waiting-div", "animate");
     chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -380,29 +377,6 @@ function updateRelevantExtracts(relevantExtracts){
     }
 }
 
-function createUserMessage(message) {
-    const userDiv = document.createElement('div');
-    userDiv.classList.add('user-message');
-    userDiv.innerHTML = message;
-    chatHistory.appendChild(userDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-}
-
-function createBotMessage(message, nextTab="extracts") {
-    const botDiv = document.createElement('div');
-    botDiv.classList.add('bot-message');
-    botDiv.innerHTML = message;
-    chatHistory.appendChild(botDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-
-    // Call the function to activate the "Extracts" tab
-    if (nextTab) {
-        activateTab(nextTab);
-    }
-
-    return botDiv;
-}
-
 function typeWriter(botDiv, message, typingSpeed, callback) {
     let index = 0;
 
@@ -419,36 +393,6 @@ function typeWriter(botDiv, message, typingSpeed, callback) {
     type();
 }
 
-function createWelcomeMessage() {
-    chatHistory.innerHTML = `
-    <div class="welcome-container">
-        <div class="welcome-message">Bonjour <span class="username">${userName}</span> !<br>Posez une question sur les documents.</div>
-    </div>
-    `;
-}
-
-function removeWelcomeMessage() {
-    const welcomeMessage = document.querySelector(".welcome-container");
-    if (welcomeMessage) {
-        welcomeMessage.remove();
-    }
-}
-
-function createErrorMessage(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.classList.add('error-message');
-    errorDiv.innerHTML = message;
-    chatHistory.appendChild(errorDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-}
-
-function createWarningMessage(message) {
-    const warningDiv = document.createElement('div');
-    warningDiv.classList.add('warning-message');
-    warningDiv.innerHTML = message;
-    chatHistory.appendChild(warningDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-}
 
 function activateTab(tabName) {
   // Find the tab with the data-content attribute set to "extracts"
@@ -831,14 +775,6 @@ function removeUserFromGroup(userNameToDelete) {
     }
 }
 
-// Create a new conversation
-function newConversation() {
-    chatHistory.id = uuid4();
-    createWelcomeMessage();
-    extractList.innerHTML = "";
-    activateTab("documents");
-}
-
 // Functions to collect user feedback
 function provideFeedback(userMessage, botMessage) {
     checkFeedbackCountSinceLastFeedback();
@@ -932,12 +868,6 @@ function sendFeedback(endpoint, feedback, user_message, bot_message){
             })
         }
     })
-}
-
-function uuid4() {
-    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-      (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
-    );
 }
 
 function checkFeedbackCountSinceLastFeedback() {

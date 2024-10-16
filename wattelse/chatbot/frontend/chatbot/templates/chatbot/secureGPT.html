@@ -53,7 +53,8 @@
 
 <!-- Load script for chatbot page -->
 {% load static %}
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="{% static 'chatbot/marked.min.js' %}"></script>
+<script src="{% static 'chatbot/common_functions.js' %}"></script>
 <script src="{% static 'chatbot/secureGPT_functions.js' %}"></script>
 
 {% endblock %}
