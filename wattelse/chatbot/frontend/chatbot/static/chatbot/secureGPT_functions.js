@@ -36,9 +36,6 @@ function initializeLayout(){
 }
 
 async function postUserMessageToRAG(userMessage) {
-    // Handle too long response from backend
-    const startTime = Date.now();
-
     // Question timestamp
     const queryStartTimestamp = new Date();
 

@@ -6,35 +6,58 @@
 import json
 import os
 import uuid
-from datetime import timedelta, datetime
 
 from loguru import logger
 
-from django.http import JsonResponse, StreamingHttpResponse, HttpResponse, Http404
+from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render, redirect
 
-from openai import OpenAI
+from openai import OpenAI, AzureOpenAI, Timeout
 
-from .models import Chat
-from .utils import streaming_generator_llm, get_conversation_history, get_user_group_id
+from wattelse.api.openai.client_openai_api import (
+    AZURE_API_VERSION,
+    MAX_ATTEMPTS,
+    TIMEOUT,
+)
+from .utils import streaming_generator_llm, get_conversation_history
 
 # Uses environment variables to configure the openai API
-api_key = os.getenv("LOCAL_OPENAI_API_KEY")
+# TODO: add support for Azure
+var_prefix = "AZURE_SE_WATTELSE_"
+api_key = os.getenv(f"{var_prefix}OPENAI_API_KEY")
 if not api_key:
     logger.error(
-        "WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services."
+        f"WARNING: {var_prefix}OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services."
     )
-    raise EnvironmentError(f"LOCAL_OPENAI_API_KEY environment variable not found.")
-endpoint = os.getenv("LOCAL_OPENAI_ENDPOINT", None)
+    raise EnvironmentError(
+        f"{var_prefix}OPENAI_API_KEY environment variable not found."
+    )
+endpoint = os.getenv(f"{var_prefix}OPENAI_ENDPOINT", None)
 if endpoint == "":  # check empty env var
     endpoint = None
-model_name = os.getenv("LOCAL_OPENAI_DEFAULT_MODEL_NAME", None)
+run_on_azure = "azure.com" in endpoint if endpoint else False
+model_name = os.getenv(f"{var_prefix}OPENAI_DEFAULT_MODEL_NAME", None)
 
-llm_config = {
+common_params = {
     "api_key": api_key,
+    "timeout": Timeout(TIMEOUT, connect=10.0),
+    "max_retries": MAX_ATTEMPTS,
+}
+openai_params = {
     "base_url": endpoint,
 }
-LLM_CLIENT = OpenAI(**llm_config)
+azure_params = {"azure_endpoint": endpoint, "api_version": AZURE_API_VERSION}
+
+if not run_on_azure:
+    LLM_CLIENT = OpenAI(
+        **common_params,
+        **openai_params,
+    )
+else:
+    LLM_CLIENT = AzureOpenAI(
+        **common_params,
+        **azure_params,
+    )
 
 
 def request_client(request):
@@ -59,20 +82,24 @@ def request_client(request):
         history = get_conversation_history(request.user, conversation_id)
 
         # Get posted message
-        message = data.get("message", None)
+        user_message = data.get("message", None)
 
         # Check message is not empty
-        if not message:
+        if not user_message:
             logger.warning(f"[User: {request.user.username}] No user message received")
             return JsonResponse({"message": "Aucune question reçue"}, status=500)
 
         # Log message
-        logger.info(f"[User: {request.user.username}] Query: {message}")
+        logger.info(f"[User: {request.user.username}] Query: {user_message}")
+
+        if not history:
+            history = []
+        messages = history + [{"role": "user", "content": user_message}]
 
         # Query LLM
         try:
             response = LLM_CLIENT.chat.completions.create(
-                messages=history,
+                messages=messages,
                 model=model_name,
                 stream=True,
             )
@@ -91,48 +118,3 @@ def request_client(request):
         return render(
             request, "chatbot/secureGPT.html", context={"llm_name": model_name}
         )
-
-
-# TODO: à adapter (Chat -> new BD!)
-def save_interaction(request):
-    """Function called to save query and response in DB once response streaming is finished."""
-    if request.method == "POST":
-        # Get request data
-        data = json.loads(request.body)
-
-        # Transform timestamps to datetime objects
-        question_timestamp = data.get("question_timestamp", None)
-        question_timestamp = datetime.fromisoformat(
-            question_timestamp.replace("Z", "+00:00")
-        )
-
-        # Transform delay to timedelta
-        answer_delay = data.get("answer_delay", None)
-        answer_delay = timedelta(milliseconds=answer_delay)
-
-        # Save interaction
-        try:
-            chat = Chat(
-                user=request.user,
-                group_id=get_user_group_id(request.user),
-                conversation_id=data.get("conversation_id", ""),
-                message=data.get("message", ""),
-                response=data.get("answer", ""),
-                question_timestamp=question_timestamp,
-                answer_delay=answer_delay,
-            )
-            chat.save()
-
-            # No need to show a pop up message to the user
-            return HttpResponse(status=200)
-
-        except Exception as e:
-            logger.error(f"[User: {request.user.username}] {e}")
-            return JsonResponse(
-                {
-                    "message": "Erreur serveur : échec lors de l'enregistrement de la conversation"
-                },
-                status=500,
-            )
-    else:
-        raise Http404()

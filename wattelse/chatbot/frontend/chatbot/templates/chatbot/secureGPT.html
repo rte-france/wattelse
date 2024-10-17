@@ -35,10 +35,11 @@
                 <input type="text" class="input-field"
                     placeholder="Entrez votre question..." />
                 <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
-                <button class="new-conversation-button" onclick="newConversation()"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
+                <button class="new-conversation-button" onclick="newConversation();"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
             </div>
             <div class="disclaimer">
-                LLM : {{ llm_name }}
+                LLM : {{ llm_name }}<br>
+                Ce modèle peut générer des informations inexactes. Vérifiez ses réponses.
             </div>
         </div>
     </div>

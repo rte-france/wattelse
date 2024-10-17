@@ -21,6 +21,9 @@ FEEDBACK_TOLERANCE = 5  // random value for reminder messages
 // management of display timeout
 let popupTimeout; // needed to avoid removing popup that is already removed
 
+// initialization
+chatHistory.id = uuid4();
+
 ///////////////////////// GENERIC FUNCTIONS ///////////////////////////////
 
 // Create a UUID to identify conversations
@@ -155,7 +158,7 @@ function handleUserMessage(userMessage) {
 // Store logs into the database
 // TODO: add parameter for database name (storage must be different depending if RAG or pure chat)
 function saveInteraction(conversationId, userMessage, botResponse, queryStartTimestamp, answerDelay) {
-    fetch('save_interaction/', {
+    fetch('/save_interaction/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
