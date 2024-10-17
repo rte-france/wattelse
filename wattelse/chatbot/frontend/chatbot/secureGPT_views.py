@@ -5,6 +5,7 @@
 
 import json
 import os
+import uuid
 
 from loguru import logger
 
@@ -13,7 +14,7 @@ from django.shortcuts import render, redirect
 
 from openai import OpenAI
 
-from .utils import streaming_generator_llm
+from .utils import streaming_generator_llm, get_conversation_history
 
 # Uses environment variables to configure the openai API
 api_key = os.getenv("LOCAL_OPENAI_API_KEY")
@@ -46,15 +47,25 @@ def request_client(request):
     # If request method is POST, call OpenAI client
     # Else render template
     if request.method == "POST":
-        # Get conversation history
-        history = json.loads(request.body)
-        if not history:
+        # Get request data
+        data = json.loads(request.body)
+
+        # Get conversation id
+        conversation_id = uuid.UUID(data.get("conversation_id"))
+
+        # Get user chat history
+        history = get_conversation_history(request.user, conversation_id)
+
+        # Get posted message
+        message = data.get("message", None)
+
+        # Check message is not empty
+        if not message:
             logger.warning(f"[User: {request.user.username}] No user message received")
-            error_message = "Veuillez saisir une question"
-            return JsonResponse({"error_message": error_message}, status=500)
-        logger.info(
-            f"[User: {request.user.username}] Message: {history[-1]['content']}"
-        )
+            return JsonResponse({"message": "Aucune question reçue"}, status=500)
+
+        # Log message
+        logger.info(f"[User: {request.user.username}] Query: {message}")
 
         # Query LLM
         try:

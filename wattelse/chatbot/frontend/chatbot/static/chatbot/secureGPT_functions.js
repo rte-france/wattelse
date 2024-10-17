@@ -57,7 +57,10 @@ async function postUserMessageToRAG(userMessage) {
             'Content-Type': 'application/json',
             'X-CSRFToken': csrfmiddlewaretoken,
         },
-        body: JSON.stringify(userMessage)
+        body: JSON.stringify({
+            'message': userMessage,
+            'conversation_id': conversationId,
+        })
     });
 
     const decoder = new TextDecoder();
