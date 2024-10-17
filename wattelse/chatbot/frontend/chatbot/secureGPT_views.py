@@ -6,15 +6,17 @@
 import json
 import os
 import uuid
+from datetime import timedelta, datetime
 
 from loguru import logger
 
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import JsonResponse, StreamingHttpResponse, HttpResponse, Http404
 from django.shortcuts import render, redirect
 
 from openai import OpenAI
 
-from .utils import streaming_generator_llm, get_conversation_history
+from .models import Chat
+from .utils import streaming_generator_llm, get_conversation_history, get_user_group_id
 
 # Uses environment variables to configure the openai API
 api_key = os.getenv("LOCAL_OPENAI_API_KEY")
@@ -89,3 +91,48 @@ def request_client(request):
         return render(
             request, "chatbot/secureGPT.html", context={"llm_name": model_name}
         )
+
+
+# TODO: à adapter (Chat -> new BD!)
+def save_interaction(request):
+    """Function called to save query and response in DB once response streaming is finished."""
+    if request.method == "POST":
+        # Get request data
+        data = json.loads(request.body)
+
+        # Transform timestamps to datetime objects
+        question_timestamp = data.get("question_timestamp", None)
+        question_timestamp = datetime.fromisoformat(
+            question_timestamp.replace("Z", "+00:00")
+        )
+
+        # Transform delay to timedelta
+        answer_delay = data.get("answer_delay", None)
+        answer_delay = timedelta(milliseconds=answer_delay)
+
+        # Save interaction
+        try:
+            chat = Chat(
+                user=request.user,
+                group_id=get_user_group_id(request.user),
+                conversation_id=data.get("conversation_id", ""),
+                message=data.get("message", ""),
+                response=data.get("answer", ""),
+                question_timestamp=question_timestamp,
+                answer_delay=answer_delay,
+            )
+            chat.save()
+
+            # No need to show a pop up message to the user
+            return HttpResponse(status=200)
+
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {
+                    "message": "Erreur serveur : échec lors de l'enregistrement de la conversation"
+                },
+                status=500,
+            )
+    else:
+        raise Http404()
