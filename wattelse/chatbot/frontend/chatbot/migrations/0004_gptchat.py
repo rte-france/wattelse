@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("chatbot", "0003_chat_answer_delay"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
