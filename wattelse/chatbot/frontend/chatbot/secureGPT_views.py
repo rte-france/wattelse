@@ -22,7 +22,6 @@ from wattelse.api.openai.client_openai_api import (
 from .utils import streaming_generator_llm, get_conversation_history
 
 # Uses environment variables to configure the openai API
-# TODO: add support for Azure
 var_prefix = "AZURE_SE_WATTELSE_"
 api_key = os.getenv(f"{var_prefix}OPENAI_API_KEY")
 if not api_key:

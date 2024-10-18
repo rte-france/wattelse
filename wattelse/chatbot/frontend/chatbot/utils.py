@@ -124,9 +124,10 @@ def streaming_generator(data_stream):
 def streaming_generator_llm(data_stream):
     """Generator to decode the chunks received from RAGOrchestratorClient"""
     for chunk in data_stream:
-        token = chunk.choices[0].delta.content
-        if token is not None:
-            yield token
+        if len(chunk.choices) > 0:
+            delta = chunk.choices[0].delta
+            if delta.content:
+                yield delta.content
 
 
 def insert_feedback(request, short: bool):
