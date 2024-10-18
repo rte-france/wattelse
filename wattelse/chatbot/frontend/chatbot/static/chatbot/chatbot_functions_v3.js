@@ -119,48 +119,7 @@ function initializeLayout(){
     createWelcomeMessage(WELCOME_MSG);
 }
 
-function updateAvailableDocuments(){
-    // Update the visible list of documents, after and before removal
-    // gather the list of active documents before the change
-    let previously_selected = getSelectedFileNames("available-list");
-
-    availableDocumentList.innerHTML="";
-    if (removalDocumentList) {
-        removalDocumentList.innerHTML="";
-    }
-
-    // Display documents to be selected
-    availableDocs.forEach((document) =>{
-        const listItem = createDocumentListItem(document);
-        availableDocumentList.appendChild(listItem);
-    });
-
-    // Display documents that can be removed
-    availableDocs.forEach((document) =>{
-        const listItem = createDocumentListItem(document);
-        if (removalDocumentList) {
-            removalDocumentList.appendChild(listItem);
-        }
-    });
-
-    // intersection of previous selection with  new available docs
-    newly_selected =  previously_selected.filter(x => availableDocs.includes(x));
-    // reset previously checked docs
-    setSelectedFileNames("available-list", newly_selected);
-}
-
-// Helper function to check if the buffer contains a complete JSON object
-function isCompleteJSON(buffer) {
-  try {
-    JSON.parse(buffer);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-
-async function postUserMessageToRAG(userMessage) {
+async function postUserMessageToChatBot(userMessage) {
     // Handle too long response from backend
     const startTime = Date.now();
 
@@ -268,6 +227,45 @@ async function postUserMessageToRAG(userMessage) {
     saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay)
 }
 
+function updateAvailableDocuments(){
+    // Update the visible list of documents, after and before removal
+    // gather the list of active documents before the change
+    let previously_selected = getSelectedFileNames("available-list");
+
+    availableDocumentList.innerHTML="";
+    if (removalDocumentList) {
+        removalDocumentList.innerHTML="";
+    }
+
+    // Display documents to be selected
+    availableDocs.forEach((document) =>{
+        const listItem = createDocumentListItem(document);
+        availableDocumentList.appendChild(listItem);
+    });
+
+    // Display documents that can be removed
+    availableDocs.forEach((document) =>{
+        const listItem = createDocumentListItem(document);
+        if (removalDocumentList) {
+            removalDocumentList.appendChild(listItem);
+        }
+    });
+
+    // intersection of previous selection with  new available docs
+    newly_selected =  previously_selected.filter(x => availableDocs.includes(x));
+    // reset previously checked docs
+    setSelectedFileNames("available-list", newly_selected);
+}
+
+// Helper function to check if the buffer contains a complete JSON object
+function isCompleteJSON(buffer) {
+  try {
+    JSON.parse(buffer);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
 
 function deleteDocumentsInCollection(){
     const selectedFileNames = getSelectedFileNames("removal-list")
@@ -341,7 +339,6 @@ function typeWriter(botDiv, message, typingSpeed, callback) {
 
     type();
 }
-
 
 function activateTab(tabName) {
   // Find the tab with the data-content attribute set to "extracts"

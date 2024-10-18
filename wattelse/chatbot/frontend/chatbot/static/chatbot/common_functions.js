@@ -148,7 +148,7 @@ function handleUserMessage(userMessage) {
     createUserMessage(userMessage);
 
     // Post Message to RAG
-    postUserMessageToRAG(userMessage);
+    postUserMessageToChatBot(userMessage);
 
     userInput.value = '';
 }
@@ -156,7 +156,6 @@ function handleUserMessage(userMessage) {
 ///////////////////////// LOG FUNCTIONS ///////////////////////////////
 
 // Store logs into the database
-// TODO: add parameter for database name (storage must be different depending if RAG or pure chat)
 function saveInteraction(conversationId, userMessage, botResponse, queryStartTimestamp, answerDelay) {
     fetch('/save_interaction/', {
         method: 'POST',
@@ -170,6 +169,7 @@ function saveInteraction(conversationId, userMessage, botResponse, queryStartTim
             'answer': botResponse,
             'question_timestamp': queryStartTimestamp,
             'answer_delay': answerDelay,
+            'source_path': window.location.pathname, // allows to know from with page (RAG/GPT) the feedback comes from
         })
     })
     .then((response) => {
@@ -192,7 +192,6 @@ function saveInteraction(conversationId, userMessage, botResponse, queryStartTim
 
 
 // Common function that sends feedback message
-// TODO: à paramétrer différent pour RAG/Chatbot
 function sendFeedback(endpoint, feedback, user_message, bot_message){
     fetch(endpoint, {
         method: 'POST',
@@ -204,6 +203,7 @@ function sendFeedback(endpoint, feedback, user_message, bot_message){
               'feedback': feedback,
               'user_message': user_message,
               'bot_message': bot_message,
+              'source_path': window.location.pathname, // allows to know from with page (RAG/GPT) the feedback comes from
           })
       })
       .then((response) => {
@@ -255,9 +255,8 @@ function provideFeedback(userMessage, botMessage) {
 ///////////////////////// FEEDBACK FUNCTIONS ///////////////////////////////
 
 // counts the number of recent feedback for the current user
-// TODO: à paramétrer différent pour RAG/Chatbot
 function checkFeedbackCountSinceLastFeedback() {
-    fetch('/get_questions_count_since_last_feedback/', {
+    fetch('/get_questions_count_since_last_feedback/?source_path=' + window.location.pathname,{ // allows to know from with page (RAG/GPT) the feedback comes from,
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -287,7 +286,6 @@ function checkFeedbackCountSinceLastFeedback() {
 }
 
 // Function to handle short feedback
-// TODO: à paramétrer différent pour RAG/Chatbot
 function handleEmojiRatingClick(event, userMessage, botMessage) {
   // Get the parent element (emoji-rating) of the clicked element
   const ratingElement = event.currentTarget;
@@ -305,12 +303,11 @@ function handleEmojiRatingClick(event, userMessage, botMessage) {
 
   // send feedback for processing
   if (feedbackName) {
-    sendFeedback("send_short_feedback/", feedbackName, userMessage, botMessage);
+    sendFeedback("/send_short_feedback/", feedbackName, userMessage, botMessage);
   }
 }
 
 // Function to handle click on the text feedback button (optional)
-// TODO: à paramétrer différent pour RAG/Chatbot
 function handleTextFeedbackClick(event, userMessage, botMessage) {
     const feedbackButton = event.currentTarget;
     feedbackButton.classList.add('selected');
@@ -320,6 +317,6 @@ function handleTextFeedbackClick(event, userMessage, botMessage) {
 
     // send back answer
     if (feedback){
-        sendFeedback("send_long_feedback/", feedback, userMessage, botMessage);
+        sendFeedback("/send_long_feedback/", feedback, userMessage, botMessagee);
     }
 }

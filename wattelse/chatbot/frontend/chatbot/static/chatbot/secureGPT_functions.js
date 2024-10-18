@@ -35,7 +35,7 @@ function initializeLayout(){
     createWelcomeMessage(WELCOME_MSG);
 }
 
-async function postUserMessageToRAG(userMessage) {
+async function postUserMessageToChatBot(userMessage) {
     // Question timestamp
     const queryStartTimestamp = new Date();
 

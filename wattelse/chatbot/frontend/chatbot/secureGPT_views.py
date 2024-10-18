@@ -19,6 +19,7 @@ from wattelse.api.openai.client_openai_api import (
     MAX_ATTEMPTS,
     TIMEOUT,
 )
+from .models import GPTChat
 from .utils import streaming_generator_llm, get_conversation_history
 
 # Uses environment variables to configure the openai API
@@ -78,7 +79,9 @@ def request_client(request):
         conversation_id = uuid.UUID(data.get("conversation_id"))
 
         # Get user chat history
-        history = get_conversation_history(request.user, conversation_id)
+        history = get_conversation_history(
+            request.user, conversation_id, ChatModel=GPTChat
+        )
 
         # Get posted message
         user_message = data.get("message", None)
