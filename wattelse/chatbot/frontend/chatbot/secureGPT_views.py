@@ -12,15 +12,12 @@ from loguru import logger
 from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render, redirect
 
-from openai import OpenAI, AzureOpenAI, Timeout
-
-from wattelse.api.openai.client_openai_api import (
-    AZURE_API_VERSION,
-    MAX_ATTEMPTS,
-    TIMEOUT,
-)
+from wattelse.api.openai.client_openai_api import OpenAI_Client
 from .models import GPTChat
 from .utils import streaming_generator_llm, get_conversation_history
+
+# NUMBER MAX OF TOKENS
+MAX_TOKENS = 1536
 
 # Uses environment variables to configure the openai API
 var_prefix = "AZURE_SE_WATTELSE_"
@@ -35,29 +32,8 @@ if not api_key:
 endpoint = os.getenv(f"{var_prefix}OPENAI_ENDPOINT", None)
 if endpoint == "":  # check empty env var
     endpoint = None
-run_on_azure = "azure.com" in endpoint if endpoint else False
 model_name = os.getenv(f"{var_prefix}OPENAI_DEFAULT_MODEL_NAME", None)
-
-common_params = {
-    "api_key": api_key,
-    "timeout": Timeout(TIMEOUT, connect=10.0),
-    "max_retries": MAX_ATTEMPTS,
-}
-openai_params = {
-    "base_url": endpoint,
-}
-azure_params = {"azure_endpoint": endpoint, "api_version": AZURE_API_VERSION}
-
-if not run_on_azure:
-    LLM_CLIENT = OpenAI(
-        **common_params,
-        **openai_params,
-    )
-else:
-    LLM_CLIENT = AzureOpenAI(
-        **common_params,
-        **azure_params,
-    )
+LLM_CLIENT = OpenAI_Client(api_key=api_key, endpoint=endpoint, model=model_name)
 
 
 def request_client(request):
@@ -100,10 +76,10 @@ def request_client(request):
 
         # Query LLM
         try:
-            response = LLM_CLIENT.chat.completions.create(
+            response = LLM_CLIENT.generate_from_history(
                 messages=messages,
-                model=model_name,
                 stream=True,
+                max_tokens=MAX_TOKENS,
             )
             return StreamingHttpResponse(
                 streaming_generator_llm(response),
