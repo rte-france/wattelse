@@ -6,6 +6,7 @@
 import json
 import uuid
 import tempfile
+import datetime
 import pandas as pd
 
 from pathlib import Path
@@ -121,6 +122,32 @@ def get_conversation_history(
         history.append({"role": "user", "content": chat.message})
         history.append({"role": "assistant", "content": chat.response})
     return None if len(history) == 0 else history
+
+
+def get_user_conversation_ids(
+    user: User, ChatModel: models.Model, number: int = 100
+) -> list[uuid.UUID]:
+    """
+    Return the list of the user conversation ids.
+    Use `number` to limit the maximum number of returned ids.
+    """
+    conversation_ids = (
+        ChatModel.objects.filter(user=user)
+        .distinct()
+        .values_list("conversation_id", flat=True)[:number][::-1]
+    )
+    return list(conversation_ids)
+
+
+def get_conversation_first_message(
+    conversation_id, ChatModel: models.Model
+) -> tuple[str, datetime.datetime]:
+    """
+    Returns the first message of a conversation associated with its timestamp.
+    Used as a title that will be displayed to the user in the conversation selection pannel.
+    """
+    first_message = ChatModel.objects.filter(conversation_id=conversation_id).first()
+    return first_message.message, first_message.question_timestamp
 
 
 def new_user_created(request, username=None):

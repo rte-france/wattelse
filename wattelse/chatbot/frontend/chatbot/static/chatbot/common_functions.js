@@ -131,6 +131,7 @@ function createBotMessage(message) {
 function newConversation() {
     chatHistory.id = uuid4();
     createWelcomeMessage(WELCOME_MSG);
+    removeActiveConversation();
 }
 
 // Manage user input message
@@ -318,5 +319,14 @@ function handleTextFeedbackClick(event, userMessage, botMessage) {
     // send back answer
     if (feedback){
         sendFeedback("/send_long_feedback/", feedback, userMessage, botMessage);
+    }
+}
+
+
+// Function to remove active conversation if conversation history management is implemented
+function removeActiveConversation() {
+    let activeButton = document.querySelector(".conversations-container li.active");
+    if (activeButton) {
+        activeButton.classList.remove("active");
     }
 }
