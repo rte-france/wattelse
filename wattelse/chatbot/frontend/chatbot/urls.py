@@ -51,4 +51,10 @@ urlpatterns = [
     path("dashboard/", views.dashboard, name="dashboard"),
     # Basic chat
     path("llm/", secureGPT_views.request_client, name="basic_chat"),
+    # Conversations history management
+    path(
+        "get_conversation_messages/",
+        secureGPT_views.get_conversation_messages,
+        name="get_conversation_history",
+    ),
 ]
