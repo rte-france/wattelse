@@ -36,6 +36,7 @@ from .utils import (
     streaming_generator,
     insert_feedback,
     RAG_API,
+    get_chat_model,
 )
 
 
@@ -186,7 +187,9 @@ def query_rag(request):
         conversation_id = uuid.UUID(data.get("conversation_id"))
 
         # Get user chat history
-        history = get_conversation_history(request.user, conversation_id)
+        history = get_conversation_history(
+            request.user, conversation_id, ChatModel=Chat
+        )
 
         # Get posted message
         message = data.get("message", None)
@@ -249,9 +252,12 @@ def save_interaction(request):
         answer_delay = data.get("answer_delay", None)
         answer_delay = timedelta(milliseconds=answer_delay)
 
+        # Get database to use based on source path
+        ChatModel = get_chat_model(data.get("source_path"))
+
         # Save interaction
         try:
-            chat = Chat(
+            chat = ChatModel(
                 user=request.user,
                 group_id=get_user_group_id(request.user),
                 conversation_id=data.get("conversation_id", ""),
@@ -541,9 +547,16 @@ def get_questions_count_since_last_feedback(request):
         int: The number of entries without feedback since the last feedback.
     """
     if request.method == "GET":
+
+        # Get request data
+        source_path = request.GET.get("source_path")
+
+        # Get database to use based on source path
+        ChatModel = get_chat_model(source_path)
+
         try:
             last_feedback = (
-                Chat.objects.filter(
+                ChatModel.objects.filter(
                     ~Q(short_feedback__exact=""),
                     user=request.user,
                     short_feedback__isnull=False,
@@ -555,10 +568,10 @@ def get_questions_count_since_last_feedback(request):
                 last_feedback_date = last_feedback.question_timestamp
             else:
                 return JsonResponse({"count": 9999})  # arbitrary big value
-        except Chat.DoesNotExist:
+        except ChatModel.DoesNotExist:
             return JsonResponse({"count": 9999})  # arbitrary big value
 
-        count = Chat.objects.filter(
+        count = ChatModel.objects.filter(
             user=request.user, question_timestamp__gt=last_feedback_date
         ).count()
         return JsonResponse({"count": count})

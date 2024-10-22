@@ -9,14 +9,16 @@ import tempfile
 import pandas as pd
 
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Type
+
+from django.db import models
 from loguru import logger
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User, Group
-from django.http import HttpResponse, Http404, JsonResponse
+from django.http import Http404, JsonResponse
 
-from .models import Chat
+from .models import Chat, GPTChat
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
 
@@ -34,6 +36,24 @@ WRONG = "wrong"
 
 # Long feedback FAQ file
 FAQ_FILE_PATTERN = "_FAQ.xlsx"
+
+
+ChatModels = {
+    "/": Chat,
+    "/llm/": GPTChat,
+}
+
+
+def get_chat_model(source_path: str) -> Type[GPTChat | Chat]:
+    """Return the database class associated to the current page (RAG vs secureGPT)"""
+    if not source_path:
+        raise Exception("Invalid source path")
+    db_model = ChatModels.get(source_path, None)
+    if not db_model:
+        raise Exception(
+            f"No database class model associated to the source path {source_path}"
+        )
+    return db_model
 
 
 def get_user_group_id(user: User) -> str:
@@ -81,7 +101,9 @@ def get_group_usernames_list(group_id: str) -> dict[str, bool]:
 
 
 def get_conversation_history(
-    user: User, conversation_id: uuid.UUID
+    user: User,
+    conversation_id: uuid.UUID,
+    ChatModel: models.Model,
 ) -> List[Dict[str, str]] | None:
     """
     Return chat history following OpenAI API format :
@@ -94,7 +116,7 @@ def get_conversation_history(
     If no history is found return None.
     """
     history = []
-    history_query = Chat.objects.filter(user=user, conversation_id=conversation_id)
+    history_query = ChatModel.objects.filter(user=user, conversation_id=conversation_id)
     for chat in history_query:
         history.append({"role": "user", "content": chat.message})
         history.append({"role": "assistant", "content": chat.response})
@@ -124,9 +146,10 @@ def streaming_generator(data_stream):
 def streaming_generator_llm(data_stream):
     """Generator to decode the chunks received from RAGOrchestratorClient"""
     for chunk in data_stream:
-        token = chunk.choices[0].delta.content
-        if token is not None:
-            yield token
+        if len(chunk.choices) > 0:
+            delta = chunk.choices[0].delta
+            if delta.content:
+                yield delta.content
 
 
 def insert_feedback(request, short: bool):
@@ -148,12 +171,15 @@ def insert_feedback(request, short: bool):
         user_message = data.get("user_message", None)
         bot_message = data.get("bot_message", None)
 
+        # Get database to use based on source path
+        chat_model = get_chat_model(data.get("source_path"))
+
         # Find the matching Chat object based on user, message, and response
-        if Chat.objects.filter(
+        if chat_model.objects.filter(
             user=user, message=user_message, response=bot_message
         ).exists():
             chat_message = (
-                Chat.objects.filter(
+                chat_model.objects.filter(
                     user=user, message=user_message, response=bot_message
                 )
                 .order_by("-question_timestamp")

@@ -5,10 +5,6 @@
  * This file is part of Wattelse, a NLP application suite.
  */
 
-// variables related to the page
-const chatHistory = document.querySelector('.chat-history');
-const userInput = document.querySelector('.input-field');
-const sendButton = document.querySelector('.send-button');
 
 const documentPanel = document.querySelector('.panel-container');
 const tabs = documentPanel.querySelectorAll('.tab');
@@ -32,19 +28,15 @@ const groupUsernamesList = document.getElementById("group-usernames-list");
 const addUsersInputField = document.getElementById("add-users-input-field");
 
 // variables related to Django templates
-const userName =  JSON.parse(document.getElementById('user_name').textContent);
 let availableDocs = JSON.parse(document.getElementById('available_docs').textContent);
-const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
 // separator used for streaming
 const SPECIAL_SEPARATOR = '¤¤¤¤¤';
 
 // messages
 const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte généré peut contenir des erreurs."
+const WELCOME_MSG = "Bonjour <span class='username'>"+userName+"</span> !"
 
-// feedback
-MAX_QUESTIONS_WITHOUT_FEEDBACK = 5
-FEEDBACK_TOLERANCE = 5  // random value for reminder messages
 
 // Message timeout
 const timeout = 120000; // 120 seconds timeout
@@ -66,7 +58,11 @@ function initializeLayout(){
     sendButton.addEventListener('click', () => {
             const userMessage = userInput.value.trim();
             if (userMessage) {
-                handleUserMessage(userMessage)
+                if (getSelectedFileNames("available-list").length ===0){
+                    createWarningMessage("Aucun document sélectionné.")
+                } else {
+                    handleUserMessage(userMessage)
+                }
             }
     });
 
@@ -74,7 +70,11 @@ function initializeLayout(){
         if (event.key === "Enter") { // Check if Enter key is pressed
             const userMessage = userInput.value.trim();
             if (userMessage) {
-                handleUserMessage(userMessage)
+                if (getSelectedFileNames("available-list").length ===0){
+                    createWarningMessage("Aucun document sélectionné.")
+                } else {
+                    handleUserMessage(userMessage)
+                }
             }
         }
     });
@@ -116,74 +116,10 @@ function initializeLayout(){
         });
     }
     //  Create welcome message
-    createWelcomeMessage();
+    createWelcomeMessage(WELCOME_MSG);
 }
 
-function updateAvailableDocuments(){
-    // Update the visible list of documents, after and before removal
-    // gather the list of active documents before the change
-    let previously_selected = getSelectedFileNames("available-list");
-
-    availableDocumentList.innerHTML="";
-    if (removalDocumentList) {
-        removalDocumentList.innerHTML="";
-    }
-
-    // Display documents to be selected
-    availableDocs.forEach((document) =>{
-        const listItem = createDocumentListItem(document);
-        availableDocumentList.appendChild(listItem);
-    });
-
-    // Display documents that can be removed
-    availableDocs.forEach((document) =>{
-        const listItem = createDocumentListItem(document);
-        if (removalDocumentList) {
-            removalDocumentList.appendChild(listItem);
-        }
-    });
-
-    // intersection of previous selection with  new available docs
-    newly_selected =  previously_selected.filter(x => availableDocs.includes(x));
-    // reset previously checked docs
-    setSelectedFileNames("available-list", newly_selected);
-}
-
-function handleUserMessage(userMessage) {
-    if (getSelectedFileNames("available-list").length ===0){
-        createWarningMessage("Aucun document sélectionné.")
-        return
-    }
-    // Remove last feedback div
-    const lastFeedbackDiv = document.querySelector('.feedback-section');
-    if (lastFeedbackDiv) {
-        lastFeedbackDiv.remove()
-    }
-
-    // Remove welcome message if it exists
-    removeWelcomeMessage();
-
-    // Diplsay user message
-    createUserMessage(userMessage);
-
-    // Post Message to RAG
-    postUserMessageToRAG(userMessage);
-
-    userInput.value = '';
-}
-
-// Helper function to check if the buffer contains a complete JSON object
-function isCompleteJSON(buffer) {
-  try {
-    JSON.parse(buffer);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-
-async function postUserMessageToRAG(userMessage) {
+async function postUserMessageToChatBot(userMessage) {
     // Handle too long response from backend
     const startTime = Date.now();
 
@@ -194,6 +130,8 @@ async function postUserMessageToRAG(userMessage) {
     const conversationId = chatHistory.id;
 
     // Create bot waiting div
+    // - Call first the function to activate the "Extracts" tab
+    activateTab("extracts");
     const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
     botDiv.classList.add("waiting-div", "animate");
     chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -289,39 +227,45 @@ async function postUserMessageToRAG(userMessage) {
     saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay)
 }
 
-function saveInteraction(conversationId, userMessage, botResponse, queryStartTimestamp, answerDelay) {
-    fetch('save_interaction/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfmiddlewaretoken,
-        },
-        body: JSON.stringify({
-            'conversation_id': conversationId,
-            'message': userMessage,
-            'answer': botResponse,
-            'question_timestamp': queryStartTimestamp,
-            'answer_delay': answerDelay,
-        })
-    })
-    .then((response) => {
-        // Handle successful requests
-        if (response.ok) {
-            // pass
+function updateAvailableDocuments(){
+    // Update the visible list of documents, after and before removal
+    // gather the list of active documents before the change
+    let previously_selected = getSelectedFileNames("available-list");
+
+    availableDocumentList.innerHTML="";
+    if (removalDocumentList) {
+        removalDocumentList.innerHTML="";
+    }
+
+    // Display documents to be selected
+    availableDocs.forEach((document) =>{
+        const listItem = createDocumentListItem(document);
+        availableDocumentList.appendChild(listItem);
+    });
+
+    // Display documents that can be removed
+    availableDocs.forEach((document) =>{
+        const listItem = createDocumentListItem(document);
+        if (removalDocumentList) {
+            removalDocumentList.appendChild(listItem);
         }
-        else {
-            // Handle errors caught in python backend
-            response.json().then(data => {
-                showPopup(data.message, error=true);
-            })
-            // Handle uncaught errors
-            .catch(error => {
-                showPopup("Erreur non interceptée", error=true);
-            })
-        }
-    })
+    });
+
+    // intersection of previous selection with  new available docs
+    newly_selected =  previously_selected.filter(x => availableDocs.includes(x));
+    // reset previously checked docs
+    setSelectedFileNames("available-list", newly_selected);
 }
 
+// Helper function to check if the buffer contains a complete JSON object
+function isCompleteJSON(buffer) {
+  try {
+    JSON.parse(buffer);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
 
 function deleteDocumentsInCollection(){
     const selectedFileNames = getSelectedFileNames("removal-list")
@@ -380,29 +324,6 @@ function updateRelevantExtracts(relevantExtracts){
     }
 }
 
-function createUserMessage(message) {
-    const userDiv = document.createElement('div');
-    userDiv.classList.add('user-message');
-    userDiv.innerHTML = message;
-    chatHistory.appendChild(userDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-}
-
-function createBotMessage(message, nextTab="extracts") {
-    const botDiv = document.createElement('div');
-    botDiv.classList.add('bot-message');
-    botDiv.innerHTML = message;
-    chatHistory.appendChild(botDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-
-    // Call the function to activate the "Extracts" tab
-    if (nextTab) {
-        activateTab(nextTab);
-    }
-
-    return botDiv;
-}
-
 function typeWriter(botDiv, message, typingSpeed, callback) {
     let index = 0;
 
@@ -417,37 +338,6 @@ function typeWriter(botDiv, message, typingSpeed, callback) {
     };
 
     type();
-}
-
-function createWelcomeMessage() {
-    chatHistory.innerHTML = `
-    <div class="welcome-container">
-        <div class="welcome-message">Bonjour <span class="username">${userName}</span> !<br>Posez une question sur les documents.</div>
-    </div>
-    `;
-}
-
-function removeWelcomeMessage() {
-    const welcomeMessage = document.querySelector(".welcome-container");
-    if (welcomeMessage) {
-        welcomeMessage.remove();
-    }
-}
-
-function createErrorMessage(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.classList.add('error-message');
-    errorDiv.innerHTML = message;
-    chatHistory.appendChild(errorDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
-}
-
-function createWarningMessage(message) {
-    const warningDiv = document.createElement('div');
-    warningDiv.classList.add('warning-message');
-    warningDiv.innerHTML = message;
-    chatHistory.appendChild(warningDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
 function activateTab(tabName) {
@@ -676,7 +566,6 @@ function iconSelector(filename) {
     }
 }
 
-
 // Add new user to user list in users management tab
 function addUserToUserList(username) {
     const listItem = document.createElement('li');
@@ -794,7 +683,6 @@ function addUserToGroup(newUsername) {
     addUsersInputField.value = "";
 }
 
-
 // Delete users
 function removeUserFromGroup(userNameToDelete) {
     if (confirm(`Voulez-vous vraiment supprimer ${userNameToDelete} ?`)) {
@@ -831,181 +719,6 @@ function removeUserFromGroup(userNameToDelete) {
     }
 }
 
-// Create a new conversation
-function newConversation() {
-    chatHistory.id = uuid4();
-    createWelcomeMessage();
-    extractList.innerHTML = "";
-    activateTab("documents");
-}
-
-// Functions to collect user feedback
-function provideFeedback(userMessage, botMessage) {
-    checkFeedbackCountSinceLastFeedback();
-
-    const feedbackSection = document.createElement('div');
-    feedbackSection.classList.add('feedback-section');
-
-    feedbackSection.innerHTML = `
-          <span class="emoji-rating"><span class="rating-great" title="Réponse parfaite"><i class="fa-solid fa-circle-check fa-xl"></i></span></span>
-          <span class="emoji-rating"><span class="rating-ok" title="Réponse acceptable"><i class="fa-solid fa-circle-half-stroke fa-xl"></i></span></span>
-          <span class="emoji-rating"><span class="rating-missing" title="Réponse incomplète"><i class="fa-solid fa-circle-minus fa-xl"></i></span></span>
-          <span class="emoji-rating"><span class="rating-wrong" title="Réponse fausse"><i class="fa-solid fa-circle-exclamation fa-xl"></i></span></span>
-          <button id="open-text-feedback">Réponse attendue</button> 
-        `;
-
-    chatHistory.appendChild(feedbackSection);
-
-    // Add click event listeners to each emoji rating element
-    const emojiRatings = document.querySelectorAll('.emoji-rating');
-    emojiRatings.forEach(emojiRating => emojiRating.addEventListener('click', (event) => handleEmojiRatingClick(event, userMessage, botMessage)));
-
-    const textFeedbackButton = document.getElementById('open-text-feedback');
-    textFeedbackButton.addEventListener('click', (event) => handleTextFeedbackClick(event, userMessage, botMessage));
-}
-
-function handleEmojiRatingClick(event, userMessage, botMessage) {
-  // Get the parent element (emoji-rating) of the clicked element
-  const ratingElement = event.currentTarget;
-
-  // Highlight the clicked element and remove highlight from siblings
-  const feedbackName = ratingElement.querySelector('span').className;
-  ratingElement.querySelector('span').classList.add('selected');
-
-  const ratings = ratingElement.parentElement.querySelectorAll('.emoji-rating');
-  for (const r of ratings){
-      if (r !== ratingElement){
-          r.querySelector('span').classList.remove('selected');
-      }
-  }
-
-  // send feedback for processing
-  if (feedbackName) {
-    sendFeedback("send_short_feedback/", feedbackName, userMessage, botMessage);
-  }
-}
-
-// Function to handle click on the text feedback button (optional)
-function handleTextFeedbackClick(event, userMessage, botMessage) {
-    const feedbackButton = event.currentTarget;
-    feedbackButton.classList.add('selected');
-
-    // Implement your logic for opening a text feedback form or modal here
-    let feedback = prompt("Veuillez saisir la réponse attendue. \nVotre réponse sera ajoutée à la FAQ du groupe.", "");
-
-    // send back answer
-    if (feedback){
-        sendFeedback("send_long_feedback/", feedback, userMessage, botMessage);
-    }
-}
 
 
-// Common function that sends feedback message
-function sendFeedback(endpoint, feedback, user_message, bot_message){
-    fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfmiddlewaretoken,
-        },
-        body: JSON.stringify({
-              'feedback': feedback,
-              'user_message': user_message,
-              'bot_message': bot_message,
-          })
-      })
-      .then((response) => {
-        // Handle successful requests
-        if (response.ok) {
-            response.json().then(data => {
-                showPopup(data.message);
-            })
-        }
-        else {
-            // Handle errors caught in python backend
-            response.json().then(data => {
-                showPopup(data.message, error=true);
-            })
-            // Handle uncaught errors
-            .catch(error => {
-                showPopup("Erreur non interceptée", error=true);
-            })
-        }
-    })
-}
 
-function uuid4() {
-    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-      (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
-    );
-}
-
-function checkFeedbackCountSinceLastFeedback() {
-    fetch('/get_questions_count_since_last_feedback/', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfmiddlewaretoken,
-        },
-    })
-    .then((response) => {
-        // Handle successful requests
-        if (response.ok) {
-            response.json().then(data => {
-                if (data.count  > MAX_QUESTIONS_WITHOUT_FEEDBACK +  Math.floor(Math.random() * FEEDBACK_TOLERANCE)) {
-                    createWarningMessage("N'oubliez pas de donner du feedback svp !")
-                }
-            })
-        }
-        else {
-            // Handle errors caught in python backend
-            response.json().then(data => {
-                showPopup(data.message, error=true);
-            })
-            // Handle uncaught errors
-            .catch(error => {
-                showPopup("Erreur non interceptée", error=true);
-            })
-        }
-    })
-}
-
-
-let popupTimeout; // needed to avoid removing popup that is already removed
-
-function showPopup(message, error = false) {
-    // Delete any existing popups
-    const existingPopups = document.querySelector('.popup');
-    if (existingPopups) {
-        existingPopups.remove(); // Remove the old popup immediately
-        clearTimeout(popupTimeout); // Cancel any timeout if a new popup is created
-    }
-
-    // Create a new popup element
-    const popup = document.createElement('div');
-    popup.className = 'popup';
-    popup.innerHTML = message;
-    if (error) {
-        popup.style.backgroundColor = "crimson";
-    } else {
-        popup.style.backgroundColor = "mediumseagreen";
-    }
-    document.body.appendChild(popup);
-
-    // Show the popup with a fade-in effect
-    setTimeout(() => {
-        popup.style.display = 'block';
-        popup.style.opacity = '1';
-    }, 100); // Slight delay for smoother transition
-
-    // Set a timeout to hide and remove the popup
-    popupTimeout = setTimeout(() => {
-        popup.style.opacity = '0'; // Fade out
-        setTimeout(() => {
-            popup.style.display = 'none';
-            if (popup.parentNode) {
-                document.body.removeChild(popup); // Remove the popup from DOM after fading out
-            }
-        }, 500); // Wait for fade-out to finish
-    }, 3000);
-}

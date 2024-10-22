@@ -5,33 +5,35 @@
 
 import json
 import os
+import uuid
 
 from loguru import logger
 
 from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render, redirect
 
-from openai import OpenAI
+from wattelse.api.openai.client_openai_api import OpenAI_Client
+from .models import GPTChat
+from .utils import streaming_generator_llm, get_conversation_history
 
-from .utils import streaming_generator_llm
+# NUMBER MAX OF TOKENS
+MAX_TOKENS = 1536
 
 # Uses environment variables to configure the openai API
-api_key = os.getenv("LOCAL_OPENAI_API_KEY")
+var_prefix = "AZURE_SE_WATTELSE_"
+api_key = os.getenv(f"{var_prefix}OPENAI_API_KEY")
 if not api_key:
     logger.error(
-        "WARNING: OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services."
+        f"WARNING: {var_prefix}OPENAI_API_KEY environment variable not found. Please set it before using OpenAI services."
     )
-    raise EnvironmentError(f"LOCAL_OPENAI_API_KEY environment variable not found.")
-endpoint = os.getenv("LOCAL_OPENAI_ENDPOINT", None)
+    raise EnvironmentError(
+        f"{var_prefix}OPENAI_API_KEY environment variable not found."
+    )
+endpoint = os.getenv(f"{var_prefix}OPENAI_ENDPOINT", None)
 if endpoint == "":  # check empty env var
     endpoint = None
-model_name = os.getenv("LOCAL_OPENAI_DEFAULT_MODEL_NAME", None)
-
-llm_config = {
-    "api_key": api_key,
-    "base_url": endpoint,
-}
-LLM_CLIENT = OpenAI(**llm_config)
+model_name = os.getenv(f"{var_prefix}OPENAI_DEFAULT_MODEL_NAME", None)
+LLM_CLIENT = OpenAI_Client(api_key=api_key, endpoint=endpoint, model=model_name)
 
 
 def request_client(request):
@@ -46,22 +48,38 @@ def request_client(request):
     # If request method is POST, call OpenAI client
     # Else render template
     if request.method == "POST":
-        # Get conversation history
-        history = json.loads(request.body)
-        if not history:
-            logger.warning(f"[User: {request.user.username}] No user message received")
-            error_message = "Veuillez saisir une question"
-            return JsonResponse({"error_message": error_message}, status=500)
-        logger.info(
-            f"[User: {request.user.username}] Message: {history[-1]['content']}"
+        # Get request data
+        data = json.loads(request.body)
+
+        # Get conversation id
+        conversation_id = uuid.UUID(data.get("conversation_id"))
+
+        # Get user chat history
+        history = get_conversation_history(
+            request.user, conversation_id, ChatModel=GPTChat
         )
+
+        # Get posted message
+        user_message = data.get("message", None)
+
+        # Check message is not empty
+        if not user_message:
+            logger.warning(f"[User: {request.user.username}] No user message received")
+            return JsonResponse({"message": "Aucune question reçue"}, status=500)
+
+        # Log message
+        logger.info(f"[User: {request.user.username}] Query: {user_message}")
+
+        if not history:
+            history = []
+        messages = history + [{"role": "user", "content": user_message}]
 
         # Query LLM
         try:
-            response = LLM_CLIENT.chat.completions.create(
-                messages=history,
-                model=model_name,
+            response = LLM_CLIENT.generate_from_history(
+                messages=messages,
                 stream=True,
+                max_tokens=MAX_TOKENS,
             )
             return StreamingHttpResponse(
                 streaming_generator_llm(response),

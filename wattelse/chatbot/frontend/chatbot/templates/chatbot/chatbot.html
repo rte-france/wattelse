@@ -35,7 +35,7 @@
                 <input type="text" class="input-field"
                     placeholder="Entrez votre question en lien avec les documents fournis..." />
                 <button class="send-button" title="Envoyer le message"><i class="fa-solid fa-paper-plane"></i></button>
-                <button class="new-conversation-button" onclick="newConversation()" title="Commencer une nouvelle discussion"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
+                <button class="new-conversation-button" onclick="newConversation(); extractList.innerHTML = ''; activateTab('documents');" title="Commencer une nouvelle discussion"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
             </div>
             <div class="disclaimer">
                 WattElse peut afficher des informations inexactes. Vérifiez ses réponses.
@@ -173,7 +173,8 @@
 
 <!-- Load script for chatbot page -->
 {% load static %}
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="{% static 'chatbot/marked.min.js' %}"></script>
+<script src="{% static 'chatbot/common_functions.js' %}"></script>
 <script src="{% static 'chatbot/chatbot_functions_v3.js' %}"></script>
 
 {% endblock %}

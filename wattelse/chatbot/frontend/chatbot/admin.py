@@ -4,7 +4,7 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 from django.contrib import admin
-from .models import Chat
+from .models import Chat, GPTChat
 
 
 class ChatAdmin(admin.ModelAdmin):
@@ -17,6 +17,8 @@ class ChatAdmin(admin.ModelAdmin):
         "question_timestamp",
         "answer_timestamp",
         "answer_delay",
+        "short_feedback",
+        "long_feedback",
     )
     list_filter = (
         "user_id",
@@ -25,8 +27,10 @@ class ChatAdmin(admin.ModelAdmin):
         "question_timestamp",
         "answer_timestamp",
         "answer_delay",
+        "short_feedback",
     )
 
 
 # Register your models here.
 admin.site.register(Chat, ChatAdmin)
+admin.site.register(GPTChat, ChatAdmin)

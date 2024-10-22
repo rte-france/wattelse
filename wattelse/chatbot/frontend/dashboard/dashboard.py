@@ -10,15 +10,21 @@ import streamlit as st
 import sqlite3
 
 from pathlib import Path
+
+from pandas.core.dtypes.cast import maybe_infer_to_datetimelike
 from plotly.express import bar
 import plotly.graph_objects as go
+from streamlit import session_state
 
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 from wattelse.chatbot.frontend.django_chatbot.settings import DB_DIR
 
 DB_PATH = DB_DIR / "db.sqlite3"
-DATA_TABLE = "chatbot_chat"
+DATA_TABLE_RAG = "chatbot_chat"
+DATA_TABLE_GPT = "chatbot_gptchat"
 USER_TABLE = "auth_user"
+
+DATA_TABLES = {"RAG": DATA_TABLE_RAG, "SecureGPT": DATA_TABLE_GPT}
 
 # Feedback identifiers in the database
 GREAT = "great"
@@ -49,11 +55,12 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
 
     # Get column names from the table
     cur = con.cursor()
+    table = DATA_TABLES[st.session_state["selected_table"]]
     cur.execute(
         f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, answer_delay,"
         f"short_feedback, long_feedback "
-        f"FROM {DATA_TABLE}, {USER_TABLE} "
-        f"WHERE {DATA_TABLE}.user_id = {USER_TABLE}.id"
+        f"FROM {table}, {USER_TABLE} "
+        f"WHERE {table}.user_id = {USER_TABLE}.id"
     )
     column_names = [
         desc[0] for desc in cur.description
@@ -102,15 +109,19 @@ def side_bar():
 
         # Select time range
         min_max = st.session_state["full_data"]["answer_timestamp"].agg(["min", "max"])
+        min_date = min_max["min"].to_pydatetime()
+        max_date = min_max["max"].to_pydatetime()
         if "timestamp_range" not in st.session_state:
             st.session_state["timestamp_range"] = (
-                min_max["min"].to_pydatetime(),
-                min_max["max"].to_pydatetime(),
+                min_date,
+                max_date,
             )
         st.slider(
             "Select the range of timestamps",
-            min_value=min_max["min"].to_pydatetime(),
-            max_value=min_max["max"].to_pydatetime(),
+            min_value=min_date,
+            max_value=(
+                max_date if min_date != max_date else min_date + pd.Timedelta(minutes=1)
+            ),  # to avoid slider errors
             key="timestamp_range",
         )
 
@@ -349,12 +360,23 @@ def check_password():
 
 
 def main():
+    if "selected_table" not in st.session_state:
+        st.session_state["selected_table"] = list(DATA_TABLES)[0]
+
     # Wide layout
-    st.set_page_config(page_title="Wattelse dashboard", layout="wide")
+    st.set_page_config(
+        page_title=f"Wattelse dashboard for {st.session_state['selected_table']}",
+        layout="wide",
+    )
 
     # Title
-    st.title("Wattelse dashboard")
-
+    st.title(f"Wattelse dashboard for {st.session_state['selected_table']}")
+    st.selectbox(
+        "Data: RAG or secureGPT?",
+        list(DATA_TABLES.keys()),
+        placeholder="Select data table (RAG or secureGPT)",
+        key="selected_table",
+    )
     # Password
     if not check_password():
         st.stop()  # Do not continue if check_password is not True.

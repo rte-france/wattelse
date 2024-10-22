@@ -35,10 +35,11 @@
                 <input type="text" class="input-field"
                     placeholder="Entrez votre question..." />
                 <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
-                <button class="new-conversation-button" onclick="newConversation()"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
+                <button class="new-conversation-button" onclick="newConversation();"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
             </div>
             <div class="disclaimer">
-                LLM : {{ llm_name }}
+                LLM : {{ llm_name }}<br>
+                Ce modèle peut générer des informations inexactes. Vérifiez ses réponses.
             </div>
         </div>
     </div>
@@ -53,7 +54,8 @@
 
 <!-- Load script for chatbot page -->
 {% load static %}
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="{% static 'chatbot/marked.min.js' %}"></script>
+<script src="{% static 'chatbot/common_functions.js' %}"></script>
 <script src="{% static 'chatbot/secureGPT_functions.js' %}"></script>
 
 {% endblock %}
