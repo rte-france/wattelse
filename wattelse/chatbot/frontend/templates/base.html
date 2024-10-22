@@ -8,9 +8,19 @@
 <!DOCTYPE html>
 <html lang="en">
 
+
 <head>
     <meta charset="utf-8">
-    <title>WattElse</title>
+    <title></title>
+    <script>
+        let llm_title ;
+        if (window.location.pathname.includes("llm")) {
+                llm_title = "Wattelse GPT";
+        } else {
+                llm_title = "Wattelse Doc"  ;
+        }
+        document.title = llm_title;
+    </script>
     {% load static %}
 
     <!-- Use FonteAwsome icons : https://fontawesome.com/ -->
@@ -36,7 +46,10 @@
 
         <!-- WattElse title on the top-left -->
         <a href="/" class="wattelse-title">
-            <i class="fa-solid fa-bolt-lightning" style="color: var(--main-color);"></i>WattElse
+            <i class="fa-solid fa-bolt-lightning" style="color: var(--main-color);"></i>
+            <script>
+               document.write(llm_title);
+            </script>
         </a>
 
         <!-- If admin, add changing group form -->
