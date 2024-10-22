@@ -30,6 +30,7 @@ class OpenAI_Client:
         api_key: str = None,
         endpoint: str = None,
         model: str = None,
+        temperature: float = DEFAULT_TEMPERATURE,
         api_version: str = AZURE_API_VERSION,
     ):
         if not api_key:
@@ -70,7 +71,7 @@ class OpenAI_Client:
                 **azure_params,
             )
         self.model_name = model if model else os.getenv("OPENAI_DEFAULT_MODEL_NAME")
-        self.temperature = DEFAULT_TEMPERATURE
+        self.temperature = temperature
         self.max_tokens = DEFAULT_MAX_TOKENS
 
     def generate(
