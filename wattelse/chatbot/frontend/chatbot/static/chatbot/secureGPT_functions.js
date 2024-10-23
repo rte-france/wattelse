@@ -49,9 +49,10 @@ async function postUserMessageToChatBot(userMessage) {
         tempDiv.innerHTML = `<li class="active" id="${conversationId}" onclick="getConversationHistory(this, '${conversationId}')">${userMessage}</li>`;
         const newListItem = tempDiv.firstChild;
         todayListHistory.insertBefore(newListItem, todayListHistory.firstChild);
+
+        // Remove old active conversation
+        removeActiveConversation();
     }
-    // Remove old active conversation
-    removeActiveConversation()
 
 
     // Create bot waiting div
