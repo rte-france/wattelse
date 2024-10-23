@@ -23,10 +23,11 @@ function initializeLayout(){
     });
 
     userInput.addEventListener('keydown', (event) => {
-        if (event.key === "Enter") { // Check if Enter key is pressed
+        if (event.key === "Enter" && !event.shiftKey) { // Check if Enter key is pressed
+            event.preventDefault();
             const userMessage = userInput.value.trim();
             if (userMessage) {
-                handleUserMessage(userMessage)
+                handleUserMessage(userMessage);
             }
         }
     });

@@ -30,12 +30,12 @@
         
         <!-- Message input field (everything in this div will be fixed at the bottom) -->
         <div class="chat-container-bottom">
-            {% csrf_token %}
             <div class="chat-input">
-                <input type="text" class="input-field"
-                    placeholder="Entrez votre question..." />
-                <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
-                <button class="new-conversation-button" onclick="newConversation();"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
+                <textarea type="text" class="input-field" placeholder="Entrez votre question..."></textarea>
+                <div class="chat-button-container">
+                    <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
+                    <button class="new-conversation-button" onclick="newConversation();"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
+                </div>
             </div>
             <div class="disclaimer">
                 LLM : {{ llm_name }}<br>
