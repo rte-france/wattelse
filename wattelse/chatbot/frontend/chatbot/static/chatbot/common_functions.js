@@ -93,7 +93,7 @@ function removeWelcomeMessage() {
 function createUserMessage(message) {
     const userDiv = document.createElement('div');
     userDiv.classList.add('user-message');
-    userDiv.innerHTML = message;
+    userDiv.textContent = message;
     chatHistory.appendChild(userDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
