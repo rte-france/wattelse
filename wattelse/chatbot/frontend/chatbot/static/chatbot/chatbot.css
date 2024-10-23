@@ -653,3 +653,17 @@ color: var(--complementary-color);
 .conversations-container p {
   font-weight: 700;
 }
+.conversations-container details {
+  background: rgb(243, 243, 243);
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.conversations-container details summary {
+  font-weight: 700;
+  cursor: pointer;
+  user-select: None;
+  transition: margin 150ms ease-out;
+  list-style-type: none;
+}

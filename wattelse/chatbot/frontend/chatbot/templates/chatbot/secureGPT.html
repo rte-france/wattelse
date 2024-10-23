@@ -46,28 +46,38 @@
 
     <!-- Panel container -->
     <div class="conversations-container">
-        <p>Aujourd'hui</p>
-        <ul id="today-history">
-            {% for conversation in conversations.today %}
-                <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
-            {% endfor %}
-        </ul>
-        <hr>
+        <details open>
+            <summary>
+                Aujourd'hui
+            </summary>
+            <ul id="today-history">
+                {% for conversation in conversations.today %}
+                    <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                {% endfor %}
+            </ul>
+        </details>
 
-        <p>7 derniers jours</p>
-        <ul id="last-week-history">
-            {% for conversation in conversations.last_week %}
-                <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
-            {% endfor %}
-        </ul>
-        <hr>
+        <details>
+            <summary>
+                7 derniers jours
+            </summary>
+            <ul id="last-week-history">
+                {% for conversation in conversations.last_week %}
+                    <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                {% endfor %}
+            </ul>
+        </details>
 
-        <p>Archives</p>
-        <ul id="archives-history">
-            {% for conversation in conversations.others %}
-                <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
-            {% endfor %}
-        </ul>
+        <details>
+            <summary>
+                Archives
+            </summary>
+            <ul id="archives-history">
+                {% for conversation in conversations.others %}
+                    <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                {% endfor %}
+            </ul>
+        </details>
     </div>
 </div>
 
