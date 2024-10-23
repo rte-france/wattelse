@@ -47,15 +47,16 @@ async function postUserMessageToChatBot(userMessage) {
     if (chatHistory.childElementCount < 2) {
         let todayListHistory = document.getElementById("today-history");
         const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = `<li class="active" id="${conversationId}" onclick="getConversationHistory(this, '${conversationId}')">${userMessage}</li>`;
+        tempDiv.innerHTML = `<li class="active" id="${conversationId}" onclick="getConversationHistory(this, '${conversationId}')"></li>`;
         const newListItem = tempDiv.firstChild;
+        newListItem.textContent = userMessage;
         todayListHistory.insertBefore(newListItem, todayListHistory.firstChild);
 
         // Remove old active conversation
         removeActiveConversation();
     }
 
-
+    
     // Create bot waiting div
     const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
     botDiv.classList.add("waiting-div", "animate");
