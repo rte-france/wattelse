@@ -661,5 +661,4 @@ color: var(--complementary-color);
   cursor: pointer;
   user-select: None;
   transition: margin 150ms ease-out;
-  list-style-type: none;
 }
