@@ -70,6 +70,13 @@
         
         <!-- Buttons on the top-right -->
         <div class="top-right-tabs-list">
+            <script>
+                if (llm_title === "WattElse GPT") {
+                    document.write(`<a href="/" class="change-app">➤ Doc</a>`);
+                } else {
+                    document.write(`<a href="/llm" class="change-app">➤ GPT</a>`);
+                }
+             </script>
             {% if user.is_superuser %}
                 <a href="/dashboard" target="_blank" class="tabs"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
             {% endif %}
