@@ -632,10 +632,11 @@ color: var(--complementary-color);
   font-size: 0.9em;
 }
 
-.conversations-container li:hover {
+.conversations-container li:hover,
+.conversations-container li.active {
   box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
   cursor: pointer;
-  background-color: #f0f0f0;
+  font-weight: 600;
 }
 
 .conversations-container li::before {
@@ -643,11 +644,6 @@ color: var(--complementary-color);
   font-family: FontAwesome;
   margin-right: 0.5rem;
   color: var(--main-color);
-}
-
-.conversations-container li.active {
-  background-color: #f0f0f0;
-  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
 }
 
 .conversations-container p {
