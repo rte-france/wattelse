@@ -181,13 +181,17 @@
 .new-conversation-button {
     padding: 0.5rem 0.5rem;
     border: none;
-    border-radius: 0 5px 5px 0;
     background-color: var(--main-color);
     color: white;
     font-weight: 600;
 }
 
+.send-button {
+  border-radius: 0 7px 0 0;
+}
+
 .new-conversation-button {
+  border-radius: 0 0 7px 0;
   background-color: var(--complementary-color);
 }
 

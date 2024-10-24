@@ -47,8 +47,8 @@ LLM_CLIENT = OpenAI_Client(**llm_config)
 LLM_MAPPING = {
     "wattelse-gpt35": "gpt-3.5",
     "wattelse-gpt4": "gpt-4",
-    "wattelse-gpt4o-mini-sweden": "gpt4o-mini",
-    "wattelse-gpt4o-sweden": "gpt4o",
+    "wattelse-gpt4o-mini-sweden": "gpt-4o-mini",
+    "wattelse-gpt4o-sweden": "gpt-4o",
 }
 
 
