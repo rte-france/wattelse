@@ -8,7 +8,9 @@
 
 // variables
 const WELCOME_MSG = "Bonjour <span class='username'>"+userName+"</span> !";
-const DISCLAIMER = "<br><span class='disclaimer-usage'>WattElse GPT est destiné à un usage professionnel. Chaque utilisation génère des coûts, merci de l'employer de façon responsable et en lien direct avec vos missions. <br>Veillez à ne pas divulguer d'informations sensibles (C3, C4).</span>"
+const DISCLAIMER = "<i class=\"fa-solid fa-user-tie\"></i> WattElse GPT est reservé à un usage professionnel.<br>" +
+    "<i class=\"fa-solid fa-sack-dollar\"></i> Chaque utilisation génère des coûts, merci de l'employer de façon responsable.<br>" +
+    "<i class=\"fa-solid fa-lock\"></i></i> Veillez à ne pas divulguer d'informations sensibles (C3, C4)."
 
 // initialize layout
 initializeLayout();
@@ -37,7 +39,7 @@ function initializeLayout(){
     });
 
     //  Create welcome message
-    createWelcomeMessage(WELCOME_MSG + DISCLAIMER);
+    createWelcomeMessage(WELCOME_MSG, DISCLAIMER);
 }
 
 async function postUserMessageToChatBot(userMessage) {
