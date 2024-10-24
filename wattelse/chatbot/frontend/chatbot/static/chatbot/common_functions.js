@@ -81,12 +81,19 @@ function showPopup(message, error = false) {
 }
 
 // Display a welcome message
-function createWelcomeMessage(message) {
+function createWelcomeMessage(message, disclaimer="") {
     chatHistory.innerHTML = `
     <div class="welcome-container">
         <div class="welcome-message">${message}</div>
     </div>
     `;
+    if (disclaimer){
+        chatHistory.innerHTML = chatHistory.innerHTML + `
+        <div class="disclaimer-container">
+            <div class="disclaimer-usage">${disclaimer}</div>
+        </div>
+        `
+    }
 }
 
 // Remove a welcome message
@@ -138,7 +145,7 @@ function createBotMessage(message) {
 // Create a new conversation
 function newConversation() {
     chatHistory.id = uuid4();
-    createWelcomeMessage(WELCOME_MSG+DISCLAIMER);
+    createWelcomeMessage(WELCOME_MSG, DISCLAIMER);
     removeActiveConversation();
 }
 
