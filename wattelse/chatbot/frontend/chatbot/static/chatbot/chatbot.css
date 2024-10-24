@@ -198,6 +198,13 @@
     font-size: 0.7rem;
 }
 
+.disclaimer-usage{
+    margin-top: 5px;
+    color: var(--main-color);
+    text-align: center;
+    font-size: 0.7rem;
+}
+
 /* *************** */
 /* Panel container */
 /* *************** */
