@@ -33,6 +33,10 @@ function uuid4() {
     );
 }
 
+function is_gpt_page() {
+    return window.location.pathname.includes("/llm");
+}
+
 ///////////////////////// DISPLAY FUNCTIONS ///////////////////////////////
 // Display a pop-up
 function showPopup(message, error = false) {
@@ -130,7 +134,7 @@ function createBotMessage(message) {
 // Create a new conversation
 function newConversation() {
     chatHistory.id = uuid4();
-    createWelcomeMessage(WELCOME_MSG);
+    createWelcomeMessage(WELCOME_MSG+DISCLAIMER);
     removeActiveConversation();
 }
 
@@ -239,8 +243,11 @@ function provideFeedback(userMessage, botMessage) {
           <span class="emoji-rating"><span class="rating-ok" title="Réponse acceptable"><i class="fa-solid fa-circle-half-stroke fa-xl"></i></span></span>
           <span class="emoji-rating"><span class="rating-missing" title="Réponse incomplète"><i class="fa-solid fa-circle-minus fa-xl"></i></span></span>
           <span class="emoji-rating"><span class="rating-wrong" title="Réponse fausse"><i class="fa-solid fa-circle-exclamation fa-xl"></i></span></span>
-          <button id="open-text-feedback">Réponse attendue</button> 
         `;
+
+    if (! is_gpt_page()) {
+        feedbackSection.innerHTML = feedbackSection.innerHTML + '<button id="open-text-feedback">Réponse attendue</button>';
+    }
 
     chatHistory.appendChild(feedbackSection);
 
@@ -248,8 +255,10 @@ function provideFeedback(userMessage, botMessage) {
     const emojiRatings = document.querySelectorAll('.emoji-rating');
     emojiRatings.forEach(emojiRating => emojiRating.addEventListener('click', (event) => handleEmojiRatingClick(event, userMessage, botMessage)));
 
-    const textFeedbackButton = document.getElementById('open-text-feedback');
-    textFeedbackButton.addEventListener('click', (event) => handleTextFeedbackClick(event, userMessage, botMessage));
+    if (!is_gpt_page()) {
+        const textFeedbackButton = document.getElementById('open-text-feedback');
+        textFeedbackButton.addEventListener('click', (event) => handleTextFeedbackClick(event, userMessage, botMessage));
+    }
 }
 
 
