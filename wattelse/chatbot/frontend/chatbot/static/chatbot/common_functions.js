@@ -102,6 +102,10 @@ function removeWelcomeMessage() {
     if (welcomeMessage) {
         welcomeMessage.remove();
     }
+    const disclaimerMessage = document.querySelector(".disclaimer-container");
+    if (disclaimerMessage) {
+        disclaimerMessage.remove();
+    }
 }
 
 // Display a user message
