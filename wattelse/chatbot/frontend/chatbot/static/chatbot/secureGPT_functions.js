@@ -13,6 +13,9 @@ const DISCLAIMER = "<br><span class='disclaimer'>WattElse GPT est destiné à un
 // initialize layout
 initializeLayout();
 
+// change default color scheme
+setMainColor("#2AAA8A"); // Jungle Green
+
 // ####################### Definition of functions ########################################
 function initializeLayout(){
 
