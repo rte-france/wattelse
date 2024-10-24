@@ -53,13 +53,6 @@
                 document.write(llm_title);
                 </script>
             </a>
-            <script>
-                if (llm_title === "WattElse GPT") {
-                    document.write(`<a href="/" class="change-app">➤ <i class="fa-solid fa-bolt-lightning"></i> Doc</a>`);
-                } else {
-                    document.write(`<a href="/llm" class="change-app">➤ <i class="fa-solid fa-bolt-lightning"></i> GPT</a>`);
-                }
-             </script>
         </div>
 
         <!-- If admin, add changing group form -->
@@ -80,6 +73,14 @@
         
         <!-- Buttons on the top-right -->
         <div class="top-right-tabs-list">
+            <script>
+                if (llm_title === "WattElse GPT") {
+                    document.write(`<a href="/" class="change-app doc"><i class="fa-solid fa-chevron-right"></i>&nbsp;&nbsp;<i class="fa-solid fa-bolt-lightning"></i> Doc</a>`);
+                } else {
+                    document.write(`<a href="/llm" class="change-app gpt"><i class="fa-solid fa-chevron-right"></i>&nbsp;&nbsp;<i class="fa-solid fa-bolt-lightning"></i> GPT</a>`);
+                }
+            </script>
+
             {% if user.is_superuser %}
                 <a href="/dashboard" target="_blank" class="tabs"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
             {% endif %}

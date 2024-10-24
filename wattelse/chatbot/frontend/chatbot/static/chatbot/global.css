@@ -111,11 +111,20 @@ a {
 .change-app {
   font-size: 1.2em;
   font-weight: 600;
-  background-color: var(--main-color);
   color: white;
   border-radius: 5px;
   padding: 2px 8px;
   margin: 0px 15px;
+}
+
+.change-app.doc {
+  background-color: cornflowerblue;
+  border: solid 2px royalblue;
+}
+
+.change-app.gpt {
+  background-color: #2AAA8A;
+  border: solid 2px green;
 }
 
 .change-app:hover {
