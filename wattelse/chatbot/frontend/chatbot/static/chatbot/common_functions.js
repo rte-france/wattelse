@@ -37,6 +37,10 @@ function is_gpt_page() {
     return window.location.pathname.includes("/llm");
 }
 
+function setMainColor(newColor) {
+  document.documentElement.style.setProperty('--main-color', newColor);
+}
+
 ///////////////////////// DISPLAY FUNCTIONS ///////////////////////////////
 // Display a pop-up
 function showPopup(message, error = false) {
