@@ -1,60 +1,169 @@
-#  Copyright (c) 2024, RTE (https://www.rte-france.com)
-#  See AUTHORS.txt
-#  SPDX-License-Identifier: MPL-2.0
-#  This file is part of Wattelse, a NLP application suite.
-
 import re
 import typer
-import json
-from loguru import logger
-import numpy as np
 import pandas as pd
-
+import numpy as np
+from loguru import logger
 from pathlib import Path
-from bert_score import score
-
+from tqdm import tqdm
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.chatbot.eval.prompt import EVAL_LLM_PROMPT
+from wattelse.chatbot.eval.prompt import (
+    CONTEXT_PRECISION_PROMPT,
+    CONTEXT_GROUNDEDNESS_PROMPT,
+)
 
-QUERY_COLUMN = "query"
+# Example :
+# python main.py QA_GENE.xlsx data/test_gen --report-output-path data/eval_output_update-Precision20.xlsx
+
+# Updated column names to match new format
+QUERY_COLUMN = "question"
 ANSWER_COLUMN = "answer"
-DOC_LIST_COLUMN = "doc_list"
-# These characters will be removed from `relavant_extracts` for better readability
+DOC_LIST_COLUMN = "source_doc"
+CONTEXT_COLUMN = "context"
+COMPLEXITY_COLUMN = "complexity"
+RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
+
+# Characters to be removed from relevant extracts for better readability
 SPECIAL_CHARACTER_FILTER = (
     r"[\t\n\r\x07\x08\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009]"
 )
 
+# Define the Typer app
+app = typer.Typer()
 
+def call_llm(llm_client, prompt: str):
+    """Function to call the LLM with the given prompt."""
+    response = llm_client.generate(prompt, temperature=0)
+    return response
+
+def evaluate_metrics(llm_client, question, context_extracted):
+    """Function to evaluate multiple metrics using the LLM."""
+    total_chunks = len(context_extracted.split("\n\n"))
+
+    # Evaluate precision
+    precision_eval = call_llm(llm_client, CONTEXT_PRECISION_PROMPT.format(
+        question=question,
+        retrieved_contexts=context_extracted,
+        total_chunks=total_chunks
+    ))
+
+    # Evaluate groundedness
+    groundedness_eval = call_llm(llm_client, CONTEXT_GROUNDEDNESS_PROMPT.format(
+        retrieved_contexts=context_extracted,
+        question=question,
+    ))
+
+    evaluations = {}
+
+    # Process precision evaluation
+    logger.debug(f"Precision LLM response: {precision_eval}")
+    # Updated regex to capture both integer and decimal numbers
+    precision_score_line = precision_eval.split("Précision : ")[-1].split("\n")[0].strip()
+    precision_score_match = re.search(r"(\d+([,.]\d+)?)", precision_score_line)  # Updated regex to capture integers like "0" and decimals
+
+    evaluations["precision_evaluation"] = precision_eval
+    # Extract precision score, handling both integers and decimals
+    evaluations["precision_score"] = float(precision_score_match.group(1).replace(',', '.')) if precision_score_match else np.nan
+
+    logger.debug(f"Groundedness LLM response: {groundedness_eval}")
+    # Extract evaluations and scores for groundedness
+    evaluations["groundedness"] = groundedness_eval.split("Évaluation : ")[-1].split("Note totale :")[0].strip()
+    evaluations["groundedness_score"] = groundedness_eval.split("Note totale :")[-1].strip()
+
+    return evaluations
+
+
+def evaluate_rag_metrics(eval_df):
+    llm_client = OpenAI_Client()   # Initialize the LLM client for critique
+    logger.info(f"LLM Evaluation model: {llm_client.model_name}")
+
+    evaluations = []
+
+    # Use tqdm for progress tracking
+    for idx, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Evaluating Multiple Metrics"):
+        try:
+            question = row[QUERY_COLUMN]
+            context_extracted = row[RAG_RELEVANT_EXTRACTS_COLUMN]
+
+            # Ensure context is not empty
+            if not context_extracted.strip():
+                logger.warning(f"Empty context for question {idx}: {question}")
+                evaluations.append({
+                    "question": question,
+                    "evaluation": "No context provided",
+                    "precision_score": "No context provided",
+                    "groundedness": "No context provided",
+                    "groundedness_score": "No context provided"
+                })
+                continue
+
+            logger.debug(f"Evaluating metrics for question {idx}: {question}")
+
+            # Evaluate all metrics
+            eval_results = evaluate_metrics(llm_client, question, context_extracted)
+
+            # Add question and results to evaluation list
+            eval_entry = {
+                "question": question
+            }
+            eval_entry.update(eval_results)
+            evaluations.append(eval_entry)
+
+            logger.info(f"Evaluations for question {idx}: {eval_results}")
+
+        except Exception as e:
+            logger.error(f"Error evaluating metrics for row {idx}: {e}")
+            evaluations.append({
+                "question": row[QUERY_COLUMN],
+                "evaluation": "Error during evaluation",
+                "precision_score": "Error during evaluation",
+                "groundedness": "Error during evaluation",
+                "groundedness_score": "Error during evaluation",
+            })
+
+    # Convert evaluations to DataFrame
+    evaluation_df = pd.DataFrame(evaluations)
+    eval_df = eval_df.join(evaluation_df.set_index("question"), on=QUERY_COLUMN, rsuffix="_eval")
+    return eval_df
+
+def extract_numeric(score):
+    """Function to extract numeric values from score strings, handling 0 correctly."""
+    try:
+        # Extract the numeric part of the score
+        numeric_score = re.search(r"(\d+(\.\d+)?)", str(score))
+        if numeric_score:
+            return float(numeric_score.group(1))
+        else:
+            return np.nan
+    except Exception:
+        return np.nan
+
+
+@app.command()
 def main(
     qr_df_path: Path,
     eval_corpus_path: Path,
-    output_path: Path = Path(__file__).parent / "eval_output.xlsx",
-    compute_bertscores: bool = True,
+    report_output_path: Path = Path(__file__).parent / "report_output.xlsx"  # Default RAG output path
 ):
     """
     Function to evaluate the generation part of the RAG pipeline.
-    Currently supports BERTScore and LLM as a judge as metrics.
+    Currently supports multiple metrics (Precision, Groundedness).
     """
-
     # Initialize RAG backend and LLM client
     eval_group_id = "rag_eval"
-
-    RAGBackEnd(eval_group_id).clear_collection()  # ensure RAG eval backend is empty
+    RAGBackEnd(eval_group_id).clear_collection()  # Ensure RAG eval backend is empty
     RAG_EVAL_BACKEND = RAGBackEnd(eval_group_id)
     logger.info(f"RAG Backend LLM: {RAG_EVAL_BACKEND.llm.model_name}")
 
-    EVAL_LLM_CLIENT = OpenAI_Client()
-    logger.info(f"RAG evaluator LLM: {EVAL_LLM_CLIENT.model_name}")
-
     # Load data
     eval_df = pd.read_excel(qr_df_path)
-    # Transform "doc_list" column from string to list
-    eval_df["doc_list"] = eval_df["doc_list"].apply(lambda x: json.loads(x))
+
+    # Transform source_doc to list for processing
+    eval_df[DOC_LIST_COLUMN] = eval_df[DOC_LIST_COLUMN].apply(lambda x: [x] if pd.notnull(x) else [])
 
     # Check all documents listed in `doc_list` are present in `eval_corpus_path` folder
     all_doc_list = set(
-        [item for sublist in eval_df["doc_list"].to_list() for item in sublist]
+        [item for sublist in eval_df[DOC_LIST_COLUMN].to_list() for item in sublist]
     )
     all_eval_corpus_files = set([doc.name for doc in eval_corpus_path.iterdir()])
     for doc in all_doc_list:
@@ -62,8 +171,7 @@ def main(
             raise ValueError(f"Document {doc} not found in eval corpus folder")
 
     # Load eval docs in RAG backend
-    for doc in eval_corpus_path.iterdir():
-        # Only add documents that are in the `doc_list`
+    for doc in tqdm(eval_corpus_path.iterdir(), desc="Loading documents into RAG Backend"):
         if doc.name in all_doc_list:
             with open(doc, "rb") as f:
                 RAG_EVAL_BACKEND.add_file_to_collection(doc.name, f)
@@ -72,66 +180,60 @@ def main(
     # Get RAG predictions
     rag_answers = []
     rag_relevant_extracts = []
-    for _, row in eval_df.iterrows():
+    for _, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Getting RAG Predictions"):
+        logger.info(f"Processing row: context={row[QUERY_COLUMN]}")
+
         response = RAG_EVAL_BACKEND.query_rag(
             row[QUERY_COLUMN], selected_files=row[DOC_LIST_COLUMN]
         )
-        answer = response[ANSWER_COLUMN]
+        answer = response.get(ANSWER_COLUMN, "")
         relevant_extracts = [
             re.sub(SPECIAL_CHARACTER_FILTER, " ", extract["content"])
-            for extract in response["relevant_extracts"]
+            for extract in response.get("relevant_extracts", [])
         ]
+
+        logger.info(f"RAG Answer for question '{row[QUERY_COLUMN]}': {answer}")
+        logger.info(f"RAG Relevant Extracts: {relevant_extracts}")
+
         rag_answers.append(answer)
         rag_relevant_extracts.append(relevant_extracts)
 
-    # Get reference answers (ground truth) as a list
-    refs = eval_df[ANSWER_COLUMN].tolist()
-
-    # Compute BERTscore
-    if compute_bertscores:
-        P, R, F1 = score(rag_answers, refs, lang="fr")
-
-    # Compute LLM as a judge score
-    llm_scores = []
-    for i, row in eval_df.iterrows():
-        response = EVAL_LLM_CLIENT.generate(
-            EVAL_LLM_PROMPT.format(
-                query=row[QUERY_COLUMN],
-                answer=row[ANSWER_COLUMN],
-                candidate=rag_answers[i],
-            )
-        )
-        llm_scores.append(response)
-
-    # The following line parses the eval LLM output and should depend on the specific prompt used
-    llm_scores = [int(score.split(":")[1].strip()) for score in llm_scores]
-
-    # Log scores info
-    if compute_bertscores:
-        logger.info(f"BERTScore P: {P.mean().item():.3f}")
-        logger.info(f"BERTScore R: {R.mean().item():.3f}")
-        logger.info(f"BERTScore F1: {F1.mean().item():.3f}")
-    logger.info(f"LLM as a judge mean score: {np.mean(llm_scores):.3f}")
-
-    # Update eval_df with RAG predictions and scores
     eval_df["rag_answer"] = rag_answers
-    eval_df["rag_relevant_extracts"] = [
-        "\n\n".join([f"Extract {i+1}: {extract}" for i, extract in enumerate(sublist)])
+    eval_df[RAG_RELEVANT_EXTRACTS_COLUMN] = [
+        "\n\n".join([f"Extrait {i + 1}: {extract}" for i, extract in enumerate(sublist)])
         for sublist in rag_relevant_extracts
     ]
-    if compute_bertscores:
-        eval_df["bert_score_P"] = P.tolist()
-        eval_df["bert_score_R"] = R.tolist()
-        eval_df["bert_score_F1"] = F1.tolist()
-    eval_df["llm_score"] = llm_scores
-    logger.info(eval_df.groupby("category")["llm_score"].mean())
 
-    # Save updated eval_df
-    eval_df.to_excel(output_path, index=False)
+    # Evaluate multiple metrics using LLM and save results
+    evaluated_df = evaluate_rag_metrics(eval_df)
+
+    output_data = []
+    for idx, row in evaluated_df.iterrows():
+        output_data.append({
+            "context": row[CONTEXT_COLUMN],
+            "question": row[QUERY_COLUMN],
+            "answer": row["rag_answer"],
+            "source_doc": row[DOC_LIST_COLUMN],
+            "relevant_extracts": row[RAG_RELEVANT_EXTRACTS_COLUMN], 
+            "groundedness_evaluation": row.get("groundedness"),
+            "groundedness_score": row.get("groundedness_score"),
+            "precision_evaluation": row.get("precision_evaluation"),
+            "precision_score": row.get("precision_score"),
+        })
+
+
+    # Save the final evaluated QA pairs to an Excel file
+    df_output = pd.DataFrame(output_data)
+
+    # Apply the function to the score columns
+    df_output['groundedness_score'] = df_output['groundedness_score'].apply(extract_numeric)
+    # df_output['precision_score'] = df_output['precision_score'].apply(extract_numeric)
+
+    df_output.to_excel(report_output_path, index=False)
+    print(f"Final evaluated QA dataset saved to {report_output_path}")
 
     # Clear RAG backend
     RAG_EVAL_BACKEND.clear_collection()
-
 
 if __name__ == "__main__":
     typer.run(main)
