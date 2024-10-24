@@ -8,7 +8,7 @@
 
 // variables
 const WELCOME_MSG = "Bonjour <span class='username'>"+userName+"</span> !";
-const DISCLAIMER = "<br><span class='disclaimer'>WattElse GPT est destiné à un usage professionnel. Chaque utilisation génère des coûts, merci de l'employer de façon responsable et en lien direct avec vos missions. Veillez à ne pas divulguer d'informations sensibles (C3, C4).</span>"
+const DISCLAIMER = "<br><span class='disclaimer-usage'>WattElse GPT est destiné à un usage professionnel. Chaque utilisation génère des coûts, merci de l'employer de façon responsable et en lien direct avec vos missions. <br>Veillez à ne pas divulguer d'informations sensibles (C3, C4).</span>"
 
 // initialize layout
 initializeLayout();
