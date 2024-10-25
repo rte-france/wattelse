@@ -104,7 +104,7 @@ FR_USER_BASE_MULTITURN_QUERY = (
 
 ### LLAMA 3 ###
 
-'''
+"""
 FR_SYSTEM_RAG_LLAMA3 : Guide l'assistant pour répondre aux questions des utilisateurs en utilisant les documents récupérés, en insistant 
 sur la synthèse et en évitant les hallucinations.
 
@@ -116,7 +116,7 @@ besoin de l'historique de conversation.
 
 FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 : Structure l'historique de la conversation et la dernière question de l'utilisateur pour 
 aider l'assistant à reformuler les questions ambiguës.
-'''
+"""
 
 FR_SYSTEM_RAG_LLAMA3 = (
     "You are a helpful assistant developed by RTE (Réseau de Transport d'Électricité). "
