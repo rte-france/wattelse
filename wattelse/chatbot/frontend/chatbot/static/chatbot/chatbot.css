@@ -67,8 +67,9 @@
 
 .welcome-container {
     width: 100%;
-    height: 50%;
+    height: 100%;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     animation: fadeIn 1.5s;
