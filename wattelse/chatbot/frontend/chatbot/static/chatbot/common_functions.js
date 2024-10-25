@@ -88,11 +88,14 @@ function createWelcomeMessage(message, disclaimer="") {
     </div>
     `;
     if (disclaimer){
-        chatHistory.innerHTML = chatHistory.innerHTML + `
+        chatHistory.innerHTML = `
+    <div class="welcome-container">
+        <div class="welcome-message">${message}</div>
         <div class="disclaimer-container">
             <div class="disclaimer-usage">${disclaimer}</div>
         </div>
-        `
+    </div>
+    `;
     }
 }
 
