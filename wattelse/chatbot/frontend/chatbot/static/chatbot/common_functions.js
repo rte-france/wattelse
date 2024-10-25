@@ -24,6 +24,22 @@ let popupTimeout; // needed to avoid removing popup that is already removed
 // initialization
 chatHistory.id = uuid4();
 
+const md = markdownit({
+    highlight: function (str, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try {
+          // Highlight the code with language specified
+          const highlightedCode = hljs.highlight(str, { language: lang }).value;
+          // Wrap it in a <pre><code> block with hljs class to apply theme styles
+          return `<pre class="hljs"><code class="${lang}">${highlightedCode}</code></pre>`;
+        } catch (__) {}
+      }
+  
+      // If no language is specified or highlighting fails, wrap code in hljs class anyway
+      return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
+    }
+  });
+
 ///////////////////////// GENERIC FUNCTIONS ///////////////////////////////
 
 // Create a UUID to identify conversations
