@@ -37,6 +37,8 @@ const SPECIAL_SEPARATOR = '¤¤¤¤¤';
 const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte généré peut contenir des erreurs."
 const WELCOME_MSG = "Bonjour <span class='username'>"+userName+"</span> !"
 
+// Empty disclaimer for WattElse Doc
+const DISCLAIMER = "";
 
 // Message timeout
 const timeout = 120000; // 120 seconds timeout
