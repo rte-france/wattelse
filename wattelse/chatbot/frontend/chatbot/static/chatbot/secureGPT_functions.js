@@ -93,7 +93,7 @@ async function postUserMessageToChatBot(userMessage) {
         isFirstChunk = false;
 
         streamResponse += decoder.decode(chunk);
-        botDiv.innerHTML = marked.parse(streamResponse);
+        botDiv.innerHTML = md.render(streamResponse);
     }
 
     // When streaming is done, show feedback section and save interaction
@@ -160,7 +160,7 @@ function setConversationHistory(id, history) {
             createUserMessage(message.content);
         }
         else {
-            createBotMessage(marked.parse(message.content));
+            createBotMessage(md.render(message.content));
         }
     });
 
