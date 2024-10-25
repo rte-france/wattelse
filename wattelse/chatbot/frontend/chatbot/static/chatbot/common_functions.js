@@ -317,6 +317,6 @@ function handleTextFeedbackClick(event, userMessage, botMessage) {
 
     // send back answer
     if (feedback){
-        sendFeedback("/send_long_feedback/", feedback, userMessage, botMessagee);
+        sendFeedback("/send_long_feedback/", feedback, userMessage, botMessage);
     }
 }
