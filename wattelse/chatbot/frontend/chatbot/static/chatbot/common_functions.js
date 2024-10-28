@@ -24,6 +24,22 @@ let popupTimeout; // needed to avoid removing popup that is already removed
 // initialization
 chatHistory.id = uuid4();
 
+const md = markdownit({
+    highlight: function (str, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try {
+          // Highlight the code with language specified
+          const highlightedCode = hljs.highlight(str, { language: lang }).value;
+          // Wrap it in a <pre><code> block with hljs class to apply theme styles
+          return `<pre class="hljs"><code class="${lang}">${highlightedCode}</code></pre>`;
+        } catch (__) {}
+      }
+  
+      // If no language is specified or highlighting fails, wrap code in hljs class anyway
+      return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
+    }
+  });
+
 ///////////////////////// GENERIC FUNCTIONS ///////////////////////////////
 
 // Create a UUID to identify conversations
@@ -31,6 +47,14 @@ function uuid4() {
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
       (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
     );
+}
+
+function is_gpt_page() {
+    return window.location.pathname.includes("/llm");
+}
+
+function setMainColor(newColor) {
+  document.documentElement.style.setProperty('--main-color', newColor);
 }
 
 ///////////////////////// DISPLAY FUNCTIONS ///////////////////////////////
@@ -73,12 +97,22 @@ function showPopup(message, error = false) {
 }
 
 // Display a welcome message
-function createWelcomeMessage(message) {
+function createWelcomeMessage(message, disclaimer="") {
     chatHistory.innerHTML = `
     <div class="welcome-container">
         <div class="welcome-message">${message}</div>
     </div>
     `;
+    if (disclaimer){
+        chatHistory.innerHTML = `
+    <div class="welcome-container">
+        <div class="welcome-message">${message}</div>
+        <div class="disclaimer-container">
+            <div class="disclaimer-usage">${disclaimer}</div>
+        </div>
+    </div>
+    `;
+    }
 }
 
 // Remove a welcome message
@@ -87,13 +121,17 @@ function removeWelcomeMessage() {
     if (welcomeMessage) {
         welcomeMessage.remove();
     }
+    const disclaimerMessage = document.querySelector(".disclaimer-container");
+    if (disclaimerMessage) {
+        disclaimerMessage.remove();
+    }
 }
 
 // Display a user message
 function createUserMessage(message) {
     const userDiv = document.createElement('div');
     userDiv.classList.add('user-message');
-    userDiv.innerHTML = message;
+    userDiv.textContent = message;
     chatHistory.appendChild(userDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
@@ -130,7 +168,8 @@ function createBotMessage(message) {
 // Create a new conversation
 function newConversation() {
     chatHistory.id = uuid4();
-    createWelcomeMessage(WELCOME_MSG);
+    createWelcomeMessage(WELCOME_MSG, DISCLAIMER);
+    removeActiveConversation();
 }
 
 // Manage user input message
@@ -238,8 +277,11 @@ function provideFeedback(userMessage, botMessage) {
           <span class="emoji-rating"><span class="rating-ok" title="Réponse acceptable"><i class="fa-solid fa-circle-half-stroke fa-xl"></i></span></span>
           <span class="emoji-rating"><span class="rating-missing" title="Réponse incomplète"><i class="fa-solid fa-circle-minus fa-xl"></i></span></span>
           <span class="emoji-rating"><span class="rating-wrong" title="Réponse fausse"><i class="fa-solid fa-circle-exclamation fa-xl"></i></span></span>
-          <button id="open-text-feedback">Réponse attendue</button> 
         `;
+
+    if (! is_gpt_page()) {
+        feedbackSection.innerHTML = feedbackSection.innerHTML + '<button id="open-text-feedback">Réponse attendue</button>';
+    }
 
     chatHistory.appendChild(feedbackSection);
 
@@ -247,8 +289,10 @@ function provideFeedback(userMessage, botMessage) {
     const emojiRatings = document.querySelectorAll('.emoji-rating');
     emojiRatings.forEach(emojiRating => emojiRating.addEventListener('click', (event) => handleEmojiRatingClick(event, userMessage, botMessage)));
 
-    const textFeedbackButton = document.getElementById('open-text-feedback');
-    textFeedbackButton.addEventListener('click', (event) => handleTextFeedbackClick(event, userMessage, botMessage));
+    if (!is_gpt_page()) {
+        const textFeedbackButton = document.getElementById('open-text-feedback');
+        textFeedbackButton.addEventListener('click', (event) => handleTextFeedbackClick(event, userMessage, botMessage));
+    }
 }
 
 
@@ -318,5 +362,14 @@ function handleTextFeedbackClick(event, userMessage, botMessage) {
     // send back answer
     if (feedback){
         sendFeedback("/send_long_feedback/", feedback, userMessage, botMessage);
+    }
+}
+
+
+// Function to remove active conversation if conversation history management is implemented
+function removeActiveConversation() {
+    let activeButton = document.querySelector(".conversations-container li.active");
+    if (activeButton) {
+        activeButton.classList.remove("active");
     }
 }

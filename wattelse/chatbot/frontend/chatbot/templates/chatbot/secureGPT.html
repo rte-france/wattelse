@@ -7,7 +7,7 @@
   ~ See AUTHORS.txt
   ~ SPDX-License-Identifier: MPL-2.0
   ~ This file is part of Wattelse, a NLP application suite.
-  -->
+-->
 
 <!-- If user is not authenticated, return to login page -->
 {% if not user.is_authenticated %}
@@ -18,6 +18,8 @@
 {{ available_docs|json_script:'available_docs'}}
 
 <!-- Main container for the page -->
+{% csrf_token %}
+
 <div class="wrapper">
 
     <!-- Chat container -->
@@ -30,12 +32,12 @@
         
         <!-- Message input field (everything in this div will be fixed at the bottom) -->
         <div class="chat-container-bottom">
-            {% csrf_token %}
             <div class="chat-input">
-                <input type="text" class="input-field"
-                    placeholder="Entrez votre question..." />
-                <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
-                <button class="new-conversation-button" onclick="newConversation();"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
+                <textarea type="text" class="input-field" placeholder="Entrez votre question..."></textarea>
+                <div class="chat-button-container">
+                    <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
+                    <button class="new-conversation-button" onclick="newConversation();"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
+                </div>
             </div>
             <div class="disclaimer">
                 LLM : {{ llm_name }}<br>
@@ -45,10 +47,39 @@
     </div>
 
     <!-- Panel container -->
-    <div class="panel-container">
-        <div class="welcome-container">
-            <div class="welcome-message">En construction...</div>
-        </div>
+    <div class="conversations-container">
+        <details open>
+            <summary>
+                Aujourd'hui
+            </summary>
+            <ul id="today-history">
+                {% for conversation in conversations.today %}
+                    <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+
+        <details>
+            <summary>
+                7 derniers jours
+            </summary>
+            <ul id="last-week-history">
+                {% for conversation in conversations.last_week %}
+                    <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+
+        <details>
+            <summary>
+                Archives
+            </summary>
+            <ul id="archives-history">
+                {% for conversation in conversations.others %}
+                    <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                {% endfor %}
+            </ul>
+        </details>
     </div>
 </div>
 
