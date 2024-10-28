@@ -160,3 +160,61 @@ sequenceDiagram
     Note over RAG,VectorDB: Retrieval Pipeline
     Note over RAG,LLM: Generation Pipeline
 ```
+
+## Main code dependencies
+ ```mermaid
+flowchart TB
+    wattelse["wattelse v1.2.2"]
+    
+    subgraph ML["Machine Learning"]
+        torch["torch 2.4.0"]
+        sklearn["scikit-learn 1.5.2"]
+        accelerate["accelerate 1.0.0"]
+        scipy["scipy 1.14.1"]
+        numpy["numpy <2"]
+    end
+    
+    subgraph LLM["LLM & RAG"]
+        langchain["langchain 0.3.2"]
+        langchain_comm["langchain-community 0.3.1"]
+        langchain_chroma["langchain-chroma 0.1.4"]
+        langchain_openai["langchain-openai 0.2.2"]
+        llama_index["llama-index-core 0.11.16"]
+        openai["openai 1.51.1"]
+        chromadb["chromadb 0.5.11"]
+        sent_trans["sentence-transformers 3.1.1"]
+        vllm["vllm 0.6.1"]
+        fschat["fschat 0.2.36"]
+        tiktoken["tiktoken 0.7.0"]
+    end
+    
+    subgraph Web["Web Framework"]
+        django["django 5.1.1"]
+        fastapi["fastapi 0.115.0"]
+        streamlit["streamlit 1.39.0"]
+        uvicorn["uvicorn 0.31.0"]
+    end
+    
+    subgraph Doc["Document Processing"]
+        docxtpl["docxtpl 0.18.0"]
+        python_docx["python-docx 1.1.2"]
+        python_pptx["python-pptx 1.0.2"]
+        pymupdf["pymupdf 1.24.11"]
+        unstructured["unstructured 0.15.13"]
+        mammoth["mammoth 1.8.0"]
+        xlsx2html["xlsx2html 0.6.1"]
+    end
+    
+    subgraph Data["Data Processing"]
+        pandas["pandas 2.2.3"]
+        plotly["plotly 5.24.1"]
+        seaborn["seaborn 0.13.2"]
+        bs4["bs4 0.0.2"]
+    end
+    
+    wattelse --> ML
+    wattelse --> LLM
+    wattelse --> Web
+    wattelse --> Doc
+    wattelse --> Data
+```
