@@ -371,15 +371,18 @@ def main():
 
     # Title
     st.title(f"Wattelse dashboard for {st.session_state['selected_table']}")
+
+    # Password
+    if not check_password():
+        st.stop()  # Do not continue if check_password is not True.
+
+    # Select data
     st.selectbox(
         "Data: RAG or secureGPT?",
         list(DATA_TABLES.keys()),
         placeholder="Select data table (RAG or secureGPT)",
         key="selected_table",
     )
-    # Password
-    if not check_password():
-        st.stop()  # Do not continue if check_password is not True.
 
     # Load data
     st.session_state["full_data"] = get_db_data(DB_PATH)
