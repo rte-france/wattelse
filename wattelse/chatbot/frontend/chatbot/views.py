@@ -547,7 +547,6 @@ def get_questions_count_since_last_feedback(request):
         int: The number of entries without feedback since the last feedback.
     """
     if request.method == "GET":
-
         # Get request data
         source_path = request.GET.get("source_path")
 
