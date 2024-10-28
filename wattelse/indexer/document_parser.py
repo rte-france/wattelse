@@ -179,6 +179,8 @@ class CustomXLSXDocumentLoader(BaseLoader):
             lines = df.to_dict(orient="records")
             for line in lines:
                 line = {key: value for key, value in line.items() if value != "nan"}
+                if len(self.dfs) > 1:  # add sheet in info if multiple sheet
+                    line["sheet"] = sheet
                 yield Document(
                     page_content=str(line),
                     metadata={
