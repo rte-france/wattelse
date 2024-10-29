@@ -87,7 +87,7 @@ flowchart TB
     end
 
     subgraph "RAG Core Components"
-        RAG[RAG Orchestrator]
+        RAG[RAG Backend]
         LLM[LLM Service]
         Embedding[Embedding Service]
     end
