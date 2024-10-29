@@ -1,13 +1,61 @@
-# RAG evaluation
+# WattElse Evaluation Pipeline
 
 ## Overview
-This folder contains the main function for RAG evaluation.
+This folder contains the main scripts used for RAG evaluation.
 
-The evaluation pipeline currently evaluates the generation part of the RAG only.
+The evaluation pipeline is divided into **two section** :
 
-The metrics used are:
-- **BERTScore**, using the official [https://github.com/Tiiiger/bert_score](bert-score) implementation. As specified [here](https://github.com/Tiiiger/bert_score?tab=readme-ov-file#default-behavior), the default model used for french is `bert-base-multilingual-cased`.
-- **LLM as a judge**, using a prompt defined in [wattelse/chatbot/eval/prompt.py](prompt.py). The LLM used for evaluating answers can be specified using environment variables (see [wattelse/api/openai](../api/openai))
+### 1. Generating Synthethic Test Data 
+
+This parts from the corpus of your choice (currently supporting .pdf files only).
+
+```mermaid
+
+graph TD
+    LoadCorpus@{ shape: docs, label: "Load Corpus of PDF Files" }
+    GenerateData[Generate Synthetic Data]
+    EvaluateData[Evaluate Synthetic Data Generation]
+    FilterData[Filter Metrics Scores]
+    OutputFile[Output File with Filtered Synthetic Data]
+    ReportFile[Output File Report of Evaluation]
+
+    LoadCorpus --> GenerateData
+    GenerateData --> EvaluateData
+    EvaluateData --> ReportFile
+    EvaluateData --> FilterData
+
+    %% Metrics Filtering
+    FilterData --> OutputFile
+
+```
+
+### 2. Evaluating WattElse System 
+
+The evaluation pipeline evaluates the **generation** and the **retrieval** part of the RAG using custom made prompts.
+
+```mermaid
+graph LR
+    classDef question fill:#none,stroke:#333,stroke-width:2px,shape:round;
+    classDef context fill:#none,stroke:#333,stroke-width:2px,shape:round;
+    classDef answer fill:#9ff,stroke:#333,stroke-width:2px,shape:round;
+    classDef metric fill:#fff,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
+
+    Question((Question)):::question
+    Context((Context)):::context
+    Answer((Answer)):::answer
+
+    Question <-->|Retrievability| Context:::metric
+    Context <-->|Faithfulness| Answer:::metric
+    Answer <-->|Correctness| Question:::metric
+
+```
+
+Three metrics were defined :
+- **Retrievability** : Measures how well the retriever component surfaces relevant and sufficient information needed to asnwer the question accurately.
+
+- **Faithfulness** : Ensures that the answer stays faithful to the information within the retrieved contexst, measuring if the model avoided introducing unrelated or inaccurate information.
+
+- **Correctness** : Assesses the factual reliability and completeness of the answer provided, ensuring that it directly addresses the question posed without containing errors, omissions, or misleading information.
 
 ## Usage
 
