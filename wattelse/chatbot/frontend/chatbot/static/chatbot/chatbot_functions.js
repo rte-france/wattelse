@@ -227,7 +227,7 @@ async function postUserMessageToChatBot(userMessage) {
     }
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
-    saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay)
+    saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay, json_chunk.relevant_extracts)
 }
 
 function updateAvailableDocuments(){

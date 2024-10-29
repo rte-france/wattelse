@@ -255,6 +255,10 @@ def save_interaction(request):
         # Get database to use based on source path
         ChatModel = get_chat_model(data.get("source_path"))
 
+        # Get relevant extract
+        relevant_extracts=data.get("relevant_extracts", "")
+        relevant_extracts = {i: extract for i, extract in enumerate(relevant_extracts)}
+
         # Save interaction
         try:
             chat = ChatModel(
@@ -265,6 +269,7 @@ def save_interaction(request):
                 response=data.get("answer", ""),
                 question_timestamp=question_timestamp,
                 answer_delay=answer_delay,
+                relevant_extracts = relevant_extracts
             )
             chat.save()
 
