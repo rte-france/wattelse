@@ -15,6 +15,8 @@ body, html {
     padding: 0;
     height: 100%;
     background-color: #f2f2f2;
+    overflow: hidden;
+
 }
 
 /* Define global variable that are reused in mutiple elements */
@@ -134,4 +136,25 @@ a {
 .hljs {
   padding: 1em;
   border-radius: 5px;
+}
+
+.pumpkin {
+  position: absolute;
+  top: -50px; /* Start above the screen */
+  width: 50px; /* Adjust pumpkin size */
+  height: 50px;
+  background-image: url('pumpkin.png'); /* Replace with your pumpkin image path */
+  background-size: cover;
+  animation: fall 1s linear forwards;
+}
+
+@keyframes fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0.3; /* Optional: fade slightly as it falls */
+  }
 }
