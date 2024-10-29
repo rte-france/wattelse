@@ -22,11 +22,6 @@ EVAL_LLM_PROMPT = (
     "Candidate response: {candidate}\n"
 )
 
-FAITHFULNESS_EVAL_PROMPT = '''
-Your task is to judge the faithfulness of a series of statements based on a given context. For each statement you must return verdict 
-as 1 if the statement can be directly inferred based on the context or 0 if the statement can not be directly inferred based on the context.
-'''
-
 
 # Groundedness (Pertinence contextuelle) : La question doit pouvoir être répondue à partir du contexte donné. 
 # Si elle nécessite des informations extérieures, elle n'est pas pertinente.
@@ -89,25 +84,6 @@ Contexte : {context}\n
 Réponse:::
 """
 
-# QUESTION_GROUNDEDNESS_CRITIQUE_PROMPT = """
-# Vous allez recevoir un contexte et une question.
-# Votre tâche est d'évaluer si la question donnée peut être répondue sans ambiguïté en se basant uniquement sur les informations explicites présentes dans le contexte.
-# Donnez votre réponse sur une échelle de 1 à 5, où 1 signifie que la question n'est pas du tout répondable compte tenu du contexte ou la question n'est pas pertinente par rapport au contexte, et 5 signifie que les informations nécessaires sont présentes de manière explicite
-
-# Fournissez votre réponse comme suit :
-
-# Réponse:::
-# Évaluation : (votre raisonnement pour la note, sous forme de texte)
-# Note totale : (votre note, sous forme de nombre entre 1 et 5)
-
-# Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Note totale :' dans votre réponse.
-
-# Voici maintenant la question et le contexte.
-
-# Question : {question}\n
-# Contexte : {context}\n
-# Réponse:::"""
-
 
 QUESTION_REALISM_CRITIQUE_PROMPT = """
 Avec ce contexte, est-ce que cette question pourrait-elle être pertinente par un utilisateur du document ?
@@ -125,25 +101,6 @@ Contexte : {context}\n
 Réponse:::
 """
 
-# QUESTION_REALISM_CRITIQUE_PROMPT = """
-
-# Vous allez recevoir une question.
-# Votre tâche est de fournir une 'note totale' représentant à quel point cette question ressemble à une question qu'un utilisateur poserait en se basant sur le contenu du document.
-# Donnez votre réponse sur une échelle de 1 à 5, où 1 signifie que la question ne pourrait jamais être posée par un utilisateur, et 5 signifie que la question est très réaliste et pertinente pour un utilisateur du document.
-
-# Fournissez votre réponse comme suit :
-
-# Réponse:::
-# Évaluation : (votre raisonnement pour la note, sous forme de texte)
-# Note totale : (votre note, sous forme de nombre entre 1 et 5)
-
-# Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Note totale :' dans votre réponse.
-
-# Voici maintenant la question.
-
-# Question : {question}\n
-# Réponse:::
-# """
 
 QUESTION_STANDALONE_CRITIQUE_PROMPT = """
 
@@ -162,48 +119,75 @@ Réponse:::
 """
 
 
-# QUESTION_STANDALONE_CRITIQUE_PROMPT = """
-# Vous allez recevoir une question.
-# Votre tâche est de fournir une 'note totale' représentant à quel point cette question est indépendante du contexte.
-# Donnez votre réponse sur une échelle de 1 à 5, où 1 signifie que la question dépend d'informations supplémentaires pour être comprise, et 5 signifie que la question a un sens par elle-même.
-# Par exemple, si la question fait référence à un cadre particulier, comme 'dans le contexte' ou 'dans le document', la note doit être 1.
-# Les questions peuvent contenir des noms techniques obscurs ou des acronymes et recevoir tout de même une note de 5 : il doit simplement être clair aux personnes concernées ayant accès à la documentation.
-
-# Par exemple, "Quel est le nom du point de contrôle à partir duquel le modèle ViT est importé ?" devrait recevoir une note de 1, car il y a une mention implicite d'un contexte, donc la question n'est pas indépendante du contexte.
-
-# Fournissez votre réponse comme suit :
-
-# Réponse:::
-# Évaluation : (votre raisonnement pour la note, sous forme de texte)
-# Note totale : (votre note, sous forme de nombre entre 1 et 5)
-
-# Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Note totale :' dans votre réponse.
-
-# Voici maintenant la question.
-
-# Question : {question}\n
-# Réponse:::"""
-
-
 
 
                                                             # RAGAS Evaluation metrics
 
 
+# CONTEXT_NDCG_PROMPT = """
+# Sur la base d'une question, et d'une liste d'extraits du contexte, évaluez chaque extrait pour déterminer son utilité à répondre à la question. 
+# Attribuez une note de pertinence de 0 à 3 à chaque extrait en fonction de son utilité :
+# - 0 : Non pertinent
+# - 1 : Peu pertinent
+# - 2 : Pertinent
+# - 3 : Très pertinent
 
-CONTEXT_PRECISION_PROMPT = """
-Indiquez si chaque extraits recuperé du contexte est pertinent pour la question, et notez la précision (le ratio d'extraits pertinents sur le total d'extraits).
+# Les extraits plus utiles et apparaissant en tête doivent obtenir un score de pertinence plus élevé. 
 
-Fournissez votre réponse comme suit :
+# Calculez ensuite la moyenne des note de pertinence.
+
+# Réponse:::
+# Question : {question}
+# Contexte : {retrieved_contexts}
+
+# Évaluation : (votre raisonnement pour la pertinence, sous forme de texte)
+# Score NDCG :
+# Réponse:::
+# """
+
+
+FAITHFULNESS_EVAL_PROMPT = """
+Évaluez si la réponse est fondée sur le contexte fourni, sans introduire d’informations non supportées.
 
 Réponse:::
-Évaluation : (raisonnement pour la pertinence des extraits et du contexte global)
-Précision : (valeur entre 0 et 1)
-Nombre total de extraits : {total_chunks}
-Extraits pertinents : (nombre de fragments pertinents)
-Extraits non-pertinents : (nombre de extraits non-pertinents)
+Évaluation : (Expliquez votre raisonnement en indiquant si la réponse est fidèle aux informations du contexte, en termes de pertinence et de suffisance. Identifiez explicitement les points de correspondance ou de divergence avec le contexte.)
 
-Voici la question et le contexte.
+Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les critères suivants:
+- 1 : Très insuffisant – Réponse largement infidèle au contexte, avec des informations non supportées.
+- 2 : Insuffisant – Éléments liés au contexte, mais présence d’informations non fondées.
+- 3 : Passable – Informations pertinentes, mais quelques inexactitudes.
+- 4 : Satisfaisant – Majoritairement fidèle, avec quelques détails manquants.
+- 5 : Très satisfaisant – Entièrement fidèle et complète selon le contexte.
+
+**Conseils pour l’évaluation :**
+- Vérifiez que le contexte couvre les points clés de la question.
+- Évaluez si des éléments essentiels sont omis ou mal interprétés.
+
+Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
+
+Voici la réponse à évaluer ainsi que le contexte fourni.
+
+Réponse : {answer}
+Contexte : {retrieved_contexts}
+Réponse:::
+"""
+
+RETRIEVABILITY_EVAL_PROMPT = """
+Évaluez si le contexte récupéré est pertinent et suffisant pour répondre à la question posée.
+
+Réponse:::
+Évaluation : (Indiquez si le contexte répond directement à la question et contient les informations nécessaires. Précisez si le nombre de réponses pertinentes par rapport aux réponses totales impacte l'évaluation, et mentionnez tout manque d'exhaustivité.)
+
+Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les critères suivants :
+- 1 : Très insuffisant – Contexte principalement hors sujet, sans informations utiles.
+- 2 : Insuffisant – Contexte partiellement pertinent, mais manque d'informations clés, avec des extraits non pertinents.
+- 3 : Passable – Contexte pertinent, mais contient plusieurs extraits non utiles qui diluent la pertinence globale.
+- 4 : Satisfaisant – Contexte majoritairement pertinent avec juste quelques extraits non pertinents.
+- 5 : Très satisfaisant – Contexte totalement pertinent et exhaustif, avec toutes les informations nécessaires.
+
+Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
+
+Voici la question ainsi que le contexte récupéré pour évaluation.
 
 Question : {question}
 Contexte : {retrieved_contexts}
@@ -211,116 +195,82 @@ Réponse:::
 """
 
 
-
-CONTEXT_GROUNDEDNESS_PROMPT = """
-Avec ce contexte, est-ce que je peux répondre à cette question ?
+CORRECTNESS_EVAL_PROMPT = """
+Évaluez si la réponse est correcte, c’est-à-dire, si elle répond précisément à la question posée sans erreurs factuelles ou informations hors sujet.
 
 Réponse:::
-Évaluation : (votre raisonnement pour la note, sous forme de texte)
-Note totale : (votre note, sous forme de nombre entre 1 et 5)
+Évaluation : (Expliquez votre raisonnement en indiquant si la réponse est exacte et complète, en vous basant sur la question posée. Identifiez explicitement les points de correspondance ou de divergence avec la question.)
 
-Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Note totale :' dans votre réponse.
+Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les critères suivants:
+- 1 : Très insuffisant – Réponse largement incorrecte, avec des erreurs majeures.
+- 2 : Insuffisant – Partiellement correcte, mais contient des erreurs ou interprétations.
+- 3 : Passable – Répond à la question, mais avec des inexactitudes notables.
+- 4 : Satisfaisant – Presque correcte, avec quelques inexactitudes mineures.
+- 5 : Très satisfaisant – Entièrement correcte, directe et parfaitement alignée avec la question.
 
-Voici maintenant la question et le contexte.
+**Conseils pour l’évaluation :**
+- Vérifiez que la réponse couvre tous les aspects pertinents de la question.
+- Évaluez si des éléments essentiels sont omis ou mal interprétés.
+
+Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
+
+Voici la question ainsi que la réponse pour évaluation.
+
+Question : {question}
+Réponse : {answer}
+Réponse:::
+"""
+
+
+# Avec ce contexte, est-ce que je peux répondre à cette question ?
+
+# Réponse:::
+# Évaluation : (votre raisonnement pour la note, sous forme de texte)
+# Note totale : (votre note, sous forme de nombre entre 1 et 5)
+
+# Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Note totale :' dans votre réponse.
+
+# Voici maintenant la question et le contexte.
+
+# Question : {question}\n
+# Contexte : {context}\n
+# Réponse:::
+
+CONTEXT_RECALL_PROMPT = """
+A partir d'un contexte et une réponse, analysez la réponse et déterminez si la phrase peut être attribuée au contexte donné ou non.
+Donnez un jugement de "1" si utile et de "0" si non.
+
+Réponse:::
+Évaluation : (votre raisonnement pour le Jugement, sous forme de texte)
+Jugement : (votre Jugement, de "1" si utile et de "0" si non)
+
+Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
+
+Voici maintenant la question, la réponse et le contexte.
 
 Question : {question}\n
+Réponse : {answer}\n
 Contexte : {retrieved_contexts}\n
 Réponse:::
 """
 
-# CONTEXT_PRECISION_PROMPT = """
-# Votre tâche est d'analyser chaque extrait du contexte pour déterminer s'il fournit une information pertinente pour répondre à la question. Si ce n'est pas le cas, l'extrait n'est pas pertinent. Ensuite, calculez la précision comme suit : Précision = (Nombre d'extraits pertinents) / {total_chunks}.
-
-# Fournissez votre réponse de la manière suivante :
-
-# Évaluation : (Explication détaillée sur la pertinence de chaque extrait)
-# Précision : (Valeur entre 0 et 1, par exemple : 8 pertinents / 10 extraits = 0,8)
-
-# Voici la question et le contexte.
-
-# Question : {question}
-# Contexte : {retrieved_contexts}
-# """
-
-
-
-CONTEXT_PRECISION_WITH_REFERENCE_CRITIQUE_PROMPT = """
-Vous allez recevoir une question, une réponse de référence, et un ensemble de contextes récupérés.
-Votre tâche est d'évaluer dans quelle mesure chaque contexte récupéré est pertinent par rapport à la réponse de référence et contribue à répondre correctement à la question.
-Pour chaque contexte, donnez une note sur une échelle de 1 à 5, où 1 signifie que le contexte n'est pas du tout pertinent par rapport à la réponse de référence, et 5 signifie que le contexte est extrêmement pertinent et aide directement à répondre à la question en s'appuyant sur la réponse de référence.
-
-Fournissez votre réponse comme suit :
+BINARY_RELEVANCE_PROMPT = """
+A partir d'une question, d'une réponse et d'un contexte, vérifiez si le contexte a été utile pour parvenir à la réponse donnée. 
+Donnez un Jugement de "1" si utile et de "0" si non.
 
 Réponse:::
-Contexte 1 : (votre raisonnement pour la pertinence du premier contexte par rapport à la réponse de référence)
-Note : (votre note pour le premier contexte, sous forme de nombre entre 1 et 5)
+Évaluation : (votre raisonnement pour le Jugement, sous forme de texte)
+Jugement : (votre Jugement, de "1" si utile et de "0" si non)
 
-Contexte 2 : (votre raisonnement pour la pertinence du deuxième contexte par rapport à la réponse de référence)
-Note : (votre note pour le deuxième contexte, sous forme de nombre entre 1 et 5)
+Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
 
-Continuez ainsi pour chaque contexte récupéré.
+Voici maintenant la question, la réponse et le contexte.
 
-Voici la question, la réponse de référence et les contextes récupérés.
-
-Question : {question}
-Réponse de référence : {reference}
-Contextes récupérés : {retrieved_contexts}
+Question : {question}\n
+Réponse : {answer}\n
+Contexte : {retrieved_contexts}\n
 Réponse:::
 """
-
-
-
-CONTEXT_RECALL_WITH_REFERENCE_CRITIQUE_PROMPT = """
-Vous allez recevoir une question, une réponse de référence, et un ensemble de contextes récupérés.
-Votre tâche est d'évaluer dans quelle mesure les contextes récupérés couvrent toutes les informations importantes présentes dans la réponse de référence. 
-Pour ce faire, identifiez chaque affirmation clé dans la réponse de référence et évaluez si elle est attribuable à l'un des contextes récupérés.
-Donnez une note sur une échelle de 0 à 1 pour chaque contexte récupéré, où 1 signifie que toutes les affirmations de la réponse de référence sont présentes dans les contextes récupérés, et 0 signifie qu'aucune affirmation clé n'est couverte.
-
-Fournissez votre réponse comme suit :
-
-Réponse:::
-Affirmation 1 (extraite de la réponse de référence) : (votre raisonnement pour déterminer si cette affirmation est couverte ou non par les contextes récupérés)
-Note : (votre note, sous forme de nombre entre 0 et 1)
-
-Affirmation 2 (extraite de la réponse de référence) : (votre raisonnement pour déterminer si cette affirmation est couverte ou non par les contextes récupérés)
-Note : (votre note, sous forme de nombre entre 0 et 1)
-
-Continuez ainsi pour chaque affirmation clé de la réponse de référence.
-
-Voici la question, la réponse de référence et les contextes récupérés.
-
-Question : {question}
-Réponse de référence : {reference}
-Contextes récupérés : {retrieved_contexts}
-Réponse:::
-"""
-
-
-
-CONTEXT_RECALL_WITHOUT_LLM_CRITIQUE_PROMPT = """
-Vous allez recevoir un ensemble de contextes récupérés et un ensemble de contextes de référence.
-Votre tâche est d'évaluer dans quelle mesure les contextes récupérés couvrent les informations présentes dans les contextes de référence.
-Pour chaque contexte de référence, évaluez s'il est couvert par un ou plusieurs des contextes récupérés et donnez une note sur une échelle de 0 à 1, où 1 signifie que le contexte de référence est parfaitement couvert, et 0 signifie qu'il n'est pas du tout couvert.
-
-Fournissez votre réponse comme suit :
-
-Réponse:::
-Contexte de référence 1 : (votre raisonnement pour déterminer si ce contexte est couvert ou non par les contextes récupérés)
-Note : (votre note, sous forme de nombre entre 0 et 1)
-
-Contexte de référence 2 : (votre raisonnement pour déterminer si ce contexte est couvert ou non par les contextes récupérés)
-Note : (votre note, sous forme de nombre entre 0 et 1)
-
-Continuez ainsi pour chaque contexte de référence.
-
-Voici les contextes récupérés et les contextes de référence.
-
-Contextes récupérés : {retrieved_contexts}
-Contextes de référence : {reference_contexts}
-Réponse:::
-"""
-
-
 
 # Context Recall: How well the retrieved information covers the relevant context.
 # Context Precision: The accuracy of the retrieved chunks in matching the query.

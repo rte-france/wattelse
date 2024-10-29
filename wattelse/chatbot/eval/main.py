@@ -8,12 +8,14 @@ from tqdm import tqdm
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.chatbot.eval.prompt import (
-    CONTEXT_PRECISION_PROMPT,
-    CONTEXT_GROUNDEDNESS_PROMPT,
+    FAITHFULNESS_EVAL_PROMPT,
+    CORRECTNESS_EVAL_PROMPT,
+    RETRIEVABILITY_EVAL_PROMPT
+    # CONTEXT_NDCG_PROMPT  # Remove this import
 )
 
 # Example :
-# python main.py QA_GENE.xlsx data/test_gen --report-output-path data/eval_output_update-Precision20.xlsx
+# python main.py QA_GENE.xlsx data/test_gen --report-output-path data/eval_output_update-faithfulness20.xlsx
 
 # Updated column names to match new format
 QUERY_COLUMN = "question"
@@ -22,56 +24,60 @@ DOC_LIST_COLUMN = "source_doc"
 CONTEXT_COLUMN = "context"
 COMPLEXITY_COLUMN = "complexity"
 RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
-
-# Characters to be removed from relevant extracts for better readability
 SPECIAL_CHARACTER_FILTER = (
     r"[\t\n\r\x07\x08\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009]"
 )
 
-# Define the Typer app
 app = typer.Typer()
 
-def call_llm(llm_client, prompt: str):
+def call_llm(llm_client, prompt: str) -> str:
     """Function to call the LLM with the given prompt."""
     response = llm_client.generate(prompt, temperature=0)
     return response
 
-def evaluate_metrics(llm_client, question, context_extracted):
+def evaluate_metrics(llm_client, question, answer, context_extracted):
     """Function to evaluate multiple metrics using the LLM."""
-    total_chunks = len(context_extracted.split("\n\n"))
 
-    # Evaluate precision
-    precision_eval = call_llm(llm_client, CONTEXT_PRECISION_PROMPT.format(
-        question=question,
+    # Evaluate faithfulness
+    faithfulness_eval = call_llm(llm_client, FAITHFULNESS_EVAL_PROMPT.format(
         retrieved_contexts=context_extracted,
-        total_chunks=total_chunks
+        answer=answer
     ))
-
-    # Evaluate groundedness
-    groundedness_eval = call_llm(llm_client, CONTEXT_GROUNDEDNESS_PROMPT.format(
-        retrieved_contexts=context_extracted,
+    
+    # Evaluate correctness
+    correctness_eval = call_llm(llm_client, CORRECTNESS_EVAL_PROMPT.format(
         question=question,
+        answer=answer
+    ))
+    
+    # Evaluate retrievability
+    retrievability_eval = call_llm(llm_client, RETRIEVABILITY_EVAL_PROMPT.format(
+        question=question,
+        retrieved_contexts=context_extracted
     ))
 
     evaluations = {}
 
-    # Process precision evaluation
-    logger.debug(f"Precision LLM response: {precision_eval}")
-    # Updated regex to capture both integer and decimal numbers
-    precision_score_line = precision_eval.split("Précision : ")[-1].split("\n")[0].strip()
-    precision_score_match = re.search(r"(\d+([,.]\d+)?)", precision_score_line)  # Updated regex to capture integers like "0" and decimals
+    # Parse evaluations
+    logger.debug(f"faithfulness LLM response: {faithfulness_eval}")
+    evaluation_match = re.search(r"Évaluation :\s*(.*?)\s*Jugement :", faithfulness_eval, re.DOTALL)
+    score_match = re.search(r"Jugement :\s*([1-5])", faithfulness_eval)
+    evaluations["faithfulness"] = evaluation_match.group(1).strip() if evaluation_match else "Not provided"
+    evaluations["faithfulness_score"] = int(score_match.group(1)) if score_match else np.nan
 
-    evaluations["precision_evaluation"] = precision_eval
-    # Extract precision score, handling both integers and decimals
-    evaluations["precision_score"] = float(precision_score_match.group(1).replace(',', '.')) if precision_score_match else np.nan
+    logger.debug(f"correctness LLM response: {correctness_eval}")
+    correctness_eval_match = re.search(r"Évaluation :\s*(.*?)\s*Jugement :", correctness_eval, re.DOTALL)
+    correctness_score_match = re.search(r"Jugement :\s*([1-5])", correctness_eval)
+    evaluations["correctness"] = correctness_eval_match.group(1).strip() if correctness_eval_match else "Not provided"
+    evaluations["correctness_score"] = int(correctness_score_match.group(1)) if correctness_score_match else np.nan
 
-    logger.debug(f"Groundedness LLM response: {groundedness_eval}")
-    # Extract evaluations and scores for groundedness
-    evaluations["groundedness"] = groundedness_eval.split("Évaluation : ")[-1].split("Note totale :")[0].strip()
-    evaluations["groundedness_score"] = groundedness_eval.split("Note totale :")[-1].strip()
+    logger.debug(f"retrievability LLM response: {retrievability_eval}")
+    retrievability_eval_match = re.search(r"Évaluation :\s*(.*?)\s*Jugement :", retrievability_eval, re.DOTALL)
+    retrievability_score_match = re.search(r"Jugement :\s*([1-5])", retrievability_eval)
+    evaluations["retrievability"] = retrievability_eval_match.group(1).strip() if retrievability_eval_match else "Not provided"
+    evaluations["retrievability_score"] = int(retrievability_score_match.group(1)) if retrievability_score_match else np.nan
 
     return evaluations
-
 
 def evaluate_rag_metrics(eval_df):
     llm_client = OpenAI_Client()   # Initialize the LLM client for critique
@@ -79,30 +85,25 @@ def evaluate_rag_metrics(eval_df):
 
     evaluations = []
 
-    # Use tqdm for progress tracking
     for idx, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Evaluating Multiple Metrics"):
         try:
             question = row[QUERY_COLUMN]
             context_extracted = row[RAG_RELEVANT_EXTRACTS_COLUMN]
+            answer = row["rag_answer"]
 
-            # Ensure context is not empty
             if not context_extracted.strip():
                 logger.warning(f"Empty context for question {idx}: {question}")
                 evaluations.append({
                     "question": question,
                     "evaluation": "No context provided",
-                    "precision_score": "No context provided",
-                    "groundedness": "No context provided",
-                    "groundedness_score": "No context provided"
+                    "faithfulness_score": "No context provided",
+                    "correctness_score": "No context provided",
+                    "retrievability_score": "No context provided"
                 })
                 continue
 
-            logger.debug(f"Evaluating metrics for question {idx}: {question}")
+            eval_results = evaluate_metrics(llm_client, question, context_extracted, answer)
 
-            # Evaluate all metrics
-            eval_results = evaluate_metrics(llm_client, question, context_extracted)
-
-            # Add question and results to evaluation list
             eval_entry = {
                 "question": question
             }
@@ -116,28 +117,14 @@ def evaluate_rag_metrics(eval_df):
             evaluations.append({
                 "question": row[QUERY_COLUMN],
                 "evaluation": "Error during evaluation",
-                "precision_score": "Error during evaluation",
-                "groundedness": "Error during evaluation",
-                "groundedness_score": "Error during evaluation",
+                "faithfulness_score": "Error during evaluation",
+                "correctness_score": "Error during evaluation",
+                "retrievability_score": "Error during evaluation",
             })
 
-    # Convert evaluations to DataFrame
     evaluation_df = pd.DataFrame(evaluations)
     eval_df = eval_df.join(evaluation_df.set_index("question"), on=QUERY_COLUMN, rsuffix="_eval")
     return eval_df
-
-def extract_numeric(score):
-    """Function to extract numeric values from score strings, handling 0 correctly."""
-    try:
-        # Extract the numeric part of the score
-        numeric_score = re.search(r"(\d+(\.\d+)?)", str(score))
-        if numeric_score:
-            return float(numeric_score.group(1))
-        else:
-            return np.nan
-    except Exception:
-        return np.nan
-
 
 @app.command()
 def main(
@@ -147,7 +134,7 @@ def main(
 ):
     """
     Function to evaluate the generation part of the RAG pipeline.
-    Currently supports multiple metrics (Precision, Groundedness).
+    Currently supports multiple metrics (WIP).
     """
     # Initialize RAG backend and LLM client
     eval_group_id = "rag_eval"
@@ -204,7 +191,7 @@ def main(
         for sublist in rag_relevant_extracts
     ]
 
-    # Evaluate multiple metrics using LLM and save results
+       # Evaluate multiple metrics using LLM and save results
     evaluated_df = evaluate_rag_metrics(eval_df)
 
     output_data = []
@@ -215,20 +202,34 @@ def main(
             "answer": row["rag_answer"],
             "source_doc": row[DOC_LIST_COLUMN],
             "relevant_extracts": row[RAG_RELEVANT_EXTRACTS_COLUMN], 
-            "groundedness_evaluation": row.get("groundedness"),
-            "groundedness_score": row.get("groundedness_score"),
-            "precision_evaluation": row.get("precision_evaluation"),
-            "precision_score": row.get("precision_score"),
+            "faithfulness_evaluation": row.get("faithfulness"),
+            "faithfulness_score": row.get("faithfulness_score"),
+            "correctness_evaluation": row.get("correctness"),
+            "correctness_score": row.get("correctness_score"),
+            "retrievability_evaluation": row.get("retrievability"),
+            "retrievability_score": row.get("retrievability_score"),
         })
-
 
     # Save the final evaluated QA pairs to an Excel file
     df_output = pd.DataFrame(output_data)
 
-    # Apply the function to the score columns
-    df_output['groundedness_score'] = df_output['groundedness_score'].apply(extract_numeric)
-    # df_output['precision_score'] = df_output['precision_score'].apply(extract_numeric)
+    # Calculate averages
 
+    df_output['faithfulness_score'] = pd.to_numeric(df_output['faithfulness_score'], errors='coerce')
+    df_output['correctness_score'] = pd.to_numeric(df_output['correctness_score'], errors='coerce')
+    df_output['retrievability_score'] = pd.to_numeric(df_output['retrievability_score'], errors='coerce')
+    
+
+    average_faithfulness = df_output['faithfulness_score'].mean()
+    average_correctness = df_output['correctness_score'].mean()
+    average_retrievability = df_output['retrievability_score'].mean()
+
+    # Print averages
+    print(f"Average faithfulness: {average_faithfulness:.2f}")
+    print(f"Average correctness: {average_correctness:.2f}")
+    print(f"Average retrievability: {average_retrievability:.2f}")
+
+    # Save the final evaluated QA pairs to an Excel file
     df_output.to_excel(report_output_path, index=False)
     print(f"Final evaluated QA dataset saved to {report_output_path}")
 

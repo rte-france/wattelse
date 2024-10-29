@@ -8,6 +8,7 @@ import PyPDF2
 from wattelse.api.openai.client_openai_api import OpenAI_Client 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document as LangchainDocument
+import re
 
 from wattelse.chatbot.eval.prompt import (
     QA_GENERATION_PROMPT,
@@ -158,29 +159,38 @@ def evaluate_qa_pairs(outputs):
                     QUESTION_GROUNDEDNESS_CRITIQUE_PROMPT.format(context=context, question=question),
                 )
 
-                # Evaluate realism
-                realism_eval = call_llm(
-                    llm_client,
-                    QUESTION_REALISM_CRITIQUE_PROMPT.format(context=context, question=question),
-                )
+                # # Evaluate realism
+                # realism_eval = call_llm(
+                #     llm_client,
+                #     QUESTION_REALISM_CRITIQUE_PROMPT.format(context=context, question=question),
+                # )
 
-                # Evaluate standalone quality
-                standalone_eval = call_llm(
-                    llm_client,
-                    QUESTION_STANDALONE_CRITIQUE_PROMPT.format(question=question),
-                )
+                # # Evaluate standalone quality
+                # standalone_eval = call_llm(
+                #     llm_client,
+                #     QUESTION_STANDALONE_CRITIQUE_PROMPT.format(question=question),
+                # )
 
                 # Extract evaluations and scores for groundedness
+
+                evaluation_match = re.search(r"Évaluation :\s*(.*?)\s*Jugement :", groundedness_eval, re.DOTALL)
+                score_match = re.search(r"Jugement :\s*([1-5])", groundedness_eval)
+
+                evaluations["faithfulness"] = evaluation_match.group(1).strip() if evaluation_match else "Not provided"
+                evaluations["faithfulness_score"] = int(score_match.group(1)) if score_match else np.nan
+
                 evaluations[f"{complexity}_groundedness"] = groundedness_eval.split("Évaluation : ")[-1].split("Note totale :")[0].strip()
                 evaluations[f"{complexity}_groundedness_score"] = groundedness_eval.split("Note totale :")[-1].strip()
 
-                # Extract evaluations and scores for realism
-                evaluations[f"{complexity}_realism"] = realism_eval.split("Évaluation : ")[-1].split("Note totale :")[0].strip()
-                evaluations[f"{complexity}_realism_score"] = realism_eval.split("Note totale :")[-1].strip()
+                logger.debug(f"faithfulness LLM response: {groundedness_eval}")
 
-                # Extract evaluations and scores for standalone quality
-                evaluations[f"{complexity}_standalone"] = standalone_eval.split("Évaluation : ")[-1].split("Note totale :")[0].strip()
-                evaluations[f"{complexity}_standalone_score"] = standalone_eval.split("Note totale :")[-1].strip()
+                # # Extract evaluations and scores for realism
+                # evaluations[f"{complexity}_realism"] = realism_eval.split("Évaluation : ")[-1].split("Note totale :")[0].strip()
+                # evaluations[f"{complexity}_realism_score"] = realism_eval.split("Note totale :")[-1].strip()
+
+                # # Extract evaluations and scores for standalone quality
+                # evaluations[f"{complexity}_standalone"] = standalone_eval.split("Évaluation : ")[-1].split("Note totale :")[0].strip()
+                # evaluations[f"{complexity}_standalone_score"] = standalone_eval.split("Note totale :")[-1].strip()
 
             # Update the output with evaluations
             output.update(evaluations)
@@ -212,6 +222,10 @@ def main(
     output_path: Path = Path(__file__).parent / "qa_output.xlsx",  # Default output path
     report_output_path: Path = Path(__file__).parent / "report_output.xlsx"  # Default report output path
 ):
+    """
+    Function to generate the synthethic data part of the RAG pipeline.
+    Currently supports multiple complexity (WIP).
+    """
     qa_pairs = generate_qa_pairs(eval_corpus_path, n_generations, output_path)
 
     if qa_pairs:
@@ -228,10 +242,10 @@ def main(
                     "source_doc": output["source_doc"],
                     "groundedness_evaluation": output.get(f"{complexity}_groundedness"),
                     "groundedness_score": output.get(f"{complexity}_groundedness_score"),
-                    "realism_evaluation": output.get(f"{complexity}_realism"),
-                    "realism_score": output.get(f"{complexity}_realism_score"),
-                    "standalone_evaluation": output.get(f"{complexity}_standalone"),
-                    "standalone_score": output.get(f"{complexity}_standalone_score"),
+                    # "realism_evaluation": output.get(f"{complexity}_realism"),
+                    # "realism_score": output.get(f"{complexity}_realism_score"),
+                    # "standalone_evaluation": output.get(f"{complexity}_standalone"),
+                    # "standalone_score": output.get(f"{complexity}_standalone_score"),
                 })
 
         # Save the final evaluated QA pairs to an Excel file
@@ -239,18 +253,20 @@ def main(
         
         # Apply the function to the score columns
         df_output['groundedness_score'] = df_output['groundedness_score'].apply(extract_numeric)
-        df_output['realism_score'] = df_output['realism_score'].apply(extract_numeric)
-        df_output['standalone_score'] = df_output['standalone_score'].apply(extract_numeric)
+        # df_output['realism_score'] = df_output['realism_score'].apply(extract_numeric)
+        # df_output['standalone_score'] = df_output['standalone_score'].apply(extract_numeric)
         
         df_output.to_excel(report_output_path, index=False)
         print(f"Final evaluated QA dataset saved to {report_output_path}")
 
         # Filter the rows based on numeric conditions
-        filtered_output = df_output[
-            (df_output['groundedness_score'] >= 4) &
-            (df_output['realism_score'] >= 4) &
-            (df_output['standalone_score'] >= 4)
-        ]
+        filtered_output = df_output[(df_output['groundedness_score'] >= 4)]
+
+        # filtered_output = df_output[
+        #     (df_output['groundedness_score'] >= 4) &
+        #     (df_output['realism_score'] >= 4) &
+        #     (df_output['standalone_score'] >= 4)
+        # ]
 
         # Save the filtered data to an Excel file
         filtered_output = filtered_output[["context", "question", "answer", "complexity", "source_doc"]]
