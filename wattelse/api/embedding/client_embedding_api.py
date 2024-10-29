@@ -8,11 +8,16 @@ from pathlib import Path
 import requests
 import json
 
+from joblib import Parallel, delayed
 from langchain_core.embeddings import Embeddings
 from loguru import logger
 from typing import List
 
 import numpy as np
+
+MAX_N_JOBS = 4
+BATCH_DOCUMENT_SIZE = 1000
+MAX_DOCS_PER_REQUEST_PER_WORKER = 10000
 
 
 class EmbeddingAPI(Embeddings):
@@ -27,6 +32,7 @@ class EmbeddingAPI(Embeddings):
         self.host = config.get("EMBEDDING_API_CONFIG", "host")
         self.url = f"http://{self.host}:{self.port}"
         self.model_name = config.get("EMBEDDING_API_CONFIG", "model_name")
+        self.num_workers = config.getint("EMBEDDING_API_CONFIG", "number_workers")
 
     def get_api_model_name(self) -> str:
         """
@@ -52,10 +58,9 @@ class EmbeddingAPI(Embeddings):
         else:
             logger.error(f"Error: {response.status_code}")
 
-    def embed_documents(
-        self, texts: List[str], show_progress_bar: bool = False
+    def embed_batch(
+        self, texts: List[str], show_progress_bar: bool = True
     ) -> List[List[float]]:
-        logger.debug(f"Calling EmbeddingAPI using model: {self.model_name}")
         logger.debug(f"Computing embeddings...")
         response = requests.post(
             self.url + "/encode",
@@ -63,10 +68,50 @@ class EmbeddingAPI(Embeddings):
         )
         if response.status_code == 200:
             embeddings = np.array(response.json()["embeddings"])
-            logger.debug(f"Computing embeddings done")
+            logger.debug(f"Computing embeddings done for batch")
             return embeddings.tolist()
         else:
             logger.error(f"Error: {response.status_code}")
+            return []
+
+    def embed_documents(
+        self,
+        texts: List[str],
+        show_progress_bar: bool = True,
+        batch_size: int = BATCH_DOCUMENT_SIZE,
+    ) -> List[List[float]]:
+        if len(texts) > MAX_DOCS_PER_REQUEST_PER_WORKER * self.num_workers:
+            # Too many documents to embed in one request, refuse it
+            logger.error(
+                f"Error: Too many documents to be embedded ({len(texts)} chunks, max {MAX_DOCS_PER_REQUEST_PER_WORKER * self.num_workers})"
+            )
+            raise ValueError(
+                f"Error: Too many documents to be embedded ({len(texts)} chunks, max {MAX_DOCS_PER_REQUEST_PER_WORKER * self.num_workers})"
+            )
+
+        logger.debug(f"Calling EmbeddingAPI using model: {self.model_name}")
+
+        # Split texts into chunks
+        batches = [texts[i : i + batch_size] for i in range(0, len(texts), batch_size)]
+        logger.debug(
+            f"Computing embeddings on {len(texts)} documents using ({len(batches)}) batches..."
+        )
+
+        # Parallel request
+        results = Parallel(n_jobs=MAX_N_JOBS)(
+            delayed(self.embed_batch)(batch, show_progress_bar) for batch in batches
+        )
+
+        # Check results
+        if any(result == [] for result in results):
+            raise ValueError(
+                "At least one batch processing failed. Documents are not embedded."
+            )
+
+        # Compile results
+        embeddings = [embedding for result in results for embedding in result]
+        assert len(embeddings) == len(texts)
+        return embeddings
 
     async def aembed_query(self, text: str) -> List[float]:
         # FIXME!
