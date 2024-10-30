@@ -103,7 +103,6 @@ async function postUserMessageToChatBot(userMessage) {
     // When streaming is done, show feedback section and save interaction
     botDiv.classList.remove("animate"); // remove generation animation
     provideFeedback(userMessage, streamResponse);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
 
     saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay)
 }

@@ -151,7 +151,6 @@ function createWarningMessage(message) {
     warningDiv.classList.add('warning-message');
     warningDiv.innerHTML = message;
     chatHistory.appendChild(warningDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 }
 
 // Display bot message
@@ -160,7 +159,6 @@ function createBotMessage(message) {
     botDiv.classList.add('bot-message');
     botDiv.innerHTML = message;
     chatHistory.appendChild(botDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the latest message
 
     return botDiv;
 }
