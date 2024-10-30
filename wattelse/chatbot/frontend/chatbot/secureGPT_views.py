@@ -27,6 +27,9 @@ from .utils import (
 # NUMBER MAX OF TOKENS
 MAX_TOKENS = 1536
 
+# Max messages in history
+MAX_MESSAGES = 12
+
 
 # Config for retriever and generator
 config = configparser.ConfigParser(
@@ -72,7 +75,7 @@ def request_client(request):
 
         # Get user chat history
         history = get_conversation_history(
-            request.user, conversation_id, ChatModel=GPTChat
+            request.user, conversation_id, ChatModel=GPTChat, n=MAX_MESSAGES
         )
 
         # Get posted message

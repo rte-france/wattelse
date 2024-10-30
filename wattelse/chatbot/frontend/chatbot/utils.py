@@ -105,6 +105,7 @@ def get_conversation_history(
     user: User,
     conversation_id: uuid.UUID,
     ChatModel: models.Model,
+    n: int = 0,
 ) -> List[Dict[str, str]] | None:
     """
     Return chat history following OpenAI API format :
@@ -115,13 +116,15 @@ def get_conversation_history(
         {...}
     ]
     If no history is found return None.
+    Use `n` parameter to only return the last `n` messages.
+    Default `n` value is 0 to return all messages.
     """
     history = []
     history_query = ChatModel.objects.filter(user=user, conversation_id=conversation_id)
     for chat in history_query:
         history.append({"role": "user", "content": chat.message})
         history.append({"role": "assistant", "content": chat.response})
-    return None if len(history) == 0 else history
+    return None if len(history) == 0 else history[-n:]
 
 
 def get_user_conversation_ids(
