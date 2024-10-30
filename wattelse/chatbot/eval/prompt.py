@@ -160,8 +160,8 @@ Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les c
 - 5 : Très satisfaisant – Entièrement fidèle et complète selon le contexte.
 
 **Conseils pour l’évaluation :**
-- Vérifiez que le contexte couvre les points clés de la question.
-- Évaluez si des éléments essentiels sont omis ou mal interprétés.
+- Vérifiez si la réponse s'appuie exclusivement sur le contexte fourni sans introduire d’informations extérieures.
+- Assurez-vous que la réponse reflète fidèlement les points principaux du contexte.
 
 Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
 
@@ -176,14 +176,18 @@ RETRIEVABILITY_EVAL_PROMPT = """
 Évaluez si le contexte récupéré est pertinent et suffisant pour répondre à la question posée.
 
 Réponse:::
-Évaluation : (Indiquez si le contexte répond directement à la question et contient les informations nécessaires. Précisez si le nombre de réponses pertinentes par rapport aux réponses totales impacte l'évaluation, et mentionnez tout manque d'exhaustivité.)
+Évaluation : (Indiquez si le contexte répond directement à la question et contient les informations nécessaires. Précisez si la proportion d'extraits non pertinents par rapport au total des extraits impacte la qualité de la réponse, et mentionnez tout manque d'exhaustivité.)
 
 Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les critères suivants :
 - 1 : Très insuffisant – Contexte principalement hors sujet, sans informations utiles.
-- 2 : Insuffisant – Contexte partiellement pertinent, mais manque d'informations clés, avec des extraits non pertinents.
-- 3 : Passable – Contexte pertinent, mais contient plusieurs extraits non utiles qui diluent la pertinence globale.
-- 4 : Satisfaisant – Contexte majoritairement pertinent avec juste quelques extraits non pertinents.
-- 5 : Très satisfaisant – Contexte totalement pertinent et exhaustif, avec toutes les informations nécessaires.
+- 2 : Insuffisant – Contexte partiellement pertinent, manque d'informations clés, avec de nombreux extraits non pertinents.
+- 3 : Passable – Contexte globalement pertinent, mais dilué par plusieurs extraits non pertinents.
+- 4 : Satisfaisant – Contexte majoritairement pertinent, avec seulement quelques extraits non pertinents qui n’affectent pas fortement la compréhension.
+- 5 : Très satisfaisant – Contexte totalement pertinent et exhaustif, contenant toutes les informations nécessaires.
+
+**Conseils pour l’évaluation :**
+- Vérifiez si le contexte répond directement à la question et si les extraits sont pertinents pour la réponse.
+- Évaluez si la présence d'extraits non pertinents nuit à la clarté et à la compréhension.
 
 Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
 
@@ -209,8 +213,8 @@ Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les c
 - 5 : Très satisfaisant – Entièrement correcte, directe et parfaitement alignée avec la question.
 
 **Conseils pour l’évaluation :**
-- Vérifiez que la réponse couvre tous les aspects pertinents de la question.
-- Évaluez si des éléments essentiels sont omis ou mal interprétés.
+- Vérifiez si la réponse aborde tous les points importants de la question sans omissions.
+- Assurez-vous qu’il n’y a pas d’interprétations erronées ou d’informations hors sujet.
 
 Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
 

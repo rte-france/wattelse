@@ -57,6 +57,8 @@ Three metrics were defined :
 
 - **Correctness** : Assesses the factual reliability and completeness of the answer provided, ensuring that it directly addresses the question posed without containing errors, omissions, or misleading information.
 
+**TODO Discounted Cumulative Gain (DCG)** is a metric used to evaluate the effectiveness of search engine rankings. It measures the relevance of search results while considering their positions, with more relevant documents receiving higher scores when placed higher in the list.
+
 ## Usage
 
 Go to the eval folder:
