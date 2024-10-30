@@ -42,9 +42,9 @@
 
 <body>
     <!-- Load styles for every pages -->
-    <link rel="stylesheet" href="{% static 'chatbot/global.css' %}">
-    <link rel="stylesheet" href="{% static 'chatbot/chatbot.css' %}">
-    <link rel="stylesheet" href="{% static 'chatbot/login_register.css' %}">
+    <link rel="stylesheet" href="{% static 'chatbot/global.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'chatbot/chatbot.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'chatbot/login_register.css' %}?v={{ STATIC_VERSION }}">
 
     <!-- Main top navigation bar -->
     <div class="main-navbar">

@@ -84,6 +84,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "chatbot.context_processors.versioning",
             ],
         },
     },
@@ -148,6 +149,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SESSION_COOKIE_AGE = 4 * 60 * 60  # 4 hours
 
-# JavaScript versioning to avoid browser cache
+# Static files versioning to avoid browser cache (Javascript, CSS)
 
-JS_VERSION = "1.0"
+STATIC_VERSION = "1.1"
