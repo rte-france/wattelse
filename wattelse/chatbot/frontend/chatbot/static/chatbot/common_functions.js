@@ -371,3 +371,44 @@ function removeActiveConversation() {
         activeButton.classList.remove("active");
     }
 }
+
+const maxPumpkins = 10; // Set the desired number of pumpkins
+let pumpkinCount = 0; // Counter to track the number of pumpkins created
+
+function createPumpkin() {
+    if (pumpkinCount >= maxPumpkins) {
+        clearInterval(pumpkinInterval); // Stop creating pumpkins if the limit is reached
+        return; // Exit the function
+    }
+
+    const pumpkin = document.createElement('div');
+    pumpkin.classList.add('pumpkin');
+
+    // Random position
+    const x = Math.random() * window.innerWidth;
+    const y = Math.random() * window.innerHeight;
+    pumpkin.style.left = `${x}px`;
+    pumpkin.style.top = `${y}px`;
+
+    // Append to body
+    document.body.appendChild(pumpkin);
+
+    // Start animation
+    setTimeout(() => {
+        pumpkin.style.transform = 'scale(2)'; // Increase size
+        pumpkin.style.animation = 'shake 0.5s'; // Shake effect
+    }, 100);
+
+    // Remove after animation
+    setTimeout(() => {
+        pumpkin.style.opacity = '0'; // Fade out
+        setTimeout(() => {
+            pumpkin.remove(); // Remove from DOM
+        }, 500); // Match with CSS transition duration
+    }, 1000); // Time before starting to fade out
+
+    pumpkinCount++; // Increment the counter
+}
+
+// Create pumpkins at intervals
+const pumpkinInterval = setInterval(createPumpkin, 100);

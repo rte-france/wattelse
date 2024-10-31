@@ -140,21 +140,18 @@ a {
 
 .pumpkin {
   position: absolute;
-  top: -50px; /* Start above the screen */
-  width: 50px; /* Adjust pumpkin size */
-  height: 50px;
+  width: 50px; /* Initial size */
+  height: 50px; /* Maintain aspect ratio */
   background-image: url('pumpkin.png'); /* Replace with your pumpkin image path */
-  background-size: cover;
-  animation: fall 1s linear forwards;
+  background-size: cover; /* Cover the entire div */
+  opacity: 1;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-@keyframes fall {
-  0% {
-    transform: translateY(0) rotate(0deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(100vh) rotate(360deg);
-    opacity: 0.3; /* Optional: fade slightly as it falls */
-  }
+@keyframes shake {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-5px, 0); }
+  50% { transform: translate(5px, 0); }
+  75% { transform: translate(-5px, 0); }
+  100% { transform: translate(0, 0); }
 }

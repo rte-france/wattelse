@@ -151,4 +151,4 @@ SESSION_COOKIE_AGE = 4 * 60 * 60  # 4 hours
 
 # Static files versioning to avoid browser cache (Javascript, CSS)
 
-STATIC_VERSION = "1.2"
+STATIC_VERSION = "1.3"

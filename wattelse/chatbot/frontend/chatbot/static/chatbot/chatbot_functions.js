@@ -722,23 +722,3 @@ function removeUserFromGroup(userNameToDelete) {
     }
 }
 
-function addFallingPumpkins() {
-    const pumpkinCount = 15; // Number of pumpkins to display
-
-    for (let i = 0; i < pumpkinCount; i++) {
-      const pumpkin = document.createElement("div");
-      pumpkin.className = "pumpkin";
-
-      // Random horizontal start position for each pumpkin
-      pumpkin.style.left = 10+Math.random() * 80 + "vw";
-      pumpkin.style.animationDelay = `${Math.random() * 1}s`; // Random delay for falling
-
-      document.body.appendChild(pumpkin);
-
-      // Optional: Remove pumpkin after it reaches the bottom
-      pumpkin.addEventListener('animationend', () => pumpkin.remove());
-    }
-  }
-
-// Call the function on page load
-window.onload = addFallingPumpkins;
