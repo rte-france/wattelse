@@ -5,8 +5,8 @@
 WattElse is a NLP suite developed for the needs of RTE (Réseau de Transport d'Electricité).
 
 It is composed of two main modules:
-- a Retrieval Augmented Generation (RAG) application -> [wattelse/chatbot](wattelse/chatbot)
-- a module to study topic evolution over time -> [wattelse/bertopic](wattelse/bertopic)
+- a Retrieval Augmented Generation (RAG) application -> **WattElse Doc**
+- a simple chatbot interface to deploy and interact with any LLM -> **WattElse GPT**
 
 Some services are used by several applications/users at the same time. To optimize resource use, these services are implemented in the form of APIs. A description of these services is available in [wattelse/api](wattelse/api).
 
@@ -33,5 +33,5 @@ You can then install the project dependencies with the following command:
 
 ## Hardware requirements
 
-WattElse uses embedding models for *RAG* and *BERTopic*. It also uses larger generative models for *RAG* responses. By default, all models are loaded on GPU. For *RAG*, you will for example need:
+WattElse uses embedding models for *RAG*. It also uses larger generative models for responses. By default, all models are loaded on GPU. For *RAG*, you will for example need:
 - 1 GPU with > 20Go (or several smaller GPUs)
