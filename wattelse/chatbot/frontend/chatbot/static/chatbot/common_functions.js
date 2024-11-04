@@ -193,7 +193,7 @@ function handleUserMessage(userMessage) {
 ///////////////////////// LOG FUNCTIONS ///////////////////////////////
 
 // Store logs into the database
-function saveInteraction(conversationId, userMessage, botResponse, queryStartTimestamp, answerDelay, relevant_extracts = null) {
+function saveInteraction(conversationId, userMessage, botResponse, queryStartTimestamp, answerDelay, relevantExtracts = null) {
     fetch('/save_interaction/', {
         method: 'POST',
         headers: {
@@ -206,7 +206,7 @@ function saveInteraction(conversationId, userMessage, botResponse, queryStartTim
             'answer': botResponse,
             'question_timestamp': queryStartTimestamp,
             'answer_delay': answerDelay,
-            'relevant_extracts': relevant_extracts,
+            'relevant_extracts': relevantExtracts,
             'source_path': window.location.pathname, // allows to know from with page (RAG/GPT) the feedback comes from
         })
     })

@@ -46,7 +46,9 @@ ChatModels = {
 
 
 def get_chat_model(source_path: str) -> Type[GPTChat | Chat]:
-    """Return the database class associated to the current page (RAG vs secureGPT)"""
+    """Return the database class associated to the current page (RAG vs secureGPT)
+    allowed source_path : "/" and "/llm/"
+    """
     if not source_path:
         raise Exception("Invalid source path")
     db_model = ChatModels.get(source_path, None)

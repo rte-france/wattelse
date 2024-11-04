@@ -271,12 +271,6 @@ def save_interaction(request):
             relevant_extracts=data.get("relevant_extracts", "")
             relevant_extracts = {i: extract for i, extract in enumerate(relevant_extracts)}
             chatmodel_params["relevant_extracts"] = relevant_extracts
-        elif source_path == "/llm/":        # WattElse GPT
-            pass
-        else:
-            logger.error(f"{source_path} is not an allowed source_path")
-            raise Exception
-        
 
 
         # Save interaction
