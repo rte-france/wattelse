@@ -42,12 +42,12 @@ QA_GENERATION_PROMPT = """
 Votre tâche est d'écrire une question factuelle et une réponse donnée un contexte.
 Vous devez créer trois types de questions :
 
-1. **Simple** : une question factuelle qui peut être répondue directement avec une information simple du contexte.
+1. **Simple** : une question factuelle concise qui peut être répondue directement avec une information simple du contexte.
 2. **Raisonnement** : une question qui nécessite un raisonnement ou une déduction à partir des éléments du contexte.
 3. **Multi-contexte ** : une question qui intègre plusieurs éléments ou informations du contexte pour formuler la réponse.
 
 Votre question factuelle doit être répondue par des éléments d'information factuelle provenant du contexte. 
-Cela signifie que votre question factuelle NE DOIT PAS mentionner quelque chose comme "selon le passage" ou "le contexte".
+Cela signifie que votre question factuelle NE DOIT PAS mentionner quelque chose comme "selon le passage" ou "Dans le contexte".
 
 Fournissez votre réponse comme suit :
 

@@ -200,6 +200,7 @@ def main(
             "context": row[CONTEXT_COLUMN],
             "question": row[QUERY_COLUMN],
             "answer": row["rag_answer"],
+            "complexity": row[COMPLEXITY_COLUMN],
             "source_doc": row[DOC_LIST_COLUMN],
             "relevant_extracts": row[RAG_RELEVANT_EXTRACTS_COLUMN], 
             "faithfulness_evaluation": row.get("faithfulness"),
@@ -224,14 +225,14 @@ def main(
     average_correctness = df_output['correctness_score'].mean()
     average_retrievability = df_output['retrievability_score'].mean()
 
-    # Print averages
-    print(f"Average faithfulness: {average_faithfulness:.2f}")
-    print(f"Average correctness: {average_correctness:.2f}")
-    print(f"Average retrievability: {average_retrievability:.2f}")
+    # logger.info averages
+    logger.info(f"Average faithfulness: {average_faithfulness:.2f}")
+    logger.info(f"Average correctness: {average_correctness:.2f}")
+    logger.info(f"Average retrievability: {average_retrievability:.2f}")
 
     # Save the final evaluated QA pairs to an Excel file
     df_output.to_excel(report_output_path, index=False)
-    print(f"Final evaluated QA dataset saved to {report_output_path}")
+    logger.info(f"Final evaluated QA dataset saved to {report_output_path}")
 
     # Clear RAG backend
     RAG_EVAL_BACKEND.clear_collection()
