@@ -3,12 +3,12 @@ See AUTHORS.txt
 SPDX-License-Identifier: MPL-2.0
 This file is part of Wattelse, a NLP application suite.
 
-Lead Developers:
+Developers:
     - Jérôme Picault
     - Guillaume Grosjean
-
-Other Developers:
-    - Allaa Boutaleb
+    - Nader Narcisse
+    - Jérome Dejeagher
 
 Further Contributions by:
+    - Allaa Boutaleb
     - Yagmur Aslan
