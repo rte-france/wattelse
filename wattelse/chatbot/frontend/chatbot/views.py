@@ -253,7 +253,8 @@ def save_interaction(request):
         answer_delay = timedelta(milliseconds=answer_delay)
 
         # Get database to use based on source path
-        ChatModel = get_chat_model(data.get("source_path"))
+        source_path = data.get("source_path")
+        ChatModel = get_chat_model(source_path=source_path)
 
         # Get relevant extract
         relevant_extracts=data.get("relevant_extracts", "")
@@ -275,6 +276,7 @@ def save_interaction(request):
         else:
             logger.error(f"{source_path} is not an allowed source_path")
             raise Exception
+        
 
 
         # Save interaction
