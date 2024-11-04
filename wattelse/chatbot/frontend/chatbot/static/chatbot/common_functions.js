@@ -193,7 +193,7 @@ function handleUserMessage(userMessage) {
 ///////////////////////// LOG FUNCTIONS ///////////////////////////////
 
 // Store logs into the database
-function saveInteraction(conversationId, userMessage, botResponse, queryStartTimestamp, answerDelay, relevant_extracts) {
+function saveInteraction(conversationId, userMessage, botResponse, queryStartTimestamp, answerDelay, relevant_extracts = null) {
     fetch('/save_interaction/', {
         method: 'POST',
         headers: {

@@ -258,18 +258,29 @@ def save_interaction(request):
         # Get relevant extract
         relevant_extracts=data.get("relevant_extracts", "")
         relevant_extracts = {i: extract for i, extract in enumerate(relevant_extracts)}
+        chatmodel_params = {
+            "user" : request.user,
+            "group_id" : get_user_group_id(request.user),
+            "conversation_id" : data.get("conversation_id", ""),
+            "message" : data.get("message", ""),
+            "response" : data.get("answer", ""),
+            "question_timestamp" : question_timestamp,
+            "answer_delay" : answer_delay,
+        }
+
+        if source_path == "/":
+            pass
+        elif source_path == "/llm/":
+            chatmodel_params["relevant_extracts"] = relevant_extracts
+        else:
+            logger.error(f"{source_path} is not an allowed source_path")
+            raise Exception
+
 
         # Save interaction
         try:
             chat = ChatModel(
-                user=request.user,
-                group_id=get_user_group_id(request.user),
-                conversation_id=data.get("conversation_id", ""),
-                message=data.get("message", ""),
-                response=data.get("answer", ""),
-                question_timestamp=question_timestamp,
-                answer_delay=answer_delay,
-                relevant_extracts = relevant_extracts
+                **chatmodel_params
             )
             chat.save()
 
