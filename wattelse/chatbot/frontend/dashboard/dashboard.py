@@ -58,7 +58,7 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
     table = DATA_TABLES[st.session_state["selected_table"]]
     cur.execute(
         f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, answer_delay,"
-        f"short_feedback, long_feedback "
+        f"short_feedback, long_feedback, relevant_extracts "
         f"FROM {table}, {USER_TABLE} "
         f"WHERE {table}.user_id = {USER_TABLE}.id"
     )
