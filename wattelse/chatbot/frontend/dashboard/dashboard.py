@@ -56,11 +56,15 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
     # Get column names from the table
     cur = con.cursor()
     table = DATA_TABLES[st.session_state["selected_table"]]
+
+    query = f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, answer_delay, short_feedback, long_feedback"
+
+    if st.session_state["selected_table"]=="RAG":
+        query += ", relevant_extracts"
+    query += f" FROM {table}, {USER_TABLE} WHERE {table}.user_id = {USER_TABLE}.id"
+
     cur.execute(
-        f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, answer_delay,"
-        f"short_feedback, long_feedback, relevant_extracts "
-        f"FROM {table}, {USER_TABLE} "
-        f"WHERE {table}.user_id = {USER_TABLE}.id"
+        query
     )
     column_names = [
         desc[0] for desc in cur.description

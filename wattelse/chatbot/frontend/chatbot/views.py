@@ -256,9 +256,6 @@ def save_interaction(request):
         source_path = data.get("source_path")
         ChatModel = get_chat_model(source_path=source_path)
 
-        # Get relevant extract
-        relevant_extracts=data.get("relevant_extracts", "")
-        relevant_extracts = {i: extract for i, extract in enumerate(relevant_extracts)}
         chatmodel_params = {
             "user" : request.user,
             "group_id" : get_user_group_id(request.user),
@@ -269,10 +266,13 @@ def save_interaction(request):
             "answer_delay" : answer_delay,
         }
 
-        if source_path == "/":
-            pass
-        elif source_path == "/llm/":
+        if source_path == "/":        # WattElse Doc
+            # Get relevant extract
+            relevant_extracts=data.get("relevant_extracts", "")
+            relevant_extracts = {i: extract for i, extract in enumerate(relevant_extracts)}
             chatmodel_params["relevant_extracts"] = relevant_extracts
+        elif source_path == "/llm/":        # WattElse GPT
+            pass
         else:
             logger.error(f"{source_path} is not an allowed source_path")
             raise Exception
