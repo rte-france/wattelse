@@ -147,7 +147,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Set session expiration duration (in seconds)
 
-SESSION_COOKIE_AGE = 4 * 60 * 60  # 4 hours
+SESSION_COOKIE_AGE = 24 * 60 * 60  # 24 hours
 
 # Static files versioning to avoid browser cache (Javascript, CSS)
 
