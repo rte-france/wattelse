@@ -167,6 +167,7 @@ async function postUserMessageToChatBot(userMessage) {
     let chunk;
     let noExtract = false;
     let streamResponse = "";
+    let relevantExtracts;
 
     do {
         // Handle too long response from backend
@@ -198,8 +199,9 @@ async function postUserMessageToChatBot(userMessage) {
         // Handle other chunks
         dataChunks.forEach((json_chunk) => {
             if (isFirstChunk) {
-                updateRelevantExtracts(json_chunk.relevant_extracts);
-                if (json_chunk.relevant_extracts.length===0){
+                relevantExtracts = JSON.parse(JSON.stringify(json_chunk.relevant_extracts));
+                updateRelevantExtracts(relevantExtracts);
+                if (relevantExtracts.length===0){
                     createWarningMessage(NO_EXTRACT_MSG);
                     noExtract = true;
                 }
@@ -227,7 +229,7 @@ async function postUserMessageToChatBot(userMessage) {
     }
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
-    saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay, json_chunk.relevant_extracts)
+    saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay, relevantExtracts)
 }
 
 function updateAvailableDocuments(){
