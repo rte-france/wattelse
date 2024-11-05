@@ -33,12 +33,12 @@ from wattelse.chatbot.eval.prompt import (
 app = typer.Typer()
 
 # Function to call the LLM
-def call_llm(llm_client, prompt: str):
+def call_llm(llm_client, prompt: str) -> str:
     response = llm_client.generate(prompt, temperature=0)
     return response
 
 # Enhanced split_documents function for parallel processing
-def split_documents(eval_corpus_path: Path):
+def split_documents(eval_corpus_path: Path) -> List[LangchainDocument]:
     docs_processed = []
 
     def process_doc(doc):
@@ -78,6 +78,7 @@ def split_documents(eval_corpus_path: Path):
             return text_splitter.split_documents([langchain_doc])
         return []
 
+    # Parallel Processing: Use ThreadPoolExecutor for splitting or selecting chunks in parallel.
     with ThreadPoolExecutor() as executor:
         all_chunks = list(executor.map(process_doc, eval_corpus_path.iterdir()))
         for chunks in all_chunks:
@@ -85,7 +86,7 @@ def split_documents(eval_corpus_path: Path):
 
     return docs_processed
 
-# Main QA generation function with chunk pooling and logging enhancements
+# Main QA generation function
 def generate_qa_pairs(
     EVAL_CORPUS_PATH: Path,
     N_GENERATIONS: int = 100,
@@ -111,7 +112,7 @@ def generate_qa_pairs(
     logger.info(f"LLM Generation model: {llm_client.model_name}")
 
     # Function to select a high-yield document based on chunk availability
-    def select_high_yield_document():
+    def select_high_yield_document() -> List[str]:
         doc_chunks_remaining = {
             doc: sum(1 for used in usage if not used) / len(usage)
             for doc, usage in chunk_usage.items()
@@ -221,7 +222,7 @@ def generate_qa_pairs(
     return outputs
 
 # Function to evaluate QA pairs using critique agents
-def evaluate_qa_pairs(outputs):
+def evaluate_qa_pairs(outputs: List[Dict]) -> List[Dict]:
     llm_client = OpenAI_Client()  # Initialize the OpenAI Client for critique
     logger.info(f"LLM Evaluation model: {llm_client.model_name}")
 
@@ -303,7 +304,7 @@ def main(
 ):
     """
     Function to generate the synthethic data part of the RAG pipeline.
-    Currently supports multiple complexity (WIP).
+    Currently supports multiple complexity.
     """
     qa_pairs = generate_qa_pairs(eval_corpus_path, n_generations, output_path)
 
