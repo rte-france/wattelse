@@ -12,10 +12,8 @@ import PyPDF2
 from wattelse.api.openai.client_openai_api import OpenAI_Client 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document as LangchainDocument
-from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 import re
-
-
 
 # TO DO : Use the classes rather than creating the functions.
 # from wattelse.indexer.document_parser import parse_file
@@ -31,7 +29,6 @@ from wattelse.chatbot.eval.prompt import (
 # Example :
 # python generate_qa.py --eval-corpus-path data/eval_one --n-generations 5 --output-path output_qa_102.xlsx --report-output-path report_output_102.xlsx
 
-
 # Define the Typer app
 app = typer.Typer()
 
@@ -40,10 +37,11 @@ def call_llm(llm_client, prompt: str):
     response = llm_client.generate(prompt, temperature=0)
     return response
 
-# Function to split documents Update with Langchain and .DOCX and others...
+# Enhanced split_documents function for parallel processing
 def split_documents(eval_corpus_path: Path):
     docs_processed = []
-    for doc in eval_corpus_path.iterdir():
+
+    def process_doc(doc):
         content = ""
         if doc.suffix == ".pdf":
             try:
@@ -52,26 +50,24 @@ def split_documents(eval_corpus_path: Path):
                     content = "\n".join([page.extract_text() for page in reader.pages if page.extract_text() is not None])
             except Exception as e:
                 logger.error(f"Error reading {doc.name}: {e}")
-                continue
+                return []
         elif doc.suffix == ".docx":
             try:
                 docx_file = Document(doc)
                 content = "\n".join([paragraph.text for paragraph in docx_file.paragraphs if paragraph.text.strip() != ""])
             except Exception as e:
                 logger.error(f"Error reading {doc.name}: {e}")
-                continue
+                return []
         else:
             try:
                 with open(doc, "r", encoding="utf-8") as f:
                     content = f.read()
             except Exception as e:
                 logger.error(f"Error reading {doc.name}: {e}")
-                continue
+                return []
 
         if content:
-            # Log the total length of the document content
             logger.info(f"Processing document '{doc.name}' with total length: {len(content)} characters")
-
             langchain_doc = LangchainDocument(page_content=content, metadata={"source": doc.name})
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=3000,
@@ -79,15 +75,17 @@ def split_documents(eval_corpus_path: Path):
                 add_start_index=True,
                 separators=["\n\n", "\n", ".", " ", ""],
             )
+            return text_splitter.split_documents([langchain_doc])
+        return []
 
-            # Process and log each chunk created
-            document_chunks = text_splitter.split_documents([langchain_doc])
-            for idx, chunk in enumerate(document_chunks):
-                logger.info(f"Chunk {idx+1} for '{doc.name}': {len(chunk.page_content)} characters")
-            docs_processed += document_chunks
+    with ThreadPoolExecutor() as executor:
+        all_chunks = list(executor.map(process_doc, eval_corpus_path.iterdir()))
+        for chunks in all_chunks:
+            docs_processed.extend(chunks)
 
     return docs_processed
 
+# Main QA generation function with chunk pooling and logging enhancements
 def generate_qa_pairs(
     EVAL_CORPUS_PATH: Path,
     N_GENERATIONS: int = 100,
@@ -95,54 +93,85 @@ def generate_qa_pairs(
     DOCS_PER_QA: int = 4,
     CHUNKS_PER_DOC: int = 1
 ) -> List[Dict]:
+
     outputs = []
     docs_processed = split_documents(EVAL_CORPUS_PATH)
 
-    # Organize chunks by document and track indices for each document
+    # Organize chunks by document
     chunks_by_doc = defaultdict(list)
     for chunk in docs_processed:
         source = chunk.metadata["source"]
         chunks_by_doc[source].append(chunk)
 
+    doc_names = list(chunks_by_doc.keys())
+    chunk_usage = {doc_name: [False] * len(chunks) for doc_name, chunks in chunks_by_doc.items()}
+
+    # Set up an LLM client
     llm_client = OpenAI_Client()
     logger.info(f"LLM Generation model: {llm_client.model_name}")
 
-    # Document pointers to track progress in each document
-    doc_names = list(chunks_by_doc.keys())
-    doc_chunk_indices = {doc_name: 0 for doc_name in doc_names}
+    # Function to select a high-yield document based on chunk availability
+    def select_high_yield_document():
+        doc_chunks_remaining = {
+            doc: sum(1 for used in usage if not used) / len(usage)
+            for doc, usage in chunk_usage.items()
+        }
+        high_yield_docs = sorted(doc_chunks_remaining, key=doc_chunks_remaining.get, reverse=True)
+        return high_yield_docs
 
-    # Start generation loop
-    for _ in tqdm(range(N_GENERATIONS), total=N_GENERATIONS):
+    # Calculate the maximum possible generations based on available chunks
+    max_generations = 0
+    for doc, chunks in chunks_by_doc.items():
+        available_chunks_count = sum(not used for used in chunk_usage[doc])
+        max_generations += available_chunks_count // CHUNKS_PER_DOC
+
+    # Use the minimum of N_GENERATIONS and max_generations
+    actual_generations = min(N_GENERATIONS, max_generations)
+
+    # Start the QA generation loop
+    for iteration in tqdm(range(actual_generations), total=actual_generations):
         sampled_contexts = []
+        used_docs = set()
+        logger.info(f"Iteration {iteration + 1}/{actual_generations}")
 
-        # Select DOCS_PER_QA documents in a round-robin fashion
-        for doc_index in range(DOCS_PER_QA):
-            # Calculate document index in round-robin
-            doc_name = doc_names[(doc_index + _) % len(doc_names)]
-            doc_chunks = chunks_by_doc[doc_name]
-            start_idx = doc_chunk_indices[doc_name]
+        # Try selecting high-yield documents first
+        for _ in range(DOCS_PER_QA):
+            high_yield_docs = select_high_yield_document()
+            selected_doc = None
+            for doc_name in high_yield_docs:
+                if doc_name not in used_docs:
+                    selected_doc = doc_name
+                    used_docs.add(doc_name)
+                    break
 
-            # If we’ve reached the end of chunks, reset this document’s pointer to reuse
-            if start_idx >= len(doc_chunks):
-                start_idx = 0
-                doc_chunk_indices[doc_name] = 0
+            if selected_doc is None:
+                logger.info("No new documents available. Ending QA generation.")
+                break  # Break out if no new documents are available
 
-            # Get required chunks and update the document pointer
-            sampled_chunks = doc_chunks[start_idx:start_idx + CHUNKS_PER_DOC]
-            sampled_contexts.extend(sampled_chunks)
+            doc_chunks = chunks_by_doc[selected_doc]
+            available_chunks = [idx for idx, used in enumerate(chunk_usage[selected_doc]) if not used]
 
-            # Update the pointer to move forward for next generation
-            doc_chunk_indices[doc_name] += CHUNKS_PER_DOC
+            if available_chunks:
+                chunk_found = 0
+                for chunk_idx in available_chunks:
+                    if chunk_found < CHUNKS_PER_DOC:
+                        chunk_usage[selected_doc][chunk_idx] = True  # Mark chunk as used
+                        sampled_contexts.append(doc_chunks[chunk_idx])
+                        logger.info(f"Using chunk from {selected_doc}: [{chunk_idx}]")
+                        chunk_found += 1
+            else:
+                logger.info(f"All chunks exhausted for document '{selected_doc}'. Skipping this round.")
 
         if not sampled_contexts:
-            logger.info("No sampled contexts available. Skipping this QA generation.")
-            continue
+            logger.warning("No available contexts. Ending QA generation process.")
+            break  # Break out if no contexts are available
 
+        # Combine the selected contexts and call the LLM to generate QA pairs
         combined_context = "\n\n".join(chunk.page_content for chunk in sampled_contexts)
         output_QA_couple = call_llm(llm_client, QA_GENERATION_PROMPT.format(context=combined_context))
 
         try:
-            # Extract questions and answers from output
+            # Extract the generated QA pairs
             simple_question = output_QA_couple.split("Question simple : ")[-1].split("\n")[0].strip()
             simple_answer = output_QA_couple.split("Réponse simple : ")[-1].split("\n")[0].strip()
             reasoning_question = output_QA_couple.split("Question de raisonnement : ")[-1].split("\n")[0].strip()
@@ -150,14 +179,13 @@ def generate_qa_pairs(
             multi_context_question = output_QA_couple.split("Question multi-contexte : ")[-1].split("\n")[0].strip()
             multi_context_answer = output_QA_couple.split("Réponse multi-contexte : ")[-1].split("\n")[0].strip()
 
+            # Ensure answer length constraints
             assert len(simple_answer) < 2000, "Answer is too long"
             assert len(reasoning_answer) < 2000, "Answer is too long"
             assert len(multi_context_answer) < 2000, "Answer is too long"
 
-            # Track sources for QA generation
+            # Append results to outputs
             source_docs = [chunk.metadata["source"] for chunk in sampled_contexts]
-
-            # Append results to output
             outputs.append(
                 {
                     "context": combined_context,
@@ -178,10 +206,17 @@ def generate_qa_pairs(
             logger.error(f"Error generating QA pair: {e}")
             continue
 
-    # Save to Excel
+    # Save results to an Excel file
     qa_df = pd.DataFrame(outputs)
     qa_df.to_excel(OUTPUT_PATH, index=False)
     logger.info(f"Generated QA dataset saved to {OUTPUT_PATH}")
+
+    # Document utilization summary for debugging and further adjustments
+    logger.info("Document Utilization Summary:")
+    for doc_name, usage in chunk_usage.items():
+        total_chunks = len(usage)
+        used_chunks = sum(usage)
+        logger.info(f"{doc_name}: {used_chunks}/{total_chunks} chunks used ({(used_chunks/total_chunks)*100:.2f}% utilization)")
 
     return outputs
 
@@ -241,7 +276,6 @@ def evaluate_qa_pairs(outputs):
                     evaluations[f"{complexity}_groundedness_score"] = np.nan
 
                 logger.debug(f"groundedness LLM response: {groundedness_eval}")
-
 
                 # # Extract evaluations and scores for realism
                 # evaluations[f"{complexity}_realism"] = realism_eval.split("Évaluation : ")[-1].split("Note totale :")[0].strip()
