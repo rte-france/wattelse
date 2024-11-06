@@ -253,18 +253,30 @@ def save_interaction(request):
         answer_delay = timedelta(milliseconds=answer_delay)
 
         # Get database to use based on source path
-        ChatModel = get_chat_model(data.get("source_path"))
+        source_path = data.get("source_path")
+        ChatModel = get_chat_model(source_path=source_path)
+
+        chatmodel_params = {
+            "user" : request.user,
+            "group_id" : get_user_group_id(request.user),
+            "conversation_id" : data.get("conversation_id", ""),
+            "message" : data.get("message", ""),
+            "response" : data.get("answer", ""),
+            "question_timestamp" : question_timestamp,
+            "answer_delay" : answer_delay,
+        }
+
+        if source_path == "/":        # WattElse Doc
+            # Get relevant extract
+            relevant_extracts=data.get("relevant_extracts", "")
+            relevant_extracts = {i: extract for i, extract in enumerate(relevant_extracts)}
+            chatmodel_params["relevant_extracts"] = relevant_extracts
+
 
         # Save interaction
         try:
             chat = ChatModel(
-                user=request.user,
-                group_id=get_user_group_id(request.user),
-                conversation_id=data.get("conversation_id", ""),
-                message=data.get("message", ""),
-                response=data.get("answer", ""),
-                question_timestamp=question_timestamp,
-                answer_delay=answer_delay,
+                **chatmodel_params
             )
             chat.save()
 
