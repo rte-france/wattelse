@@ -59,13 +59,11 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
 
     query = f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, answer_delay, short_feedback, long_feedback"
 
-    if st.session_state["selected_table"]=="RAG":
+    if st.session_state["selected_table"] == "RAG":
         query += ", relevant_extracts"
     query += f" FROM {table}, {USER_TABLE} WHERE {table}.user_id = {USER_TABLE}.id"
 
-    cur.execute(
-        query
-    )
+    cur.execute(query)
     column_names = [
         desc[0] for desc in cur.description
     ]  # Get column names from description
