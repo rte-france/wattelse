@@ -24,7 +24,6 @@ class Chat(models.Model):
     answer_delay = models.DurationField(null=True, blank=True)  # Optional fields
     relevant_extracts = models.JSONField(default=list)
 
-
     def __str__(self):
         return f"{self.user.username}: {self.message}"
 

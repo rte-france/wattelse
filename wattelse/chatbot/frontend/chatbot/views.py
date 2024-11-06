@@ -257,27 +257,26 @@ def save_interaction(request):
         ChatModel = get_chat_model(source_path=source_path)
 
         chatmodel_params = {
-            "user" : request.user,
-            "group_id" : get_user_group_id(request.user),
-            "conversation_id" : data.get("conversation_id", ""),
-            "message" : data.get("message", ""),
-            "response" : data.get("answer", ""),
-            "question_timestamp" : question_timestamp,
-            "answer_delay" : answer_delay,
+            "user": request.user,
+            "group_id": get_user_group_id(request.user),
+            "conversation_id": data.get("conversation_id", ""),
+            "message": data.get("message", ""),
+            "response": data.get("answer", ""),
+            "question_timestamp": question_timestamp,
+            "answer_delay": answer_delay,
         }
 
-        if source_path == "/":        # WattElse Doc
+        if source_path == "/":  # WattElse Doc
             # Get relevant extract
-            relevant_extracts=data.get("relevant_extracts", "")
-            relevant_extracts = {i: extract for i, extract in enumerate(relevant_extracts)}
+            relevant_extracts = data.get("relevant_extracts", "")
+            relevant_extracts = {
+                i: extract for i, extract in enumerate(relevant_extracts)
+            }
             chatmodel_params["relevant_extracts"] = relevant_extracts
-
 
         # Save interaction
         try:
-            chat = ChatModel(
-                **chatmodel_params
-            )
+            chat = ChatModel(**chatmodel_params)
             chat.save()
 
             # No need to show a pop up message to the user
