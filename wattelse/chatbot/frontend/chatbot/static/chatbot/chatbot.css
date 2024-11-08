@@ -175,22 +175,27 @@
 
 .chat-input {
     width: 100%;
+    border-radius: 10px;
+    padding: 5px;
+    background-color: #eae7ff;
     display: flex;
+    flex-direction: column;
+    align-items:flex-end;
 }
 
 .input-field {
-    width: 90%;
-    padding: 1%;
-    border: 1px solid #ccc;
-    border-radius: 10px 0 0 10px;
-    background-color: #e7e7e7;
+    width: 99%;
+    border: none;
+    background-color: inherit;
     resize: none;
 }
 
+.input-field:focus {
+    outline: none;
+}
+
 .chat-button-container {
-  width: 6%;
   display: flex;
-  flex-direction: column;
 }
 
 .send-button,
@@ -200,14 +205,15 @@
     background-color: var(--main-color);
     color: white;
     font-weight: 600;
+    width: 40px;
 }
 
 .send-button {
-  border-radius: 0 7px 0 0;
+  border-radius: 7px 0 0 7px;
 }
 
 .new-conversation-button {
-  border-radius: 0 0 7px 0;
+  border-radius: 0 7px 7px 0;
   background-color: var(--complementary-color);
 }
 
