@@ -187,6 +187,9 @@ function handleUserMessage(userMessage) {
         lastFeedbackDiv.remove()
     }
 
+    // Reinitialize text area height
+    userInput.style.height = "auto";
+
     // Remove welcome message if it exists
     removeWelcomeMessage();
 
