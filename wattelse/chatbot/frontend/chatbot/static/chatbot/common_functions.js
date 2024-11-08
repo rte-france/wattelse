@@ -40,6 +40,15 @@ const md = markdownit({
     }
   });
 
+///////////////////////// EVENT LISTENERS ///////////////////////////////
+userInput.addEventListener('input', function () {
+    // Reset the height to calculate the new height based on content
+    this.style.height = 'auto';
+    // Set the height based on scroll height, up to a maximum of 200px
+    this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+});
+
+
 ///////////////////////// GENERIC FUNCTIONS ///////////////////////////////
 
 // Create a UUID to identify conversations
