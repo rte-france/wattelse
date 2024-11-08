@@ -1,4 +1,3 @@
-
 import typer
 import pandas as pd
 import numpy as np
@@ -78,7 +77,7 @@ def split_documents(eval_corpus_path: Path) -> List[LangchainDocument]:
             return text_splitter.split_documents([langchain_doc])
         return []
 
-    # Parallel Processing: Use ThreadPoolExecutor for splitting or selecting chunks in parallel.
+    # Parallel Processing: Use ThreadPoolExecutor for splitting / selecting chunks in parallel.
     with ThreadPoolExecutor() as executor:
         all_chunks = list(executor.map(process_doc, eval_corpus_path.iterdir()))
         for chunks in all_chunks:
@@ -121,6 +120,7 @@ def generate_qa_pairs(
         return high_yield_docs
 
     # Calculate the maximum possible generations based on available chunks
+    # Todo: Review the generation available 
     max_generations = 0
     for doc, chunks in chunks_by_doc.items():
         available_chunks_count = sum(not used for used in chunk_usage[doc])
@@ -260,15 +260,15 @@ def evaluate_qa_pairs(outputs: List[Dict]) -> List[Dict]:
                 # Extract complexity-specific evaluations and scores
                 # Use regex to capture both the evaluation and score
                 complexity_groundedness_eval_match = re.search(
-                    rf"Évaluation\s*:\s*(.*?)\s*Note totale\s*:\s*([1-5])", 
+                    rf"^(.*?Note totale\s*:\s*([1-5]))", 
                     groundedness_eval, 
                     re.DOTALL
                 )
 
                 # Check if the match was successful
                 if complexity_groundedness_eval_match:
-                    evaluation_text = complexity_groundedness_eval_match.group(1).strip()  # The evaluation text
-                    score_text = complexity_groundedness_eval_match.group(2).strip()       # The score
+                    evaluation_text = complexity_groundedness_eval_match.group(1).strip()  # Everything up to and including "Note totale : score"
+                    score_text = complexity_groundedness_eval_match.group(2).strip()       # Just the score
 
                     evaluations[f"{complexity}_groundedness"] = evaluation_text
                     evaluations[f"{complexity}_groundedness_score"] = int(score_text)
