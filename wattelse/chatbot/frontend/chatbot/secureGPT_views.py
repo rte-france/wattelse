@@ -52,6 +52,8 @@ LLM_MAPPING = {
     "wattelse-gpt4": "gpt-4",
     "wattelse-gpt4o-mini-sweden": "gpt-4o-mini",
     "wattelse-gpt4o-sweden": "gpt-4o",
+    "wattelse-gpt4o-mini-sweden-dev": "gpt-4o-mini-dev",
+    "wattelse-gpt4o-sweden-dev": "gpt-4o-dev",
 }
 
 
