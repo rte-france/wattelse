@@ -60,19 +60,19 @@ def evaluate_metrics(llm_client, question, answer, context_extracted):
 
     # Parse evaluations
     logger.debug(f"faithfulness LLM response: {faithfulness_eval}")
-    evaluation_match = re.search(r"Évaluation :\s*(.*?)\s*Jugement :", faithfulness_eval, re.DOTALL)
+    evaluation_match = re.search(r"Évaluation :\s*(.*)", faithfulness_eval, re.DOTALL)
     score_match = re.search(r"Jugement :\s*([1-5])", faithfulness_eval)
     evaluations["faithfulness"] = evaluation_match.group(1).strip() if evaluation_match else "Not provided"
     evaluations["faithfulness_score"] = int(score_match.group(1)) if score_match else np.nan
 
     logger.debug(f"correctness LLM response: {correctness_eval}")
-    correctness_eval_match = re.search(r"Évaluation :\s*(.*?)\s*Jugement :", correctness_eval, re.DOTALL)
+    correctness_eval_match = re.search(r"Évaluation :\s*(.*)", correctness_eval, re.DOTALL)
     correctness_score_match = re.search(r"Jugement :\s*([1-5])", correctness_eval)
     evaluations["correctness"] = correctness_eval_match.group(1).strip() if correctness_eval_match else "Not provided"
     evaluations["correctness_score"] = int(correctness_score_match.group(1)) if correctness_score_match else np.nan
 
     logger.debug(f"retrievability LLM response: {retrievability_eval}")
-    retrievability_eval_match = re.search(r"Évaluation :\s*(.*?)\s*Jugement :", retrievability_eval, re.DOTALL)
+    retrievability_eval_match = re.search(r"Évaluation :\s*(.*)", retrievability_eval, re.DOTALL)
     retrievability_score_match = re.search(r"Jugement :\s*([1-5])", retrievability_eval)
     evaluations["retrievability"] = retrievability_eval_match.group(1).strip() if retrievability_eval_match else "Not provided"
     evaluations["retrievability_score"] = int(retrievability_score_match.group(1)) if retrievability_score_match else np.nan
@@ -145,13 +145,16 @@ def main(
     # Load data
     eval_df = pd.read_excel(qr_df_path)
 
-    # Transform source_doc to list for processing
-    eval_df[DOC_LIST_COLUMN] = eval_df[DOC_LIST_COLUMN].apply(lambda x: [x] if pd.notnull(x) else [])
+    # Transform source_doc to a list by splitting on commas and trimming whitespace for each document name
+    eval_df[DOC_LIST_COLUMN] = eval_df[DOC_LIST_COLUMN].apply(
+        lambda x: [doc.strip() for doc in x.split(",")] if pd.notnull(x) else []
+    )
 
-    # Check all documents listed in `doc_list` are present in `eval_corpus_path` folder
+    # Flatten and deduplicate all document names
     all_doc_list = set(
         [item for sublist in eval_df[DOC_LIST_COLUMN].to_list() for item in sublist]
     )
+
     all_eval_corpus_files = set([doc.name for doc in eval_corpus_path.iterdir()])
     for doc in all_doc_list:
         if doc not in all_eval_corpus_files:
