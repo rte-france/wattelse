@@ -71,7 +71,10 @@ class SuperUserPermissions(models.Model):
 
         # (codename, name)
         permissions = (
+            # User related permissions
             ("can_upload_documents", "Can upload documents"),
             ("can_remove_documents", "Can remove documents"),
             ("can_manage_users", "Can manage users"),
+            # Group related permissions
+            ("can_edit_group_system_prompt", "Can edit group system prompt"),
         )
