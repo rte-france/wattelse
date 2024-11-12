@@ -39,6 +39,7 @@ from .utils import (
     is_superuser,
     RAG_API,
     get_chat_model,
+    can_edit_group_system_prompt,
 )
 
 
@@ -82,7 +83,11 @@ def rag_page(request):
     can_remove_documents = request.user.has_perm("chatbot.can_remove_documents")
     can_manage_users = request.user.has_perm("chatbot.can_manage_users")
 
-    can_edit_system_prompt = is_superuser(request.user)
+    # Check if group is allowed to edit system prompt
+    group_can_edit_system_prompt = can_edit_group_system_prompt(user_group_id)
+
+    # Only admin can edit system prompt, other users have read access by default
+    user_can_edit_system_prompt = is_superuser(request.user)
 
     # If can manage users, find usernames of its group
     if can_manage_users:
@@ -104,7 +109,8 @@ def rag_page(request):
             "can_upload_documents": can_upload_documents,
             "can_remove_documents": can_remove_documents,
             "can_manage_users": can_manage_users,
-            "can_edit_system_prompt": can_edit_system_prompt,
+            "group_can_edit_system_prompt": group_can_edit_system_prompt,
+            "user_can_edit_system_prompt": user_can_edit_system_prompt,
             "user_group": user_group_id,
             "group_system_prompt": group_system_prompt,
             "group_usernames_dict": group_usernames_dict,

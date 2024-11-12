@@ -88,6 +88,14 @@ def is_superuser(user: User) -> bool:
     )
 
 
+def can_edit_group_system_prompt(group_id: str) -> bool:
+    """
+    Check if a group can edit the group system prompt.
+    """
+    group = Group.objects.get(name=group_id)
+    return group.permissions.filter(codename="can_edit_group_system_prompt").exists()
+
+
 def get_group_usernames_list(group_id: str) -> dict[str, bool]:
     """
     Returns a dictionnary with usernames as keys and
