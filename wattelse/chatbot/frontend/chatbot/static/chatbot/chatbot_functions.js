@@ -146,7 +146,7 @@ async function postUserMessageToChatBot(userMessage) {
     }
 
     // Fetch response
-    const response = await fetch('query_rag/', {
+    const response = await fetch('/query_rag/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -280,7 +280,7 @@ function deleteDocumentsInCollection(){
     else {
         // TODO: improve confirm popup look & feel
         if (confirm("Confirmer la suppression des fichiers sélectionnés?")){
-            fetch('delete/', {
+            fetch('/delete/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -656,7 +656,7 @@ function manageUserPermissions(username, upgrade) {
 
 // Add users to group
 function addUserToGroup(newUsername) {
-    fetch('add_user_to_group/', {
+    fetch('/add_user_to_group/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -691,7 +691,7 @@ function addUserToGroup(newUsername) {
 // Delete users
 function removeUserFromGroup(userNameToDelete) {
     if (confirm(`Voulez-vous vraiment supprimer ${userNameToDelete} ?`)) {
-        fetch('remove_user_from_group/', {
+        fetch('/remove_user_from_group/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

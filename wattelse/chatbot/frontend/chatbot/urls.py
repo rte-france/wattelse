@@ -9,7 +9,8 @@ from . import secureGPT_views, views
 app_name = "chatbot"
 urlpatterns = [
     # Web pages
-    path("", views.main_page, name="main_page"),
+    path("", views.default_page, name="default_page"),
+    path("doc/", views.rag_page, name="main_page"),
     path("login/", views.login, name="login"),
     path("register/", views.register, name="register"),
     path("logout/", views.logout, name="logout"),
@@ -49,8 +50,9 @@ urlpatterns = [
     ),
     # Dashboard
     path("dashboard/", views.dashboard, name="dashboard"),
-    # Basic chat
-    path("llm/", secureGPT_views.request_client, name="basic_chat"),
+    # GPT chat
+    path("gpt/", secureGPT_views.gpt_page, name="gpt_chat"),
+    path("query_gpt/", secureGPT_views.query_gpt, name="query_gpt"),
     # Conversations history management
     path(
         "get_conversation_messages/",

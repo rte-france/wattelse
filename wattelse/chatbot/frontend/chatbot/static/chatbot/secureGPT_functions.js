@@ -69,7 +69,7 @@ async function postUserMessageToChatBot(userMessage) {
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
     // Fetch response
-    const response = await fetch('', {
+    const response = await fetch('/query_gpt/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
