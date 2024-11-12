@@ -69,7 +69,7 @@ def split_documents(eval_corpus_path: Path) -> List[LangchainDocument]:
             logger.info(f"Processing document '{doc.name}' with total length: {len(content)} characters")
             langchain_doc = LangchainDocument(page_content=content, metadata={"source": doc.name})
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=3000,
+                chunk_size=2000,
                 chunk_overlap=200,
                 add_start_index=True,
                 separators=["\n\n", "\n", ".", " ", ""],
@@ -90,7 +90,7 @@ def generate_qa_pairs(
     EVAL_CORPUS_PATH: Path,
     N_GENERATIONS: int = 100,
     OUTPUT_PATH: Path = Path("qa_output.xlsx"),
-    DOCS_PER_QA: int = 4,
+    DOCS_PER_QA: int = 3,
     CHUNKS_PER_DOC: int = 1
 ) -> List[Dict]:
 
@@ -173,12 +173,21 @@ def generate_qa_pairs(
 
         try:
             # Extract the generated QA pairs
-            simple_question = output_QA_couple.split("Question simple : ")[-1].split("\n")[0].strip()
-            simple_answer = output_QA_couple.split("Réponse simple : ")[-1].split("\n")[0].strip()
-            reasoning_question = output_QA_couple.split("Question de raisonnement : ")[-1].split("\n")[0].strip()
-            reasoning_answer = output_QA_couple.split("Réponse de raisonnement : ")[-1].split("\n")[0].strip()
-            multi_context_question = output_QA_couple.split("Question multi-contexte : ")[-1].split("\n")[0].strip()
-            multi_context_answer = output_QA_couple.split("Réponse multi-contexte : ")[-1].split("\n")[0].strip()
+            simple_question_match = re.search(r"\*?\*?Question simple\*?\*?\s*:\s*(.*)", output_QA_couple)
+            simple_answer_match = re.search(r"\*?\*?Réponse simple\*?\*?\s*:\s*(.*)", output_QA_couple)
+            reasoning_question_match = re.search(r"\*?\*?Question de raisonnement\*?\*?\s*:\s*(.*)", output_QA_couple)
+            reasoning_answer_match = re.search(r"\*?\*?Réponse de raisonnement\*?\*?\s*:\s*(.*)", output_QA_couple)
+            multi_context_question_match = re.search(r"\*?\*?Question multi-contexte\*?\*?\s*:\s*(.*)", output_QA_couple)
+            multi_context_answer_match = re.search(r"\*?\*?Réponse multi-contexte\*?\*?\s*:\s*(.*)", output_QA_couple)
+
+            # Use .group(1) if the match is found; otherwise, default to an empty string or a suitable placeholder
+            simple_question = simple_question_match.group(1).split("\n")[0].strip() if simple_question_match else ""
+            simple_answer = simple_answer_match.group(1).split("\n")[0].strip() if simple_answer_match else ""
+            reasoning_question = reasoning_question_match.group(1).split("\n")[0].strip() if reasoning_question_match else ""
+            reasoning_answer = reasoning_answer_match.group(1).split("\n")[0].strip() if reasoning_answer_match else ""
+            multi_context_question = multi_context_question_match.group(1).split("\n")[0].strip() if multi_context_question_match else ""
+            multi_context_answer = multi_context_answer_match.group(1).split("\n")[0].strip() if multi_context_answer_match else ""
+
 
             # Ensure answer length constraints
             assert len(simple_answer) < 2000, "Answer is too long"
@@ -240,25 +249,7 @@ def evaluate_qa_pairs(outputs: List[Dict]) -> List[Dict]:
                     llm_client,
                     QUESTION_GROUNDEDNESS_CRITIQUE_PROMPT.format(context=context, question=question),
                 )
-
-                # # Evaluate realism
-                # realism_eval = call_llm(
-                #     llm_client,
-                #     QUESTION_REALISM_CRITIQUE_PROMPT.format(context=context, question=question),
-                # )
-
-                # # Evaluate standalone quality
-                # standalone_eval = call_llm(
-                #     llm_client,
-                #     QUESTION_STANDALONE_CRITIQUE_PROMPT.format(question=question),
-                # )
-
-                # Extract evaluations and scores for groundedness
-
-                # Extract evaluations and scores for groundedness
-
-                # Extract complexity-specific evaluations and scores
-                # Use regex to capture both the evaluation and score
+                
                 complexity_groundedness_eval_match = re.search(
                     rf"^(.*?Note totale\s*:\s*([1-5]))", 
                     groundedness_eval, 
@@ -273,7 +264,6 @@ def evaluate_qa_pairs(outputs: List[Dict]) -> List[Dict]:
                     evaluations[f"{complexity}_groundedness"] = evaluation_text
                     evaluations[f"{complexity}_groundedness_score"] = int(score_text)
                 else:
-                    evaluations[f"{complexity}_groundedness"] = "Not provided"
                     evaluations[f"{complexity}_groundedness_score"] = np.nan
 
                 logger.debug(f"groundedness LLM response: {groundedness_eval}")
