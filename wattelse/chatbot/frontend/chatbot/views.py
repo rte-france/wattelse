@@ -272,6 +272,10 @@ def save_interaction(request):
         # Get request data
         data = json.loads(request.body)
 
+        # Get group id and system prompt
+        user_group_id = get_user_group_id(request.user)
+        group_system_prompt = get_group_system_prompt(user_group_id)
+
         # Transform timestamps to datetime objects
         question_timestamp = data.get("question_timestamp", None)
         question_timestamp = datetime.fromisoformat(
@@ -288,7 +292,7 @@ def save_interaction(request):
 
         chatmodel_params = {
             "user": request.user,
-            "group_id": get_user_group_id(request.user),
+            "group_id": user_group_id,
             "conversation_id": data.get("conversation_id", ""),
             "message": data.get("message", ""),
             "response": data.get("answer", ""),
@@ -303,6 +307,8 @@ def save_interaction(request):
                 i: extract for i, extract in enumerate(relevant_extracts)
             }
             chatmodel_params["relevant_extracts"] = relevant_extracts
+            # Add group system prompt
+            chatmodel_params["group_system_prompt"] = group_system_prompt
 
         # Save interaction
         try:
