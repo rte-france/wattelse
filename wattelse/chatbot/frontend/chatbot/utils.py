@@ -40,14 +40,14 @@ FAQ_FILE_PATTERN = "_FAQ.xlsx"
 
 
 ChatModels = {
-    "/": Chat,
-    "/llm/": GPTChat,
+    "/doc/": Chat,
+    "/gpt/": GPTChat,
 }
 
 
 def get_chat_model(source_path: str) -> Type[GPTChat | Chat]:
     """Return the database class associated to the current page (RAG vs secureGPT)
-    allowed source_path : "/" and "/llm/"
+    allowed source_path : "/doc/" and "/gpt/"
     """
     if not source_path:
         raise Exception("Invalid source path")

@@ -57,7 +57,7 @@ LLM_MAPPING = {
 }
 
 
-def request_client(request):
+def gpt_page(request):
     """Main function for chatbot interface.
     If request method is GET : render chatbot.html
     If request method is POST : make a call to OpenAI client
@@ -66,8 +66,47 @@ def request_client(request):
     if not request.user.is_authenticated:
         return redirect("/login")
 
-    # If request method is POST, call OpenAI client
-    # Else render template
+    if request.method == "GET":
+        # Get conversation ids
+        conversation_ids = get_user_conversation_ids(
+            request.user,
+            ChatModel=GPTChat,
+        )
+
+        # Sort conversations into date categories for better user expericence
+        sorted_conversations = {"today": [], "last_week": [], "others": []}
+
+        today = datetime.datetime.now()
+        for id in conversation_ids:
+            # Get conversation title and timestamp
+            title, timestamp = get_conversation_first_message(id, GPTChat)
+
+            # If created today
+            if timestamp.date() == today.date():
+                sorted_conversations["today"].append({"id": id, "title": title})
+
+            # If created in 7 last days
+            elif timestamp.date() >= (today - datetime.timedelta(days=7)).date():
+                sorted_conversations["last_week"].append({"id": id, "title": title})
+
+            # If created longer ago
+            else:
+                sorted_conversations["others"].append({"id": id, "title": title})
+
+        print(llm_config["model"][1:])
+        return render(
+            request,
+            "chatbot/secureGPT.html",
+            context={
+                "llm_name": LLM_MAPPING[llm_config["model"]],
+                "conversations": sorted_conversations,
+            },
+        )
+    else:
+        raise Http404()
+
+
+def query_gpt(request):
     if request.method == "POST":
         # Get request data
         data = json.loads(request.body)
@@ -114,41 +153,7 @@ def request_client(request):
                 {"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500
             )
     else:
-        # Get conversation ids
-        conversation_ids = get_user_conversation_ids(
-            request.user,
-            ChatModel=GPTChat,
-        )
-
-        # Sort conversations into date categories for better user expericence
-        sorted_conversations = {"today": [], "last_week": [], "others": []}
-
-        today = datetime.datetime.now()
-        for id in conversation_ids:
-            # Get conversation title and timestamp
-            title, timestamp = get_conversation_first_message(id, GPTChat)
-
-            # If created today
-            if timestamp.date() == today.date():
-                sorted_conversations["today"].append({"id": id, "title": title})
-
-            # If created in 7 last days
-            elif timestamp.date() >= (today - datetime.timedelta(days=7)).date():
-                sorted_conversations["last_week"].append({"id": id, "title": title})
-
-            # If created longer ago
-            else:
-                sorted_conversations["others"].append({"id": id, "title": title})
-
-        print(llm_config["model"][1:])
-        return render(
-            request,
-            "chatbot/secureGPT.html",
-            context={
-                "llm_name": LLM_MAPPING[llm_config["model"]],
-                "conversations": sorted_conversations,
-            },
-        )
+        raise Http404()
 
 
 def get_conversation_messages(request):

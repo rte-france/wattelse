@@ -40,9 +40,20 @@ from .utils import (
 )
 
 
-def main_page(request):
+def default_page(request):
     """
-    Main function for chatbot interface.
+    Default page for WattElse web site (URl : `/`).
+    Redirect to WattElse Doc if authenticated else login page.
+    """
+    if request.user.is_authenticated:
+        return redirect("/doc")
+    else:
+        return redirect("/login")
+
+
+def rag_page(request):
+    """
+    WattElse Doc page.
     Render chatbot.html webpage with associated context.
     """
     # If user is not authenticated, redirect to login
@@ -266,7 +277,7 @@ def save_interaction(request):
             "answer_delay": answer_delay,
         }
 
-        if source_path == "/":  # WattElse Doc
+        if source_path == "/doc/":  # WattElse Doc
             # Get relevant extract
             relevant_extracts = data.get("relevant_extracts", "")
             relevant_extracts = {
