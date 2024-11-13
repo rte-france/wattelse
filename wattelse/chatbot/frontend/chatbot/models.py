@@ -23,6 +23,7 @@ class Chat(models.Model):
     long_feedback = models.TextField(default="")
     answer_delay = models.DurationField(null=True, blank=True)  # Optional fields
     relevant_extracts = models.JSONField(default=list)
+    group_system_prompt = models.TextField(default="")
 
     def __str__(self):
         return f"{self.user.username}: {self.message}"
