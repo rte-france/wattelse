@@ -62,7 +62,7 @@
 
         <!-- If admin, add changing group form -->
         {% if user.is_superuser %}
-            <form method="post" action="admin_change_group/">
+            <form method="post" action="/admin_change_group/">
                 {% csrf_token %}
                 <select name="new_group" onchange="this.form.submit()">
                     {% for group in admin_group_selection %}
