@@ -63,4 +63,5 @@ urlpatterns = [
     # FAQ
     path("add_to_faq/", views.add_faq_item, name="add_to_faq"),
     path("delete_from_faq/", views.delete_faq_item, name="delete_from_faq"),
+    path("update_faq/", views.update_faq, name="update_FAQ"),
 ]

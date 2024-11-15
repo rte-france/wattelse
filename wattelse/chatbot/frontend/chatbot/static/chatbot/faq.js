@@ -109,6 +109,8 @@ function addToFaq(id, question, answer){
                 // Close FAQ popup
                 const popupOverlay = document.querySelector('.faq-popup-overlay');
                 popupOverlay.remove();
+                // Update FAQ
+                updateFaq();
             })
         }
         else {
@@ -146,6 +148,8 @@ function deleteFromFaq(id){
                 // Close FAQ popup
                 const popupOverlay = document.querySelector('.faq-popup-overlay');
                 popupOverlay.remove();
+                // Update FAQ
+                updateFaq();
             })
         }
         else {
@@ -160,6 +164,38 @@ function deleteFromFaq(id){
         }
     })
 }
+
+function updateFaq() {
+    fetch("/update_faq/", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+      })
+      .then((response) => {
+        // Handle successful requests
+        if (response.ok) {
+            response.json().then(data => {
+                showPopup(data.message);
+            });
+        }
+        else {
+            // Handle errors caught in python backend
+            response.json().then(data => {
+                showPopup(data.message, error=true);
+            })
+            // Handle uncaught errors
+            .catch(error => {
+                showPopup("Erreur non interceptée", error=true);
+            })
+        }
+    })
+}
+
+
+
+// TODO: need to copy/paste these functions from common_function.js as importing this file here causes error 
 
 
 function uuid4() {

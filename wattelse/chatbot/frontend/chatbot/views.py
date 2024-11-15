@@ -8,10 +8,10 @@ import uuid
 import json
 import socket
 import tempfile
+import pandas as pd
 from datetime import datetime, timedelta
 
 import mammoth
-import pytz
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
@@ -29,16 +29,19 @@ from wattelse.chatbot.backend import DATA_DIR
 from .models import Chat, SuperUserPermissions, FAQ
 
 from .utils import (
+    RAG_API,
     get_user_group_id,
     get_group_usernames_list,
     new_user_created,
     get_conversation_history,
     streaming_generator,
     insert_feedback,
-    RAG_API,
     get_chat_model,
     get_group_faq,
 )
+
+# Long feedback FAQ file
+FAQ_FILE_PATTERN = "_FAQ.xlsx"
 
 
 def default_page(request):
@@ -674,7 +677,6 @@ def add_faq_item(request):
         try:
             new_FAQ = FAQ(**item_to_add)
             new_FAQ.save()
-            update_FAQ(item_to_add["group_id"])
             logger.info(f"Succesfully added item {item_to_add['id']} to FAQ database")
             return JsonResponse(
                 {"message": "Élément ajouté à la FAQ"},
@@ -716,5 +718,49 @@ def delete_faq_item(request):
                 status=500,
             )
 
+    else:
+        raise Http404()
+
+
+def update_faq(request):
+    """
+    Create a XLSX file based on the group FAQ and index it in RAGBackend.
+
+    TODO: not optimal as it recomputes all embeddings everytime a modification
+    is made to the FAQ. This function should manage question/answer pairs
+    one by one and not the entiere FAQ.
+    """
+    if request.method == "POST":
+        # Get user group_id
+        group_id = get_user_group_id(request.user)
+
+        # Get group FAQ items
+        faq_items = get_group_faq(group_id)
+
+        # Convert it to pandas DataFrame
+        faq_df = pd.DataFrame(faq_items).drop(columns=["id"])
+
+        # Create XSLX file and update embeddings in RAGBackend
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Create temporary file to store XLSX
+                temp_file_path = Path(temp_dir) / FAQ_FILE_PATTERN
+
+                # Save FAQ as XSLX
+                faq_df.to_excel(temp_file_path, index=False)
+
+                # Upload the file and update embeddings collection
+                RAG_API.remove_documents(group_id, [FAQ_FILE_PATTERN])
+                RAG_API.upload_files(group_id, [temp_file_path])
+                logger.success(f"[{group_id}]: successfully updated FAQ")
+                return JsonResponse(
+                    {"message": "Ré-indexation de la FAQ réussie"},
+                )
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {"message": "Erreur serveur : échec lors de l'indexation de la FAQ"},
+                status=500,
+            )
     else:
         raise Http404()
