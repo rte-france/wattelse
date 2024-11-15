@@ -319,7 +319,7 @@ function updateRelevantExtracts(relevantExtracts){
     extractList.innerHTML = "";
     if (relevantExtracts.length>0) {
         relevantExtracts.forEach((extract) => {
-            const url = `file_viewer/${extract["metadata"]["file_name"]}#page=${parseInt(extract["metadata"]["page"] ?? 0)+1}`
+            const url = `/file_viewer/${extract["metadata"]["file_name"]}#page=${parseInt(extract["metadata"]["page"] ?? 0)+1}`
             const listItem = createExtract(extract.content, url, extract.metadata.file_name);
             extractList.appendChild(listItem);
         });
