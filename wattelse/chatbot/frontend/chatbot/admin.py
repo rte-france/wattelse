@@ -4,7 +4,7 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 from django.contrib import admin
-from .models import Chat, GPTChat
+from .models import Chat, GPTChat, FAQ
 
 
 class ChatAdmin(admin.ModelAdmin):
@@ -34,3 +34,4 @@ class ChatAdmin(admin.ModelAdmin):
 # Register your models here.
 admin.site.register(Chat, ChatAdmin)
 admin.site.register(GPTChat, ChatAdmin)
+admin.site.register(FAQ)

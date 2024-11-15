@@ -3,6 +3,7 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -47,6 +48,20 @@ class GPTChat(models.Model):
 
     def __str__(self):
         return f"{self.user.username}: {self.message}"
+
+
+class FAQ(models.Model):
+    """
+    Class used to store human answers to questions in WattElse Doc (RAG).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    question = models.TextField()
+    answer = models.TextField()
+    group_id = models.TextField()
+
+    def __str__(self):
+        return f"[{self.group_id}]: {self.question} / {self.answer}"
 
 
 class SuperUserPermissions(models.Model):

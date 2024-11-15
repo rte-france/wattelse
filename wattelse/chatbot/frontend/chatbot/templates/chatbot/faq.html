@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!--
+  ~ Copyright (c) 2024, RTE (https://www.rte-france.com)
+  ~ See AUTHORS.txt
+  ~ SPDX-License-Identifier: MPL-2.0
+  ~ This file is part of Wattelse, a NLP application suite.
+  -->
+
+<!-- If user is not authenticated, return to login page -->
+{% if not user.is_authenticated %}
+    <script>window.location.replace("/login")</script>
+{% endif %}
+
+<!-- FAQ items list -->
+{% csrf_token %}
+<div class="faq-wrapper">
+    <table class="faq-table">
+        <tr>
+            <th>Question</th>
+            <th>Réponse</th>
+        </tr>
+        {% for item in faq %}
+            <tr id="{{ item.id }}">
+                <td>{{ item.question }}</td>
+                <td>{{ item.answer }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+    <button id="faqAddButton" class="faq-add-button">+</button>
+</div>
+
+{% load static %}
+<script src="{% static 'chatbot/faq.js' %}"></script>
+
+{% endblock %}

@@ -26,7 +26,7 @@ from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGAPIError
 from wattelse.chatbot.backend import DATA_DIR
-from .models import Chat, SuperUserPermissions
+from .models import Chat, SuperUserPermissions, FAQ
 
 from .utils import (
     get_user_group_id,
@@ -37,6 +37,7 @@ from .utils import (
     insert_feedback,
     RAG_API,
     get_chat_model,
+    get_group_faq,
 )
 
 
@@ -102,6 +103,19 @@ def rag_page(request):
             "admin_group_selection": admin_group_selection,
         },
     )
+
+
+def faq_page(request):
+    """
+    WattElse Doc FAQ page.
+    """
+    # Get user group_id
+    user_group_id = get_user_group_id(request.user)
+
+    # get group FAQ
+    group_faq = get_group_faq(user_group_id)
+
+    return render(request, "chatbot/faq.html", {"faq": group_faq})
 
 
 def login(request):
@@ -638,5 +652,69 @@ def manage_superuser_permission(request):
                 {"message": "Erreur serveur : échec lors de la modification"},
                 status=500,
             )
+    else:
+        raise Http404()
+
+
+def add_faq_item(request):
+    """
+    Add a question/answer pair to the FAQ of the user group.
+    """
+    if request.method == "POST":
+        # Get response data
+        data = json.loads(request.body)
+        item_to_add = {
+            "id": data.get("id"),
+            "question": data.get("question"),
+            "answer": data.get("answer"),
+            "group_id": get_user_group_id(request.user),
+        }
+
+        # Save to FAQ Databse
+        try:
+            new_FAQ = FAQ(**item_to_add)
+            new_FAQ.save()
+            update_FAQ(item_to_add["group_id"])
+            logger.info(f"Succesfully added item {item_to_add['id']} to FAQ database")
+            return JsonResponse(
+                {"message": "Élément ajouté à la FAQ"},
+            )
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {
+                    "message": "Erreur serveur : échec lors de l'enregistrement de la FAQ"
+                },
+                status=500,
+            )
+    else:
+        raise Http404()
+
+
+def delete_faq_item(request):
+    """
+    Delete a question/answer pair from the FAQ of the user group.
+    """
+    if request.method == "POST":
+        # Get response data
+        data = json.loads(request.body)
+        item_id = data.get("id")
+
+        # Delete item from FAQ
+        try:
+            item = FAQ.objects.get(id=item_id)
+            item.delete()
+            logger.info(f"Succesfully removed item {item_id} from FAQ database")
+            return JsonResponse(
+                {"message": "Élément supprimé de la FAQ"},
+            )
+
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {"message": "Erreur serveur : échec lors de la suppression"},
+                status=500,
+            )
+
     else:
         raise Http404()

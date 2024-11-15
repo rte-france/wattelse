@@ -14,6 +14,7 @@ urlpatterns = [
     path("login/", views.login, name="login"),
     path("register/", views.register, name="register"),
     path("logout/", views.logout, name="logout"),
+    path("faq/", views.faq_page, name="faq"),
     # Chatbot
     path("query_rag/", views.query_rag, name="query_rag"),
     path("save_interaction/", views.save_interaction, name="save_interaction"),
@@ -59,4 +60,7 @@ urlpatterns = [
         secureGPT_views.get_conversation_messages,
         name="get_conversation_history",
     ),
+    # FAQ
+    path("add_to_faq/", views.add_faq_item, name="add_to_faq"),
+    path("delete_from_faq/", views.delete_faq_item, name="delete_from_faq"),
 ]

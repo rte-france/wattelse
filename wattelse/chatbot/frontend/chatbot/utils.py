@@ -129,6 +129,34 @@ def get_conversation_history(
     return None if len(history) == 0 else history[-n:]
 
 
+def get_group_faq(group_id: str) -> list[dict]:
+    """
+    Return all questions/answers from the group FAQ is the following format :
+    [
+        {
+            "id": <id1>,
+            "question": <question1>,
+            "answer": <answer2>,
+        },
+        {
+            "id": <id2>,
+            "question": <question2>,
+            "answer": <answer2>,
+        },
+        ...
+    ]
+    """
+    faq_list = []
+
+    # Get group faq
+    faq_query = FAQ.objects.filter(group_id=group_id)
+    for item in faq_query:
+        faq_list.append(
+            {"id": str(item.id), "question": item.question, "answer": item.answer}
+        )
+    return faq_list
+
+
 def get_user_conversation_ids(
     user: User, ChatModel: models.Model, number: int = 100
 ) -> list[uuid.UUID]:
