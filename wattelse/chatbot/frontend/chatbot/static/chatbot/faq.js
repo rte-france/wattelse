@@ -1,9 +1,3 @@
-// Imports
-import {
-    showFaqPopup,
-    uuid4,
-} from './faq_functions.js'
-
 // Global variables
 const csrfmiddlewaretoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 const faqTable = document.querySelector(".faq-table");

@@ -1,4 +1,4 @@
-export function showFaqPopup(id, question="", answer="", showDeleteButton=false) {
+function showFaqPopup(id, question="", answer="", showDeleteButton=false, addToTable=true) {
     // Define popup HTML
     const popupHTML = `
     <div id="${id}" class="faq-popup-overlay">
@@ -40,7 +40,7 @@ export function showFaqPopup(id, question="", answer="", showDeleteButton=false)
 
     // Event listener for add button
     addBtn.addEventListener('click', function(){
-        addToFaq(popupOverlay.id, questionTextarea.value, answerTextarea.value);
+        addToFaq(popupOverlay.id, questionTextarea.value, answerTextarea.value, addToTable);
     });
 
     // Event listener for delete button
@@ -54,7 +54,7 @@ export function showFaqPopup(id, question="", answer="", showDeleteButton=false)
     }
 }
 
-function addToFaq(id, question, answer){
+function addToFaq(id, question, answer, addToTable=true){
     fetch("/add_to_faq/", {
         method: 'POST',
         headers: {
@@ -73,28 +73,30 @@ function addToFaq(id, question, answer){
             response.json().then(data => {
                 showPopup(data.message);
                 // If a new object was created, add it to the FAQ else edit the existing one
-                if (data.created) {
-                    // Add new line to FAQ table
-                    const newLine = document.createElement("tr");
-                    newLine.id = id;
-                    const questionCol = document.createElement("td");
-                    questionCol.innerHTML = question;
-                    const answerCol = document.createElement("td");
-                    answerCol.innerHTML = answer;
-                    newLine.appendChild(questionCol);
-                    newLine.appendChild(answerCol);
-                    faqTable.appendChild(newLine);
-                    // Add event listener for popup creation
-                    newLine.addEventListener("click", () => {
-                        showFaqPopup(id, question, answer, showDeleteButton=true);
-                    });
-                } else {
-                    // Edit existing line in FAQ
-                    const existingLine = document.getElementById(id);
-                    const fieldsToEdit = existingLine.querySelectorAll("td");
-                    fieldsToEdit[0].innerHTML = question;
-                    fieldsToEdit[1].innerHTML = answer;
-
+                if (addToTable) {
+                    if (data.created) {
+                        // Add new line to FAQ table
+                        const newLine = document.createElement("tr");
+                        newLine.id = id;
+                        const questionCol = document.createElement("td");
+                        questionCol.innerHTML = question;
+                        const answerCol = document.createElement("td");
+                        answerCol.innerHTML = answer;
+                        newLine.appendChild(questionCol);
+                        newLine.appendChild(answerCol);
+                        faqTable.appendChild(newLine);
+                        // Add event listener for popup creation
+                        newLine.addEventListener("click", () => {
+                            showFaqPopup(id, question, answer, showDeleteButton=true);
+                        });
+                    } else {
+                        // Edit existing line in FAQ
+                        const existingLine = document.getElementById(id);
+                        const fieldsToEdit = existingLine.querySelectorAll("td");
+                        fieldsToEdit[0].innerHTML = question;
+                        fieldsToEdit[1].innerHTML = answer;
+    
+                    }
                 }
                 // Close FAQ popup
                 const popupOverlay = document.querySelector('.faq-popup-overlay');
@@ -184,13 +186,13 @@ function updateFaq() {
 }
 
 
-export function uuid4() {
+function uuid4() {
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
       (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
     );
 }
 
-export function showPopup(message, error = false) {
+function showPopup(message, error = false) {
     // Delete any existing popups
     const existingPopups = document.querySelector('.popup');
     if (existingPopups) {
