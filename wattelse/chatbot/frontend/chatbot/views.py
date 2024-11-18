@@ -662,12 +662,14 @@ def manage_superuser_permission(request):
 def add_faq_item(request):
     """
     Add a question/answer pair to the FAQ of the user group.
+    This function is also used to update existing items.
+    If the provided item ID already exists, updates other fields.
     """
     if request.method == "POST":
         # Get response data
         data = json.loads(request.body)
-        item_to_add = {
-            "id": data.get("id"),
+        item_id = data.get("id")
+        item_fields = {
             "question": data.get("question"),
             "answer": data.get("answer"),
             "group_id": get_user_group_id(request.user),
@@ -675,12 +677,17 @@ def add_faq_item(request):
 
         # Save to FAQ Databse
         try:
-            new_FAQ = FAQ(**item_to_add)
-            new_FAQ.save()
-            logger.info(f"Succesfully added item {item_to_add['id']} to FAQ database")
-            return JsonResponse(
-                {"message": "Élément ajouté à la FAQ"},
+            _, created = FAQ.objects.update_or_create(
+                id=item_id,
+                defaults=item_fields,
             )
+            if created:
+                logger.info(f"Succesfully added item {item_id} to FAQ database")
+                message = "Élément ajouté à la FAQ"
+            else:
+                message = "Élément modifié"
+                logger.info(f"Succesfully edited item {item_id} to FAQ database")
+            return JsonResponse({"message": message, "created": created})
         except Exception as e:
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
