@@ -14,6 +14,7 @@ from pathlib import Path
 from pandas.core.dtypes.cast import maybe_infer_to_datetimelike
 from plotly.express import bar
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from streamlit import session_state
 
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
@@ -360,6 +361,50 @@ def check_password():
         st.error("😕 Password incorrect")
     return False
 
+def build_users_df(filtered_df:pd.DataFrame) -> pd.DataFrame:
+    """_summary_
+
+    Args:
+        filtered_df (pd.DataFrame): _description_
+
+    Returns:
+        pd.DataFrame: _description_
+    """    
+    users_feedback = pd.pivot_table(
+    data=filtered_df[['username', 'short_feedback', "answer_timestamp"]],
+        index="username",
+        values = "answer_timestamp",
+        columns="short_feedback",
+        aggfunc="count"
+    )
+    data = filtered_df[['username', 'group_id', 'conversation_id', 'response', 'long_feedback']]
+    data['long_feedback_bool'] = (data['long_feedback_bool']!="").astype(int)
+
+    users_df = data.groupby(
+        by="username",
+    ).agg(
+        {'conversation_id' : lambda x: len(x.unique()),
+        'response' : "count",
+        'long_feedback_bool' : "sum"
+        }
+    )
+    users_df =users_df.join(users_feedback)
+    users_df.fillna(value=0, inplace=True)
+    users_df.sort_values(by="response", ascending=False, inplace=True)
+    users_df.rename(
+        columns={
+            "conversation_id"  : "nb_conversation",
+            "response": "nb_questions", 
+            "long_feedback_bool": "nb_feedback_long",
+            0: "non_evalue"
+        },
+        inplace=True
+    )
+    users_df["non_evalue"] = users_df["nb_questions"] - users_df["great"] - users_df["ok"] - users_df["missing_info"] - users_df["wrong"]
+    users_df["tx_feedback"] = 1 - users_df["non_evalue"]/users_df["nb_questions"]
+    users_df.reset_index(inplace=True)
+
+    return users_df
 
 def main():
     if "selected_table" not in st.session_state:
@@ -418,6 +463,81 @@ def main():
                 display_feedback_charts()
             with col2:
                 display_feedback_charts_over_time()
+
+        users_df = build_users_df(st.session_state["filtered_data"])
+        with st.expander("Users analysis", expanded=True):
+            # Création de l'histogramme empilé
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+
+            # Ajout de l'histogramme empilé
+            fig.add_trace(go.Bar(
+                x=users_df.index,
+                y=users_df['wrong'],
+                name='réponse fausse',
+                marker_color='red'
+            ), secondary_y=False)
+
+            fig.add_trace(go.Bar(
+                x=users_df.index,
+                y=users_df['missing_info'],
+                name='réponse incomplète',
+                marker_color='orange'
+            ), secondary_y=False)
+
+            fig.add_trace(go.Bar(
+                x=users_df.index,
+                y=users_df['ok'],
+                name='réponse correcte',
+                marker_color='blue'
+            ), secondary_y=False)
+
+            fig.add_trace(go.Bar(
+                x=users_df.index,
+                y=users_df['great'],
+                name='réponse excellente',
+                marker_color='green'
+            ), secondary_y=False)
+
+            fig.add_trace(go.Bar(
+                x=users_df.index,
+                y=users_df['non_evalue'],
+                name='pas de réponse',
+                marker_color='grey'
+            ), secondary_y=False)
+
+            # Ajout des courbes
+            fig.add_trace(go.Scatter(
+                x=users_df.index,
+                y=users_df['nb_feedback_long'],
+                mode='lines+markers',
+                name='nombre de réponse longue',
+                line=dict(color='coral')
+            ), secondary_y=False)
+
+            fig.add_trace(go.Scatter(
+                x=users_df.index,
+                y=users_df['tx_feedback'],
+                mode='lines+markers',
+                name='%age de réponse évaluée',
+                line=dict(color='purple')
+            ), secondary_y=True)
+
+            # Mise à jour de la mise en page
+            fig.update_layout(
+                title='retours des utilisateurs',
+                xaxis_title='Index',
+                yaxis_title='nombre',
+                yaxis2_title='pourcentage',
+                barmode='stack'
+            )
+            st.pyplot(fig)
+
+
+        with st.expander("Users raw data", expanded=True):
+            st.write(
+                users_df
+            )
 
 
 main()
