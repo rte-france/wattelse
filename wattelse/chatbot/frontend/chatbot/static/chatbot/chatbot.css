@@ -656,6 +656,7 @@ color: var(--complementary-color);
   border-radius: 5px;
   border: 1px solid black;
   box-shadow: 1px 1px 1px grey;
+  resize: none;
 }
 
 .system-prompt-save-button {
