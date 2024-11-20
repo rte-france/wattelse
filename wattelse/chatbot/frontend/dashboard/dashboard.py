@@ -557,5 +557,8 @@ def main():
                 users_df
             )
 
+        # TODO : Analyse par conversations, analyse par chunks
+        # TODO : fusionner questions et feedbacks par date
+
 
 main()
