@@ -9,12 +9,38 @@
     width: min-content;
 }
 
+/* FAQ table */
+.faq-table {
+    border-collapse: separate;
+    border-spacing:0 10px;
+    margin: 10px;
+
+}
+.faq-table .faq-row {
+    border: 5px solid black;
+    background-color: rgb(209, 237, 255);
+}
+
+.faq-table .faq-row:hover {
+    cursor: pointer;
+    background-color: white;
+}
+
+.faq-table td {
+    padding: 5px;
+}
+
 
 /* Button styling */
 #faqAddButton {
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
+    padding: 10px;
+    border-radius: 10px;
+    border: 0px;
+    margin-left: 10px;
+    margin-right: 10px;
+    color: white;
+    background-color: var(--main-color);
+    
 }
 
 /* Popup overlay styling */
@@ -64,17 +90,37 @@
     margin-top: 40px;
 }
 
-.faq-popup-add-button {
-
+.faq-popup-add-button,
+.faq-popup-delete-button {
+    padding: 10px;
+    border-radius: 10px;
+    border: 0px;
+    margin-left: 10px;
+    margin-right: 10px;
+    color: white;
 }
 
+.faq-popup-add-button:hover,
+.faq-popup-delete-button:hover,
+#faqAddButton:hover {
+    transform: scale(1.05);
+    transition: transform 0.01s ease-in-out;
+  }
+
+.faq-popup-add-button {
+    background-color: var(--main-color);
+}
 
 .faq-popup-delete-button {
-
+    background-color: red;
 }
 
 .faq-popup-close-btn {
     position: absolute;
     top: 10px;
     right: 10px;
+    border: 0px;
+    border-radius: 10px;
+    padding: 10px;
+    background-color: inherit;
 }

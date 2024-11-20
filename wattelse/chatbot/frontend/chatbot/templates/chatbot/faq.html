@@ -23,13 +23,13 @@
             <th>Réponse</th>
         </tr>
         {% for item in faq %}
-            <tr id="{{ item.id }}">
+            <tr id="{{ item.id }}" class="faq-row">
                 <td>{{ item.question }}</td>
                 <td>{{ item.answer }}</td>
             </tr>
         {% endfor %}
     </table>
-    <button id="faqAddButton" class="faq-add-button">+</button>
+    <button id="faqAddButton" class="faq-add-button" title="Ajouter un élément"><i class="fa-solid fa-plus fa-xl"></i></button>
 </div>
 
 {% load static %}

@@ -3,14 +3,15 @@ function showFaqPopup(id, question="", answer="", showDeleteButton=false, addToT
     const popupHTML = `
     <div id="${id}" class="faq-popup-overlay">
         <div class="faq-popup-content">
+        <h3>Question - Réponse</h3>
             <div class="faq-popup-textareas-container">
                 <textarea id="faqPopupQuestionArea" class="faq-popup-textarea">${question}</textarea>
                 <textarea id="faqPopupAnswerArea" class="faq-popup-textarea">${answer}</textarea>
             </div>
-        <button class="faq-popup-close-btn" id="closePopupBtn">X</button>
+        <button class="faq-popup-close-btn" id="closePopupBtn"><i class="fa-solid fa-xmark fa-xl"></i></button>
         <div class="faq-popup-bottom-btn-container">
-            ${showDeleteButton ? '<button class="faq-popup-delete-button">Supprimer</button>' : ''}
-            <button class="faq-popup-add-button">Envoyer</button>
+            ${showDeleteButton ? '<button class="faq-popup-delete-button" title="Supprimer"><i class="fa-solid fa-trash fa-xl"></i></button>' : ''}
+            <button class="faq-popup-add-button" title="Ajouter"><i class="fa-solid fa-plus fa-xl"></i></button>
         </div>
         </div>
     </div>
