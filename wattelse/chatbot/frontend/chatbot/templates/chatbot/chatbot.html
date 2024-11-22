@@ -76,11 +76,11 @@
         <div class="tab-content documents">
             <h2 class="tab-title">Sélection des documents disponibles</h2>
             <h3>Groupe de travail : <span class="groupname">{{ user_group }}</span></h3>
+            <h3>Accéder à la FAQ du groupe : <a class="faq-button" href="/faq">FAQ <i class="fa-solid fa-arrow-up fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></a></h3>
             <div class="available-section">
                 <span class="tab-small-title select-all" id="select-all">
                     Tout sélectionner / désélectionner : <i class="fa-regular fa-square-check fa-xl"></i>
                 </span>
-                
                 <ul class="document-list available-list"></ul>
             </div>
         </div>
@@ -175,6 +175,7 @@
 <!-- Load script for chatbot page -->
 {% load static %}
 <script src="{% static 'chatbot/marked.min.js' %}"></script>
+<script src="{% static 'chatbot/faq_functions.js' %}?v={{ STATIC_VERSION }}"></script>
 <script src="{% static 'chatbot/common_functions.js' %}?v={{ STATIC_VERSION }}"></script>
 <script src="{% static 'chatbot/chatbot_functions.js' %}?v={{ STATIC_VERSION }}"></script>
 

@@ -302,7 +302,7 @@ function provideFeedback(userMessage, botMessage) {
 
     if (!is_gpt_page()) {
         const textFeedbackButton = document.getElementById('open-text-feedback');
-        textFeedbackButton.addEventListener('click', (event) => handleTextFeedbackClick(event, userMessage, botMessage));
+        textFeedbackButton.addEventListener('click', (event) => showFaqPopup(uuid4(), userMessage, botMessage, undefined, false));
     }
 }
 
@@ -360,20 +360,6 @@ function handleEmojiRatingClick(event, userMessage, botMessage) {
   if (feedbackName) {
     sendFeedback("/send_short_feedback/", feedbackName, userMessage, botMessage);
   }
-}
-
-// Function to handle click on the text feedback button (optional)
-function handleTextFeedbackClick(event, userMessage, botMessage) {
-    const feedbackButton = event.currentTarget;
-    feedbackButton.classList.add('selected');
-
-    // Implement your logic for opening a text feedback form or modal here
-    let feedback = prompt("Veuillez saisir la réponse attendue. \nVotre réponse sera ajoutée à la FAQ du groupe.", "");
-
-    // send back answer
-    if (feedback){
-        sendFeedback("/send_long_feedback/", feedback, userMessage, botMessage);
-    }
 }
 
 

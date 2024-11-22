@@ -1,0 +1,126 @@
+.faq-wrapper {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    flex-direction: column;
+}
+
+.faq-add-button {
+    width: min-content;
+}
+
+/* FAQ table */
+.faq-table {
+    border-collapse: separate;
+    border-spacing:0 10px;
+    margin: 10px;
+
+}
+.faq-table .faq-row {
+    border: 5px solid black;
+    background-color: rgb(209, 237, 255);
+}
+
+.faq-table .faq-row:hover {
+    cursor: pointer;
+    background-color: white;
+}
+
+.faq-table td {
+    padding: 5px;
+}
+
+
+/* Button styling */
+#faqAddButton {
+    padding: 10px;
+    border-radius: 10px;
+    border: 0px;
+    margin-left: 10px;
+    margin-right: 10px;
+    color: white;
+    background-color: var(--main-color);
+    
+}
+
+/* Popup overlay styling */
+.faq-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Popup content styling */
+.faq-popup-content {
+    position: relative;
+    display: flex;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 60%;
+    height: 60%;
+    flex-direction: column;
+}
+
+.faq-popup-textareas-container {
+    flex-grow: 1;
+}
+
+.faq-popup-textarea {
+    width: 40%;
+    height: 100%;
+    resize: none;
+    background-color: #eae7ff;
+    border-radius: 10px;
+    padding: 5px;
+    margin: 10px;
+}
+
+.faq-popup-bottom-btn-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 40px;
+}
+
+.faq-popup-add-button,
+.faq-popup-delete-button {
+    padding: 10px;
+    border-radius: 10px;
+    border: 0px;
+    margin-left: 10px;
+    margin-right: 10px;
+    color: white;
+}
+
+.faq-popup-add-button:hover,
+.faq-popup-delete-button:hover,
+#faqAddButton:hover {
+    transform: scale(1.05);
+    transition: transform 0.01s ease-in-out;
+  }
+
+.faq-popup-add-button {
+    background-color: var(--main-color);
+}
+
+.faq-popup-delete-button {
+    background-color: red;
+}
+
+.faq-popup-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border: 0px;
+    border-radius: 10px;
+    padding: 10px;
+    background-color: inherit;
+}

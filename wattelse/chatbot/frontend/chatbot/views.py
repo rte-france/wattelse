@@ -8,10 +8,10 @@ import uuid
 import json
 import socket
 import tempfile
+import pandas as pd
 from datetime import datetime, timedelta
 
 import mammoth
-import pytz
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
@@ -26,18 +26,22 @@ from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGAPIError
 from wattelse.chatbot.backend import DATA_DIR
-from .models import Chat, SuperUserPermissions
+from .models import Chat, SuperUserPermissions, FAQ
 
 from .utils import (
+    RAG_API,
     get_user_group_id,
     get_group_usernames_list,
     new_user_created,
     get_conversation_history,
     streaming_generator,
     insert_feedback,
-    RAG_API,
     get_chat_model,
+    get_group_faq,
 )
+
+# Long feedback FAQ file
+FAQ_FILE_PATTERN = "_FAQ.xlsx"
 
 
 def default_page(request):
@@ -102,6 +106,19 @@ def rag_page(request):
             "admin_group_selection": admin_group_selection,
         },
     )
+
+
+def faq_page(request):
+    """
+    WattElse Doc FAQ page.
+    """
+    # Get user group_id
+    user_group_id = get_user_group_id(request.user)
+
+    # get group FAQ
+    group_faq = get_group_faq(user_group_id)
+
+    return render(request, "chatbot/faq.html", {"faq": group_faq})
 
 
 def login(request):
@@ -636,6 +653,120 @@ def manage_superuser_permission(request):
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
                 {"message": "Erreur serveur : échec lors de la modification"},
+                status=500,
+            )
+    else:
+        raise Http404()
+
+
+def add_faq_item(request):
+    """
+    Add a question/answer pair to the FAQ of the user group.
+    This function is also used to update existing items.
+    If the provided item ID already exists, updates other fields.
+    """
+    if request.method == "POST":
+        # Get response data
+        data = json.loads(request.body)
+        item_id = data.get("id")
+        item_fields = {
+            "question": data.get("question"),
+            "answer": data.get("answer"),
+            "group_id": get_user_group_id(request.user),
+        }
+
+        # Save to FAQ Databse
+        try:
+            _, created = FAQ.objects.update_or_create(
+                id=item_id,
+                defaults=item_fields,
+            )
+            if created:
+                logger.info(f"Succesfully added item {item_id} to FAQ database")
+                message = "Élément ajouté à la FAQ"
+            else:
+                message = "Élément modifié"
+                logger.info(f"Succesfully edited item {item_id} to FAQ database")
+            return JsonResponse({"message": message, "created": created})
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {
+                    "message": "Erreur serveur : échec lors de l'enregistrement de la FAQ"
+                },
+                status=500,
+            )
+    else:
+        raise Http404()
+
+
+def delete_faq_item(request):
+    """
+    Delete a question/answer pair from the FAQ of the user group.
+    """
+    if request.method == "POST":
+        # Get response data
+        data = json.loads(request.body)
+        item_id = data.get("id")
+
+        # Delete item from FAQ
+        try:
+            item = FAQ.objects.get(id=item_id)
+            item.delete()
+            logger.info(f"Succesfully removed item {item_id} from FAQ database")
+            return JsonResponse(
+                {"message": "Élément supprimé de la FAQ"},
+            )
+
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {"message": "Erreur serveur : échec lors de la suppression"},
+                status=500,
+            )
+
+    else:
+        raise Http404()
+
+
+def update_faq(request):
+    """
+    Create a XLSX file based on the group FAQ and index it in RAGBackend.
+
+    TODO: not optimal as it recomputes all embeddings everytime a modification
+    is made to the FAQ. This function should manage question/answer pairs
+    one by one and not the entiere FAQ.
+    """
+    if request.method == "POST":
+        # Get user group_id
+        group_id = get_user_group_id(request.user)
+
+        # Get group FAQ items
+        faq_items = get_group_faq(group_id)
+
+        # Convert it to pandas DataFrame
+        faq_df = pd.DataFrame(faq_items).drop(columns=["id"])
+
+        # Create XSLX file and update embeddings in RAGBackend
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Create temporary file to store XLSX
+                temp_file_path = Path(temp_dir) / FAQ_FILE_PATTERN
+
+                # Save FAQ as XSLX
+                faq_df.to_excel(temp_file_path, index=False)
+
+                # Upload the file and update embeddings collection
+                RAG_API.remove_documents(group_id, [FAQ_FILE_PATTERN])
+                RAG_API.upload_files(group_id, [temp_file_path])
+                logger.success(f"[{group_id}]: successfully updated FAQ")
+                return JsonResponse(
+                    {"message": "Ré-indexation de la FAQ réussie"},
+                )
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {"message": "Erreur serveur : échec lors de l'indexation de la FAQ"},
                 status=500,
             )
     else:
