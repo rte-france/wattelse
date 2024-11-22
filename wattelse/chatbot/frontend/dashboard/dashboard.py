@@ -361,8 +361,9 @@ def check_password():
         st.error("😕 Password incorrect")
     return False
 
-def build_users_df(filtered_df:pd.DataFrame) -> pd.DataFrame:
-    """Given the log of each question, and evaluation, build a pivot table by user : 
+
+def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
+    """Given the log of each question, and evaluation, build a pivot table by user :
         - nb of question
         - nb of evaluation "great"
         - nb of evaluation "ok"
@@ -376,117 +377,142 @@ def build_users_df(filtered_df:pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: the pivot table described above.
-    """    
+    """
     users_feedback = pd.pivot_table(
-    data=filtered_df[['username', 'short_feedback', "answer_timestamp"]],
+        data=filtered_df[["username", "short_feedback", "answer_timestamp"]],
         index="username",
-        values = "answer_timestamp",
+        values="answer_timestamp",
         columns="short_feedback",
-        aggfunc="count"
+        aggfunc="count",
     )
-    data = filtered_df[['username', 'group_id', 'conversation_id', 'response', 'long_feedback']]
-    data['long_feedback_bool'] = (data['long_feedback']!="").astype(int)
+    data = filtered_df[
+        ["username", "group_id", "conversation_id", "response", "long_feedback"]
+    ]
+    data["long_feedback_bool"] = (data["long_feedback"] != "").astype(int)
 
     users_df = data.groupby(
         by="username",
     ).agg(
-        {'conversation_id' : lambda x: len(x.unique()),
-        'response' : "count",
-        'long_feedback_bool' : "sum"
+        {
+            "conversation_id": lambda x: len(x.unique()),
+            "response": "count",
+            "long_feedback_bool": "sum",
         }
     )
-    users_df =users_df.join(users_feedback)
+    users_df = users_df.join(users_feedback)
     users_df.fillna(value=0, inplace=True)
     users_df.sort_values(by="response", ascending=False, inplace=True)
     users_df.rename(
         columns={
-            "conversation_id"  : "nb_conversation",
-            "response": "nb_questions", 
+            "conversation_id": "nb_conversation",
+            "response": "nb_questions",
             "long_feedback_bool": "nb_feedback_long",
-            "": "non_evalue"
+            "": "non_evalue",
         },
-        inplace=True
+        inplace=True,
     )
     # users_df["non_evalue"] = users_df["nb_questions"] - users_df["great"] - users_df["ok"] - users_df["missing_info"] - users_df["wrong"]
-    users_df["tx_feedback"] = 1 - users_df["non_evalue"]/users_df["nb_questions"]
+    users_df["tx_feedback"] = 1 - users_df["non_evalue"] / users_df["nb_questions"]
     users_df.reset_index(inplace=True)
 
     return users_df
+
 
 def user_analystics_graph(users_df: pd.DataFrame) -> None:
     """Generate a plotly graph showing the number of questions and evaluation of each users
 
     Args:
         users_df (pd.DataFrame): users_df, as build by the above function build_users_df
-    """    
+    """
     # Création de l'histogramme empilé
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-
     # Ajout de l'histogramme empilé
-    fig.add_trace(go.Bar(
-        x=users_df.index,
-        y=users_df['wrong'],
-        name='réponse fausse',
-        marker_color='red'
-    ), secondary_y=False)
+    fig.add_trace(
+        go.Bar(
+            x=users_df.index,
+            y=users_df["wrong"],
+            name="réponse fausse",
+            marker_color="red",
+        ),
+        secondary_y=False,
+    )
 
-    fig.add_trace(go.Bar(
-        x=users_df.index,
-        y=users_df['missing_info'],
-        name='réponse incomplète',
-        marker_color='orange'
-    ), secondary_y=False)
+    fig.add_trace(
+        go.Bar(
+            x=users_df.index,
+            y=users_df["missing_info"],
+            name="réponse incomplète",
+            marker_color="orange",
+        ),
+        secondary_y=False,
+    )
 
-    fig.add_trace(go.Bar(
-        x=users_df.index,
-        y=users_df['ok'],
-        name='réponse correcte',
-        marker_color='blue'
-    ), secondary_y=False)
+    fig.add_trace(
+        go.Bar(
+            x=users_df.index,
+            y=users_df["ok"],
+            name="réponse correcte",
+            marker_color="blue",
+        ),
+        secondary_y=False,
+    )
 
-    fig.add_trace(go.Bar(
-        x=users_df.index,
-        y=users_df['great'],
-        name='réponse excellente',
-        marker_color='green'
-    ), secondary_y=False)
+    fig.add_trace(
+        go.Bar(
+            x=users_df.index,
+            y=users_df["great"],
+            name="réponse excellente",
+            marker_color="green",
+        ),
+        secondary_y=False,
+    )
 
-    fig.add_trace(go.Bar(
-        x=users_df.index,
-        y=users_df['non_evalue'],
-        name='pas de réponse',
-        marker_color='grey'
-    ), secondary_y=False)
+    fig.add_trace(
+        go.Bar(
+            x=users_df.index,
+            y=users_df["non_evalue"],
+            name="pas de réponse",
+            marker_color="grey",
+        ),
+        secondary_y=False,
+    )
 
     # Ajout des courbes
-    fig.add_trace(go.Scatter(
-        x=users_df.index,
-        y=users_df['nb_feedback_long'],
-        mode='lines+markers',
-        name='nombre de réponses longues',
-        line=dict(color='coral')
-    ), secondary_y=False)
+    fig.add_trace(
+        go.Scatter(
+            x=users_df.index,
+            y=users_df["nb_feedback_long"],
+            mode="lines+markers",
+            name="nombre de réponses longues",
+            line=dict(color="coral"),
+        ),
+        secondary_y=False,
+    )
 
-    fig.add_trace(go.Scatter(
-        x=users_df.index,
-        y=users_df['tx_feedback'],
-        mode='lines+markers',
-        name='%age de réponses évaluées',
-        line=dict(color='purple')
-    ), secondary_y=True)
+    fig.add_trace(
+        go.Scatter(
+            x=users_df.index,
+            y=users_df["tx_feedback"],
+            mode="lines+markers",
+            name="%age de réponses évaluées",
+            line=dict(color="purple"),
+        ),
+        secondary_y=True,
+    )
 
     # Mise à jour de la mise en page
     fig.update_layout(
-        title='retours des utilisateurs',
-        xaxis_title='Index',
-        yaxis_title='nombre',
-        yaxis2_title='pourcentage',
-        barmode='stack'
+        title="retours des utilisateurs",
+        xaxis_title="Index",
+        yaxis_title="nombre",
+        yaxis2_title="pourcentage",
+        barmode="stack",
     )
-    st.plotly_chart (fig)
+    st.plotly_chart(fig)
 
     return
+
 
 def main():
     if "selected_table" not in st.session_state:
@@ -548,14 +574,10 @@ def main():
 
         users_df = build_users_df(st.session_state["filtered_data"])
         with st.expander("Users analysis", expanded=True):
-
-            user_analystics_graph(users_df = users_df)
-
+            user_analystics_graph(users_df=users_df)
 
         with st.expander("Users raw data", expanded=False):
-            st.write(
-                users_df
-            )
+            st.write(users_df)
 
         # TODO : Analyse par conversations, analyse par chunks
         # TODO : fusionner questions et feedbacks par date
