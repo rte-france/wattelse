@@ -464,7 +464,7 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         x=users_df.index,
         y=users_df['nb_feedback_long'],
         mode='lines+markers',
-        name='nombre de réponse longue',
+        name='nombre de réponses longues',
         line=dict(color='coral')
     ), secondary_y=False)
 
@@ -472,7 +472,7 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         x=users_df.index,
         y=users_df['tx_feedback'],
         mode='lines+markers',
-        name='%age de réponse évaluée',
+        name='%age de réponses évaluées',
         line=dict(color='purple')
     ), secondary_y=True)
 
