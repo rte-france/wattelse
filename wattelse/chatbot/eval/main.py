@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import re
 import typer
 import pandas as pd
@@ -11,11 +16,11 @@ from wattelse.chatbot.eval.prompt import (
     FAITHFULNESS_EVAL_PROMPT,
     CORRECTNESS_EVAL_PROMPT,
     RETRIEVABILITY_EVAL_PROMPT
-    # CONTEXT_NDCG_PROMPT  # Remove this import
+    # CONTEXT_NDCG_PROMPT  # Testing Phase
 )
 
 # Example :
-# python main.py QA_GENE.xlsx data/test_gen --report-output-path data/eval_output_update-faithfulness20.xlsx
+# python main.py data/QA_Corpus-A.xlsx data/eval_corpus_A --report-output-path data/eval_output_update_Corpus_A.xlsx
 
 # Updated column names to match new format
 QUERY_COLUMN = "question"
@@ -35,8 +40,19 @@ def call_llm(llm_client, prompt: str) -> str:
     response = llm_client.generate(prompt, temperature=0)
     return response
 
-def evaluate_metrics(llm_client, question, answer, context_extracted):
-    """Function to evaluate multiple metrics using the LLM."""
+def evaluate_metrics(llm_client, question, answer, context_extracted) -> dict:
+    '''
+    Evaluates the answer based on multiple metrics (faithfulness, correctness, retrievability) using the LLM.
+
+    Args:
+        llm_client (OpenAI_Client): The client to interact with the OpenAI LLM.
+        question (str): The question to evaluate.
+        answer (str): The answer to evaluate.
+        context_extracted (str): The context used to generate the answer.
+
+    Returns:
+        dict: A dictionary containing the evaluations and scores for faithfulness, correctness, and retrievability.
+    '''
 
     # Evaluate faithfulness
     faithfulness_eval = call_llm(llm_client, FAITHFULNESS_EVAL_PROMPT.format(
@@ -79,12 +95,21 @@ def evaluate_metrics(llm_client, question, answer, context_extracted):
 
     return evaluations
 
-def evaluate_rag_metrics(eval_df):
+def evaluate_rag_metrics(eval_df: pd.DataFrame) -> pd.DataFrame:
+    '''
+    Evaluates the generated answers from the RAG (retrieval-augmented generation) pipeline using multiple metrics.
+
+    Args:
+        eval_df (pandas.DataFrame): The DataFrame containing the evaluation corpus and answers to evaluate.
+
+    Returns:
+        pandas.DataFrame: The DataFrame with added evaluation columns (faithfulness, correctness, retrievability).
+    '''
     llm_client = OpenAI_Client()   # Initialize the LLM client for critique
     logger.info(f"LLM Evaluation model: {llm_client.model_name}")
 
     evaluations = []
-
+    # TODO logger.warning here needs review/refactor.
     for idx, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Evaluating Multiple Metrics"):
         try:
             question = row[QUERY_COLUMN]
@@ -132,10 +157,17 @@ def main(
     eval_corpus_path: Path,
     report_output_path: Path = Path(__file__).parent / "report_output.xlsx"  # Default RAG output path
 ):
-    """
-    Function to evaluate the generation part of the RAG pipeline.
-    Currently supports multiple metrics (WIP).
-    """
+    '''
+    Main function to evaluate the generation part of the RAG pipeline.
+    This function computes multiple metrics such as faithfulness, correctness, and retrievability for the RAG answers.
+    
+    Args:
+        qr_df_path (Path): Path to the query and answer dataset (in Excel format).
+        eval_corpus_path (Path): Path to the evaluation corpus folder.
+        report_output_path (Path, optional): Path to save the evaluation report (Excel file). Default is 'report_output.xlsx'.
+ 
+    '''
+
     # Initialize RAG backend and LLM client
     eval_group_id = "rag_eval"
     RAGBackEnd(eval_group_id).clear_collection()  # Ensure RAG eval backend is empty
