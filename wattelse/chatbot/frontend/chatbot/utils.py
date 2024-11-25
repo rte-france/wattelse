@@ -12,9 +12,9 @@ import pandas as pd
 from pathlib import Path
 from typing import List, Dict, Type
 
-from django.db import models
 from loguru import logger
 
+from django.db import models
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User, Group
 from django.http import Http404, JsonResponse
@@ -144,12 +144,14 @@ def get_user_conversation_ids(
     Return the list of the user conversation ids.
     Use `number` to limit the maximum number of returned ids.
     """
+    # Get list of all conversation ids for the user, ordered by question timestamp
     conversation_ids = (
         ChatModel.objects.filter(user=user)
-        .distinct()
-        .values_list("conversation_id", flat=True)[:number][::-1]
+        .order_by("-question_timestamp")
+        .values_list("conversation_id", flat=True)
     )
-    return list(conversation_ids)
+    # Remove duplicates while preserving order
+    return list(dict.fromkeys(conversation_ids))[:number]
 
 
 def get_conversation_first_message(
