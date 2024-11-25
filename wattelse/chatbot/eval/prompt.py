@@ -23,19 +23,8 @@ EVAL_LLM_PROMPT = (
 )
 
 
-# Groundedness (Pertinence contextuelle) : La question doit pouvoir être répondue à partir du contexte donné. 
-# Si elle nécessite des informations extérieures, elle n'est pas pertinente.
-
-# Realism (Réalisme de la question utilisateur) : La question doit ressembler à une question qu'un utilisateur poserait en se basant sur le document. 
-# Elle doit être réaliste et pertinente pour l'utilisateur.
-
-# Stand-alone (Indépendance) : La question doit être compréhensible sans dépendre du contexte spécifique. 
-# Elle doit avoir du sens pour quelqu'un ayant des connaissances générales du domaine.
-
-# Pertinence contextuelle : Évalue si la question peut être répondue avec le contexte donné.
-# Réalisme : Vérifie si la question ressemble à une question qu’un utilisateur poserait en fonction du document.
-# Indépendance : Mesure si la question a du sens sans dépendre du contexte.
-
+# Groundedness (Pertinence contextuelle) : La question doit pouvoir être répondue à partir du contexte donné 
+# pour eviter toute types d'hallucinations.
 
 # QA generation prompt template
 QA_GENERATION_PROMPT = """
@@ -84,7 +73,7 @@ Contexte : {context}\n
 Réponse:::
 """
 
-
+# Not used needs rework #
 QUESTION_REALISM_CRITIQUE_PROMPT = """
 Avec ce contexte, est-ce que cette question pourrait-elle être pertinente par un utilisateur du document ?
 
@@ -101,7 +90,7 @@ Contexte : {context}\n
 Réponse:::
 """
 
-
+# Not used needs rework #
 QUESTION_STANDALONE_CRITIQUE_PROMPT = """
 
 Est-ce que cette question pourrait-elle être pertinente par un utilisateur du document ?
@@ -123,6 +112,8 @@ Réponse:::
 
                                                             # RAGAS Evaluation metrics
 
+
+# Still in the Testing phase  
 
 # CONTEXT_NDCG_PROMPT = """
 # Sur la base d'une question, et d'une liste d'extraits du contexte, évaluez chaque extrait pour déterminer son utilité à répondre à la question. 
@@ -199,6 +190,7 @@ Réponse:::
 """
 
 
+## Needs rework, and the actual idea metric is challenging ##
 CORRECTNESS_EVAL_PROMPT = """
 Évaluez si la réponse est correcte, c’est-à-dire, si elle répond à la question posée en donnant les informations essentielles sans erreurs factuelles importantes.
 
@@ -225,44 +217,3 @@ Question : {question}
 Réponse : {answer}
 Réponse:::
 """
-
-CONTEXT_RECALL_PROMPT = """
-A partir d'un contexte et une réponse, analysez la réponse et déterminez si la phrase peut être attribuée au contexte donné ou non.
-Donnez un jugement de "1" si utile et de "0" si non.
-
-Réponse:::
-Évaluation : (votre raisonnement pour le Jugement, sous forme de texte)
-Jugement : (votre Jugement, de "1" si utile et de "0" si non)
-
-Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
-
-Voici maintenant la question, la réponse et le contexte.
-
-Question : {question}\n
-Réponse : {answer}\n
-Contexte : {retrieved_contexts}\n
-Réponse:::
-"""
-
-BINARY_RELEVANCE_PROMPT = """
-A partir d'une question, d'une réponse et d'un contexte, vérifiez si le contexte a été utile pour parvenir à la réponse donnée. 
-Donnez un Jugement de "1" si utile et de "0" si non.
-
-Réponse:::
-Évaluation : (votre raisonnement pour le Jugement, sous forme de texte)
-Jugement : (votre Jugement, de "1" si utile et de "0" si non)
-
-Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
-
-Voici maintenant la question, la réponse et le contexte.
-
-Question : {question}\n
-Réponse : {answer}\n
-Contexte : {retrieved_contexts}\n
-Réponse:::
-"""
-
-# Context Recall: How well the retrieved information covers the relevant context.
-# Context Precision: The accuracy of the retrieved chunks in matching the query.
-# Context Relevancy: Balances precision and recall to measure relevancy.
-# Context Entity Recall: Evaluates the retrieval of specific entities mentioned in the query.
