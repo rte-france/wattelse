@@ -13,7 +13,7 @@ from docx import Document
 from collections import defaultdict
 from pathlib import Path
 import PyPDF2
-from wattelse.api.openai.client_openai_api import OpenAI_Client 
+from wattelse.api.openai.client_openai_api import OpenAI_Client
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document as LangchainDocument
 from concurrent.futures import ThreadPoolExecutor
@@ -27,7 +27,7 @@ from wattelse.chatbot.eval.prompt import (
     QA_GENERATION_PROMPT,
     QUESTION_GROUNDEDNESS_CRITIQUE_PROMPT,
     QUESTION_REALISM_CRITIQUE_PROMPT,
-    QUESTION_STANDALONE_CRITIQUE_PROMPT
+    QUESTION_STANDALONE_CRITIQUE_PROMPT,
 )
 
 # Example :
@@ -36,10 +36,12 @@ from wattelse.chatbot.eval.prompt import (
 # Define the Typer app
 app = typer.Typer()
 
+
 # Function to call the LLM (Refactor with classes WattElse)
 def call_llm(llm_client, prompt: str) -> str:
     response = llm_client.generate(prompt, temperature=0)
     return response
+
 
 # Enhanced split_documents function for parallel processing
 def split_documents(eval_corpus_path: Path) -> List[LangchainDocument]:
@@ -51,14 +53,26 @@ def split_documents(eval_corpus_path: Path) -> List[LangchainDocument]:
             try:
                 with open(doc, "rb") as f:
                     reader = PyPDF2.PdfReader(f)
-                    content = "\n".join([page.extract_text() for page in reader.pages if page.extract_text() is not None])
+                    content = "\n".join(
+                        [
+                            page.extract_text()
+                            for page in reader.pages
+                            if page.extract_text() is not None
+                        ]
+                    )
             except Exception as e:
                 logger.error(f"Error reading {doc.name}: {e}")
                 return []
         elif doc.suffix == ".docx":
             try:
                 docx_file = Document(doc)
-                content = "\n".join([paragraph.text for paragraph in docx_file.paragraphs if paragraph.text.strip() != ""])
+                content = "\n".join(
+                    [
+                        paragraph.text
+                        for paragraph in docx_file.paragraphs
+                        if paragraph.text.strip() != ""
+                    ]
+                )
             except Exception as e:
                 logger.error(f"Error reading {doc.name}: {e}")
                 return []
@@ -71,12 +85,16 @@ def split_documents(eval_corpus_path: Path) -> List[LangchainDocument]:
                 return []
 
         if content:
-            logger.info(f"Processing document '{doc.name}' with total length: {len(content)} characters")
-            langchain_doc = LangchainDocument(page_content=content, metadata={"source": doc.name})
+            logger.info(
+                f"Processing document '{doc.name}' with total length: {len(content)} characters"
+            )
+            langchain_doc = LangchainDocument(
+                page_content=content, metadata={"source": doc.name}
+            )
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=3000,
                 chunk_overlap=200,
-                add_start_index=True, # This enables assigning start indexes to chunks
+                add_start_index=True,  # This enables assigning start indexes to chunks
                 separators=["\n\n", "\n", ".", " ", ""],
             )
             return text_splitter.split_documents([langchain_doc])
@@ -86,9 +104,10 @@ def split_documents(eval_corpus_path: Path) -> List[LangchainDocument]:
     with ThreadPoolExecutor() as executor:
         all_chunks = list(executor.map(process_doc, eval_corpus_path.iterdir()))
         for chunks in all_chunks:
-            docs_processed.extend(chunks) # Chunks are gathered into a single list
+            docs_processed.extend(chunks)  # Chunks are gathered into a single list
 
     return docs_processed
+
 
 # Main QA generation function, default parameters.
 def generate_qa_pairs(
@@ -96,11 +115,11 @@ def generate_qa_pairs(
     N_GENERATIONS: int = 100,
     OUTPUT_PATH: Path = Path("qa_output.xlsx"),
     DOCS_PER_QA: int = 1,
-    CHUNKS_PER_DOC: int = 1
+    CHUNKS_PER_DOC: int = 1,
 ) -> List[Dict]:
-    '''
+    """
     Function to generate QA pairs from documents. It processes documents, selects chunks,
-    and generates QA pairs using an LLM. 
+    and generates QA pairs using an LLM.
 
     Parameters:
     - EVAL_CORPUS_PATH: Path to the folder containing the documents to be processed.
@@ -111,7 +130,7 @@ def generate_qa_pairs(
 
     Returns:
     - A list of dictionaries containing generated QA pairs.
-    '''
+    """
 
     outputs = []
     # Step 1: Split the documents into chunks
@@ -124,8 +143,10 @@ def generate_qa_pairs(
         chunks_by_doc[source].append(chunk)
 
     # Step 3: Track chunk usage for each document
-    doc_names = list(chunks_by_doc.keys()) # List of document names (not used here)
-    chunk_usage = {doc_name: [False] * len(chunks) for doc_name, chunks in chunks_by_doc.items()}
+    doc_names = list(chunks_by_doc.keys())  # List of document names (not used here)
+    chunk_usage = {
+        doc_name: [False] * len(chunks) for doc_name, chunks in chunks_by_doc.items()
+    }
 
     # Step 4: Initialize the LLM client for generating QA pairs
     llm_client = OpenAI_Client()
@@ -133,22 +154,24 @@ def generate_qa_pairs(
 
     # Step 5 : Function to select a high-yield document based on chunk availability. It's basically a ratio.
     def select_high_yield_document() -> List[str]:
-        '''
+        """
         Selects documents that have the most available chunks for QA generation.
-        
+
         Returns:
         - A sorted list of document names based on the number of available chunks.
-        '''
+        """
         doc_chunks_remaining = {
             doc: sum(1 for used in usage if not used) / len(usage)
             for doc, usage in chunk_usage.items()
         }
         # Sort documents by the proportion of available chunks (descending order)
-        high_yield_docs = sorted(doc_chunks_remaining, key=doc_chunks_remaining.get, reverse=True)
+        high_yield_docs = sorted(
+            doc_chunks_remaining, key=doc_chunks_remaining.get, reverse=True
+        )
         return high_yield_docs
 
     # Step 6: Calculate the maximum number of possible generations based on available chunks.
-    # TODO: Review the generation method. 
+    # TODO: Review the generation method.
     max_generations = 0
     for doc, chunks in chunks_by_doc.items():
         available_chunks_count = sum(not used for used in chunk_usage[doc])
@@ -159,24 +182,26 @@ def generate_qa_pairs(
 
     # Step 7: Loop for QA generation
     for iteration in tqdm(range(actual_generations), total=actual_generations):
-        '''
+        """
         Loop through the required number of generations. For each iteration:
         - Select high-yield documents.
         - Choose chunks from the selected documents.
         - Generate QA pairs using the LLM.
-        '''
+        """
 
-        sampled_contexts = [] # List to store chunks for the current QA pair generation
-        used_docs = set() # Set to track used documents in the current generation
+        sampled_contexts = []  # List to store chunks for the current QA pair generation
+        used_docs = set()  # Set to track used documents in the current generation
         logger.info(f"Iteration {iteration + 1}/{actual_generations}")
 
         # Try selecting high-yield documents first
-        # The code calls select_high_yield_document() to get the list of documents with the highest available chunks. 
+        # The code calls select_high_yield_document() to get the list of documents with the highest available chunks.
         # It then selects documents (one per iteration) that haven't been used yet in the current generation.
 
         for _ in range(DOCS_PER_QA):
-            high_yield_docs = select_high_yield_document() # Select documents with the most available chunks
-            selected_doc = None # Variable to store the selected document
+            high_yield_docs = (
+                select_high_yield_document()
+            )  # Select documents with the most available chunks
+            selected_doc = None  # Variable to store the selected document
 
             # Step 8: Loop through documents to select one that hasn't been used yet in the current iteration
             for doc_name in high_yield_docs:
@@ -192,19 +217,27 @@ def generate_qa_pairs(
 
             # Step 10: Get chunks from the selected document
             doc_chunks = chunks_by_doc[selected_doc]
-            available_chunks = [idx for idx, used in enumerate(chunk_usage[selected_doc]) if not used]
+            available_chunks = [
+                idx for idx, used in enumerate(chunk_usage[selected_doc]) if not used
+            ]
 
             # Step 11: Select chunks from the available ones
             if available_chunks:
                 chunk_found = 0
                 for chunk_idx in available_chunks:
                     if chunk_found < CHUNKS_PER_DOC:
-                        chunk_usage[selected_doc][chunk_idx] = True  # Mark chunk as used
-                        sampled_contexts.append(doc_chunks[chunk_idx]) # Add to context
-                        logger.info(f"Using chunk from {selected_doc}: [{chunk_idx}]") # Chunks used from the selected docs
+                        chunk_usage[selected_doc][
+                            chunk_idx
+                        ] = True  # Mark chunk as used
+                        sampled_contexts.append(doc_chunks[chunk_idx])  # Add to context
+                        logger.info(
+                            f"Using chunk from {selected_doc}: [{chunk_idx}]"
+                        )  # Chunks used from the selected docs
                         chunk_found += 1
             else:
-                logger.info(f"All chunks exhausted for document '{selected_doc}'. Skipping this round.")
+                logger.info(
+                    f"All chunks exhausted for document '{selected_doc}'. Skipping this round."
+                )
 
         # Step 12: Handle case when no contexts are available for QA generation
         if not sampled_contexts:
@@ -213,25 +246,62 @@ def generate_qa_pairs(
 
         # Step 13: Combine the selected contexts and call the LLM to generate QA pairs
         combined_context = "\n\n".join(chunk.page_content for chunk in sampled_contexts)
-        output_QA_couple = call_llm(llm_client, QA_GENERATION_PROMPT.format(context=combined_context))
+        output_QA_couple = call_llm(
+            llm_client, QA_GENERATION_PROMPT.format(context=combined_context)
+        )
 
         try:
             # Step 14: Extract the generated QA pairs from the response
-            simple_question_match = re.search(r"\*?\*?Question simple\*?\*?\s*:\s*(.*)", output_QA_couple)
-            simple_answer_match = re.search(r"\*?\*?Réponse simple\*?\*?\s*:\s*(.*)", output_QA_couple)
-            reasoning_question_match = re.search(r"\*?\*?Question de raisonnement\*?\*?\s*:\s*(.*)", output_QA_couple)
-            reasoning_answer_match = re.search(r"\*?\*?Réponse de raisonnement\*?\*?\s*:\s*(.*)", output_QA_couple)
-            multi_context_question_match = re.search(r"\*?\*?Question multi-contexte\*?\*?\s*:\s*(.*)", output_QA_couple)
-            multi_context_answer_match = re.search(r"\*?\*?Réponse multi-contexte\*?\*?\s*:\s*(.*)", output_QA_couple)
+            simple_question_match = re.search(
+                r"\*?\*?Question simple\*?\*?\s*:\s*(.*)", output_QA_couple
+            )
+            simple_answer_match = re.search(
+                r"\*?\*?Réponse simple\*?\*?\s*:\s*(.*)", output_QA_couple
+            )
+            reasoning_question_match = re.search(
+                r"\*?\*?Question de raisonnement\*?\*?\s*:\s*(.*)", output_QA_couple
+            )
+            reasoning_answer_match = re.search(
+                r"\*?\*?Réponse de raisonnement\*?\*?\s*:\s*(.*)", output_QA_couple
+            )
+            multi_context_question_match = re.search(
+                r"\*?\*?Question multi-contexte\*?\*?\s*:\s*(.*)", output_QA_couple
+            )
+            multi_context_answer_match = re.search(
+                r"\*?\*?Réponse multi-contexte\*?\*?\s*:\s*(.*)", output_QA_couple
+            )
 
             # Use .group(1) if the match is found; otherwise, default to an empty string or a suitable placeholder
-            simple_question = simple_question_match.group(1).split("\n")[0].strip() if simple_question_match else ""
-            simple_answer = simple_answer_match.group(1).split("\n")[0].strip() if simple_answer_match else ""
-            reasoning_question = reasoning_question_match.group(1).split("\n")[0].strip() if reasoning_question_match else ""
-            reasoning_answer = reasoning_answer_match.group(1).split("\n")[0].strip() if reasoning_answer_match else ""
-            multi_context_question = multi_context_question_match.group(1).split("\n")[0].strip() if multi_context_question_match else ""
-            multi_context_answer = multi_context_answer_match.group(1).split("\n")[0].strip() if multi_context_answer_match else ""
-
+            simple_question = (
+                simple_question_match.group(1).split("\n")[0].strip()
+                if simple_question_match
+                else ""
+            )
+            simple_answer = (
+                simple_answer_match.group(1).split("\n")[0].strip()
+                if simple_answer_match
+                else ""
+            )
+            reasoning_question = (
+                reasoning_question_match.group(1).split("\n")[0].strip()
+                if reasoning_question_match
+                else ""
+            )
+            reasoning_answer = (
+                reasoning_answer_match.group(1).split("\n")[0].strip()
+                if reasoning_answer_match
+                else ""
+            )
+            multi_context_question = (
+                multi_context_question_match.group(1).split("\n")[0].strip()
+                if multi_context_question_match
+                else ""
+            )
+            multi_context_answer = (
+                multi_context_answer_match.group(1).split("\n")[0].strip()
+                if multi_context_answer_match
+                else ""
+            )
 
             # Step 15: Ensure answer length constraints are respected
             assert len(simple_answer) < 2000, "Answer is too long"
@@ -270,17 +340,20 @@ def generate_qa_pairs(
     for doc_name, usage in chunk_usage.items():
         total_chunks = len(usage)
         used_chunks = sum(usage)
-        logger.info(f"{doc_name}: {used_chunks}/{total_chunks} chunks used ({(used_chunks/total_chunks)*100:.2f}% utilization)")
+        logger.info(
+            f"{doc_name}: {used_chunks}/{total_chunks} chunks used ({(used_chunks/total_chunks)*100:.2f}% utilization)"
+        )
 
     return outputs
 
+
 # Function to evaluate QA pairs using critique agents
 def evaluate_qa_pairs(outputs: List[Dict]) -> List[Dict]:
-    '''
+    """
     Function to evaluate QA pairs generated from the LLM using critique agents
     It evaluates three types of questions: simple, reasoning, and multi-context
     and calculates groundedness, realism, and standalone quality scores.
-    '''
+    """
     llm_client = OpenAI_Client()  # Initialize the OpenAI Client for critique
     logger.info(f"LLM Evaluation model: {llm_client.model_name}")
 
@@ -296,19 +369,23 @@ def evaluate_qa_pairs(outputs: List[Dict]) -> List[Dict]:
                 # Evaluate groundedness
                 groundedness_eval = call_llm(
                     llm_client,
-                    QUESTION_GROUNDEDNESS_CRITIQUE_PROMPT.format(context=context, question=question),
+                    QUESTION_GROUNDEDNESS_CRITIQUE_PROMPT.format(
+                        context=context, question=question
+                    ),
                 )
-                
+
                 complexity_groundedness_eval_match = re.search(
-                    rf"^(.*?Note totale\s*:\s*([1-5]))", 
-                    groundedness_eval, 
-                    re.DOTALL
+                    rf"^(.*?Note totale\s*:\s*([1-5]))", groundedness_eval, re.DOTALL
                 )
 
                 # Check if the match was successful
                 if complexity_groundedness_eval_match:
-                    evaluation_text = complexity_groundedness_eval_match.group(1).strip()  # Everything up to and including "Note totale : score"
-                    score_text = complexity_groundedness_eval_match.group(2).strip()       # Just the score
+                    evaluation_text = complexity_groundedness_eval_match.group(
+                        1
+                    ).strip()  # Everything up to and including "Note totale : score"
+                    score_text = complexity_groundedness_eval_match.group(
+                        2
+                    ).strip()  # Just the score
 
                     evaluations[f"{complexity}_groundedness"] = evaluation_text
                     evaluations[f"{complexity}_groundedness_score"] = int(score_text)
@@ -335,12 +412,14 @@ def evaluate_qa_pairs(outputs: List[Dict]) -> List[Dict]:
 
     return outputs  # Return the updated outputs with evaluations
 
+
 @app.command()
 def main(
     eval_corpus_path: Path = Path,  # Default input path
     n_generations: int = 100,  # Number of generations by default, It caps when it reaches the maximum chunks possible from the available documents.
     output_path: Path = Path(__file__).parent / "qa_output.xlsx",  # Default output path
-    report_output_path: Path = Path(__file__).parent / "report_output.xlsx"  # Default report output path
+    report_output_path: Path = Path(__file__).parent
+    / "report_output.xlsx",  # Default report output path
 ):
     """
     Function to generate the synthethic data part of the RAG pipeline.
@@ -354,33 +433,41 @@ def main(
         output_data = []
         for output in evaluated_pairs:
             for complexity in ["simple", "reasoning", "multi_context"]:
-                output_data.append({
-                    "context": output["context"],
-                    "question": output["questions"][complexity],
-                    "answer": output["answers"][complexity],
-                    "complexity": complexity,
-                    "source_doc": ", ".join(output["source_docs"]),  # Join multiple sources as a single string
-                    "groundedness_evaluation": output.get(f"{complexity}_groundedness"),
-                    "groundedness_score": output.get(f"{complexity}_groundedness_score"),
-                    # "realism_evaluation": output.get(f"{complexity}_realism"),
-                    # "realism_score": output.get(f"{complexity}_realism_score"),
-                    # "standalone_evaluation": output.get(f"{complexity}_standalone"),
-                    # "standalone_score": output.get(f"{complexity}_standalone_score"),
-                })
+                output_data.append(
+                    {
+                        "context": output["context"],
+                        "question": output["questions"][complexity],
+                        "answer": output["answers"][complexity],
+                        "complexity": complexity,
+                        "source_doc": ", ".join(
+                            output["source_docs"]
+                        ),  # Join multiple sources as a single string
+                        "groundedness_evaluation": output.get(
+                            f"{complexity}_groundedness"
+                        ),
+                        "groundedness_score": output.get(
+                            f"{complexity}_groundedness_score"
+                        ),
+                        # "realism_evaluation": output.get(f"{complexity}_realism"),
+                        # "realism_score": output.get(f"{complexity}_realism_score"),
+                        # "standalone_evaluation": output.get(f"{complexity}_standalone"),
+                        # "standalone_score": output.get(f"{complexity}_standalone_score"),
+                    }
+                )
 
         # Save the final evaluated QA pairs to an Excel file
         df_output = pd.DataFrame(output_data)
-        
+
         # Apply the function to the score columns
         # df_output['groundedness_score'] = df_output['groundedness_score'].apply(extract_numeric)
         # df_output['realism_score'] = df_output['realism_score'].apply(extract_numeric)
         # df_output['standalone_score'] = df_output['standalone_score'].apply(extract_numeric)
-        
+
         df_output.to_excel(report_output_path, index=False)
         logger.info(f"Final evaluated QA dataset saved to {report_output_path}")
 
         # Filter the rows based on numeric conditions
-        filtered_output = df_output[(df_output['groundedness_score'] >= 4)]
+        filtered_output = df_output[(df_output["groundedness_score"] >= 4)]
 
         # filtered_output = df_output[
         #     (df_output['groundedness_score'] >= 4) &
@@ -389,9 +476,12 @@ def main(
         # ]
 
         # Save the filtered data to an Excel file
-        filtered_output = filtered_output[["context", "question", "answer", "complexity", "source_doc"]]
+        filtered_output = filtered_output[
+            ["context", "question", "answer", "complexity", "source_doc"]
+        ]
         filtered_output.to_excel(output_path, index=False)
         logger.info(f"Filtered QA dataset saved to {output_path}")
+
 
 # Run the app
 if __name__ == "__main__":

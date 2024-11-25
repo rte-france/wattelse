@@ -15,7 +15,7 @@ from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.chatbot.eval.prompt import (
     FAITHFULNESS_EVAL_PROMPT,
     CORRECTNESS_EVAL_PROMPT,
-    RETRIEVABILITY_EVAL_PROMPT
+    RETRIEVABILITY_EVAL_PROMPT,
     # CONTEXT_NDCG_PROMPT  # Testing Phase
 )
 
@@ -35,13 +35,15 @@ SPECIAL_CHARACTER_FILTER = (
 
 app = typer.Typer()
 
+
 def call_llm(llm_client, prompt: str) -> str:
     """Function to call the LLM with the given prompt."""
     response = llm_client.generate(prompt, temperature=0)
     return response
 
+
 def evaluate_metrics(llm_client, question, answer, context_extracted) -> dict:
-    '''
+    """
     Evaluates the answer based on multiple metrics (faithfulness, correctness, retrievability) using the LLM.
 
     Args:
@@ -52,25 +54,28 @@ def evaluate_metrics(llm_client, question, answer, context_extracted) -> dict:
 
     Returns:
         dict: A dictionary containing the evaluations and scores for faithfulness, correctness, and retrievability.
-    '''
+    """
 
     # Evaluate faithfulness
-    faithfulness_eval = call_llm(llm_client, FAITHFULNESS_EVAL_PROMPT.format(
-        retrieved_contexts=context_extracted,
-        answer=answer
-    ))
-    
+    faithfulness_eval = call_llm(
+        llm_client,
+        FAITHFULNESS_EVAL_PROMPT.format(
+            retrieved_contexts=context_extracted, answer=answer
+        ),
+    )
+
     # Evaluate correctness
-    correctness_eval = call_llm(llm_client, CORRECTNESS_EVAL_PROMPT.format(
-        question=question,
-        answer=answer
-    ))
-    
+    correctness_eval = call_llm(
+        llm_client, CORRECTNESS_EVAL_PROMPT.format(question=question, answer=answer)
+    )
+
     # Evaluate retrievability
-    retrievability_eval = call_llm(llm_client, RETRIEVABILITY_EVAL_PROMPT.format(
-        question=question,
-        retrieved_contexts=context_extracted
-    ))
+    retrievability_eval = call_llm(
+        llm_client,
+        RETRIEVABILITY_EVAL_PROMPT.format(
+            question=question, retrieved_contexts=context_extracted
+        ),
+    )
 
     evaluations = {}
 
@@ -78,25 +83,48 @@ def evaluate_metrics(llm_client, question, answer, context_extracted) -> dict:
     logger.debug(f"faithfulness LLM response: {faithfulness_eval}")
     evaluation_match = re.search(r"Évaluation :\s*(.*)", faithfulness_eval, re.DOTALL)
     score_match = re.search(r"Jugement :\s*([1-5])", faithfulness_eval)
-    evaluations["faithfulness"] = evaluation_match.group(1).strip() if evaluation_match else "Not provided"
-    evaluations["faithfulness_score"] = int(score_match.group(1)) if score_match else np.nan
+    evaluations["faithfulness"] = (
+        evaluation_match.group(1).strip() if evaluation_match else "Not provided"
+    )
+    evaluations["faithfulness_score"] = (
+        int(score_match.group(1)) if score_match else np.nan
+    )
 
     logger.debug(f"correctness LLM response: {correctness_eval}")
-    correctness_eval_match = re.search(r"Évaluation :\s*(.*)", correctness_eval, re.DOTALL)
+    correctness_eval_match = re.search(
+        r"Évaluation :\s*(.*)", correctness_eval, re.DOTALL
+    )
     correctness_score_match = re.search(r"Jugement :\s*([1-5])", correctness_eval)
-    evaluations["correctness"] = correctness_eval_match.group(1).strip() if correctness_eval_match else "Not provided"
-    evaluations["correctness_score"] = int(correctness_score_match.group(1)) if correctness_score_match else np.nan
+    evaluations["correctness"] = (
+        correctness_eval_match.group(1).strip()
+        if correctness_eval_match
+        else "Not provided"
+    )
+    evaluations["correctness_score"] = (
+        int(correctness_score_match.group(1)) if correctness_score_match else np.nan
+    )
 
     logger.debug(f"retrievability LLM response: {retrievability_eval}")
-    retrievability_eval_match = re.search(r"Évaluation :\s*(.*)", retrievability_eval, re.DOTALL)
+    retrievability_eval_match = re.search(
+        r"Évaluation :\s*(.*)", retrievability_eval, re.DOTALL
+    )
     retrievability_score_match = re.search(r"Jugement :\s*([1-5])", retrievability_eval)
-    evaluations["retrievability"] = retrievability_eval_match.group(1).strip() if retrievability_eval_match else "Not provided"
-    evaluations["retrievability_score"] = int(retrievability_score_match.group(1)) if retrievability_score_match else np.nan
+    evaluations["retrievability"] = (
+        retrievability_eval_match.group(1).strip()
+        if retrievability_eval_match
+        else "Not provided"
+    )
+    evaluations["retrievability_score"] = (
+        int(retrievability_score_match.group(1))
+        if retrievability_score_match
+        else np.nan
+    )
 
     return evaluations
 
+
 def evaluate_rag_metrics(eval_df: pd.DataFrame) -> pd.DataFrame:
-    '''
+    """
     Evaluates the generated answers from the RAG (retrieval-augmented generation) pipeline using multiple metrics.
 
     Args:
@@ -104,13 +132,15 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         pandas.DataFrame: The DataFrame with added evaluation columns (faithfulness, correctness, retrievability).
-    '''
-    llm_client = OpenAI_Client()   # Initialize the LLM client for critique
+    """
+    llm_client = OpenAI_Client()  # Initialize the LLM client for critique
     logger.info(f"LLM Evaluation model: {llm_client.model_name}")
 
     evaluations = []
     # TODO logger.warning here needs review/refactor.
-    for idx, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Evaluating Multiple Metrics"):
+    for idx, row in tqdm(
+        eval_df.iterrows(), total=eval_df.shape[0], desc="Evaluating Multiple Metrics"
+    ):
         try:
             question = row[QUERY_COLUMN]
             context_extracted = row[RAG_RELEVANT_EXTRACTS_COLUMN]
@@ -118,20 +148,22 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame) -> pd.DataFrame:
 
             if not context_extracted.strip():
                 logger.warning(f"Empty context for question {idx}: {question}")
-                evaluations.append({
-                    "question": question,
-                    "evaluation": "No context provided",
-                    "faithfulness_score": "No context provided",
-                    "correctness_score": "No context provided",
-                    "retrievability_score": "No context provided"
-                })
+                evaluations.append(
+                    {
+                        "question": question,
+                        "evaluation": "No context provided",
+                        "faithfulness_score": "No context provided",
+                        "correctness_score": "No context provided",
+                        "retrievability_score": "No context provided",
+                    }
+                )
                 continue
 
-            eval_results = evaluate_metrics(llm_client, question, context_extracted, answer)
+            eval_results = evaluate_metrics(
+                llm_client, question, context_extracted, answer
+            )
 
-            eval_entry = {
-                "question": question
-            }
+            eval_entry = {"question": question}
             eval_entry.update(eval_results)
             evaluations.append(eval_entry)
 
@@ -139,34 +171,40 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame) -> pd.DataFrame:
 
         except Exception as e:
             logger.error(f"Error evaluating metrics for row {idx}: {e}")
-            evaluations.append({
-                "question": row[QUERY_COLUMN],
-                "evaluation": "Error during evaluation",
-                "faithfulness_score": "Error during evaluation",
-                "correctness_score": "Error during evaluation",
-                "retrievability_score": "Error during evaluation",
-            })
+            evaluations.append(
+                {
+                    "question": row[QUERY_COLUMN],
+                    "evaluation": "Error during evaluation",
+                    "faithfulness_score": "Error during evaluation",
+                    "correctness_score": "Error during evaluation",
+                    "retrievability_score": "Error during evaluation",
+                }
+            )
 
     evaluation_df = pd.DataFrame(evaluations)
-    eval_df = eval_df.join(evaluation_df.set_index("question"), on=QUERY_COLUMN, rsuffix="_eval")
+    eval_df = eval_df.join(
+        evaluation_df.set_index("question"), on=QUERY_COLUMN, rsuffix="_eval"
+    )
     return eval_df
+
 
 @app.command()
 def main(
     qr_df_path: Path,
     eval_corpus_path: Path,
-    report_output_path: Path = Path(__file__).parent / "report_output.xlsx"  # Default RAG output path
+    report_output_path: Path = Path(__file__).parent
+    / "report_output.xlsx",  # Default RAG output path
 ):
-    '''
+    """
     Main function to evaluate the generation part of the RAG pipeline.
     This function computes multiple metrics such as faithfulness, correctness, and retrievability for the RAG answers.
-    
+
     Args:
         qr_df_path (Path): Path to the query and answer dataset (in Excel format).
         eval_corpus_path (Path): Path to the evaluation corpus folder.
         report_output_path (Path, optional): Path to save the evaluation report (Excel file). Default is 'report_output.xlsx'.
- 
-    '''
+
+    """
 
     # Initialize RAG backend and LLM client
     eval_group_id = "rag_eval"
@@ -193,7 +231,9 @@ def main(
             raise ValueError(f"Document {doc} not found in eval corpus folder")
 
     # Load eval docs in RAG backend
-    for doc in tqdm(eval_corpus_path.iterdir(), desc="Loading documents into RAG Backend"):
+    for doc in tqdm(
+        eval_corpus_path.iterdir(), desc="Loading documents into RAG Backend"
+    ):
         if doc.name in all_doc_list:
             with open(doc, "rb") as f:
                 RAG_EVAL_BACKEND.add_file_to_collection(doc.name, f)
@@ -202,7 +242,9 @@ def main(
     # Get RAG predictions
     rag_answers = []
     rag_relevant_extracts = []
-    for _, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Getting RAG Predictions"):
+    for _, row in tqdm(
+        eval_df.iterrows(), total=eval_df.shape[0], desc="Getting RAG Predictions"
+    ):
         logger.info(f"Processing row: context={row[QUERY_COLUMN]}")
 
         response = RAG_EVAL_BACKEND.query_rag(
@@ -222,43 +264,52 @@ def main(
 
     eval_df["rag_answer"] = rag_answers
     eval_df[RAG_RELEVANT_EXTRACTS_COLUMN] = [
-        "\n\n".join([f"Extrait {i + 1}: {extract}" for i, extract in enumerate(sublist)])
+        "\n\n".join(
+            [f"Extrait {i + 1}: {extract}" for i, extract in enumerate(sublist)]
+        )
         for sublist in rag_relevant_extracts
     ]
 
-       # Evaluate multiple metrics using LLM and save results
+    # Evaluate multiple metrics using LLM and save results
     evaluated_df = evaluate_rag_metrics(eval_df)
 
     output_data = []
     for idx, row in evaluated_df.iterrows():
-        output_data.append({
-            "context": row[CONTEXT_COLUMN],
-            "question": row[QUERY_COLUMN],
-            "answer": row["rag_answer"],
-            "complexity": row[COMPLEXITY_COLUMN],
-            "source_doc": row[DOC_LIST_COLUMN],
-            "relevant_extracts": row[RAG_RELEVANT_EXTRACTS_COLUMN], 
-            "faithfulness_evaluation": row.get("faithfulness"),
-            "faithfulness_score": row.get("faithfulness_score"),
-            "correctness_evaluation": row.get("correctness"),
-            "correctness_score": row.get("correctness_score"),
-            "retrievability_evaluation": row.get("retrievability"),
-            "retrievability_score": row.get("retrievability_score"),
-        })
+        output_data.append(
+            {
+                "context": row[CONTEXT_COLUMN],
+                "question": row[QUERY_COLUMN],
+                "answer": row["rag_answer"],
+                "complexity": row[COMPLEXITY_COLUMN],
+                "source_doc": row[DOC_LIST_COLUMN],
+                "relevant_extracts": row[RAG_RELEVANT_EXTRACTS_COLUMN],
+                "faithfulness_evaluation": row.get("faithfulness"),
+                "faithfulness_score": row.get("faithfulness_score"),
+                "correctness_evaluation": row.get("correctness"),
+                "correctness_score": row.get("correctness_score"),
+                "retrievability_evaluation": row.get("retrievability"),
+                "retrievability_score": row.get("retrievability_score"),
+            }
+        )
 
     # Save the final evaluated QA pairs to an Excel file
     df_output = pd.DataFrame(output_data)
 
     # Calculate averages
 
-    df_output['faithfulness_score'] = pd.to_numeric(df_output['faithfulness_score'], errors='coerce')
-    df_output['correctness_score'] = pd.to_numeric(df_output['correctness_score'], errors='coerce')
-    df_output['retrievability_score'] = pd.to_numeric(df_output['retrievability_score'], errors='coerce')
-    
+    df_output["faithfulness_score"] = pd.to_numeric(
+        df_output["faithfulness_score"], errors="coerce"
+    )
+    df_output["correctness_score"] = pd.to_numeric(
+        df_output["correctness_score"], errors="coerce"
+    )
+    df_output["retrievability_score"] = pd.to_numeric(
+        df_output["retrievability_score"], errors="coerce"
+    )
 
-    average_faithfulness = df_output['faithfulness_score'].mean()
-    average_correctness = df_output['correctness_score'].mean()
-    average_retrievability = df_output['retrievability_score'].mean()
+    average_faithfulness = df_output["faithfulness_score"].mean()
+    average_correctness = df_output["correctness_score"].mean()
+    average_retrievability = df_output["retrievability_score"].mean()
 
     # logger.info averages
     logger.info(f"Average faithfulness: {average_faithfulness:.2f}")
@@ -271,6 +322,7 @@ def main(
 
     # Clear RAG backend
     RAG_EVAL_BACKEND.clear_collection()
+
 
 if __name__ == "__main__":
     typer.run(main)
