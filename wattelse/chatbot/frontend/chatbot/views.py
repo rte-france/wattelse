@@ -702,3 +702,39 @@ def get_conversation_messages(request):
             )
     else:
         raise Http404()
+
+
+def update_group_system_prompt(request):
+    """
+    Updates the group system prompt (secondary system prompt).
+    """
+    if request.method == "POST":
+        # Get request data
+        data = json.loads(request.body)
+        new_system_prompt = data.get("group_system_prompt", None)
+
+        # Get group id
+        user = request.user
+        group_id = get_user_group_id(user)
+
+        # Set new group system prompt
+        try:
+            group_system_prompt = GroupSystemPrompt.objects.get_or_create(
+                group_id=group_id, defaults={"system_prompt": ""}
+            )[0]
+            group_system_prompt.system_prompt = new_system_prompt
+            group_system_prompt.save()
+            logger.info(
+                f"Group {group_id}: Succesfully changed system prompt to: {group_system_prompt.system_prompt}"
+            )
+            return JsonResponse({"message": f"System prompt sauvegardé"})
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {
+                    "message": f"Erreur serveur : échec lors de la sauvegarde du system prompt"
+                },
+                status=500,
+            )
+    else:
+        raise Http404()
