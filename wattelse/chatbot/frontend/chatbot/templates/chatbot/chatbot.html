@@ -89,6 +89,18 @@
             </div>
         </div>
 
+        <!-- System prompt tab content -->
+        <div class="tab-content system-prompt">
+            {% if user_can_edit_system_prompt %}
+                <textarea class="system-prompt-text-area" id="group-system-prompt">{{ group_system_prompt }}</textarea>
+                <button class="system-prompt-save-button" id="group-system-prompt-button" onclick="updateGroupSystemPrompt()">Enregistrer</button>
+                <p class="disclaimer" style="color: red"><b>ATTENTION :</b> le system prompt est commun à tout votre groupe. Le modifier aura un impact sur les autres utilisateurs de votre groupe.</p>
+            {% else %}
+                <h2>System prompt :</h2>
+                <p>{{ group_system_prompt }}</p>
+            {% endif %}
+        </div>
+
         <!-- History tab content -->
         <div class="tab-content history-container">
             <details open>
