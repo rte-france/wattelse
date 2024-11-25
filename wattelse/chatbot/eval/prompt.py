@@ -176,7 +176,7 @@ RETRIEVABILITY_EVAL_PROMPT = """
 Évaluez si le contexte récupéré est pertinent et suffisant pour répondre à la question posée.
 
 Réponse:::
-Évaluation : (Indiquez si le contexte répond directement à la question et contient les informations nécessaires. Précisez si la proportion d'extraits non pertinents par rapport au total des extraits impacte la qualité de la réponse, et mentionnez tout manque d'exhaustivité.)
+Évaluation : (Indiquez si le contexte permet de répondre à la question et contient les informations nécessaires. Précisez si la proportion d'extraits non pertinents par rapport au total des extraits impacte la qualité de la réponse, et mentionnez tout manque d'exhaustivité.)
 
 Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les critères suivants :
 - 1 : Très insuffisant – Contexte principalement hors sujet, sans informations utiles.
@@ -200,21 +200,22 @@ Réponse:::
 
 
 CORRECTNESS_EVAL_PROMPT = """
-Évaluez si la réponse est correcte, c’est-à-dire, si elle répond précisément à la question posée sans erreurs factuelles ou informations hors sujet.
+Évaluez si la réponse est correcte, c’est-à-dire, si elle répond à la question posée en donnant les informations essentielles sans erreurs factuelles importantes.
 
 Réponse:::
-Évaluation : (Expliquez votre raisonnement en indiquant si la réponse est exacte et complète, en vous basant sur la question posée. Identifiez explicitement les points de correspondance ou de divergence avec la question.)
+Évaluation : (Expliquez votre raisonnement de votre Jugement en indiquant si la réponse est correcte, en vous basant sur la question posée. Identifiez explicitement les points de correspondance ou de divergence avec la question supportant votre Jugement.)
 
 Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les critères suivants:
-- 1 : Très insuffisant – Réponse largement incorrecte, avec des erreurs majeures.
-- 2 : Insuffisant – Partiellement correcte, mais contient des erreurs ou interprétations.
-- 3 : Passable – Répond à la question, mais avec des inexactitudes notables.
-- 4 : Satisfaisant – Presque correcte, avec quelques inexactitudes mineures.
-- 5 : Très satisfaisant – Entièrement correcte, directe et parfaitement alignée avec la question.
+- 1 : Très insuffisant – Largement incorrecte, avec des erreurs majeures.
+- 2 : Insuffisant – Partiellement correcte, avec des erreurs significatives ou imprécisions.
+- 3 : Passable – Répond globalement à la question, mais comporte plusieurs inexactitudes.
+- 4 : Satisfaisant – Répond bien à la question, avec seulement quelques inexactitudes mineures.
+- 5 : Très satisfaisant – Entièrement correcte, précise et parfaitement alignée avec la question.
 
 **Conseils pour l’évaluation :**
 - Vérifiez si la réponse aborde tous les points importants de la question sans omissions.
 - Assurez-vous qu’il n’y a pas d’interprétations erronées ou d’informations hors sujet.
+- Évitez de pénaliser la réponse pour des informations supplémentaires qui, bien que non nécessaires, n’introduisent pas d'erreurs ni de confusion.
 
 Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
 
@@ -224,21 +225,6 @@ Question : {question}
 Réponse : {answer}
 Réponse:::
 """
-
-
-# Avec ce contexte, est-ce que je peux répondre à cette question ?
-
-# Réponse:::
-# Évaluation : (votre raisonnement pour la note, sous forme de texte)
-# Note totale : (votre note, sous forme de nombre entre 1 et 5)
-
-# Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Note totale :' dans votre réponse.
-
-# Voici maintenant la question et le contexte.
-
-# Question : {question}\n
-# Contexte : {context}\n
-# Réponse:::
 
 CONTEXT_RECALL_PROMPT = """
 A partir d'un contexte et une réponse, analysez la réponse et déterminez si la phrase peut être attribuée au contexte donné ou non.

@@ -69,7 +69,7 @@ def split_documents(eval_corpus_path: Path) -> List[LangchainDocument]:
             logger.info(f"Processing document '{doc.name}' with total length: {len(content)} characters")
             langchain_doc = LangchainDocument(page_content=content, metadata={"source": doc.name})
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=2000,
+                chunk_size=3000,
                 chunk_overlap=200,
                 add_start_index=True,
                 separators=["\n\n", "\n", ".", " ", ""],
@@ -90,7 +90,7 @@ def generate_qa_pairs(
     EVAL_CORPUS_PATH: Path,
     N_GENERATIONS: int = 100,
     OUTPUT_PATH: Path = Path("qa_output.xlsx"),
-    DOCS_PER_QA: int = 3,
+    DOCS_PER_QA: int = 1,
     CHUNKS_PER_DOC: int = 1
 ) -> List[Dict]:
 
