@@ -39,6 +39,7 @@ from .utils import (
     is_superuser,
     RAG_API,
     get_chat_model,
+    get_user_conversation_history,
     can_edit_group_system_prompt,
 )
 
@@ -71,6 +72,8 @@ def rag_page(request):
 
     # Generate a new conversation_id
     conversation_id = str(uuid.uuid4())
+
+    conversations = get_user_conversation_history(request.user, Chat)
 
     # Get list of available documents
     try:
@@ -115,6 +118,7 @@ def rag_page(request):
             "group_system_prompt": group_system_prompt,
             "group_usernames_dict": group_usernames_dict,
             "admin_group_selection": admin_group_selection,
+            "conversations": conversations,
         },
     )
 
@@ -660,44 +664,39 @@ def manage_superuser_permission(request):
         except Exception as e:
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
-                {
-                    "message": "Une erreur s'est produite, modifications non sauvegardées."
-                },
+                {"message": "Erreur serveur : échec lors de la modification"},
                 status=500,
             )
     else:
         raise Http404()
 
 
-def update_group_system_prompt(request):
+def get_conversation_messages(request):
     """
-    Updates the group system prompt (secondary system prompt).
+    Function to send the list of messages of a conversation to the frontend.
     """
     if request.method == "POST":
-        # Get request data
+        # Get response data
         data = json.loads(request.body)
-        new_system_prompt = data.get("group_system_prompt", None)
+        conversation_id = uuid.UUID(data.get("id"))
+        ChatModel = get_chat_model(data.get("source_path"))
 
-        # Get group id
-        user = request.user
-        group_id = get_user_group_id(user)
-
-        # Set new group system prompt
+        # Get conversation messages
         try:
-            group_system_prompt = GroupSystemPrompt.objects.get_or_create(
-                group_id=group_id, defaults={"system_prompt": ""}
-            )[0]
-            group_system_prompt.system_prompt = new_system_prompt
-            group_system_prompt.save()
-            logger.info(
-                f"Group {group_id}: Succesfully changed system prompt to: {group_system_prompt.system_prompt}"
+            history = get_conversation_history(
+                request.user,
+                conversation_id,
+                ChatModel=ChatModel,
             )
-            return JsonResponse({"message": f"System prompt sauvegardé"})
+            # Return JsonReponse with success message that will be shown in frontend
+            return JsonResponse({"history": history})
+
+        # Return error message if something goes wrong
         except Exception as e:
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
                 {
-                    "message": f"Erreur serveur : échec lors de la sauvegarde du system prompt"
+                    "message": "Erreur serveur : échec lors de la récupération de la conversation"
                 },
                 status=500,
             )

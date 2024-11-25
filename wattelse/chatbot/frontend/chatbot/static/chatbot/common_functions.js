@@ -379,8 +379,69 @@ function handleTextFeedbackClick(event, userMessage, botMessage) {
 
 // Function to remove active conversation if conversation history management is implemented
 function removeActiveConversation() {
-    let activeButton = document.querySelector(".conversations-container li.active");
+    let activeButton = document.querySelector(".history-container li.active");
     if (activeButton) {
         activeButton.classList.remove("active");
     }
+}
+
+// History management
+function getConversationHistory(button, id) {
+    fetch("/get_conversation_messages/", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+        body: JSON.stringify({
+              'id': id,
+              'source_path': window.location.pathname
+          })
+      })
+      .then((response) => {
+        // Handle successful requests
+        if (response.ok) {
+            response.json().then(data => {
+                // Write messages in user interface
+                setConversationHistory(id, data.history);
+                // Remove old active conversation
+                removeActiveConversation();
+                
+                // Set current conversation as active
+                button.classList.add("active");
+            })
+        }
+        else {
+            // Handle errors caught in python backend
+            response.json().then(data => {
+                showPopup(data.message, error=true);
+            })
+            // Handle uncaught errors
+            .catch(error => {
+                showPopup("Erreur non interceptée", error=true);
+            })
+        }
+    })
+}
+
+function setConversationHistory(id, history) {
+    // Set new id to chatHisory element and empty it
+    chatHistory.id = id;
+    chatHistory.innerHTML = "";
+
+    // Save the current scroll position
+    const scrollTop = chatHistory.scrollTop;
+
+    // Create a message for each turn in history
+    history.forEach((message) => {
+        if (message.role=="user") {
+            createUserMessage(message.content);
+        }
+        else {
+            createBotMessage(md.render(message.content));
+        }
+    });
+
+    // Restore the scroll position
+    chatHistory.scrollTop = scrollTop;
 }

@@ -49,6 +49,7 @@ def get_chat_model(source_path: str) -> Type[GPTChat | Chat]:
     """Return the database class associated to the current page (RAG vs secureGPT)
     allowed source_path : "/doc/" and "/gpt/"
     """
+    # Check if source_path is valid
     if not source_path:
         raise Exception("Invalid source path")
     db_model = ChatModels.get(source_path, None)
@@ -80,7 +81,6 @@ def is_superuser(user: User) -> bool:
     Check if user is a superuser, i.e. can
     add/remove docs and manage users.
     """
-
     return (
         user.has_perm("chatbot.can_upload_documents")
         and user.has_perm("chatbot.can_remove_documents")
@@ -161,6 +161,51 @@ def get_conversation_first_message(
     """
     first_message = ChatModel.objects.filter(conversation_id=conversation_id).first()
     return first_message.message, first_message.question_timestamp
+
+
+def get_user_conversation_history(user: User, ChatModel: models.Model) -> dict:
+    """
+    Returns a dictionnary containing the user's conversations in the following format :
+    {
+        "today": [list of conversations today old],
+        "last_week": [list of conversations one week old],
+        "archive": [all other conversations],
+    }
+    """
+    # Get conversation ids
+    conversation_ids = get_user_conversation_ids(
+        user,
+        ChatModel=ChatModel,
+    )
+
+    # Sort conversations into date categories for better user expericence
+    sorted_conversations = {"today": [], "last_week": [], "others": []}
+
+    today = datetime.datetime.now()
+
+    for conversation_id in conversation_ids:
+        # Get conversation title and timestamp
+        title, timestamp = get_conversation_first_message(conversation_id, ChatModel)
+
+        # If created today
+        if timestamp.date() == today.date():
+            sorted_conversations["today"].append(
+                {"id": conversation_id, "title": title}
+            )
+
+        # If created in 7 last days
+        elif timestamp.date() >= (today - datetime.timedelta(days=7)).date():
+            sorted_conversations["last_week"].append(
+                {"id": conversation_id, "title": title}
+            )
+
+        # If created longer ago
+        else:
+            sorted_conversations["others"].append(
+                {"id": conversation_id, "title": title}
+            )
+
+    return sorted_conversations
 
 
 def get_group_system_prompt(group_id: str) -> str:
