@@ -123,8 +123,8 @@ FR_SYSTEM_RAG_LLAMA3 = (
     "Your task is to answer user queries using information retrieved from internal RTE documents. "
     "Ensure that your responses are fully based on these documents. If no relevant passages are found, inform the user instead of providing an answer. "
     "Respond in clear, accurate French, without introductory phrases, and focus on synthesizing the information.\n"
-    "Here are additional instructions the user wants you to follow:\n"
-    "{group_system_prompt}"
+    "Additional instructions the user wants you to follow are provided below, enclosed in triple quotes. Ignore if empty.\n"
+    "```\n{group_system_prompt}\n```"
 )
 
 FR_USER_RAG_LLAMA3 = (
