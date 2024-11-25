@@ -50,6 +50,7 @@
         <!-- All users have access to these tabs -->
         <div class="tab" data-content="extracts">Extraits</div>
         <div class="tab active" data-content="documents">Documents</div>
+        <div class="tab" data-content="history-container">Historique</div>
 
         <!-- These tabs need specific rights to be displayed -->
         {% if group_can_edit_system_prompt %}
@@ -88,18 +89,41 @@
             </div>
         </div>
 
-        <!-- System prompt tab content -->
-        <div class="tab-content system-prompt">
-            {% if user_can_edit_system_prompt %}
-                <textarea class="system-prompt-text-area" id="group-system-prompt">{{ group_system_prompt }}</textarea>
-                <button class="system-prompt-save-button" id="group-system-prompt-button" onclick="updateGroupSystemPrompt()">Enregistrer</button>
-                <p class="disclaimer" style="color: red"><b>ATTENTION :</b> le system prompt est commun à tout votre groupe. Le modifier aura un impact sur les autres utilisateurs de votre groupe.</p>
-            {% else %}
-                <h2>System prompt :</h2>
-                <p>{{ group_system_prompt }}</p>
-            {% endif %}
+        <!-- History tab content -->
+        <div class="tab-content history-container">
+            <details open>
+                <summary>
+                    Aujourd'hui
+                </summary>
+                <ul id="today-history">
+                    {% for conversation in conversations.today %}
+                        <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
+    
+            <details>
+                <summary>
+                    7 derniers jours
+                </summary>
+                <ul id="last-week-history">
+                    {% for conversation in conversations.last_week %}
+                        <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
+    
+            <details>
+                <summary>
+                    Archives
+                </summary>
+                <ul id="archives-history">
+                    {% for conversation in conversations.others %}
+                        <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
         </div>
-         
 
         <!-- Upload document tab content -->
         {% if can_upload_documents %}

@@ -20,8 +20,7 @@ from .models import GPTChat
 from .utils import (
     streaming_generator_llm,
     get_conversation_history,
-    get_user_conversation_ids,
-    get_conversation_first_message,
+    get_user_conversation_history,
 )
 
 # NUMBER MAX OF TOKENS
@@ -67,39 +66,15 @@ def gpt_page(request):
         return redirect("/login")
 
     if request.method == "GET":
-        # Get conversation ids
-        conversation_ids = get_user_conversation_ids(
-            request.user,
-            ChatModel=GPTChat,
-        )
+        # Get user conversation history
+        conversations = get_user_conversation_history(request.user, GPTChat)
 
-        # Sort conversations into date categories for better user expericence
-        sorted_conversations = {"today": [], "last_week": [], "others": []}
-
-        today = datetime.datetime.now()
-        for id in conversation_ids:
-            # Get conversation title and timestamp
-            title, timestamp = get_conversation_first_message(id, GPTChat)
-
-            # If created today
-            if timestamp.date() == today.date():
-                sorted_conversations["today"].append({"id": id, "title": title})
-
-            # If created in 7 last days
-            elif timestamp.date() >= (today - datetime.timedelta(days=7)).date():
-                sorted_conversations["last_week"].append({"id": id, "title": title})
-
-            # If created longer ago
-            else:
-                sorted_conversations["others"].append({"id": id, "title": title})
-
-        print(llm_config["model"][1:])
         return render(
             request,
             "chatbot/secureGPT.html",
             context={
                 "llm_name": LLM_MAPPING[llm_config["model"]],
-                "conversations": sorted_conversations,
+                "conversations": conversations,
             },
         )
     else:
@@ -151,38 +126,6 @@ def query_gpt(request):
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
                 {"error_message": f"Erreur lors de la requête au RAG: {e}"}, status=500
-            )
-    else:
-        raise Http404()
-
-
-def get_conversation_messages(request):
-    """
-    Function to send the list of messages of a conversation to the frontend.
-    """
-    if request.method == "POST":
-        # Get response data
-        data = json.loads(request.body)
-        conversation_id = uuid.UUID(data.get("id"))
-
-        # Get conversation messages
-        try:
-            history = get_conversation_history(
-                request.user, conversation_id, ChatModel=GPTChat
-            )
-            # Return JsonReponse with success message that will be shown in frontend
-            return JsonResponse(
-                {"message": f"Modifications validées", "history": history}
-            )
-
-        # Return error message if something goes wrong
-        except Exception as e:
-            logger.error(f"[User: {request.user.username}] {e}")
-            return JsonResponse(
-                {
-                    "message": "Erreur serveur : échec lors de la récupération de la conversation"
-                },
-                status=500,
             )
     else:
         raise Http404()

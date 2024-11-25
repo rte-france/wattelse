@@ -61,7 +61,7 @@ urlpatterns = [
     # Conversations history management
     path(
         "get_conversation_messages/",
-        secureGPT_views.get_conversation_messages,
+        views.get_conversation_messages,
         name="get_conversation_history",
     ),
 ]

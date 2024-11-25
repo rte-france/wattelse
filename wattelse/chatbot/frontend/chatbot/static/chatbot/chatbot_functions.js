@@ -134,6 +134,19 @@ async function postUserMessageToChatBot(userMessage) {
     // Get conversation id
     const conversationId = chatHistory.id;
 
+    // If new conversation: add conversation to history
+    if (chatHistory.childElementCount < 2) {
+        let todayListHistory = document.getElementById("today-history");
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = `<li class="active" id="${conversationId}" onclick="getConversationHistory(this, '${conversationId}')"></li>`;
+        const newListItem = tempDiv.firstChild;
+        newListItem.textContent = userMessage;
+        todayListHistory.insertBefore(newListItem, todayListHistory.firstChild);
+
+        // Remove old active conversation
+        removeActiveConversation();
+    }
+
     // Create bot waiting div
     // - Call first the function to activate the "Extracts" tab
     activateTab("extracts");
