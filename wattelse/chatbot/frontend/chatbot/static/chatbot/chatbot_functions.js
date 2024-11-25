@@ -16,6 +16,8 @@ const removalDocumentList = document.querySelector('.removal-list');
 
 const selectAll = document.getElementById('select-all');
 
+const groupSystemPromptArea = document.getElementById('group-system-prompt');
+
 // variables related to the upload area
 const dropArea = document.querySelector('.drop-section')
 const uploadedSection = document.querySelector('.uploaded-section')
@@ -727,3 +729,36 @@ function removeUserFromGroup(userNameToDelete) {
 
 
 
+
+
+function updateGroupSystemPrompt() {
+     const newGroupSystemPrompt = groupSystemPromptArea.value
+     fetch('/update_group_system_prompt/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfmiddlewaretoken,
+        },
+        body: JSON.stringify({
+            'group_system_prompt': newGroupSystemPrompt,
+        })
+    })
+    .then((response) => {
+        // Handle successful requests
+        if (response.ok) {
+            response.json().then(data => {
+                showPopup(data.message);
+            })
+        }
+        else {
+            // Handle errors caught in python backend
+            response.json().then(data => {
+                showPopup(data.message, error=true);
+            })
+            // Handle uncaught errors
+            .catch(error => {
+                showPopup("Erreur non interceptée", error=true);
+            })
+        }
+    })
+}

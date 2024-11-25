@@ -23,6 +23,7 @@ class Chat(models.Model):
     long_feedback = models.TextField(default="")
     answer_delay = models.DurationField(null=True, blank=True)  # Optional fields
     relevant_extracts = models.JSONField(default=list)
+    group_system_prompt = models.TextField(default="")
 
     def __str__(self):
         return f"{self.user.username}: {self.message}"
@@ -49,6 +50,14 @@ class GPTChat(models.Model):
         return f"{self.user.username}: {self.message}"
 
 
+class GroupSystemPrompt(models.Model):
+    group_id = models.TextField(primary_key=True)
+    system_prompt = models.TextField()
+
+    def __str__(self) -> str:
+        return f"{self.group_id}: {self.system_prompt}"
+
+
 class SuperUserPermissions(models.Model):
     """
     Dummy model for managing users permissions.
@@ -63,7 +72,10 @@ class SuperUserPermissions(models.Model):
 
         # (codename, name)
         permissions = (
+            # User related permissions
             ("can_upload_documents", "Can upload documents"),
             ("can_remove_documents", "Can remove documents"),
             ("can_manage_users", "Can manage users"),
+            # Group related permissions
+            ("can_edit_group_system_prompt", "Can edit group system prompt"),
         )
