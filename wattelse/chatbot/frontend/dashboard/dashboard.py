@@ -192,7 +192,7 @@ def _compute_file_indicators():
     return nb_files, nb_chunks
 
 
-def display_indicators(filtered_df:pd.DataFrame):
+def display_indicators(filtered_df: pd.DataFrame):
     nb_questions = len(filtered_df.message)
     nb_conversations = len(filtered_df.conversation_id.unique())
     avg_nb_questions = len(st.session_state["full_data"].message) // len(
@@ -259,10 +259,11 @@ def display_indicators(filtered_df:pd.DataFrame):
     col8.metric("Number of chunks", f"{number_of_chunks}")
 
 
-def build_msg_df_over_time(filtered_df:pd.DataFrame):
+def build_msg_df_over_time(filtered_df: pd.DataFrame):
 
-
-    message_daily = filtered_df.resample("D", on="answer_timestamp").agg({'message': 'count', 'long_feedback_bool': 'sum'})
+    message_daily = filtered_df.resample("D", on="answer_timestamp").agg(
+        {"message": "count", "long_feedback_bool": "sum"}
+    )
 
     # Resample data by day and count occurrences of each short_feedback value
     short_feedback_daily = (
@@ -271,26 +272,27 @@ def build_msg_df_over_time(filtered_df:pd.DataFrame):
         .unstack()
     )
 
-
-    message_daily =short_feedback_daily.join(message_daily)
+    message_daily = short_feedback_daily.join(message_daily)
     message_daily.fillna(value=0, inplace=True)
     message_daily.rename(
         columns={
-            "message" : "nb_questions",
+            "message": "nb_questions",
             "": "non_evalue",
-            "long_feedback_bool": "nb_feedback_long"
+            "long_feedback_bool": "nb_feedback_long",
         },
-        inplace=True
+        inplace=True,
     )
     for feedback in ["great", "ok", "missing_info", "wrong"]:
         if feedback not in message_daily.columns:
             message_daily.feedback = 0
-    message_daily["tx_feedback"] = 1 - message_daily["non_evalue"]/message_daily["nb_questions"]
+    message_daily["tx_feedback"] = (
+        1 - message_daily["non_evalue"] / message_daily["nb_questions"]
+    )
 
     return message_daily
 
 
-def display_feedback_charts_over_time(msg_df:pd.DataFrame):
+def display_feedback_charts_over_time(msg_df: pd.DataFrame):
 
     # Création de l'histogramme empilé
     fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -379,13 +381,15 @@ def display_feedback_charts_over_time(msg_df:pd.DataFrame):
     )
     st.plotly_chart(fig)
 
-    return    
+    return
 
 
-def display_feedback_charts(filtered_df:pd.DataFrame):
+def display_feedback_charts(filtered_df: pd.DataFrame):
 
     # Filter data for feedback values in the color map
-    filtered_df = filtered_df[filtered_df["short_feedback"].isin(FEEDBACK_COLORS.keys())]
+    filtered_df = filtered_df[
+        filtered_df["short_feedback"].isin(FEEDBACK_COLORS.keys())
+    ]
 
     # Count occurrences of each short_feedback value in the filtered data
     short_feedback_counts = (
@@ -412,7 +416,7 @@ def display_feedback_charts(filtered_df:pd.DataFrame):
     st.plotly_chart(fig_short_feedback_total)
 
 
-def display_feedback_rates(filtered_df:pd.DataFrame):
+def display_feedback_rates(filtered_df: pd.DataFrame):
 
     short_feedback_counts = filtered_df["short_feedback"].value_counts()
     total_short_feedback = (
@@ -477,7 +481,7 @@ def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
         },
         inplace=True,
     )
-    
+
     for feedback in ["great", "ok", "missing_info", "wrong"]:
         if feedback not in users_df.columns:
             users_df.feedback = 0
@@ -613,14 +617,10 @@ def main():
     st.session_state["full_data"] = get_db_data(DB_PATH)
 
     if side_bar():
-        filtered_df  = st.session_state["filtered_data"]
-        
+        filtered_df = st.session_state["filtered_data"]
+
         with st.expander("Raw data"):
-            st.write(
-                filtered_df.sort_values(
-                    by="answer_timestamp", ascending=False
-                )
-            )
+            st.write(filtered_df.sort_values(by="answer_timestamp", ascending=False))
 
         # High level indicators per user / group depending on the selection
         with st.expander("High level indicators", expanded=True):
