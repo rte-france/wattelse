@@ -74,6 +74,9 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
     df = pd.DataFrame(data, columns=column_names)
     df.answer_timestamp = pd.to_datetime(df.answer_timestamp)
     con.close()
+
+    df["long_feedback_bool"] = (df["long_feedback"] != "").astype(int)
+
     return df
 
 
@@ -153,6 +156,30 @@ def filter_data():
     st.session_state["filtered_data"] = filtered
 
 
+def check_password():
+    """Returns `True` if the user had the correct password."""
+
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store the password.
+        else:
+            st.session_state["password_correct"] = False
+
+    # Return True if the password is validated.
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # Show input for password.
+    st.text_input(
+        "Password", type="password", on_change=password_entered, key="password"
+    )
+    if "password_correct" in st.session_state:
+        st.error("😕 Password incorrect")
+    return False
+
+
 def _compute_file_indicators():
     if st.session_state["group"] and st.session_state["group"] != METIERS_GROUP_NAME:
         bak = RAGBackEnd(st.session_state["group"])
@@ -165,18 +192,18 @@ def _compute_file_indicators():
     return nb_files, nb_chunks
 
 
-def display_indicators():
-    nb_questions = len(st.session_state["filtered_data"].message)
-    nb_conversations = len(st.session_state["filtered_data"].conversation_id.unique())
+def display_indicators(filtered_df:pd.DataFrame):
+    nb_questions = len(filtered_df.message)
+    nb_conversations = len(filtered_df.conversation_id.unique())
     avg_nb_questions = len(st.session_state["full_data"].message) // len(
         st.session_state["full_data"].username.unique()
     )
     avg_nb_conversations = len(
         st.session_state["full_data"].conversation_id.unique()
     ) // len(st.session_state["full_data"].username.unique())
-    nb_short_feedback = (st.session_state["filtered_data"].short_feedback != "").sum()
-    nb_long_feedback = (st.session_state["filtered_data"].long_feedback != "").sum()
-    median_answer_delay = st.session_state["filtered_data"].answer_delay.median() / 1e6
+    nb_short_feedback = (filtered_df.short_feedback != "").sum()
+    nb_long_feedback = (filtered_df.long_feedback != "").sum()
+    median_answer_delay = filtered_df.answer_delay.median() / 1e6
 
     number_of_files, number_of_chunks = _compute_file_indicators()
 
@@ -232,33 +259,133 @@ def display_indicators():
     col8.metric("Number of chunks", f"{number_of_chunks}")
 
 
-def display_questions_over_time():
-    df = st.session_state["filtered_data"]
+def build_msg_df_over_time(filtered_df:pd.DataFrame):
 
-    # Resample data by day and count messages
-    message_counts = df.resample("D", on="answer_timestamp")["message"].count()
 
-    # Create plotly bar chart
-    fig = bar(
-        message_counts.to_frame("count"),
-        x=message_counts.index,
-        y="count",
-        title="Number of Messages per Day",
+    message_daily = filtered_df.resample("D", on="answer_timestamp").agg({'message': 'count', 'long_feedback_bool': 'sum'})
+
+    # Resample data by day and count occurrences of each short_feedback value
+    short_feedback_daily = (
+        filtered_df.resample("D", on="answer_timestamp")["short_feedback"]
+        .value_counts()
+        .unstack()
     )
 
-    # Customize the chart (optional)
-    fig.update_layout(xaxis_title="Date", yaxis_title="Number of Messages")
-    fig.update_traces(marker_color="lightblue")  # Change bar color
 
-    # Display the chart in Streamlit
+    message_daily =short_feedback_daily.join(message_daily)
+    message_daily.fillna(value=0, inplace=True)
+    message_daily.rename(
+        columns={
+            "message" : "nb_questions",
+            "": "non_evalue",
+            "long_feedback_bool": "nb_feedback_long"
+        },
+        inplace=True
+    )
+    for feedback in ["great", "ok", "missing_info", "wrong"]:
+        if feedback not in message_daily.columns:
+            message_daily.feedback = 0
+    message_daily["tx_feedback"] = 1 - message_daily["non_evalue"]/message_daily["nb_questions"]
+
+    return message_daily
+
+
+def display_feedback_charts_over_time(msg_df:pd.DataFrame):
+
+    # Création de l'histogramme empilé
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    # Ajout de l'histogramme empilé
+    fig.add_trace(
+        go.Bar(
+            x=msg_df.index,
+            y=msg_df["wrong"],
+            name="réponse fausse",
+            marker_color="red",
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=msg_df.index,
+            y=msg_df["missing_info"],
+            name="réponse incomplète",
+            marker_color="orange",
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=msg_df.index,
+            y=msg_df["ok"],
+            name="réponse correcte",
+            marker_color="blue",
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=msg_df.index,
+            y=msg_df["great"],
+            name="réponse excellente",
+            marker_color="green",
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=msg_df.index,
+            y=msg_df["non_evalue"],
+            name="pas de réponse",
+            marker_color="grey",
+        ),
+        secondary_y=False,
+    )
+
+    # Ajout des courbes
+    fig.add_trace(
+        go.Scatter(
+            x=msg_df.index,
+            y=msg_df["nb_feedback_long"],
+            mode="markers",
+            name="nombre de réponses longues",
+            line=dict(color="coral"),
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=msg_df.index,
+            y=msg_df["tx_feedback"],
+            mode="markers",
+            name="%age de réponses évaluées",
+            line=dict(color="purple"),
+        ),
+        secondary_y=True,
+    )
+
+    # Mise à jour de la mise en page
+    fig.update_layout(
+        title="Questions par jour",
+        xaxis_title="Date",
+        yaxis_title="Nombre",
+        yaxis2_title="Pourcentage",
+        barmode="stack",
+    )
     st.plotly_chart(fig)
 
+    return    
 
-def display_feedback_charts():
-    df = st.session_state["filtered_data"]
+
+def display_feedback_charts(filtered_df:pd.DataFrame):
 
     # Filter data for feedback values in the color map
-    filtered_df = df[df["short_feedback"].isin(FEEDBACK_COLORS.keys())]
+    filtered_df = filtered_df[filtered_df["short_feedback"].isin(FEEDBACK_COLORS.keys())]
 
     # Count occurrences of each short_feedback value in the filtered data
     short_feedback_counts = (
@@ -285,45 +412,8 @@ def display_feedback_charts():
     st.plotly_chart(fig_short_feedback_total)
 
 
-def display_feedback_charts_over_time():
-    df = st.session_state["filtered_data"]
+def display_feedback_rates(filtered_df:pd.DataFrame):
 
-    # Filter data for feedback values in the color map
-    filtered_df = df[df["short_feedback"].isin(FEEDBACK_COLORS.keys())]
-
-    # Resample data by day and count occurrences of each short_feedback value
-    short_feedback_daily = (
-        filtered_df.resample("D", on="answer_timestamp")["short_feedback"]
-        .value_counts()
-        .unstack()
-    )
-
-    # Get list of feedback values (column names)
-    feedback_values = list(short_feedback_daily.columns)
-
-    # Create traces for each feedback value with its corresponding color
-    data = []
-    for i, feedback in enumerate(feedback_values):
-        data.append(
-            go.Bar(
-                x=short_feedback_daily.index,
-                y=short_feedback_daily[feedback],
-                name=feedback,
-                marker=dict(color=FEEDBACK_COLORS[feedback]),
-            )
-        )
-
-    # Create layout with title and legend
-    layout = go.Layout(
-        title="Daily Short Feedback Counts", xaxis_title="Date", yaxis_title="Count"
-    )
-
-    # Display chart on Streamlit
-    st.plotly_chart(go.Figure(data=data, layout=layout).update_layout(barmode="stack"))
-
-
-def display_feedback_rates():
-    filtered_df = st.session_state["filtered_data"]
     short_feedback_counts = filtered_df["short_feedback"].value_counts()
     total_short_feedback = (
         st.session_state["filtered_data"].short_feedback != ""
@@ -336,30 +426,6 @@ def display_feedback_rates():
                 f"{short_feedback_counts[feedback_type] / total_short_feedback * 100:.1f}%",
                 "",
             )
-
-
-def check_password():
-    """Returns `True` if the user had the correct password."""
-
-    def password_entered():
-        """Checks whether a password entered by the user is correct."""
-        if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store the password.
-        else:
-            st.session_state["password_correct"] = False
-
-    # Return True if the password is validated.
-    if st.session_state.get("password_correct", False):
-        return True
-
-    # Show input for password.
-    st.text_input(
-        "Password", type="password", on_change=password_entered, key="password"
-    )
-    if "password_correct" in st.session_state:
-        st.error("😕 Password incorrect")
-    return False
 
 
 def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
@@ -411,7 +477,11 @@ def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
         },
         inplace=True,
     )
-    # users_df["non_evalue"] = users_df["nb_questions"] - users_df["great"] - users_df["ok"] - users_df["missing_info"] - users_df["wrong"]
+    
+    for feedback in ["great", "ok", "missing_info", "wrong"]:
+        if feedback not in users_df.columns:
+            users_df.feedback = 0
+
     users_df["tx_feedback"] = 1 - users_df["non_evalue"] / users_df["nb_questions"]
     users_df.reset_index(inplace=True)
 
@@ -494,7 +564,7 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         go.Scatter(
             x=users_df.index,
             y=users_df["tx_feedback"],
-            mode="lines+markers",
+            mode="markers",
             name="%age de réponses évaluées",
             line=dict(color="purple"),
         ),
@@ -503,10 +573,10 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
 
     # Mise à jour de la mise en page
     fig.update_layout(
-        title="retours des utilisateurs",
-        xaxis_title="Index",
-        yaxis_title="nombre",
-        yaxis2_title="pourcentage",
+        title="Retours par utilisateur",
+        xaxis_title="Utilisateurs",
+        yaxis_title="Nombre",
+        yaxis2_title="Pourcentage",
         barmode="stack",
     )
     st.plotly_chart(fig)
@@ -543,37 +613,33 @@ def main():
     st.session_state["full_data"] = get_db_data(DB_PATH)
 
     if side_bar():
+        filtered_df  = st.session_state["filtered_data"]
+        
         with st.expander("Raw data"):
             st.write(
-                st.session_state["filtered_data"].sort_values(
+                filtered_df.sort_values(
                     by="answer_timestamp", ascending=False
                 )
             )
 
         # High level indicators per user / group depending on the selection
         with st.expander("High level indicators", expanded=True):
-            display_indicators()
-
-        with st.expander("Questions over time", expanded=True):
-            col1, col2 = st.columns(2)
-            with col1:
-                display_questions_over_time()
-            with col2:
-                # empty placeholder
-                pass
+            display_indicators(filtered_df=filtered_df)
 
         with st.expander("Feedback rates", expanded=True):
-            display_feedback_rates()
+            display_feedback_rates(filtered_df=filtered_df)
 
         with st.expander("Short feedback", expanded=True):
             col1, col2 = st.columns(2)
             with col1:
-                display_feedback_charts()
+                display_feedback_charts(filtered_df=filtered_df)
             with col2:
-                display_feedback_charts_over_time()
+                pass
+            msg_df = build_msg_df_over_time(filtered_df=filtered_df)
+            display_feedback_charts_over_time(msg_df=msg_df)
 
-        users_df = build_users_df(st.session_state["filtered_data"])
         with st.expander("Users analysis", expanded=True):
+            users_df = build_users_df(filtered_df=filtered_df)
             user_analystics_graph(users_df=users_df)
 
         with st.expander("Users raw data", expanded=False):
