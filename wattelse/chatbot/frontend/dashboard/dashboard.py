@@ -52,6 +52,14 @@ with open(GROUP_NAMES_LIST_FILE_PATH) as f:
 
 
 def get_db_data(path_to_db: Path) -> pd.DataFrame:
+    """extract the django db of questions, answers and relevant_extracts. All is put in a dataframe
+
+    Args:
+        path_to_db (Path): the path where the db can be found
+
+    Returns:
+        pd.DataFrame: the resulting dataframe
+    """    
     con = sqlite3.connect(path_to_db)
 
     # Get column names from the table
@@ -138,6 +146,10 @@ def side_bar():
 
 
 def filter_data():
+    """get the history dataframe from st.session_state["full_data"], 
+    filter it with the values selected in the side bar (left part of the screen),
+    write the result in st.session_state["filtered_data"]
+    """    
     filtered = st.session_state["full_data"]
     if st.session_state["user"]:
         filtered = filtered[filtered.username == st.session_state["user"]]
@@ -154,6 +166,8 @@ def filter_data():
     )
 
     st.session_state["filtered_data"] = filtered
+
+    return
 
 
 def check_password():
@@ -181,6 +195,11 @@ def check_password():
 
 
 def _compute_file_indicators():
+    """Compute the number of files and number of chunks in the RAG backend that belong to the given group.
+
+    Returns:
+        _type_: _description_
+    """    
     if st.session_state["group"] and st.session_state["group"] != METIERS_GROUP_NAME:
         bak = RAGBackEnd(st.session_state["group"])
         nb_files = len(bak.get_available_docs())
@@ -492,7 +511,7 @@ def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
     return users_df
 
 
-def user_analystics_graph(users_df: pd.DataFrame) -> None:
+def display_user_graph(users_df: pd.DataFrame) -> None:
     """Generate a plotly graph showing the number of questions and evaluation of each users
 
     Args:
@@ -511,7 +530,6 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         ),
         secondary_y=False,
     )
-
     fig.add_trace(
         go.Bar(
             x=users_df.index,
@@ -521,7 +539,6 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         ),
         secondary_y=False,
     )
-
     fig.add_trace(
         go.Bar(
             x=users_df.index,
@@ -531,7 +548,6 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         ),
         secondary_y=False,
     )
-
     fig.add_trace(
         go.Bar(
             x=users_df.index,
@@ -541,7 +557,6 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         ),
         secondary_y=False,
     )
-
     fig.add_trace(
         go.Bar(
             x=users_df.index,
@@ -551,7 +566,6 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         ),
         secondary_y=False,
     )
-
     # Ajout des courbes
     fig.add_trace(
         go.Scatter(
@@ -563,7 +577,6 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         ),
         secondary_y=False,
     )
-
     fig.add_trace(
         go.Scatter(
             x=users_df.index,
@@ -584,7 +597,126 @@ def user_analystics_graph(users_df: pd.DataFrame) -> None:
         barmode="stack",
     )
     st.plotly_chart(fig)
+    return
 
+def build_users_satisfaction_over_nb_eval(users_df:pd.DataFrame) ->pd.DataFrame:
+    users_df["evalue"] = users_df["nb_questions"] - users_df["non_evalue"]
+    users_df.sort_values(by="evalue", ascending=True, inplace=True)
+    users_df["eval_mean"] = (users_df["great"] + 2. * users_df["ok"] / 3. + users_df["missing_info"] / 3.) / users_df["evalue"]
+    users_df["eval_mean_std"] =  users_df["eval_mean"]
+    users_df["eval_std"] = np.sqrt((users_df["great"]*(1 - users_df["eval_mean"])**2 + \
+        users_df["ok"] * (2./3. - users_df["eval_mean"])**2 + \
+        users_df["missing_info"] * (1. / 3. - users_df["eval_mean"])**2)/users_df["evalue"])
+    users_satisfaction_over_nb_eval = pd.pivot_table(
+        data=users_df,
+        index="evalue",
+        values=["eval_mean", "eval_mean_std", "eval_std"],
+        aggfunc={
+            "eval_mean": "mean",
+            "eval_mean_std": "std", 
+            "eval_std": "mean"
+        }        
+    )
+
+    return users_satisfaction_over_nb_eval
+
+
+def display_users_satisfaction_over_nb_eval(users_satisfaction:pd.DataFrame) ->pd.DataFrame:
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            y=[1./4, 1./4,],
+            x = [users_satisfaction.index[0], users_satisfaction.index[-1]],
+            mode="none",
+            name="mauvais",
+            # "red"
+            fillcolor="rgba(255, 0, 0, 0.2)",
+            stackgroup='one', # define stack group
+            )       
+        )
+    fig.add_trace(
+        go.Scatter(
+            y=[1./4, 1./4,],
+            x = [users_satisfaction.index[0], users_satisfaction.index[-1]],
+            mode="none",
+            name="info manquante",
+            # "orange"
+            fillcolor="rgba(255, 128, 0, 0.2)",
+            stackgroup='one' # define stack group
+            )       
+        )
+    fig.add_trace(
+        go.Scatter(
+            y=[1./4, 1./4,],
+            x = [users_satisfaction.index[0], users_satisfaction.index[-1]],
+            mode="none",
+            name="ok",
+            # "green"
+            fillcolor="rgba(0, 255, 0, 0.2)",
+            stackgroup='one' # define stack group
+            )       
+        )
+    fig.add_trace(
+        go.Scatter(
+            y=[1./4, 1./4,],
+            x = [users_satisfaction.index[0], users_satisfaction.index[-1]],
+            mode="none",
+            name="excellent",
+            # "blue"
+            fillcolor="rgba(0, 0, 255, 0.2)",
+            stackgroup='one' # define stack group
+            )       
+        )
+    fig.add_trace(
+        go.Bar(
+            y=users_satisfaction["eval_mean"],
+            x = users_satisfaction.index,
+            name="eval moyenne",
+            marker_color="blue",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            y=users_satisfaction["eval_std"],
+            x = users_satisfaction.index,
+            mode="lines",
+            name="variabilité moyenne par utilisateurs",
+            line=dict(color="lightblue"),
+            )       
+        )
+    fig.add_trace(
+        go.Scatter(
+            y=users_satisfaction["eval_mean_std"],
+            x = users_satisfaction.index,
+            mode="lines",
+            name="variabilité moyenne entre utilisateurs",
+            line=dict(color="lightgreen"),
+            )
+        )
+    fig.update_layout(
+        title="Evaluation moyenne des réponses par utilisateurs, en fonction du nb d'évaluation réalisée",
+        xaxis_title="nb d'évaluations réalisées",
+        yaxis_title="Evaluation moyenne, entre 0 et 1",
+    )
+    st.plotly_chart(fig)
+    return
+
+
+def display_user_hist_over_eval(users_df):
+
+    distinct_count_with_na = users_df["evalue"].value_counts()
+
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=distinct_count_with_na.index, 
+        y = distinct_count_with_na.values
+        )
+    )
+    fig.update_layout(title='Histogramme des utilisateurs par nb réponses évaluées', yaxis_title="nombre d'utilisateur", xaxis_title='nombre de questions évaluées')
+    st.plotly_chart(fig)
     return
 
 
@@ -640,13 +772,16 @@ def main():
 
         with st.expander("Users analysis", expanded=True):
             users_df = build_users_df(filtered_df=filtered_df)
-            user_analystics_graph(users_df=users_df)
+            display_user_graph(users_df=users_df)
+            users_satisfaction = build_users_satisfaction_over_nb_eval(users_df=users_df)
+            display_users_satisfaction_over_nb_eval(users_satisfaction=users_satisfaction)
+            display_user_hist_over_eval(users_df=users_df)
 
         with st.expander("Users raw data", expanded=False):
             st.write(users_df)
 
+
         # TODO : Analyse par conversations, analyse par chunks
-        # TODO : fusionner questions et feedbacks par date
 
 
 main()
