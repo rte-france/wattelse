@@ -392,10 +392,10 @@ def display_feedback_charts_over_time(msg_df: pd.DataFrame):
 
     # Mise à jour de la mise en page
     fig.update_layout(
-        title="Questions par jour",
+        title="Activity over time",
         xaxis_title="Date",
-        yaxis_title="Nombre",
-        yaxis2_title="Pourcentage",
+        yaxis_title="Number",
+        yaxis2_title="Percentage",
         barmode="stack",
     )
     st.plotly_chart(fig)
@@ -420,12 +420,12 @@ def display_feedback_charts(filtered_df: pd.DataFrame):
         short_feedback_counts,
         x=short_feedback_counts.index,
         y="count",
-        title="Total Count of Short Feedback Values",
+        title="Total count of evaluated answers",
     )
 
     # Customize the chart layout and colors
     fig_short_feedback_total.update_layout(
-        xaxis_title="Short Feedback", yaxis_title="Number of feedback"
+        xaxis_title="Evaluations", yaxis_title="Number of feedback"
     )
     fig_short_feedback_total.update_traces(
         marker_color=[FEEDBACK_COLORS[val] for val in short_feedback_counts.index]
@@ -714,7 +714,7 @@ def display_users_satisfaction_over_nb_eval(
         )
     )
     fig.update_layout(
-        title="Evaluation moyenne des réponses par utilisateurs, en fonction du nb d'évaluation réalisée",
+        title="Evaluation moyenne des réponses par utilisateurs, en fonction du nombre d'évaluations réalisées",
         xaxis_title="nb d'évaluations réalisées",
         yaxis_title="Evaluation moyenne, entre 0 et 1",
     )
@@ -735,6 +735,10 @@ def display_user_hist_over_eval(users_df):
         yaxis_title="nombre d'utilisateur",
         xaxis_title="nombre de questions évaluées",
     )
+    fig.update_layout(
+        title="Histogramme des utilisateurs, en fonction du nombre d'évaluations réalisées", 
+    yaxis_title="nombre d'utilisateurs", 
+        yaxis_title="nombre d'utilisateurs", xaxis_title='nombre de questions évaluées')
     st.plotly_chart(fig)
     return
 
