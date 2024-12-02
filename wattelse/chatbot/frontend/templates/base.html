@@ -41,6 +41,8 @@
 </head>
 
 <body>
+    {% load static %}
+
     <!-- Load styles for every pages -->
     <link rel="stylesheet" href="{% static 'chatbot/global.css' %}?v={{ STATIC_VERSION }}">
     <link rel="stylesheet" href="{% static 'chatbot/chatbot.css' %}?v={{ STATIC_VERSION }}">
@@ -50,61 +52,92 @@
     <div class="main-navbar">
 
         
-         <div>
-            <!-- WattElse title on the top-left -->
-            <a href="/" class="wattelse-title">
-                <i class="fa-solid fa-bolt-lightning" style="color: var(--main-color);"></i>
-                <script>
-                document.write(llm_title);
-                </script>
-            </a>
-        </div>
+        <!-- WattElse title on the top-left -->
+        <a href="/" class="wattelse-title">
+            <i class="fa-solid fa-bolt-lightning" style="color: var(--wattelse-lightning-color);"></i>
+            <script>
+            document.write(llm_title);
+            </script>
+        </a>
 
         <!-- If admin, add changing group form -->
-        {% if user.is_superuser %}
-            <form method="post" action="/admin_change_group/">
-                {% csrf_token %}
-                <select name="new_group" onchange="this.form.submit()">
-                    {% for group in admin_group_selection %}
-                        {% if group == user_group %}
-                            <option selected="selected">{{ group }}</option>
-                        {% else %}
-                            <option>{{ group }}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-            </form>
-        {% endif %}
         
         <!-- Buttons on the top-right -->
-        <div class="top-right-tabs-list">
+        <div class="nav-top-right">
             <script>
                 if (llm_title === "WattElse GPT") {
-                    document.write(`<a href="/doc" class="change-app doc"><i class="fa-solid fa-chevron-right"></i>&nbsp;&nbsp;<i class="fa-solid fa-bolt-lightning"></i> Doc</a>`);
+                    document.write(`<a href="/doc" class="tabs doc"><i class="fa-solid fa-bolt-lightning"></i> Doc</a>`);
                 } else {
-                    document.write(`<a href="/gpt" class="change-app gpt"><i class="fa-solid fa-chevron-right"></i>&nbsp;&nbsp;<i class="fa-solid fa-bolt-lightning"></i> GPT</a>`);
+                    document.write(`<a href="/gpt" class="tabs gpt"><i class="fa-solid fa-bolt-lightning"></i> GPT</a>`);
                 }
             </script>
 
-            {% if user.is_superuser %}
+            <!-- {% if user.is_superuser %}
                 <a href="/dashboard" target="_blank" class="tabs"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
-            {% endif %}
+            {% endif %} -->
 
-            <a href="https://rtefrance.sharepoint.com/:p:/s/Signauxfaibles/EWSFX7hKxb5GkiVizkddyo0BQIXcuWvUyP0HBHyPjiZdBw?e=hEYY3r" target="_blank" class="tabs"><i class="fa-solid fa-book-open-reader"></i> Documentation</a>
-            <a href="https://github.com/rte-france/wattelse" target="_blank"
-                class="tabs"><i class="fa-brands fa-github"></i> Code</a>
-            <a href="https://teams.microsoft.com/l/channel/19%3Ack3mx8idGwpQZ82ObvTzCkOc-7YMPDU0uepRT21AA1E1%40thread.tacv2/General?groupId=182ac31c-7797-46d8-86c0-a610de9b20be&tenantId=8e72b185-f603-4217-8efe-0e0327d9381f"
-                target="_blank" class="tabs"><i class="fa-solid fa-user-group"></i> Teams</a>
-            <a href="mailto:jerome.picault@rte-france.com; guillaume.grosjean@rte-france.com; nicolas.bonnerot@rte-france.com; jerome.dejaegher@rte-france.com; nader.narcisse_externe@rte-france.com"
-                class="tabs"><i class="fa-solid fa-envelope"></i> Contact</a>
+            <div>
+                <div class="info-button tabs"><i class="fa-solid fa-circle-info"></i> Info</div>
+                <div class="info-menu">
+                    <a href="https://rtefrance.sharepoint.com/:p:/s/Signauxfaibles/EWSFX7hKxb5GkiVizkddyo0BQIXcuWvUyP0HBHyPjiZdBw?e=hEYY3r" target="_blank" class="tabs"><i class="fa-solid fa-book-open-reader"></i> Documentation</a>
+                    <a href="https://github.com/rte-france/wattelse" target="_blank"
+                        class="tabs"><i class="fa-brands fa-github"></i> Code</a>
+                    <a href="https://teams.microsoft.com/l/channel/19%3Ack3mx8idGwpQZ82ObvTzCkOc-7YMPDU0uepRT21AA1E1%40thread.tacv2/General?groupId=182ac31c-7797-46d8-86c0-a610de9b20be&tenantId=8e72b185-f603-4217-8efe-0e0327d9381f"
+                        target="_blank" class="tabs"><i class="fa-solid fa-user-group"></i> Teams</a>
+                    <a href="mailto:jerome.picault@rte-france.com; guillaume.grosjean@rte-france.com; nicolas.bonnerot@rte-france.com; jerome.dejaegher@rte-france.com; nader.narcisse_externe@rte-france.com"
+                        class="tabs"><i class="fa-solid fa-envelope"></i> Contact</a>
+                </div>
+            </div>
+
+            
 
             <!-- If user is is_authenticated show logout button -->
             {% if user.is_authenticated %}
-            <a href="/logout" class="tabs"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
+            <div>
+                <button class="user-icon-button">{{ user.username|slice:":2"|upper }}</button>
+                <div class="user-icon-menu">
+                    <div class="tabs">
+                        Identifiant : <span class="username">{{ user.username }}</span>
+                    </div>
+                    <!-- If WattElse Doc show group infos -->
+                     {% if is_wattelse_doc %}
+                    <div class="tabs">
+                        Groupe : <span class="username">{{ user_group }}</span>
+                    </div>
+                    <div class="tabs">
+                        Changer de groupe :
+                    </div>
+                    <div>
+                        {% if user.is_superuser %}
+                            <form method="post" action="/admin_change_group/">
+                                {% csrf_token %}
+                                <select class="change-group-select" name="new_group" onchange="this.form.submit()">
+                                    {% for group in admin_group_selection %}
+                                        {% if group == user_group %}
+                                            <option selected="selected">{{ group }}</option>
+                                        {% else %}
+                                            <option>{{ group }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    <hr>
+                    <a href="/logout" class="tabs"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
+                </div>
+            </div>
             {% endif %}
         </div>
     </div>
+
+    <!-- Content -->
     {% block content %}{% endblock %}
+
+    <!-- Load gloabal JS -->
+     {%load static %}
+    <script src="{% static 'chatbot/global.js' %}?v={{ STATIC_VERSION }}"></script>
 </body>
 
 </html>

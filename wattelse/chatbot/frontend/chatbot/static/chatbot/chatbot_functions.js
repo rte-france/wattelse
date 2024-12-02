@@ -98,7 +98,7 @@ function initializeLayout(){
 
             // Show the content section corresponding to the clicked tab
             const targetContent = documentPanel.querySelector(`.tab-content.${tab.dataset.content}`);
-            targetContent.style.display = 'block';
+            targetContent.style.display = '';
         });
     });
     activateTab("documents");

@@ -119,6 +119,7 @@ def rag_page(request):
             "group_usernames_dict": group_usernames_dict,
             "admin_group_selection": admin_group_selection,
             "conversations": conversations,
+            "is_wattelse_doc": True,
         },
     )
 
