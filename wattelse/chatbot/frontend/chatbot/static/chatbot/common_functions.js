@@ -64,7 +64,6 @@ function is_gpt_page() {
 
 function setGPTColors() {
   document.documentElement.style.setProperty('--wattelse-lightning-color', "#2AAA8A");
-  document.documentElement.style.setProperty('--main-color', "#edf8f2");
 }
 
 ///////////////////////// DISPLAY FUNCTIONS ///////////////////////////////
