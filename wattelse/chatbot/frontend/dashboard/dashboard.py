@@ -738,7 +738,6 @@ def display_user_hist_over_eval(users_df):
     fig.update_layout(
         title="Histogramme des utilisateurs, en fonction du nombre d'évaluations réalisées",
         yaxis_title="nombre d'utilisateurs",
-        yaxis_title="nombre d'utilisateurs",
         xaxis_title="nombre de questions évaluées",
     )
     st.plotly_chart(fig)
