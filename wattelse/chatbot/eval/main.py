@@ -18,6 +18,8 @@ from wattelse.chatbot.eval.prompt import (
     RETRIEVABILITY_EVAL_PROMPT
     # CONTEXT_NDCG_PROMPT  # Testing Phase
 )
+from joblib import Parallel, delayed  # Import Parallel and delayed for parallelization
+from tqdm_joblib import tqdm_joblib  # Import the tqdm_joblib helper
 
 # Example :
 # python main.py data/QA_Corpus-A.xlsx data/eval_corpus_A --report-output-path data/eval_output_update_Corpus_A.xlsx
@@ -105,51 +107,56 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pandas.DataFrame: The DataFrame with added evaluation columns (faithfulness, correctness, retrievability).
     '''
-    llm_client = OpenAI_Client()   # Initialize the LLM client for critique
-    logger.info(f"LLM Evaluation model: {llm_client.model_name}")
+    logger.info(f"LLM Evaluation model: {OpenAI_Client().model_name}")
 
-    evaluations = []
-    # TODO logger.warning here needs review/refactor.
-    for idx, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Evaluating Multiple Metrics"):
-        try:
-            question = row[QUERY_COLUMN]
-            context_extracted = row[RAG_RELEVANT_EXTRACTS_COLUMN]
-            answer = row["rag_answer"]
-
-            if not context_extracted.strip():
-                logger.warning(f"Empty context for question {idx}: {question}")
-                evaluations.append({
-                    "question": question,
-                    "evaluation": "No context provided",
-                    "faithfulness_score": "No context provided",
-                    "correctness_score": "No context provided",
-                    "retrievability_score": "No context provided"
-                })
-                continue
-
-            eval_results = evaluate_metrics(llm_client, question, context_extracted, answer)
-
-            eval_entry = {
-                "question": question
-            }
-            eval_entry.update(eval_results)
-            evaluations.append(eval_entry)
-
-            logger.info(f"Evaluations for question {idx}: {eval_results}")
-
-        except Exception as e:
-            logger.error(f"Error evaluating metrics for row {idx}: {e}")
-            evaluations.append({
-                "question": row[QUERY_COLUMN],
-                "evaluation": "Error during evaluation",
-                "faithfulness_score": "Error during evaluation",
-                "correctness_score": "Error during evaluation",
-                "retrievability_score": "Error during evaluation",
-            })
-
+    # Wrap the Parallel execution with tqdm_joblib to show progress
+    with tqdm_joblib(desc="Evaluating Rows", total=eval_df.shape[0]) as progress_bar:
+        evaluations = Parallel(n_jobs=-1)(
+            delayed(evaluate_row)(row) for _, row in eval_df.iterrows()  # Unpack tuple here
+        )
+    
+    # Combine evaluations into a DataFrame
     evaluation_df = pd.DataFrame(evaluations)
+    
+    # Join the evaluations to the original DataFrame
     eval_df = eval_df.join(evaluation_df.set_index("question"), on=QUERY_COLUMN, rsuffix="_eval")
+    
     return eval_df
+
+def evaluate_row(row) -> dict:
+    """Function to evaluate a single row of data (question, context, and answer)."""
+    llm_client = OpenAI_Client()  # Initialize the LLM client inside the worker function
+    try:
+        question = row[QUERY_COLUMN]
+        context_extracted = row[RAG_RELEVANT_EXTRACTS_COLUMN]
+        answer = row["rag_answer"]
+
+        if not context_extracted.strip():
+            logger.warning(f"Empty context for question: {question}")
+            return {
+                "question": question,
+                "evaluation": "No context provided",
+                "faithfulness_score": "No context provided",
+                "correctness_score": "No context provided",
+                "retrievability_score": "No context provided"
+            }
+
+        eval_results = evaluate_metrics(llm_client, question, context_extracted, answer)
+
+        eval_entry = {"question": question}
+        eval_entry.update(eval_results)
+        logger.info(f"Evaluations for question: {question}: {eval_results}")
+        return eval_entry
+
+    except Exception as e:
+        logger.error(f"Error evaluating metrics: {e}")
+        return {
+            "question": row[QUERY_COLUMN],
+            "evaluation": "Error during evaluation",
+            "faithfulness_score": "Error during evaluation",
+            "correctness_score": "Error during evaluation",
+            "retrievability_score": "Error during evaluation",
+        }
 
 @app.command()
 def main(
@@ -271,6 +278,9 @@ def main(
 
     # Clear RAG backend
     RAG_EVAL_BACKEND.clear_collection()
+
+if __name__ == "__main__":
+    typer.run(main) 
 
 if __name__ == "__main__":
     typer.run(main)
