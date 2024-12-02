@@ -108,20 +108,18 @@
                         Changer de groupe :
                     </div>
                     <div>
-                        {% if user.is_superuser %}
-                            <form method="post" action="/admin_change_group/">
-                                {% csrf_token %}
-                                <select class="change-group-select" name="new_group" onchange="this.form.submit()">
-                                    {% for group in admin_group_selection %}
-                                        {% if group == user_group %}
-                                            <option selected="selected">{{ group }}</option>
-                                        {% else %}
-                                            <option>{{ group }}</option>
-                                        {% endif %}
-                                    {% endfor %}
-                                </select>
-                            </form>
-                        {% endif %}
+                        <form method="post" action="/change_active_group/">
+                            {% csrf_token %}
+                            <select class="change-group-select" name="new_group" onchange="this.form.submit()">
+                                {% for group in user_group_list %}
+                                    {% if group == user_group %}
+                                        <option selected="selected">{{ group }}</option>
+                                    {% else %}
+                                        <option>{{ group }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </form>
                     </div>
                     {% endif %}
                     <hr>

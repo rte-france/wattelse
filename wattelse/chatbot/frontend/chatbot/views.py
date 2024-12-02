@@ -26,10 +26,11 @@ from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGAPIError
 from wattelse.chatbot.backend import DATA_DIR
-from .models import Chat, GroupSystemPrompt, SuperUserPermissions
+from .models import Chat, GroupSystemPrompt, SuperUserPermissions, UserProfile
 
 from .utils import (
-    get_user_group_id,
+    get_user_active_group_id,
+    get_user_groups,
     get_group_usernames_list,
     get_group_system_prompt,
     new_user_created,
@@ -64,8 +65,11 @@ def rag_page(request):
     if not request.user.is_authenticated:
         return redirect("/login")
 
-    # Get user group_id
-    user_group_id = get_user_group_id(request.user)
+    # Get user active group_id
+    user_group_id = get_user_active_group_id(request.user)
+
+    # Get user group list for group change
+    user_group_list = get_user_groups(request.user)
 
     # Get group system prompt
     group_system_prompt = get_group_system_prompt(user_group_id)
@@ -115,6 +119,7 @@ def rag_page(request):
             "group_can_edit_system_prompt": group_can_edit_system_prompt,
             "user_can_edit_system_prompt": user_can_edit_system_prompt,
             "user_group": user_group_id,
+            "user_group_list": user_group_list,
             "group_system_prompt": group_system_prompt,
             "group_usernames_dict": group_usernames_dict,
             "admin_group_selection": admin_group_selection,
@@ -136,7 +141,7 @@ def login(request):
         # If user exists: check group, login and redirect to chatbot
         if user is not None:
             # If user doesn't belong to a group, return error
-            user_group_id = get_user_group_id(user)
+            user_group_id = get_user_active_group_id(user)
             if user_group_id is None:
                 error_message = "Vous n'appartenez à aucun groupe."
                 return render(
@@ -212,7 +217,7 @@ def query_rag(request):
         data = json.loads(request.body)
 
         # Get user group_id
-        user_group_id = get_user_group_id(request.user)
+        user_group_id = get_user_active_group_id(request.user)
 
         # Get conversation id
         conversation_id = uuid.UUID(data.get("conversation_id"))
@@ -278,7 +283,7 @@ def save_interaction(request):
         data = json.loads(request.body)
 
         # Get group id and system prompt
-        user_group_id = get_user_group_id(request.user)
+        user_group_id = get_user_active_group_id(request.user)
         group_system_prompt = get_group_system_prompt(user_group_id)
 
         # Transform timestamps to datetime objects
@@ -365,7 +370,7 @@ def upload(request):
             )
             return JsonResponse({"error_message": "No file received!"}, status=500)
         else:
-            user_group_id = get_user_group_id(request.user)
+            user_group_id = get_user_active_group_id(request.user)
             logger.debug(
                 f"[User: {request.user.username}] Received file: {uploaded_file.name}"
             )
@@ -419,7 +424,7 @@ def delete(request):
             )
             return JsonResponse({"message": "Aucun document sélectionné"}, status=500)
         else:
-            user_group_id = get_user_group_id(request.user)
+            user_group_id = get_user_active_group_id(request.user)
             try:
                 RAG_API.remove_documents(user_group_id, selected_docs)
                 return JsonResponse(
@@ -449,7 +454,7 @@ def file_viewer(request, file_name: str):
     """
     # TODO: manage more file type
     # FIXME: to be rethought in case of distributed deployment (here we suppose RAG backend and Django on the same server...)
-    file_path = DATA_DIR / get_user_group_id(request.user) / file_name
+    file_path = DATA_DIR / get_user_active_group_id(request.user) / file_name
     if file_path.exists():
         suffix = file_path.suffix.lower()
         if suffix == ".pdf":
@@ -483,7 +488,7 @@ def add_user_to_group(request):
     if request.method == "POST":
         # Get superuser group object
         superuser = request.user
-        superuser_group_id = get_user_group_id(superuser)
+        superuser_group_id = get_user_active_group_id(superuser)
         superuser_group = Group.objects.get(name=superuser_group_id)
 
         # Get new_username user object if it exists
@@ -501,7 +506,7 @@ def add_user_to_group(request):
             )
 
         # If new_user already in a group then return error status code
-        if get_user_group_id(new_user) is not None:
+        if get_user_active_group_id(new_user) is not None:
             logger.error(
                 f"[User: {request.user.username}] Username {new_username} already belongs to a group"
             )
@@ -539,7 +544,7 @@ def remove_user_from_group(request):
     if request.method == "POST":
         # Get superuser group object
         superuser = request.user
-        superuser_group_id = get_user_group_id(superuser)
+        superuser_group_id = get_user_active_group_id(superuser)
         superuser_group = Group.objects.get(name=superuser_group_id)
 
         # Get username_to_remove user object if it exists
@@ -573,17 +578,42 @@ def remove_user_from_group(request):
         raise Http404()
 
 
-def admin_change_group(request):
-    """Special function for admins to change group using web interface"""
+def change_active_group(request):
+    """Function to change active group using web interface"""
     if request.method == "POST":
-        print(request.POST)
-        if request.user.is_superuser:
-            request.user.groups.clear()
-            new_group = Group.objects.get(name=request.POST.get("new_group"))
-            request.user.groups.add(new_group)
+        # Get requested group
+        new_active_group_id = request.POST.get("new_group")
+
+        # If user is not admin, check if it is an allowed group
+        if not request.user.is_superuser:
+            allowed_groups = get_user_groups(request.user)
+            if new_active_group_id not in allowed_groups:
+                logger.error(
+                    f"[User: {request.user.username}] Tried to change to a non allowed group"
+                )
+                return JsonResponse(
+                    {"message": "Groupe non-autorisé"},
+                    status=500,
+                )
+
+        # If group is allowed, change active group
+        try:
+            # Retrieve the UserProfile associated with the User
+            user_profile = UserProfile.objects.get(user=request.user)
+
+            # Retrieve the new group
+            new_active_group = Group.objects.get(name=new_active_group_id)
+
+            # Update the active group
+            user_profile.active_group = new_active_group
+            user_profile.save()
             return redirect("/")
-        else:
-            raise Http404()
+        except Exception as e:
+            logger.error(f"[User: {request.user.username}] {e}")
+            return JsonResponse(
+                {"message": "Erreur serveur : échec lors du changement de groupe"},
+                status=500,
+            )
     else:
         raise Http404()
 
@@ -716,7 +746,7 @@ def update_group_system_prompt(request):
 
         # Get group id
         user = request.user
-        group_id = get_user_group_id(user)
+        group_id = get_user_active_group_id(user)
 
         # Set new group system prompt
         try:

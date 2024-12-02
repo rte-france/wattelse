@@ -42,7 +42,9 @@ urlpatterns = [
         views.remove_user_from_group,
         name="remove_user_from_group",
     ),
-    path("admin_change_group/", views.admin_change_group, name="admin_change_group"),
+    path(
+        "change_active_group/", views.change_active_group, name="0change_active_group"
+    ),
     path(
         "manage_superuser_permission/",
         views.manage_superuser_permission,
