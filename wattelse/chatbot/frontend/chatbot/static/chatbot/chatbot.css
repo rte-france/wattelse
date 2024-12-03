@@ -102,6 +102,10 @@
   color: var(--complementary-color);
 }
 
+.bot-message {
+  padding: 5px;
+}
+
 .user-message::before { /* Add content before the message */
     content: "\f007"; /* Font Awesome icon code for user */
     font-family: FontAwesome; /* Font family for the icon library */
