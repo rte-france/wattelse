@@ -233,11 +233,11 @@ def main(
         for sublist in rag_relevant_extracts
     ]
 
-       # Evaluate multiple metrics using LLM and save results
+    # Evaluate multiple metrics using LLM and save results
     evaluated_df = evaluate_rag_metrics(eval_df)
 
     output_data = []
-    for idx, row in evaluated_df.iterrows():
+    for _, row in evaluated_df.iterrows():
         output_data.append({
             "context": row[CONTEXT_COLUMN],
             "question": row[QUERY_COLUMN],
@@ -256,8 +256,13 @@ def main(
     # Save the final evaluated QA pairs to an Excel file
     df_output = pd.DataFrame(output_data)
 
-    # Calculate averages
+    # Convert lists in 'source_doc' to a string before dropping duplicates
+    df_output['source_doc'] = df_output['source_doc'].apply(lambda x: ",".join(x) if isinstance(x, list) else x)
 
+    # Drop duplicates based on 'question' and 'source_doc'
+    df_output = df_output.drop_duplicates(subset=["question", "source_doc"])
+
+    # Calculate averages
     df_output['faithfulness_score'] = pd.to_numeric(df_output['faithfulness_score'], errors='coerce')
     df_output['correctness_score'] = pd.to_numeric(df_output['correctness_score'], errors='coerce')
     df_output['retrievability_score'] = pd.to_numeric(df_output['retrievability_score'], errors='coerce')
@@ -281,6 +286,3 @@ def main(
 
 if __name__ == "__main__":
     typer.run(main) 
-
-if __name__ == "__main__":
-    typer.run(main)
