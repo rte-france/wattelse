@@ -5,6 +5,8 @@
  * This file is part of Wattelse, a NLP application suite.
  */
 
+ @import url("global.css");
+
 /* ******************** */
 /* LOGIN/REGISTER PAGES */
 /* ******************** */
@@ -47,7 +49,7 @@
   .login-button {
     font-size: 20px;
     font-weight: 600;
-    background-color: var(--main-color);
+    background-color: var(--wattelse-lightning-color);
     color: white;
     padding: 10px 20px;
     margin: 20px;
@@ -71,10 +73,10 @@
 
   .login-link,
   .register-link {
-    color: var(--main-color);
+    color: var(--wattelse-lightning-color);
   }
 
   .created-username{
     font-weight: 700;
-    color: var(--main-color);
+    color: var(--wattelse-lightning-color);
   }

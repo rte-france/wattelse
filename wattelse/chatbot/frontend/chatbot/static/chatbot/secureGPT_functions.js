@@ -16,7 +16,7 @@ const DISCLAIMER = "<i class=\"fa-solid fa-user-tie\"></i> WattElse GPT est rese
 initializeLayout();
 
 // change default color scheme
-setMainColor("#2AAA8A"); // Jungle Green
+setGPTColors(); // Jungle Green
 
 // ####################### Definition of functions ########################################
 function initializeLayout(){

@@ -4,7 +4,9 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
+from django.db.models.signals import post_save, m2m_changed
+from django.dispatch import receiver
 
 
 class Chat(models.Model):
@@ -79,3 +81,35 @@ class SuperUserPermissions(models.Model):
             # Group related permissions
             ("can_edit_group_system_prompt", "Can edit group system prompt"),
         )
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    active_group = models.ForeignKey(
+        Group, on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    instance.userprofile.save()
+
+
+@receiver(m2m_changed, sender=User.groups.through)
+def update_user_profile_active_group(
+    sender, instance, action, reverse, model, pk_set, **kwargs
+):
+    if action == "post_add":
+        user_profile = instance.userprofile
+        # Check if the active_group is already set
+        if user_profile.active_group is None:
+            # Get the first group added (assuming only one group is added at a time)
+            group = Group.objects.get(pk=list(pk_set)[0])
+            user_profile.active_group = group
+            user_profile.save()

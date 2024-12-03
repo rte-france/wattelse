@@ -62,8 +62,8 @@ function is_gpt_page() {
     return window.location.pathname.includes("/llm");
 }
 
-function setMainColor(newColor) {
-  document.documentElement.style.setProperty('--main-color', newColor);
+function setGPTColors() {
+  document.documentElement.style.setProperty('--wattelse-lightning-color', "#2AAA8A");
 }
 
 ///////////////////////// DISPLAY FUNCTIONS ///////////////////////////////

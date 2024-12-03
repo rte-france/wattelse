@@ -19,7 +19,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.models import User, Group
 from django.http import Http404, JsonResponse
 
-from .models import Chat, GPTChat, GroupSystemPrompt
+from .models import Chat, GPTChat, GroupSystemPrompt, UserProfile
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
 
@@ -60,20 +60,34 @@ def get_chat_model(source_path: str) -> Type[GPTChat | Chat]:
     return db_model
 
 
-def get_user_group_id(user: User) -> str:
+def get_user_active_group_id(user: User) -> str | None:
     """
-    Given a user, return the id of the group it belongs to.
+    Given a user, return the id of its active group.
     If user doesn't belong to a group, return None.
-
-    A user should belong to only 1 group.
-    If it belongs to more than 1 group, return the first group.
     """
-    group_list = user.groups.all()
-    logger.trace(f"Group list for user {user.get_username()} : {group_list}")
-    if len(group_list) == 0:
-        return None
+    active_group = UserProfile.objects.get(user=user).active_group
+    if active_group:
+        return active_group.name
     else:
-        return group_list[0].name
+        None
+
+
+def get_user_groups(user: User) -> list[str] | None:
+    """
+    Given a user, return the list of group_id he can switch to.
+    If user is admin, return all groups.
+    """
+    # If admin, return all groups else return user groups
+    if user.is_superuser:
+        user_groups = Group.objects.all()
+    else:
+        user_groups = user.groups.all()
+
+    # If groups are found, return the list of group_id, else None
+    if user_groups.exists():
+        return [group.name for group in user_groups]
+    else:
+        return None
 
 
 def is_superuser(user: User) -> bool:
@@ -141,15 +155,19 @@ def get_user_conversation_ids(
     user: User, ChatModel: models.Model, number: int = 100
 ) -> list[uuid.UUID]:
     """
-    Return the list of the user conversation ids.
+    Return the list of the user conversation ids for its current active group.
     Use `number` to limit the maximum number of returned ids.
     """
+    # Get user active group id
+    group_id = get_user_active_group_id(user)
+
     # Get list of all conversation ids for the user, ordered by question timestamp
     conversation_ids = (
-        ChatModel.objects.filter(user=user)
+        ChatModel.objects.filter(user=user, group_id=group_id)
         .order_by("-question_timestamp")
         .values_list("conversation_id", flat=True)
     )
+
     # Remove duplicates while preserving order
     return list(dict.fromkeys(conversation_ids))[:number]
 
