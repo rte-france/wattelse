@@ -23,7 +23,7 @@ EVAL_LLM_PROMPT = (
 )
 
 
-# Groundedness (Pertinence contextuelle) : La question doit pouvoir être répondue à partir du contexte donné 
+# Groundedness (Pertinence contextuelle) : La question doit pouvoir être répondue à partir du contexte donné
 # pour eviter toute types d'hallucinations.
 
 # QA generation prompt template
@@ -108,22 +108,20 @@ Réponse:::
 """
 
 
+# RAGAS Evaluation metrics
 
 
-                                                            # RAGAS Evaluation metrics
-
-
-# Still in the Testing phase  
+# Still in the Testing phase
 
 # CONTEXT_NDCG_PROMPT = """
-# Sur la base d'une question, et d'une liste d'extraits du contexte, évaluez chaque extrait pour déterminer son utilité à répondre à la question. 
+# Sur la base d'une question, et d'une liste d'extraits du contexte, évaluez chaque extrait pour déterminer son utilité à répondre à la question.
 # Attribuez une note de pertinence de 0 à 3 à chaque extrait en fonction de son utilité :
 # - 0 : Non pertinent
 # - 1 : Peu pertinent
 # - 2 : Pertinent
 # - 3 : Très pertinent
 
-# Les extraits plus utiles et apparaissant en tête doivent obtenir un score de pertinence plus élevé. 
+# Les extraits plus utiles et apparaissant en tête doivent obtenir un score de pertinence plus élevé.
 
 # Calculez ensuite la moyenne des note de pertinence.
 
