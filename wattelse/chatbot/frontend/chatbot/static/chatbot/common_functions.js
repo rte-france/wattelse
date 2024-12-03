@@ -59,7 +59,7 @@ function uuid4() {
 }
 
 function is_gpt_page() {
-    return window.location.pathname.includes("/llm");
+    return window.location.pathname.includes("/gpt");
 }
 
 function setGPTColors() {
