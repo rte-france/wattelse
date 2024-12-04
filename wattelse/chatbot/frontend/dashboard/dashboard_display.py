@@ -457,7 +457,7 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
             y=extracts_pivot["wrong"],
             name="réponse fausse",
             marker_color="red",
-            hoverinfo='skip',
+            hoverinfo="skip",
         ),
         secondary_y=False,
     )
@@ -468,8 +468,7 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
             y=extracts_pivot["missing_info"],
             name="réponse incomplète",
             marker_color="orange",
-            hoverinfo='skip',
-
+            hoverinfo="skip",
         ),
         secondary_y=False,
     )
@@ -480,7 +479,7 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
             y=extracts_pivot["ok"],
             name="réponse correcte",
             marker_color="blue",
-            hoverinfo='skip',
+            hoverinfo="skip",
         ),
         secondary_y=False,
     )
@@ -491,7 +490,7 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
             y=extracts_pivot["great"],
             name="réponse excellente",
             marker_color="green",
-            hoverinfo='skip',
+            hoverinfo="skip",
         ),
         secondary_y=False,
     )
@@ -502,7 +501,7 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
             y=extracts_pivot["non_evalue"],
             name="pas de réponse",
             marker_color="grey",
-            hoverinfo='skip',
+            hoverinfo="skip",
         ),
         secondary_y=False,
     )
@@ -515,7 +514,7 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
             mode="lines+markers",
             name="nombre de réponses longues",
             line=dict(color="coral"),
-            hoverinfo='skip',
+            hoverinfo="skip",
             hovertext=extracts_pivot["content"],
         ),
         secondary_y=False,
@@ -528,7 +527,7 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
             mode="markers",
             name="%age de réponses correctes",
             line=dict(color="purple"),
-            hoverinfo='skip',
+            hoverinfo="skip",
         ),
         secondary_y=True,
     )
@@ -539,7 +538,14 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
             y=extracts_pivot["reponses incorrectes"],
             name="Classée par nb réponses fausses",
             mode="none",
-            hovertext=extracts_pivot["content"].apply(lambda x: "<br>".join([x[size_line*k:size_line*(k+1)] for k in range(max(0, len(x)-1)//200)])),
+            hovertext=extracts_pivot["content"].apply(
+                lambda x: "<br>".join(
+                    [
+                        x[size_line * k : size_line * (k + 1)]
+                        for k in range(max(0, len(x) - 1) // 200)
+                    ]
+                )
+            ),
         ),
         secondary_y=False,
     )
@@ -551,9 +557,9 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
         yaxis_title="Nombre",
         yaxis2_title="Pourcentage",
         barmode="stack",
-        hovermode = "x",
+        hovermode="x",
     )
 
     st.plotly_chart(fig)
-    
+
     return

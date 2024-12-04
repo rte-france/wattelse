@@ -278,7 +278,7 @@ def build_users_satisfaction_over_nb_eval(users_df: pd.DataFrame) -> pd.DataFram
     return users_satisfaction_over_nb_eval
 
 
-def build_extracts_df(filtered_df:pd.DataFrame) -> pd.DataFrame:
+def build_extracts_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
 
     relevant_extracts = dict()
     columns_to_add = filtered_df.columns.tolist()
@@ -287,14 +287,18 @@ def build_extracts_df(filtered_df:pd.DataFrame) -> pd.DataFrame:
     for question_id, row in filtered_df.iterrows():
         json_data = json.loads(row["relevant_extracts"])
         for relevant_extract in json_data:
-            relevant_extracts[f"{question_id}_{relevant_extract}"] = json_data[relevant_extract].copy()
-            del  relevant_extracts[f"{question_id}_{relevant_extract}"]['metadata']
-            for metadata in json_data[relevant_extract]['metadata']:
-                relevant_extracts[f"{question_id}_{relevant_extract}"][metadata] = json_data[relevant_extract]["metadata"][metadata]
+            relevant_extracts[f"{question_id}_{relevant_extract}"] = json_data[
+                relevant_extract
+            ].copy()
+            del relevant_extracts[f"{question_id}_{relevant_extract}"]["metadata"]
+            for metadata in json_data[relevant_extract]["metadata"]:
+                relevant_extracts[f"{question_id}_{relevant_extract}"][metadata] = (
+                    json_data[relevant_extract]["metadata"][metadata]
+                )
 
-            for col in columns_to_add :
+            for col in columns_to_add:
                 relevant_extracts[f"{question_id}_{relevant_extract}"][col] = row[col]
-    relevant_extracts_df = pd.DataFrame.from_dict(relevant_extracts, orient='index')
+    relevant_extracts_df = pd.DataFrame.from_dict(relevant_extracts, orient="index")
 
     return relevant_extracts_df
 
@@ -315,7 +319,7 @@ def build_extracts_pivot(extracts_pivot: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: the pivot table described above.
     """
-    
+
     extracts_feedback = pd.pivot_table(
         data=extracts_pivot[["content", "short_feedback", "answer_timestamp"]],
         index="content",
@@ -342,9 +346,15 @@ def build_extracts_pivot(extracts_pivot: pd.DataFrame) -> pd.DataFrame:
     for feedback in ["great", "ok", "missing_info", "wrong"]:
         if feedback not in extracts_pivot.columns:
             extracts_pivot[feedback] = 0
-    extracts_pivot["reponses correctes"] = extracts_pivot["great"] + extracts_pivot["ok"]
-    extracts_pivot["reponses incorrectes"] = extracts_pivot["missing_info"] + extracts_pivot["wrong"]
-    extracts_pivot["nb_evaluations"] = extracts_pivot["reponses correctes"] + extracts_pivot["reponses incorrectes"]
+    extracts_pivot["reponses correctes"] = (
+        extracts_pivot["great"] + extracts_pivot["ok"]
+    )
+    extracts_pivot["reponses incorrectes"] = (
+        extracts_pivot["missing_info"] + extracts_pivot["wrong"]
+    )
+    extracts_pivot["nb_evaluations"] = (
+        extracts_pivot["reponses correctes"] + extracts_pivot["reponses incorrectes"]
+    )
 
     extracts_pivot.sort_values(by="reponses incorrectes", ascending=False, inplace=True)
     extracts_pivot.rename(
@@ -356,8 +366,10 @@ def build_extracts_pivot(extracts_pivot: pd.DataFrame) -> pd.DataFrame:
         },
         inplace=True,
     )
-    
-    extracts_pivot["tx_satisfaction"] = extracts_pivot["reponses correctes"] / extracts_pivot["nb_evaluations"]
+
+    extracts_pivot["tx_satisfaction"] = (
+        extracts_pivot["reponses correctes"] / extracts_pivot["nb_evaluations"]
+    )
     extracts_pivot.reset_index(inplace=True)
 
     return extracts_pivot
