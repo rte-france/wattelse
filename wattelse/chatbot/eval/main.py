@@ -60,74 +60,49 @@ def evaluate_metrics(llm_client, question, answer, context_extracted) -> dict:
     """
 
     # Evaluate faithfulness
-    faithfulness_eval = call_llm(
-        llm_client,
-        FAITHFULNESS_EVAL_PROMPT.format(
-            retrieved_contexts=context_extracted, answer=answer
-        ),
-    )
-
+    faithfulness_eval = call_llm(llm_client, FAITHFULNESS_EVAL_PROMPT.format(
+        retrieved_contexts=context_extracted,
+        answer=answer
+    ))
+    
     # Evaluate correctness
-    correctness_eval = call_llm(
-        llm_client, CORRECTNESS_EVAL_PROMPT.format(question=question, answer=answer)
-    )
-
+    correctness_eval = call_llm(llm_client, CORRECTNESS_EVAL_PROMPT.format(
+        question=question,
+        answer=answer
+    ))
+    
     # Evaluate retrievability
-    retrievability_eval = call_llm(
-        llm_client,
-        RETRIEVABILITY_EVAL_PROMPT.format(
-            question=question, retrieved_contexts=context_extracted
-        ),
-    )
+    retrievability_eval = call_llm(llm_client, RETRIEVABILITY_EVAL_PROMPT.format(
+        question=question,
+        retrieved_contexts=context_extracted
+    ))
 
     evaluations = {}
 
     # Parse evaluations
     logger.debug(f"faithfulness LLM response: {faithfulness_eval}")
-    evaluation_match = re.search(r"Évaluation :\s*(.*)", faithfulness_eval, re.DOTALL)
-    score_match = re.search(r"Jugement :\s*([1-5])", faithfulness_eval)
-    evaluations["faithfulness"] = (
-        evaluation_match.group(1).strip() if evaluation_match else "Not provided"
-    )
-    evaluations["faithfulness_score"] = (
-        int(score_match.group(1)) if score_match else np.nan
-    )
+    evaluation_match = re.search(r"Evaluation:\s*(.*)", faithfulness_eval, re.DOTALL)
+    score_match = re.search(r"Judgment:\s*([1-5])", faithfulness_eval)
+    evaluations["faithfulness"] = evaluation_match.group(1).strip() if evaluation_match else faithfulness_eval
+    evaluations["faithfulness_score"] = int(score_match.group(1)) if score_match else np.nan
 
     logger.debug(f"correctness LLM response: {correctness_eval}")
-    correctness_eval_match = re.search(
-        r"Évaluation :\s*(.*)", correctness_eval, re.DOTALL
-    )
-    correctness_score_match = re.search(r"Jugement :\s*([1-5])", correctness_eval)
-    evaluations["correctness"] = (
-        correctness_eval_match.group(1).strip()
-        if correctness_eval_match
-        else "Not provided"
-    )
-    evaluations["correctness_score"] = (
-        int(correctness_score_match.group(1)) if correctness_score_match else np.nan
-    )
+    correctness_eval_match = re.search(r"Evaluation:\s*(.*)", correctness_eval, re.DOTALL)
+    correctness_score_match = re.search(r"Judgment:\s*([1-5])", correctness_eval)
+    evaluations["correctness"] = correctness_eval_match.group(1).strip() if correctness_eval_match else correctness_eval
+    evaluations["correctness_score"] = int(correctness_score_match.group(1)) if correctness_score_match else np.nan
 
     logger.debug(f"retrievability LLM response: {retrievability_eval}")
-    retrievability_eval_match = re.search(
-        r"Évaluation :\s*(.*)", retrievability_eval, re.DOTALL
-    )
-    retrievability_score_match = re.search(r"Jugement :\s*([1-5])", retrievability_eval)
-    evaluations["retrievability"] = (
-        retrievability_eval_match.group(1).strip()
-        if retrievability_eval_match
-        else "Not provided"
-    )
-    evaluations["retrievability_score"] = (
-        int(retrievability_score_match.group(1))
-        if retrievability_score_match
-        else np.nan
-    )
+    retrievability_eval_match = re.search(r"Evaluation:\s*(.*)", retrievability_eval, re.DOTALL)
+    retrievability_score_match = re.search(r"Judgment:\s*([1-5])", retrievability_eval)
+    evaluations["retrievability"] = retrievability_eval_match.group(1).strip() if retrievability_eval_match else retrievability_eval
+    evaluations["retrievability_score"] = int(retrievability_score_match.group(1)) if retrievability_score_match else np.nan
 
     return evaluations
 
 
 def evaluate_rag_metrics(eval_df: pd.DataFrame) -> pd.DataFrame:
-    """
+    '''
     Evaluates the generated answers from the RAG (retrieval-augmented generation) pipeline using multiple metrics.
 
     Args:
@@ -135,7 +110,7 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         pandas.DataFrame: The DataFrame with added evaluation columns (faithfulness, correctness, retrievability).
-    """
+    '''
     logger.info(f"LLM Evaluation model: {OpenAI_Client().model_name}")
 
     # Wrap the Parallel execution with tqdm_joblib to show progress
@@ -149,9 +124,7 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame) -> pd.DataFrame:
     evaluation_df = pd.DataFrame(evaluations)
 
     # Join the evaluations to the original DataFrame
-    eval_df = eval_df.join(
-        evaluation_df.set_index("question"), on=QUERY_COLUMN, rsuffix="_eval"
-    )
+    eval_df = eval_df.join(evaluation_df.set_index("question"), on=QUERY_COLUMN, rsuffix="_eval")
 
     return eval_df
 
@@ -196,9 +169,8 @@ def evaluate_row(row) -> dict:
 def main(
     qr_df_path: Path,
     eval_corpus_path: Path,
-    report_output_path: Path = Path(__file__).parent
-    / "report_output.xlsx",  # Default RAG output path
-):
+    report_output_path: Path = Path(__file__).parent / "report_output.xlsx"  # Default RAG output path
+    ):
     """
     Main function to evaluate the generation part of the RAG pipeline.
     This function computes multiple metrics such as faithfulness, correctness, and retrievability for the RAG answers.
@@ -236,9 +208,7 @@ def main(
             raise ValueError(f"Document {doc} not found in eval corpus folder")
 
     # Load eval docs in RAG backend
-    for doc in tqdm(
-        eval_corpus_path.iterdir(), desc="Loading documents into RAG Backend"
-    ):
+    for doc in tqdm(eval_corpus_path.iterdir(), desc="Loading documents into RAG Backend"):
         if doc.name in all_doc_list:
             with open(doc, "rb") as f:
                 RAG_EVAL_BACKEND.add_file_to_collection(doc.name, f)
@@ -247,9 +217,7 @@ def main(
     # Get RAG predictions
     rag_answers = []
     rag_relevant_extracts = []
-    for _, row in tqdm(
-        eval_df.iterrows(), total=eval_df.shape[0], desc="Getting RAG Predictions"
-    ):
+    for _, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Getting RAG Predictions"):
         logger.info(f"Processing row: context={row[QUERY_COLUMN]}")
 
         response = RAG_EVAL_BACKEND.query_rag(
@@ -269,9 +237,7 @@ def main(
 
     eval_df["rag_answer"] = rag_answers
     eval_df[RAG_RELEVANT_EXTRACTS_COLUMN] = [
-        "\n\n".join(
-            [f"Extrait {i + 1}: {extract}" for i, extract in enumerate(sublist)]
-        )
+        "\n\n".join([f"Extrait {i + 1}: {extract}" for i, extract in enumerate(sublist)])
         for sublist in rag_relevant_extracts
     ]
 
@@ -280,48 +246,38 @@ def main(
 
     output_data = []
     for _, row in evaluated_df.iterrows():
-        output_data.append(
-            {
-                "context": row[CONTEXT_COLUMN],
-                "question": row[QUERY_COLUMN],
-                "answer": row["rag_answer"],
-                "complexity": row[COMPLEXITY_COLUMN],
-                "source_doc": row[DOC_LIST_COLUMN],
-                "relevant_extracts": row[RAG_RELEVANT_EXTRACTS_COLUMN],
-                "faithfulness_evaluation": row.get("faithfulness"),
-                "faithfulness_score": row.get("faithfulness_score"),
-                "correctness_evaluation": row.get("correctness"),
-                "correctness_score": row.get("correctness_score"),
-                "retrievability_evaluation": row.get("retrievability"),
-                "retrievability_score": row.get("retrievability_score"),
-            }
-        )
+        output_data.append({
+            "context": row[CONTEXT_COLUMN],
+            "question": row[QUERY_COLUMN],
+            "answer": row["rag_answer"],
+            "complexity": row[COMPLEXITY_COLUMN],
+            "source_doc": row[DOC_LIST_COLUMN],
+            "relevant_extracts": row[RAG_RELEVANT_EXTRACTS_COLUMN], 
+            "faithfulness_evaluation": row.get("faithfulness"),
+            "faithfulness_score": row.get("faithfulness_score"),
+            "correctness_evaluation": row.get("correctness"),
+            "correctness_score": row.get("correctness_score"),
+            "retrievability_evaluation": row.get("retrievability"),
+            "retrievability_score": row.get("retrievability_score"),
+        })
 
     # Save the final evaluated QA pairs to an Excel file
     df_output = pd.DataFrame(output_data)
 
     # Convert lists in 'source_doc' to a string before dropping duplicates
-    df_output["source_doc"] = df_output["source_doc"].apply(
-        lambda x: ",".join(x) if isinstance(x, list) else x
-    )
+    df_output['source_doc'] = df_output['source_doc'].apply(lambda x: ",".join(x) if isinstance(x, list) else x)
 
     # Drop duplicates based on 'question' and 'source_doc'
     df_output = df_output.drop_duplicates(subset=["question", "source_doc"])
 
     # Calculate averages
-    df_output["faithfulness_score"] = pd.to_numeric(
-        df_output["faithfulness_score"], errors="coerce"
-    )
-    df_output["correctness_score"] = pd.to_numeric(
-        df_output["correctness_score"], errors="coerce"
-    )
-    df_output["retrievability_score"] = pd.to_numeric(
-        df_output["retrievability_score"], errors="coerce"
-    )
-
-    average_faithfulness = df_output["faithfulness_score"].mean()
-    average_correctness = df_output["correctness_score"].mean()
-    average_retrievability = df_output["retrievability_score"].mean()
+    df_output['faithfulness_score'] = pd.to_numeric(df_output['faithfulness_score'], errors='coerce')
+    df_output['correctness_score'] = pd.to_numeric(df_output['correctness_score'], errors='coerce')
+    df_output['retrievability_score'] = pd.to_numeric(df_output['retrievability_score'], errors='coerce')
+    
+    average_faithfulness = df_output['faithfulness_score'].mean()
+    average_correctness = df_output['correctness_score'].mean()
+    average_retrievability = df_output['retrievability_score'].mean()
 
     # logger.info averages
     logger.info(f"Average faithfulness: {average_faithfulness:.2f}")
@@ -334,7 +290,6 @@ def main(
 
     # Clear RAG backend
     RAG_EVAL_BACKEND.clear_collection()
-
 
 if __name__ == "__main__":
     typer.run(main)

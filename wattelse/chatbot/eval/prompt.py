@@ -22,13 +22,12 @@ EVAL_LLM_PROMPT = (
     "Candidate response: {candidate}\n"
 )
 
-
-# Groundedness (Pertinence contextuelle) : La question doit pouvoir être répondue à partir du contexte donné
+# Groundedness (Pertinence contextuelle) : La question doit pouvoir être répondue à partir du contexte donné 
 # pour eviter toute types d'hallucinations.
 
 # QA generation prompt template
 QA_GENERATION_PROMPT = """
-Votre tâche est d'écrire une question factuelle et une réponse donnée un contexte.
+Votre tâche est d'écrire une question factuelle et sa réponse en fonction d'un contexte donné.
 Vous devez créer trois types de questions :
 
 1. **Simple** : une question factuelle concise qui peut être répondue directement avec une information simple du contexte.
@@ -136,82 +135,176 @@ Réponse:::
 
 
 FAITHFULNESS_EVAL_PROMPT = """
-Évaluez si la réponse est fondée sur le contexte fourni, sans introduire d’informations non supportées.
+Evaluate whether the response is based on the provided context, without introducing unsupported information.
 
-Réponse:::
-Évaluation : (Expliquez votre raisonnement en indiquant si la réponse est fidèle aux informations du contexte, en termes de pertinence et de suffisance. Identifiez explicitement les points de correspondance ou de divergence avec le contexte.)
+Response:::
+Evaluation: (Explain your reasoning by indicating whether the response is faithful to the information in the context, in terms of relevance and sufficiency. Explicitly identify points of alignment or divergence with the context.)
 
-Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les critères suivants:
-- 1 : Très insuffisant – Réponse largement infidèle au contexte, avec des informations non supportées.
-- 2 : Insuffisant – Éléments liés au contexte, mais présence d’informations non fondées.
-- 3 : Passable – Informations pertinentes, mais quelques inexactitudes.
-- 4 : Satisfaisant – Majoritairement fidèle, avec quelques détails manquants.
-- 5 : Très satisfaisant – Entièrement fidèle et complète selon le contexte.
+Judgment: (Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Response is largely unfaithful to the context, with unsupported information.
+- 2: Insufficient – Some elements relate to the context, but there is unsupported information.
+- 3: Passable – Relevant information, but with some inaccuracies.
+- 4: Satisfactory – Mostly faithful, with a few missing details.
+- 5: Very satisfactory – Fully faithful and complete according to the context.
 
-**Conseils pour l’évaluation :**
-- Vérifiez si la réponse s'appuie exclusivement sur le contexte fourni sans introduire d’informations extérieures.
-- Assurez-vous que la réponse reflète fidèlement les points principaux du contexte.
+Evaluation Guidelines:
+- Verify if the response relies exclusively on the provided context without introducing external information.
+- Ensure that the response faithfully reflects the main points of the context.
 
-Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
+You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 
-Voici la réponse à évaluer ainsi que le contexte fourni.
+Here is the response to evaluate along with the provided context.
 
-Réponse : {answer}
-Contexte : {retrieved_contexts}
-Réponse:::
+Response: {answer}
+Context: {retrieved_contexts}
+Response:::
 """
 
 RETRIEVABILITY_EVAL_PROMPT = """
-Évaluez si le contexte récupéré est pertinent et suffisant pour répondre à la question posée.
+Evaluate whether the retrieved context is relevant and sufficient to answer the given question.
 
-Réponse:::
-Évaluation : (Indiquez si le contexte permet de répondre à la question et contient les informations nécessaires. Précisez si la proportion d'extraits non pertinents par rapport au total des extraits impacte la qualité de la réponse, et mentionnez tout manque d'exhaustivité.)
+Response:::
+Evaluation: (Indicate whether the context allows the question to be answered and contains the necessary information. Specify if the proportion of irrelevant excerpts compared to the total impacts the quality of the response, and mention any lack of completeness.)
 
-Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les critères suivants :
-- 1 : Très insuffisant – Contexte principalement hors sujet, sans informations utiles.
-- 2 : Insuffisant – Contexte partiellement pertinent, manque d'informations clés, avec de nombreux extraits non pertinents.
-- 3 : Passable – Contexte globalement pertinent, mais dilué par plusieurs extraits non pertinents.
-- 4 : Satisfaisant – Contexte majoritairement pertinent, avec seulement quelques extraits non pertinents qui n’affectent pas fortement la compréhension.
-- 5 : Très satisfaisant – Contexte totalement pertinent et exhaustif, contenant toutes les informations nécessaires.
+Judgment: (Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Context is mostly off-topic and lacks useful information.
+- 2: Insufficient – Context is partially relevant, missing key information, with many irrelevant excerpts.
+- 3: Acceptable – Context is generally relevant but diluted by several irrelevant excerpts.
+- 4: Satisfactory – Context is mostly relevant, with only a few irrelevant excerpts that do not strongly affect comprehension.
+- 5: Very satisfactory – Context is entirely relevant and comprehensive, containing all necessary information.
 
-**Conseils pour l’évaluation :**
-- Vérifiez si le contexte répond directement à la question et si les extraits sont pertinents pour la réponse.
-- Évaluez si la présence d'extraits non pertinents nuit à la clarté et à la compréhension.
+Evaluation Guidelines:
+- Check whether the context directly answers the question and if the excerpts are relevant to the response.
+- Assess whether the presence of irrelevant excerpts affects clarity and comprehension.
 
-Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
+You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 
-Voici la question ainsi que le contexte récupéré pour évaluation.
+Here is the question and the retrieved context for evaluation.
 
-Question : {question}
-Contexte : {retrieved_contexts}
-Réponse:::
+Question: {question}
+Context: {retrieved_contexts}
+Response:::
 """
 
-
-## Needs rework, and the actual idea metric is challenging ##
 CORRECTNESS_EVAL_PROMPT = """
-Évaluez si la réponse est correcte, c’est-à-dire, si elle répond à la question posée en donnant les informations essentielles sans erreurs factuelles importantes.
+Evaluate whether the response is correct, meaning it answers the question posed by providing essential information without significant factual errors.
 
-Réponse:::
-Évaluation : (Expliquez votre raisonnement de votre Jugement en indiquant si la réponse est correcte, en vous basant sur la question posée. Identifiez explicitement les points de correspondance ou de divergence avec la question supportant votre Jugement.)
+Response:::
+Evaluation: (Explain your reasoning for your judgment by indicating whether the response is correct, based on the question posed. Explicitly identify points of alignment or divergence with the question to support your judgment.)
 
-Jugement : (Attribuez un jugement sous forme de nombre entre 1 et 5, selon les critères suivants:
-- 1 : Très insuffisant – Largement incorrecte, avec des erreurs majeures.
-- 2 : Insuffisant – Partiellement correcte, avec des erreurs significatives ou imprécisions.
-- 3 : Passable – Répond globalement à la question, mais comporte plusieurs inexactitudes.
-- 4 : Satisfaisant – Répond bien à la question, avec seulement quelques inexactitudes mineures.
-- 5 : Très satisfaisant – Entièrement correcte, précise et parfaitement alignée avec la question.
+Judgment: (Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Largely incorrect, with major errors.
+- 2: Insufficient – Partially correct, with significant errors or inaccuracies.
+- 3: Acceptable – Generally answers the question but contains several inaccuracies.
+- 4: Satisfactory – Answers the question well, with only a few minor inaccuracies.
+- 5: Very satisfactory – Completely correct, precise, and perfectly aligned with the question.
 
-**Conseils pour l’évaluation :**
-- Vérifiez si la réponse aborde tous les points importants de la question sans omissions.
-- Assurez-vous qu’il n’y a pas d’interprétations erronées ou d’informations hors sujet.
-- Évitez de pénaliser la réponse pour des informations supplémentaires qui, bien que non nécessaires, n’introduisent pas d'erreurs ni de confusion.
+Evaluation Guidelines:
+- Verify whether the response addresses all key aspects of the question without omissions.
+- Ensure there are no misinterpretations or irrelevant information.
+- Avoid penalizing the response for additional information that, while unnecessary, does not introduce errors or confusion.
 
-Vous DEVEZ fournir des valeurs pour 'Évaluation :' et 'Jugement :' dans votre réponse.
+You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 
-Voici la question ainsi que la réponse pour évaluation.
+Here is the question and the response for evaluation.
 
-Question : {question}
-Réponse : {answer}
-Réponse:::
+Question: {question}  
+Response: {answer}  
+Response:::
+"""
+                                                                ### Prometheus2 Eval Prompts ###
+
+
+ABSOLUTE_PROMPT = """
+###Task Description:
+An instruction (might include an Input inside it), a response to evaluate, and a score rubric representing a evaluation criteria are given.
+1. Write a detailed feedback that assess the quality of the response strictly based on the given score rubric, not evaluating in general.
+2. After writing a feedback, write a score that is an integer between 1 and 5. You should refer to the score rubric.
+3. The output format should look as follows: "Feedback: (write a feedback for criteria) [RESULT] (an integer number between 1 and 5)"
+4. Please do not generate any other opening, closing, and explanations.
+
+###The instruction to evaluate:
+{orig_instruction}
+
+###Response to evaluate:
+{orig_response}
+
+###Score Rubrics:
+{score_rubric}
+
+###Feedback: """
+
+CORRECTNESS_EVAL_PROMPT_PROMETHEUS = """
+### Task Description:
+A question, a response to evaluate, and a score rubric representing evaluation criteria are given.
+1. Write detailed feedback assessing the correctness of the response strictly based on the given score rubric, not in general.
+2. After writing the feedback, assign a score to the response from 1 to 5 based on the rubric.
+3. The output format should look as follows: "Feedback: (write feedback for correctness) [SCORE] (1-5)".
+4. Please do not generate any other opening, closing, or explanations.
+
+### Question:
+{question}
+
+### Response:
+{answer}
+
+### Score Rubric:
+1: Largely incorrect, major errors.
+2: Partially correct, significant inaccuracies.
+3: Generally correct, several inaccuracies.
+4: Correct, minor inaccuracies.
+5: Fully correct and aligned with the question.
+
+### Feedback:
+"""
+
+FAITHFULNESS_EVAL_PROMPT_PROMETHEUS = """
+### Task Description:
+A context, a question, a response to evaluate, and a score rubric representing evaluation criteria are given.
+1. Write detailed feedback assessing how faithfully the response aligns with the context and the given question, strictly based on the score rubric.
+2. After writing the feedback, assign a score to the response from 1 to 5 based on the rubric.
+3. The output format should look as follows: "Feedback: (write feedback for faithfulness) [SCORE] (1-5)".
+4. Please do not generate any other opening, closing, or explanations.
+
+### Context:
+{retrieved_contexts}
+
+### Question:
+{question}
+
+### Response:
+{answer}
+
+### Score Rubric:
+1: Largely unfaithful, unsupported information.
+2: Partially faithful, with inaccuracies.
+3: Relevant, but with minor inaccuracies or extraneous details.
+4: Mostly faithful, a few minor issues.
+5: Fully faithful, no inaccuracies or unsupported details.
+
+### Feedback:
+"""
+
+RETRIEVABILITY_EVAL_PROMPT_PROMETHEUS = """
+### Task Description:
+A question, a retrieved context, and a score rubric representing evaluation criteria are given.
+1. Write detailed feedback assessing whether the context is relevant and sufficient to answer the question, strictly based on the given score rubric.
+2. After writing the feedback, assign a score to the retrieved context from 1 to 5 based on the rubric.
+3. The output format should look as follows: "Feedback: (write feedback for retrievability) [SCORE] (1-5)".
+4. Please do not generate any other opening, closing, or explanations.
+
+### Question:
+{question}
+
+### Context:
+{retrieved_contexts}
+
+### Score Rubric:
+1: Mostly off-topic, lacks useful info.
+2: Partially relevant, many irrelevant or missing key details.
+3: Mostly relevant, some irrelevant parts.
+4: Relevant, minor irrelevant parts.
+5: Fully relevant and comprehensive.
+
+### Feedback:
 """

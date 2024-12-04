@@ -5,7 +5,7 @@ This folder contains the main scripts used for RAG evaluation.
 
 The evaluation pipeline is divided into **two section** :
 
-### 1. Generating Synthethic Test Data 
+## 1. Generating Synthethic Test Data 
 
 From the corpus of your choice.
 
@@ -118,12 +118,7 @@ graph TD
   </table>
 </div>
 
-
-
-
-
-
-## Output File with Filtered Synthetic Data
+### Output File with Filtered Synthetic Data
 
 | Question                                                                                                        | Complexity     | Source Documents      | ...     | Context | Answer |
 | --------------------------------------------------------------------------------------------------------------- | -------------- | --------------------- | ------- | ------- | ------ |
@@ -136,7 +131,70 @@ graph TD
 - **Context** and **Answer** columns are included in this file but are not used for system testing in this evaluation.
 - Only the **Question** and **Source Documents** columns are utilized as inputs in our RAG system for further assessment.
 
-## 2. Evaluating WattElse Doc System 
+## 2. Evaluation Pipeline
+
+The evaluation pipeline has two types of evluation metrics, coarse-grained and fine-grained metrics.
+
+```mermaid
+graph TD
+    subgraph A[Evaluation Pipeline]
+        direction TB
+        A1{{Evaluating QA_Corpus}}
+
+        subgraph Qualitative_graph[Qualitative / RCA]
+            direction LR
+            B1_Q[[Coarse-Grained Metrics]]
+            B3[/Faithfulness Reasoning/]
+            B4[/Correctness Reasoning/]
+            B5[/Retrievability Reasoning/]
+            B9[/User Feedback\]
+            B10_Q[[Fine-Grained Metrics]]
+        end
+        
+        subgraph Quantitative_graph[Quantitative / Compass]
+            direction LR
+            B1_QG[[Coarse-Grained Metrics]]
+            B6[\nDCG\]
+            B7[\Nb of Judgement 1-3 - FCR\]
+            B8[\MMR\]
+            B2_QG[[Fine-Grained Metrics]]
+        end
+
+    end
+
+    A1 --> B1_Q
+    A1 --> B2_QG
+
+    B1_Q --> B3
+    B1_Q --> B4
+    B1_Q --> B5
+    B1_QG --> B7
+
+    B2_QG --> B6
+    B2_QG --> B8
+    B10_Q --> B9
+
+    style Qualitative_graph fill:#FFDDC1,stroke:#FF8C00,stroke-width:2px
+    style Quantitative_graph fill:#D1E8FF,stroke:#1E90FF,stroke-width:2px
+
+    style B1_Q fill:#FFEB8F,stroke:#FF4500,stroke-width:2px
+    style B1_QG fill:#FFEB8F,stroke:#FF4500,stroke-width:2px
+    style B10_Q fill:#B0E57C,stroke:#228B22,stroke-width:2px
+    style B2_QG fill:#B0E57C,stroke:#228B22,stroke-width:2px
+
+    style B3 fill:#FFDAB9,stroke:#FF6347,stroke-width:1px
+    style B4 fill:#FFDAB9,stroke:#FF6347,stroke-width:1px
+    style B5 fill:#FFDAB9,stroke:#FF6347,stroke-width:1px
+    style B9 fill:#FFDAB9,stroke:#FF6347,stroke-width:1px
+
+    style B6 fill:#B0E0E6,stroke:#5F9EA0,stroke-width:1px
+    style B7 fill:#B0E0E6,stroke:#5F9EA0,stroke-width:1px
+    style B8 fill:#B0E0E6,stroke:#5F9EA0,stroke-width:1px
+
+
+```
+
+### 2.1 Qualitatif Evaluation
 
 The evaluation pipeline evaluates the **generation** and the **retrieval** part of the RAG using custom made prompts.
 
@@ -169,11 +227,9 @@ Three metrics were defined :
 **TODO Discounted Cumulative Gain (DCG)** is a metric used to evaluate the effectiveness of search engine rankings. It measures the relevance of search results while considering their positions, with more relevant documents receiving higher scores when placed higher in the list.
 
 
-| Question | Answer | Complexity | Source Document | Relevant Extracts | Faithfulness Evaluation | Faithfulness Score | Correctness Evaluation | Correctness Score | Retrievability Evaluation | Retrievability Score |
+| Question | Answer | Complexity | Source Document | Relevant Extracts | Faithfulness Reasoning | Faithfulness Judgment | Correctness Reasoning | Correctness Judgment | Retrievability Reasoning | Retrievability Judgment |
 | -------- | ------ | ---------- | --------------- | ----------------- | ----------------------- | ------------------ | ---------------------- | ----------------- | -------------------------- | --------------------- |
 | Quel est le montant de la prime d'accompagnement au télétravail ? | La prime d'accompagnement au télétravail est d'un montant de 150 euros, qui sera versée sur la paye d'octobre 2022 à tous les salariés en activité le 19 octobre 2022. | Simple | `['NMT-Accord-télétravail.pdf']` | "Extrait 1: Page 11 sur 14... Extrait 10: Article 4 - Le télétravail régulier des salariés ayant opté pour le régime du forfait jours..." | "La réponse est entièrement fidèle au contexte fourni. Elle extrait un élément du texte, à savoir la prime d'accompagnement au télétravail..." | 5/5 | "La réponse est globalement correcte, elle inclut quelques informations supplémentaires ..." | 4/5 | "Le contexte répond directement à la question..." | 5/5 |
-
-
 
 ## Usage
 
