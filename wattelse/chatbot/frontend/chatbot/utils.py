@@ -85,7 +85,7 @@ def get_user_groups(user: User) -> list[str] | None:
 
     # If groups are found, return the list of group_id, else None
     if user_groups.exists():
-        group_ids_list =[group.name for group in user_groups]
+        group_ids_list = [group.name for group in user_groups]
         group_ids_list.sort(key=str.lower)
         return group_ids_list
     else:
