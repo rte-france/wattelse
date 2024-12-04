@@ -11,7 +11,7 @@ from pathlib import Path
 from pandas.core.dtypes.cast import maybe_infer_to_datetimelike
 
 from wattelse.chatbot.frontend.dashboard.dashboard_utils import (
-    DRH_GROUP_NAME, 
+    DRH_GROUP_NAME,
     METIERS_GROUP_NAME,
     DATA_TABLES,
     get_db_data,
@@ -29,7 +29,7 @@ from wattelse.chatbot.frontend.dashboard.dashboard_display import (
     display_indicators,
     display_user_graph,
     display_user_hist_over_eval,
-    display_users_satisfaction_over_nb_eval
+    display_users_satisfaction_over_nb_eval,
 )
 from wattelse.chatbot.frontend.django_chatbot.settings import DB_DIR
 
@@ -98,8 +98,6 @@ def side_bar():
     return parameters_sidebar_clicked
 
 
-
-
 def main():
     if "selected_table" not in st.session_state:
         st.session_state["selected_table"] = list(DATA_TABLES)[0]
@@ -136,13 +134,15 @@ def main():
 
         # High level indicators per user / group depending on the selection
         with st.expander("High level indicators", expanded=True):
-            number_of_files, number_of_chunks = _compute_file_indicators(group=st.session_state["group"])
+            number_of_files, number_of_chunks = _compute_file_indicators(
+                group=st.session_state["group"]
+            )
 
             display_indicators(
-                filtered_df=filtered_df, 
-                number_of_files=number_of_files, 
-                number_of_chunks=number_of_chunks
-                )
+                filtered_df=filtered_df,
+                number_of_files=number_of_files,
+                number_of_chunks=number_of_chunks,
+            )
 
         with st.expander("Feedback rates", expanded=True):
             display_feedback_rates(filtered_df=filtered_df)
@@ -169,7 +169,6 @@ def main():
 
         with st.expander("Users raw data", expanded=False):
             st.write(users_df)
-
 
 
 main()

@@ -30,6 +30,7 @@ GROUP_NAMES_LIST_FILE_PATH = Path(__file__).parent / "expe_metier_group_name_lis
 with open(GROUP_NAMES_LIST_FILE_PATH) as f:
     GROUP_NAMES_LIST = yaml.safe_load(f)
 
+
 def get_db_data(path_to_db: Path) -> pd.DataFrame:
     """extract the django db of questions, answers and relevant_extracts. All is put in a dataframe
 
@@ -116,7 +117,7 @@ def check_password():
     return False
 
 
-def _compute_file_indicators(group:str = None):
+def _compute_file_indicators(group: str = None):
     """Compute the number of files and number of chunks in the RAG backend that belong to the given group.
     Args:
         group (str): Name of the given group (st.session_state["group"]). Default value is None, returns (Nan, Nan).
@@ -136,13 +137,13 @@ def _compute_file_indicators(group:str = None):
 
 
 def build_msg_df_over_time(filtered_df: pd.DataFrame) -> pd.DataFrame:
-    """ Given the filtered_df (from the sidebar), compute the nb of question each day, and their evaluations.
+    """Given the filtered_df (from the sidebar), compute the nb of question each day, and their evaluations.
 
     Args:
         filtered_df (pd.DataFrame): _description_
 
     Returns:
-        pd.DataFrame: the dataframe whose index is days, and columns are 
+        pd.DataFrame: the dataframe whose index is days, and columns are
         [nb_questions, "great", "ok", "missing_info", "wrong", "non_evalue", "nb_feedback_long", "tx_feedback"]
     """
     message_daily = filtered_df.resample("D", on="answer_timestamp").agg(
@@ -237,7 +238,7 @@ def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_users_satisfaction_over_nb_eval(users_df: pd.DataFrame) -> pd.DataFrame:
-    """Given the users_df, the dataframe of each users with their evaluations, this function gives 
+    """Given the users_df, the dataframe of each users with their evaluations, this function gives
     an average evaluation for all users who has made X evaluations. This permits to visualize if evaluation
     changes with usage of the chatbot.
     The notation system is :
@@ -251,7 +252,7 @@ def build_users_satisfaction_over_nb_eval(users_df: pd.DataFrame) -> pd.DataFram
 
     Returns:
         pd.DataFrame: _description_
-    """    
+    """
     users_df["evalue"] = users_df["nb_questions"] - users_df["non_evalue"]
     users_df.sort_values(by="evalue", ascending=True, inplace=True)
     users_df["eval_mean"] = (

@@ -26,8 +26,9 @@ FEEDBACK_COLORS = {
 }
 
 
-
-def display_indicators(filtered_df: pd.DataFrame, number_of_files:int, number_of_chunks:int):
+def display_indicators(
+    filtered_df: pd.DataFrame, number_of_files: int, number_of_chunks: int
+):
     nb_questions = len(filtered_df.message)
     nb_conversations = len(filtered_df.conversation_id.unique())
     avg_nb_questions = len(st.session_state["full_data"].message) // len(
@@ -39,7 +40,6 @@ def display_indicators(filtered_df: pd.DataFrame, number_of_files:int, number_of
     nb_short_feedback = (filtered_df.short_feedback != "").sum()
     nb_long_feedback = (filtered_df.long_feedback != "").sum()
     median_answer_delay = filtered_df.answer_delay.median() / 1e6
-
 
     col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
     col1.metric(
@@ -91,8 +91,6 @@ def display_indicators(filtered_df: pd.DataFrame, number_of_files:int, number_of
     col7.metric("Number of files", f"{number_of_files}")
 
     col8.metric("Number of chunks", f"{number_of_chunks}")
-
-
 
 
 def display_feedback_charts_over_time(msg_df: pd.DataFrame):
