@@ -8,6 +8,7 @@ import hmac
 from pathlib import Path
 import sqlite3
 import yaml
+import json
 
 import streamlit as st
 import numpy as np
@@ -275,3 +276,88 @@ def build_users_satisfaction_over_nb_eval(users_df: pd.DataFrame) -> pd.DataFram
     )
 
     return users_satisfaction_over_nb_eval
+
+
+def build_extracts_df(filtered_df:pd.DataFrame) -> pd.DataFrame:
+
+    relevant_extracts = dict()
+    columns_to_add = filtered_df.columns.tolist()
+    columns_to_add.remove("relevant_extracts")
+
+    for question_id, row in filtered_df.iterrows():
+        json_data = json.loads(row["relevant_extracts"])
+        for relevant_extract in json_data:
+            relevant_extracts[f"{question_id}_{relevant_extract}"] = json_data[relevant_extract].copy()
+            del  relevant_extracts[f"{question_id}_{relevant_extract}"]['metadata']
+            for metadata in json_data[relevant_extract]['metadata']:
+                relevant_extracts[f"{question_id}_{relevant_extract}"][metadata] = json_data[relevant_extract]["metadata"][metadata]
+
+            for col in columns_to_add :
+                relevant_extracts[f"{question_id}_{relevant_extract}"][col] = row[col]
+    relevant_extracts_df = pd.DataFrame.from_dict(relevant_extracts, orient='index')
+
+    return relevant_extracts_df
+
+
+def build_extracts_pivot(extracts_pivot: pd.DataFrame) -> pd.DataFrame:
+    """Given the log of each question, and evaluation, build a pivot table by user :
+        - nb of question
+        - nb of evaluation "great"
+        - nb of evaluation "ok"
+        - nb of evaluation "missing_info"
+        - nb of evaluation "wrong"
+        - nb of long feedback
+        - proportion of answers evaluated
+
+    Args:
+        filtered_df (pd.DataFrame): raw log data
+
+    Returns:
+        pd.DataFrame: the pivot table described above.
+    """
+    
+    extracts_feedback = pd.pivot_table(
+        data=extracts_pivot[["content", "short_feedback", "answer_timestamp"]],
+        index="content",
+        values="answer_timestamp",
+        columns="short_feedback",
+        aggfunc="count",
+    )
+    data = extracts_pivot[
+        ["content", "group_id", "conversation_id", "response", "long_feedback"]
+    ]
+    data["long_feedback_bool"] = (data["long_feedback"] != "").astype(int)
+
+    extracts_pivot = data.groupby(
+        by="content",
+    ).agg(
+        {
+            "conversation_id": lambda x: len(x.unique()),
+            "response": "count",
+            "long_feedback_bool": "sum",
+        }
+    )
+    extracts_pivot = extracts_pivot.join(extracts_feedback)
+    extracts_pivot.fillna(value=0, inplace=True)
+    for feedback in ["great", "ok", "missing_info", "wrong"]:
+        if feedback not in extracts_pivot.columns:
+            extracts_pivot[feedback] = 0
+    extracts_pivot["reponses correctes"] = extracts_pivot["great"] + extracts_pivot["ok"]
+    extracts_pivot["reponses incorrectes"] = extracts_pivot["missing_info"] + extracts_pivot["wrong"]
+    extracts_pivot["nb_evaluations"] = extracts_pivot["reponses correctes"] + extracts_pivot["reponses incorrectes"]
+
+    extracts_pivot.sort_values(by="reponses incorrectes", ascending=False, inplace=True)
+    extracts_pivot.rename(
+        columns={
+            "conversation_id": "nb_conversation",
+            "response": "nb_questions",
+            "long_feedback_bool": "nb_feedback_long",
+            "": "non_evalue",
+        },
+        inplace=True,
+    )
+    
+    extracts_pivot["tx_satisfaction"] = extracts_pivot["reponses correctes"] / extracts_pivot["nb_evaluations"]
+    extracts_pivot.reset_index(inplace=True)
+
+    return extracts_pivot

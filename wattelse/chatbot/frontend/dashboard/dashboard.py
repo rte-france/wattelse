@@ -21,6 +21,8 @@ from wattelse.chatbot.frontend.dashboard.dashboard_utils import (
     build_msg_df_over_time,
     build_users_df,
     build_users_satisfaction_over_nb_eval,
+    build_extracts_df,
+    build_extracts_pivot,
 )
 from wattelse.chatbot.frontend.dashboard.dashboard_display import (
     display_feedback_charts,
@@ -30,6 +32,7 @@ from wattelse.chatbot.frontend.dashboard.dashboard_display import (
     display_user_graph,
     display_user_hist_over_eval,
     display_users_satisfaction_over_nb_eval,
+    display_extracts_graph
 )
 from wattelse.chatbot.frontend.django_chatbot.settings import DB_DIR
 
@@ -169,6 +172,36 @@ def main():
 
         with st.expander("Users raw data", expanded=False):
             st.write(users_df)
+
+        with st.expander("Relevant extracts analysis", expanded=True):
+            relevant_extracts_df = build_extracts_df(filtered_df=filtered_df)
+
+            extracts_pivot = build_extracts_pivot(extracts_pivot=relevant_extracts_df)
+
+            display_extracts_graph(extracts_pivot=extracts_pivot)
+
+        with st.expander(f"Filtrage des extraits", expanded=False):
+            filter_str = st.text_input(
+                label="Saisir ici un extrait du document à retrouver", 
+                value="", 
+                max_chars=None, 
+                type="default", 
+                help="Saisir ici un extrait du document à retrouver.", 
+            )
+            print(f"filter_str : {filter_str}")
+
+            filtered_extracts_df = relevant_extracts_df.loc[
+                relevant_extracts_df["content"].str.contains(filter_str)
+            ]
+            print(f"filtered_extracts_df.shape : {filtered_extracts_df.shape}")
+
+            st.write(f"{filtered_extracts_df.shape[0]} réponses ont utilisées cet extrait")
+            if filtered_extracts_df.shape[0] > 0:
+                st.dataframe(
+                    data=filtered_extracts_df
+                )
+            else:
+                print("bug")
 
 
 main()

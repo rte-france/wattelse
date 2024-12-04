@@ -365,8 +365,8 @@ def display_users_satisfaction_over_nb_eval(
             x=[users_satisfaction.index[0], users_satisfaction.index[-1]],
             mode="none",
             name="ok",
-            # "green"
-            fillcolor="rgba(0, 255, 0, 0.2)",
+            # "blue"
+            fillcolor="rgba(0, 0, 255, 0.2)",
             stackgroup="one",  # define stack group
         )
     )
@@ -379,8 +379,8 @@ def display_users_satisfaction_over_nb_eval(
             x=[users_satisfaction.index[0], users_satisfaction.index[-1]],
             mode="none",
             name="excellent",
-            # "blue"
-            fillcolor="rgba(0, 0, 255, 0.2)",
+            # "green"
+            fillcolor="rgba(0, 255, 0, 0.2)",
             stackgroup="one",  # define stack group
         )
     )
@@ -438,4 +438,122 @@ def display_user_hist_over_eval(users_df):
         xaxis_title="nombre de questions évaluées",
     )
     st.plotly_chart(fig)
+    return
+
+
+def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
+    """Generate a plotly graph showing the number of questions and evaluation of each users
+
+    Args:
+        users_df (pd.DataFrame): users_df, as build by the above function build_users_df
+    """
+    # Création de l'histogramme empilé
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    # Ajout de l'histogramme empilé
+    fig.add_trace(
+        go.Bar(
+            x=extracts_pivot.index,
+            y=extracts_pivot["wrong"],
+            name="réponse fausse",
+            marker_color="red",
+            hoverinfo='skip',
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=extracts_pivot.index,
+            y=extracts_pivot["missing_info"],
+            name="réponse incomplète",
+            marker_color="orange",
+            hoverinfo='skip',
+
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=extracts_pivot.index,
+            y=extracts_pivot["ok"],
+            name="réponse correcte",
+            marker_color="blue",
+            hoverinfo='skip',
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=extracts_pivot.index,
+            y=extracts_pivot["great"],
+            name="réponse excellente",
+            marker_color="green",
+            hoverinfo='skip',
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=extracts_pivot.index,
+            y=extracts_pivot["non_evalue"],
+            name="pas de réponse",
+            marker_color="grey",
+            hoverinfo='skip',
+        ),
+        secondary_y=False,
+    )
+
+    # Ajout des courbes
+    fig.add_trace(
+        go.Scatter(
+            x=extracts_pivot.index,
+            y=extracts_pivot["nb_feedback_long"],
+            mode="lines+markers",
+            name="nombre de réponses longues",
+            line=dict(color="coral"),
+            hoverinfo='skip',
+            hovertext=extracts_pivot["content"],
+        ),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=extracts_pivot.index,
+            y=extracts_pivot["tx_satisfaction"],
+            mode="markers",
+            name="%age de réponses correctes",
+            line=dict(color="purple"),
+            hoverinfo='skip',
+        ),
+        secondary_y=True,
+    )
+    size_line = 150
+    fig.add_trace(
+        go.Scatter(
+            x=extracts_pivot.index,
+            y=extracts_pivot["reponses incorrectes"],
+            name="Classée par nb réponses fausses",
+            mode="none",
+            hovertext=extracts_pivot["content"].apply(lambda x: "<br>".join([x[size_line*k:size_line*(k+1)] for k in range(max(0, len(x)-1)//200)])),
+        ),
+        secondary_y=False,
+    )
+
+    # Mise à jour de la mise en page
+    fig.update_layout(
+        title="Retours par extraits",
+        xaxis_title="Chunks",
+        yaxis_title="Nombre",
+        yaxis2_title="Pourcentage",
+        barmode="stack",
+        hovermode = "x",
+    )
+
+    st.plotly_chart(fig)
+    
     return
