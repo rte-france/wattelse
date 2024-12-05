@@ -86,6 +86,9 @@
                         target="_blank" class="tabs"><i class="fa-solid fa-user-group"></i> Teams</a>
                     <a href="mailto:jerome.picault@rte-france.com; guillaume.grosjean@rte-france.com; nicolas.bonnerot@rte-france.com; jerome.dejaegher@rte-france.com; nader.narcisse_externe@rte-france.com"
                         class="tabs"><i class="fa-solid fa-envelope"></i> Contact</a>
+                    {% if user.is_superuser %}
+                        <a href="/dashboard" target="_blank" class="tabs"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+                    {% endif %}
                 </div>
             </div>
 
