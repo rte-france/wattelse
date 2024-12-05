@@ -191,20 +191,11 @@ def main():
 
                 display_extracts_graph(extracts_pivot=extracts_pivot)
 
-        with st.expander(f"Filtrage des extraits", expanded=False):
-            filter_str = st.text_input(
-                label="Saisir ici un extrait du document à retrouver",
-                value="",
-                max_chars=None,
-                type="default",
-                help="Saisir ici un extrait du document à retrouver.",
-            )
-            print(f"filter_str : {filter_str}")
+            with st.expander(f"Filtrage des extraits", expanded=False):
 
-            filtered_extracts_df = relevant_extracts_df.loc[
-                relevant_extracts_df["content"].str.contains(filter_str)
-            ]
-            print(f"filtered_extracts_df.shape : {filtered_extracts_df.shape}")
+                filtered_extracts_df = relevant_extracts_df.loc[
+                    relevant_extracts_df["content"].str.contains(st.session_state["filter_str"])
+                ]
 
                 st.write(f"{filtered_extracts_df.shape[0]} réponses ont utilisées cet extrait")
                 if filtered_extracts_df.shape[0] > 0:
