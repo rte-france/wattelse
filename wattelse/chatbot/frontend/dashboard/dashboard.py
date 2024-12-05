@@ -96,14 +96,14 @@ def side_bar():
             step=timedelta(days=1),
             key="timestamp_range",
         )
-        
-        if st.session_state["selected_table"]=="RAG":
+
+        if st.session_state["selected_table"] == "RAG":
             st.text_input(
-                label="Saisir ici un extrait de document à retrouver", 
-                value=st.session_state["extract_substring"], 
-                max_chars=None, 
-                type="default", 
-                help="Saisir ici un extrait de document à retrouver.", 
+                label="Saisir ici un extrait de document à retrouver",
+                value=st.session_state["extract_substring"],
+                max_chars=None,
+                type="default",
+                help="Saisir ici un extrait de document à retrouver.",
                 key="filter_str",
             )
 
@@ -113,15 +113,12 @@ def side_bar():
             "Update", type="primary", on_click=update_state_session
         )
 
-
-
     return parameters_sidebar_clicked
 
 
 def main():
 
     initialize_state_session()
-
 
     # Wide layout
     st.set_page_config(
@@ -135,9 +132,6 @@ def main():
     # Password
     if not check_password():
         st.stop()  # Do not continue if check_password is not True.
-
-
-
 
     if side_bar():
         filtered_df = st.session_state["filtered_data"]
@@ -183,26 +177,29 @@ def main():
         with st.expander("Users raw data", expanded=False):
             st.write(users_df)
 
-        if st.session_state["selected_table"]=="RAG":
+        if st.session_state["selected_table"] == "RAG":
             with st.expander("Relevant extracts analysis", expanded=True):
                 relevant_extracts_df = build_extracts_df(filtered_df=filtered_df)
 
-                extracts_pivot = build_extracts_pivot(extracts_pivot=relevant_extracts_df)
+                extracts_pivot = build_extracts_pivot(
+                    extracts_pivot=relevant_extracts_df
+                )
 
                 display_extracts_graph(extracts_pivot=extracts_pivot)
 
             with st.expander(f"Filtrage des extraits", expanded=False):
 
                 filtered_extracts_df = relevant_extracts_df.loc[
-                    relevant_extracts_df["content"].str.contains(st.session_state["filter_str"])
+                    relevant_extracts_df["content"].str.contains(
+                        st.session_state["filter_str"]
+                    )
                 ]
 
-                st.write(f"{filtered_extracts_df.shape[0]} réponses ont utilisées cet extrait")
+                st.write(
+                    f"{filtered_extracts_df.shape[0]} réponses ont utilisées cet extrait"
+                )
                 if filtered_extracts_df.shape[0] > 0:
-                    st.dataframe(
-                        data=filtered_extracts_df
-                    )
-
+                    st.dataframe(data=filtered_extracts_df)
 
 
 main()

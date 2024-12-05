@@ -71,17 +71,17 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
 
     return df
 
-def initialize_state_session():
 
+def initialize_state_session():
 
     if "selected_table" not in st.session_state:
         st.session_state["selected_table"] = list(DATA_TABLES)[0]
     if "full_data" not in st.session_state:
         st.session_state["full_data"] = get_db_data(DB_PATH)
     if "user" not in st.session_state:
-        st.session_state["user"]=None
+        st.session_state["user"] = None
     if "group" not in st.session_state:
-        st.session_state["group"]=None
+        st.session_state["group"] = None
 
     # Select time range
     min_max = st.session_state["full_data"]["answer_timestamp"].agg(["min", "max"])
@@ -94,7 +94,7 @@ def initialize_state_session():
             max_date,
         )
     if "extract_substring" not in st.session_state:
-        st.session_state["extract_substring"]=""
+        st.session_state["extract_substring"] = ""
 
 
 def update_state_session():
@@ -121,13 +121,15 @@ def update_state_session():
 
     return
 
+
 def reset_state_session():
     st.session_state["selected_table"] = list(DATA_TABLES)[0]
     st.session_state["full_data"] = get_db_data(DB_PATH)
-    st.session_state["user"]=None
-    st.session_state["group"]=None
+    st.session_state["user"] = None
+    st.session_state["group"] = None
     st.session_state["filtered_data"] = st.session_state["full_data"]
     st.session_state["timestamp_range"] = st.session_state["unfiltered_timestamp_range"]
+
 
 def check_password():
     """Returns `True` if the user had the correct password."""
