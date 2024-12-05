@@ -15,6 +15,9 @@ import numpy as np
 import pandas as pd
 
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
+from wattelse.chatbot.frontend.django_chatbot.settings import DB_DIR
+
+DB_PATH = DB_DIR / "db.sqlite3"
 
 DATA_TABLE_RAG = "chatbot_chat"
 DATA_TABLE_GPT = "chatbot_gptchat"
@@ -68,8 +71,33 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
 
     return df
 
+def initialize_state_session():
 
-def filter_data():
+
+    if "selected_table" not in st.session_state:
+        st.session_state["selected_table"] = list(DATA_TABLES)[0]
+    if "full_data" not in st.session_state:
+        st.session_state["full_data"] = get_db_data(DB_PATH)
+    if "user" not in st.session_state:
+        st.session_state["user"]=None
+    if "group" not in st.session_state:
+        st.session_state["group"]=None
+
+    # Select time range
+    min_max = st.session_state["full_data"]["answer_timestamp"].agg(["min", "max"])
+    min_date = min_max["min"].to_pydatetime()
+    max_date = min_max["max"].to_pydatetime()
+
+    if "unfiltered_timestamp_range" not in st.session_state:
+        st.session_state["unfiltered_timestamp_range"] = (
+            min_date,
+            max_date,
+        )
+    if "extract_substring" not in st.session_state:
+        st.session_state["extract_substring"]=""
+
+
+def update_state_session():
     """get the history dataframe from st.session_state["full_data"],
     filter it with the values selected in the side bar (left part of the screen),
     write the result in st.session_state["filtered_data"]
@@ -93,6 +121,13 @@ def filter_data():
 
     return
 
+def reset_state_session():
+    st.session_state["selected_table"] = list(DATA_TABLES)[0]
+    st.session_state["full_data"] = get_db_data(DB_PATH)
+    st.session_state["user"]=None
+    st.session_state["group"]=None
+    st.session_state["filtered_data"] = st.session_state["full_data"]
+    st.session_state["timestamp_range"] = st.session_state["unfiltered_timestamp_range"]
 
 def check_password():
     """Returns `True` if the user had the correct password."""
@@ -168,9 +203,9 @@ def build_msg_df_over_time(filtered_df: pd.DataFrame) -> pd.DataFrame:
         },
         inplace=True,
     )
-    for feedback in ["great", "ok", "missing_info", "wrong"]:
+    for feedback in ["great", "ok", "missing_info", "wrong", "non_evalue"]:
         if feedback not in message_daily.columns:
-            message_daily.feedback = 0
+            message_daily[feedback] = 0
     message_daily["tx_feedback"] = (
         1 - message_daily["non_evalue"] / message_daily["nb_questions"]
     )
@@ -230,7 +265,7 @@ def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
 
     for feedback in ["great", "ok", "missing_info", "wrong"]:
         if feedback not in users_df.columns:
-            users_df.feedback = 0
+            users_df[feedback] = 0
 
     users_df["tx_feedback"] = 1 - users_df["non_evalue"] / users_df["nb_questions"]
     users_df.reset_index(inplace=True)
