@@ -528,8 +528,10 @@ def add_user_to_group(request):
         except Exception as e:
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
-                {"message": "Erreur serveur : échec lors de l'ajout de l'utilisateur",
-                 "new_user_already_in_group": new_user_already_in_group},
+                {
+                    "message": "Erreur serveur : échec lors de l'ajout de l'utilisateur",
+                    "new_user_already_in_group": new_user_already_in_group,
+                },
                 status=500,
             )
     else:

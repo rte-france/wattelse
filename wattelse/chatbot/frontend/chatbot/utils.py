@@ -125,7 +125,9 @@ def get_group_usernames_list(group_id: str) -> dict[str, bool]:
     group = Group.objects.get(name=group_id)
 
     # Filter users having group_id as active group
-    users_list = UserProfile.objects.filter(active_group=group).exclude(user__is_superuser=True)
+    users_list = UserProfile.objects.filter(active_group=group).exclude(
+        user__is_superuser=True
+    )
     users_dict = {user.user.username: is_superuser(user.user) for user in users_list}
 
     # Sort dictionnary so superusers are first and alphabetically sorted
