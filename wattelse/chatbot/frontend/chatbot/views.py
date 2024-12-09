@@ -108,7 +108,6 @@ def rag_page(request):
         admin_group_selection = [group.name for group in Group.objects.filter()]
     else:
         admin_group_selection = None
-    print("user_group_id:", user_group_id)
     return render(
         request,
         "chatbot/chatbot.html",
