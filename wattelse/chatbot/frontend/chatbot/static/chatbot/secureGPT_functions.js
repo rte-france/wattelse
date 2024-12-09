@@ -10,7 +10,7 @@
 const WELCOME_MSG = "Bonjour <span class='username'>"+userName+"</span> !";
 const DISCLAIMER = "<i class=\"fa-solid fa-user-tie\"></i> WattElse GPT est reservé à un usage professionnel.<br>" +
     "<i class=\"fa-solid fa-sack-dollar\"></i> Chaque utilisation génère des coûts, merci de l'employer de façon responsable.<br>" +
-    "<i class=\"fa-solid fa-lock\"></i></i> Veillez à ne pas divulguer d'informations sensibles (C3, C4)."
+    "<i class=\"fa-solid fa-lock\"></i> Veillez à ne pas divulguer d'informations sensibles (C3, C4)."
 
 // initialize layout
 initializeLayout();

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "wattelse"
-version = "1.2.2"
+version = "1.2.3"
 description = "Flexible RAG"
 authors = ["Jérôme Picault <jerome.picault@rte-france.com>", "Guillaume Grosjean <guillaume.grosjean@rte-france.com>"]
 license = "MPL 2.0"

@@ -23,6 +23,7 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_CLEAN_SESSIONS,
     ENDPOINT_DOWNLOAD,
     ENDPOINT_CLEAR_COLLECTION,
+    ENDPOINT_GENERATION_MODEL_NAME,
 )
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
@@ -194,6 +195,12 @@ def download_file(group_id: str, file_name: str):
                 file_path, media_type="application/octet-stream", filename=file_name
             )
     raise HTTPException(status_code=404, detail=f"File: {file_name} not found.")
+
+
+@app.get(ENDPOINT_GENERATION_MODEL_NAME + "/{group_id}")
+def get_llm_name(group_id: str):
+    check_if_session_exists(group_id)
+    return RAG_SESSIONS[group_id].get_llm_model_name()
 
 
 # to run the API (reload each time the python is changed)

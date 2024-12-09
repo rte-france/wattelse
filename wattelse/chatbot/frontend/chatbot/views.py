@@ -42,6 +42,7 @@ from .utils import (
     get_chat_model,
     get_user_conversation_history,
     can_edit_group_system_prompt,
+    LLM_MAPPING,
 )
 
 
@@ -107,6 +108,7 @@ def rag_page(request):
         admin_group_selection = [group.name for group in Group.objects.filter()]
     else:
         admin_group_selection = None
+    print("user_group_id:", user_group_id)
     return render(
         request,
         "chatbot/chatbot.html",
@@ -125,6 +127,7 @@ def rag_page(request):
             "admin_group_selection": admin_group_selection,
             "conversations": conversations,
             "is_wattelse_doc": True,
+            "llm_name": LLM_MAPPING[RAG_API.get_rag_llm_model(user_group_id)],
         },
     )
 

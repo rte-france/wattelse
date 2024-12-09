@@ -19,6 +19,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.models import User, Group
 from django.http import Http404, JsonResponse
 
+from wattelse.common.config_utils import parse_literal
 from .models import Chat, GPTChat, GroupSystemPrompt, UserProfile
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
@@ -38,6 +39,15 @@ WRONG = "wrong"
 # Long feedback FAQ file
 FAQ_FILE_PATTERN = "_FAQ.xlsx"
 
+LLM_MAPPING = {
+    "wattelse-gpt35": "gpt-3.5",
+    "wattelse-gpt4": "gpt-4",
+    "wattelse-gpt4o-mini-sweden": "gpt-4o-mini",
+    "wattelse-gpt4o-sweden": "gpt-4o",
+    "wattelse-gpt4o-mini-sweden-dev": "gpt-4o-mini-dev",
+    "wattelse-gpt4o-sweden-dev": "gpt-4o-dev",
+    "wattelse-Mistral-large": "Mistral-large",
+}
 
 ChatModels = {
     "/doc/": Chat,
