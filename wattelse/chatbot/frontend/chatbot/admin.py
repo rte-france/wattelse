@@ -46,11 +46,9 @@ class GroupSystemPromptAdmin(admin.ModelAdmin):
     )
     list_filter = ("group_id",)
 
+
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = (
-        "user",
-        "active_group"
-    )
+    list_display = ("user", "active_group")
 
 
 # Register your models here.
