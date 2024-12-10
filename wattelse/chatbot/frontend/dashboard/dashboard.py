@@ -3,13 +3,21 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 import yaml
-import pandas as pd
 from datetime import timedelta
 import streamlit as st
 
 from pathlib import Path
 
-from pandas.core.dtypes.cast import maybe_infer_to_datetimelike
+
+from wattelse.chatbot.frontend.dashboard.indicators import (
+    _compute_file_indicators,
+    build_msg_df_over_time,
+    build_users_df,
+    build_users_satisfaction_over_nb_eval,
+    build_extracts_df,
+    build_extracts_pivot,
+)
+
 
 from wattelse.chatbot.frontend.dashboard.dashboard_utils import (
     DRH_GROUP_NAME,
@@ -18,12 +26,6 @@ from wattelse.chatbot.frontend.dashboard.dashboard_utils import (
     initialize_state_session,
     update_state_session,
     check_password,
-    _compute_file_indicators,
-    build_msg_df_over_time,
-    build_users_df,
-    build_users_satisfaction_over_nb_eval,
-    build_extracts_df,
-    build_extracts_pivot,
 )
 from wattelse.chatbot.frontend.dashboard.dashboard_display import (
     display_feedback_charts,
