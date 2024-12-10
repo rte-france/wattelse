@@ -93,7 +93,7 @@ def display_indicators(
     col8.metric("Number of chunks", f"{number_of_chunks}")
 
 
-def display_feedback_charts_over_time(msg_df: pd.DataFrame):
+def display_feedback_charts_over_time(msg_df: pd.DataFrame, nb_reponse_lissage:str):
 
     # Création de l'histogramme empilé
     fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -168,6 +168,16 @@ def display_feedback_charts_over_time(msg_df: pd.DataFrame):
             mode="markers",
             name="%age de réponses évaluées",
             line=dict(color="purple"),
+        ),
+        secondary_y=True,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=msg_df.index,
+            y=msg_df["smoothed_eval"],
+            mode="lines",
+            name=f"score lissé sur environ {int(nb_reponse_lissage)} réponses",
+            line=dict(color="green"),
         ),
         secondary_y=True,
     )

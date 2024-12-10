@@ -82,6 +82,8 @@ def initialize_state_session():
         st.session_state["user"] = None
     if "group" not in st.session_state:
         st.session_state["group"] = None
+    if "nb_reponse_lissage" not in st.session_state:
+        st.session_state["nb_reponse_lissage"] = 1
 
     # Select time range
     min_max = st.session_state["full_data"]["answer_timestamp"].agg(["min", "max"])
@@ -127,6 +129,7 @@ def reset_state_session():
     st.session_state["full_data"] = get_db_data(DB_PATH)
     st.session_state["user"] = None
     st.session_state["group"] = None
+    st.session_state["nb_reponse_lissage"] = 1
     st.session_state["filtered_data"] = st.session_state["full_data"]
     st.session_state["timestamp_range"] = st.session_state["unfiltered_timestamp_range"]
 
@@ -174,7 +177,53 @@ def _compute_file_indicators(group: str = None):
     return nb_files, nb_chunks
 
 
-def build_msg_df_over_time(filtered_df: pd.DataFrame) -> pd.DataFrame:
+def add_score_eval(msg_daily:pd.DataFrame)->pd.DataFrame:
+    msg_daily["score"] =  (msg_daily["great"] + 2./ 3. * msg_daily["ok"]  + msg_daily["missing_info"] / 3.)
+    return msg_daily
+
+
+def exponential_smoothing(
+        df: pd.DataFrame,
+        x: pd.Series, 
+        alpha:pd.Series, 
+        alpha_0:float, 
+        ema_label : str)-> pd.DataFrame: 
+    """given a series, smooth it with a moving exponential average.
+    Args:
+        df (pd.DataFrame): dataframe where the result is to be stored
+        x (pd.Series): variable to be smoothed
+        alpha (pd.Series): variable that governs the exponential decay
+        alpha_0 (float) : scale of the exponential decay
+        ema_label (str) : label of the column of df where is stored the result
+
+    Returns:
+        pd.DataFrame: returns df with the new column
+    """    
+
+    df[ema_label] = 0.
+    df["accum_factor"] = 1.
+    exp_alpha = np.exp(-alpha/alpha_0)
+    accum_prev = 0
+
+    init=True
+    for num, _ in df.iterrows():
+        if init==True:
+            init=False
+
+            accum_prev = 1.
+            ema_prev = x.loc[num]
+            df.loc[num, ema_label] = ema_prev
+            df.loc[num, "accum_factor"] = 1.
+        else:
+            accum_prev = 1. + accum_prev*exp_alpha.loc[num]
+            ema_prev = x.loc[num]/accum_prev + (1. - 1/accum_prev) * ema_prev
+            df.loc[num, "accum_factor"] = accum_prev
+            df.loc[num, ema_label] =  ema_prev
+
+    return df
+
+
+def build_msg_df_over_time(filtered_df: pd.DataFrame, nb_reponse_lissage:str) -> pd.DataFrame:
     """Given the filtered_df (from the sidebar), compute the nb of question each day, and their evaluations.
 
     Args:
@@ -208,9 +257,28 @@ def build_msg_df_over_time(filtered_df: pd.DataFrame) -> pd.DataFrame:
     for feedback in ["great", "ok", "missing_info", "wrong", "non_evalue"]:
         if feedback not in message_daily.columns:
             message_daily[feedback] = 0
-    message_daily["tx_feedback"] = (
-        1 - message_daily["non_evalue"] / message_daily["nb_questions"]
+        message_daily.fillna({feedback: 0}, inplace=True)
+
+    message_daily["evalue"] = message_daily["nb_questions"] - message_daily["non_evalue"]
+    message_daily["tx_feedback"] = message_daily["evalue"]/message_daily["nb_questions"]
+    message_daily = add_score_eval(msg_daily=message_daily)
+    alpha = message_daily["evalue"]
+    alpha_0=nb_reponse_lissage
+    message_daily = exponential_smoothing(
+        df = message_daily,
+        x =  message_daily["evalue"],
+        alpha = alpha,
+        alpha_0=alpha_0,
+        ema_label="EMA_evalue"
+    )    
+    message_daily = exponential_smoothing(
+        df = message_daily,
+        x =  message_daily["score"],
+        alpha = alpha,
+        alpha_0=alpha_0,
+        ema_label="EMA_score"
     )
+    message_daily["smoothed_eval"] = message_daily["EMA_score"] / message_daily["EMA_evalue"]
 
     return message_daily
 
