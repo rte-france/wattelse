@@ -99,8 +99,8 @@ def side_bar():
 
         st.slider(
             "Select the number of feedback to smooth over",
-            min_value = 1,
-            max_value = 100,
+            min_value=1,
+            max_value=100,
             value=15,
             step=1,
             key="nb_reponse_lissage",
@@ -170,8 +170,12 @@ def main():
                 display_feedback_charts(filtered_df=filtered_df)
             with col2:
                 pass
-            msg_df = build_msg_df_over_time(filtered_df=filtered_df, nb_reponse_lissage=nb_reponse_lissage)
-            display_feedback_charts_over_time(msg_df=msg_df, nb_reponse_lissage=nb_reponse_lissage)
+            msg_df = build_msg_df_over_time(
+                filtered_df=filtered_df, nb_reponse_lissage=nb_reponse_lissage
+            )
+            display_feedback_charts_over_time(
+                msg_df=msg_df, nb_reponse_lissage=nb_reponse_lissage
+            )
 
         with st.expander("Users analysis", expanded=True):
             users_df = build_users_df(filtered_df=filtered_df)

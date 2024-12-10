@@ -93,7 +93,7 @@ def display_indicators(
     col8.metric("Number of chunks", f"{number_of_chunks}")
 
 
-def display_feedback_charts_over_time(msg_df: pd.DataFrame, nb_reponse_lissage:str):
+def display_feedback_charts_over_time(msg_df: pd.DataFrame, nb_reponse_lissage: str):
 
     # Création de l'histogramme empilé
     fig = make_subplots(specs=[[{"secondary_y": True}]])
