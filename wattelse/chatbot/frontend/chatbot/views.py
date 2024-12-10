@@ -482,8 +482,8 @@ def add_user_to_group(request):
     """
     Function to add a new user to a group.
     The superuser send a POST request with data `new_username`.
-    If `new_username` exists and doesn't belong to any group, add it to superuser group.
-    Else return error to frontend.
+    If `new_username` exists, add it to superuser group.
+    If new_username doesn't belong to any group yet, set it as its active group.
     """
     if request.method == "POST":
         # Get superuser group object
@@ -505,19 +505,20 @@ def add_user_to_group(request):
                 status=500,
             )
 
-        # If new_user already in a group then return error status code
-        if get_user_active_group_id(new_user) is not None:
-            logger.error(
-                f"[User: {request.user.username}] Username {new_username} already belongs to a group"
-            )
-            return JsonResponse(
-                {"message": f"{new_username} appartient déjà à un groupe"},
-                status=500,
-            )
+        # Check if new user already has an active group
+        new_user_already_in_group = get_user_active_group_id(new_user) is not None
 
-        # If new_user has no group then add it to superuser group
+        # Add new user to superuser group
         try:
+            # User to group
             new_user.groups.add(superuser_group)
+
+            # If user belong to no group, also set it as active group
+            if not new_user_already_in_group:
+                new_user_profile = UserProfile.objects.get(user=new_user)
+                new_user_profile.active_group = superuser_group
+                new_user_profile.save()
+
             logger.info(
                 f"[User: {request.user.username}] Added {new_username} to group {superuser_group_id}"
             )
@@ -527,7 +528,10 @@ def add_user_to_group(request):
         except Exception as e:
             logger.error(f"[User: {request.user.username}] {e}")
             return JsonResponse(
-                {"message": "Erreur serveur : échec lors de l'ajout de l'utilisateur"},
+                {
+                    "message": "Erreur serveur : échec lors de l'ajout de l'utilisateur",
+                    "new_user_already_in_group": new_user_already_in_group,
+                },
                 status=500,
             )
     else:
@@ -539,7 +543,9 @@ def remove_user_from_group(request):
     Function to remove a user from a group.
     The superuser send a POST request with data `username_to_delete`.
     If `username_to_delete` exists, remove it from superuser group.
-    Else return error to frontend.
+    Also remove its active group and set it to:
+      - another group it belongs to
+      - None if it does not belong to any other group
     """
     if request.method == "POST":
         # Get superuser group object
@@ -552,6 +558,7 @@ def remove_user_from_group(request):
         username_to_remove = data.get("username_to_delete", None)
         if User.objects.filter(username=username_to_remove).exists():
             user_to_remove = User.objects.get(username=username_to_remove)
+            user_profile_to_remove = UserProfile.objects.get(user=user_to_remove)
         else:
             return JsonResponse(
                 {"message": f"{username_to_remove} non trouvé"},
@@ -564,7 +571,17 @@ def remove_user_from_group(request):
 
         # Remove user_to_remove
         try:
+            # Remove group for user groups
             user_to_remove.groups.remove(superuser_group)
+
+            # Get first remaining user group
+            user_remaining_group = user_to_remove.groups.first()
+            print(type(user_remaining_group))
+
+            # Set active group as first remaining group (None is does not exist)
+            user_profile_to_remove.active_group = user_remaining_group
+            user_profile_to_remove.save()
+            print(user_profile_to_remove.active_group)
             logger.info(
                 f"[User: {request.user.username}] Removed {username_to_remove} from group {superuser_group_id}"
             )

@@ -4,7 +4,7 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 from django.contrib import admin
-from .models import Chat, GPTChat, GroupSystemPrompt
+from .models import Chat, GPTChat, GroupSystemPrompt, UserProfile
 
 
 class ChatAdmin(admin.ModelAdmin):
@@ -47,7 +47,12 @@ class GroupSystemPromptAdmin(admin.ModelAdmin):
     list_filter = ("group_id",)
 
 
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "active_group")
+
+
 # Register your models here.
 admin.site.register(Chat, ChatAdmin)
 admin.site.register(GPTChat, ChatAdmin)
 admin.site.register(GroupSystemPrompt, GroupSystemPromptAdmin)
+admin.site.register(UserProfile, UserProfileAdmin)

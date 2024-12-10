@@ -114,12 +114,22 @@ def can_edit_group_system_prompt(group_id: str) -> bool:
 
 def get_group_usernames_list(group_id: str) -> dict[str, bool]:
     """
-    Returns a dictionnary with usernames as keys and
-    whether they are superuser as values.
+    Returns a dict of users having `group_id` as active group in the following format:
+    {
+        "username": is_superuser(),
+        ...
+    }
+    with is_superuser() being True if the user is admin of its group.
     """
+    # Get group object
     group = Group.objects.get(name=group_id)
-    users_list = User.objects.filter(groups=group).exclude(is_superuser=True)
-    users_dict = {user.username: is_superuser(user) for user in users_list}
+
+    # Filter users having group_id as active group
+    users_list = UserProfile.objects.filter(active_group=group).exclude(
+        user__is_superuser=True
+    )
+    users_dict = {user.user.username: is_superuser(user.user) for user in users_list}
+
     # Sort dictionnary so superusers are first and alphabetically sorted
     users_dict = dict(
         sorted(users_dict.items(), key=lambda item: (not item[1], item[0]))

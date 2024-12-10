@@ -685,7 +685,9 @@ function addUserToGroup(newUsername) {
     .then(response => {
         if (response.ok) {
             response.json().then(data => {
-                addUserToUserList(newUsername);
+                if (!data.new_user_already_in_group) {
+                    addUserToUserList(newUsername);
+                }
                 showPopup(data.message);
             })
         }
