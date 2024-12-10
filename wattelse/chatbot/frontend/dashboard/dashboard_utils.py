@@ -153,5 +153,3 @@ def check_password():
     if "password_correct" in st.session_state:
         st.error("😕 Password incorrect")
     return False
-
-
