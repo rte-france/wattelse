@@ -27,19 +27,17 @@ FEEDBACK_COLORS = {
 
 
 def display_indicators(
-    filtered_df: pd.DataFrame, 
-    full_df : pd.DataFrame,
-    number_of_files: int, 
-    number_of_chunks: int
+    filtered_df: pd.DataFrame,
+    full_df: pd.DataFrame,
+    number_of_files: int,
+    number_of_chunks: int,
 ):
     nb_questions = len(filtered_df.message)
     nb_conversations = len(filtered_df.conversation_id.unique())
-    avg_nb_questions = len(full_df.message) // len(
+    avg_nb_questions = len(full_df.message) // len(full_df.username.unique())
+    avg_nb_conversations = len(full_df.conversation_id.unique()) // len(
         full_df.username.unique()
     )
-    avg_nb_conversations = len(
-        full_df.conversation_id.unique()
-    ) // len(full_df.username.unique())
     nb_short_feedback = (filtered_df.short_feedback != "").sum()
     nb_long_feedback = (filtered_df.long_feedback != "").sum()
     median_answer_delay = filtered_df.answer_delay.median() / 1e6
@@ -97,7 +95,8 @@ def display_indicators(
 
 
 def display_feedback_charts_over_time(
-    msg_df: pd.DataFrame, nb_reponse_lissage: str)->go.Figure:
+    msg_df: pd.DataFrame, nb_reponse_lissage: str
+) -> go.Figure:
 
     # Création de l'histogramme empilé
     fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -198,7 +197,7 @@ def display_feedback_charts_over_time(
     return fig
 
 
-def display_feedback_charts(filtered_df: pd.DataFrame)->go.Figure:
+def display_feedback_charts(filtered_df: pd.DataFrame) -> go.Figure:
 
     # Filter data for feedback values in the color map
     filtered_df = filtered_df[
@@ -229,12 +228,10 @@ def display_feedback_charts(filtered_df: pd.DataFrame)->go.Figure:
     return fig_short_feedback_total
 
 
-def display_feedback_rates(filtered_df: pd.DataFrame)-> None:
+def display_feedback_rates(filtered_df: pd.DataFrame) -> None:
 
     short_feedback_counts = filtered_df["short_feedback"].value_counts()
-    total_short_feedback = (
-        filtered_df.short_feedback != ""
-    ).sum()
+    total_short_feedback = (filtered_df.short_feedback != "").sum()
     cols = st.columns(4)
     for i, feedback_type in enumerate(FEEDBACK_COLORS.keys()):
         if feedback_type in short_feedback_counts.keys():
@@ -432,7 +429,7 @@ def display_users_satisfaction_over_nb_eval(
     return fig
 
 
-def display_user_hist_over_eval(users_df)-> go.Figure:
+def display_user_hist_over_eval(users_df) -> go.Figure:
 
     distinct_count_with_na = users_df["evalue"].value_counts()
 

@@ -166,7 +166,6 @@ def main():
         with st.expander("Feedback rates", expanded=True):
             display_feedback_rates(filtered_df=filtered_df)
 
-
         with st.expander("Short feedback", expanded=True):
             col1, col2 = st.columns(2)
             with col1:
