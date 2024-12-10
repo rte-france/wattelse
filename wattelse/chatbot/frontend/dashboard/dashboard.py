@@ -144,6 +144,7 @@ def main():
 
     if side_bar():
         filtered_df = st.session_state["filtered_data"]
+        full_df = st.session_state["full_data"]
         nb_reponse_lissage = st.session_state["nb_reponse_lissage"]
 
         with st.expander("Raw data"):
@@ -157,6 +158,7 @@ def main():
 
             display_indicators(
                 filtered_df=filtered_df,
+                full_df=full_df,
                 number_of_files=number_of_files,
                 number_of_chunks=number_of_chunks,
             )
@@ -164,29 +166,35 @@ def main():
         with st.expander("Feedback rates", expanded=True):
             display_feedback_rates(filtered_df=filtered_df)
 
+
         with st.expander("Short feedback", expanded=True):
             col1, col2 = st.columns(2)
             with col1:
-                display_feedback_charts(filtered_df=filtered_df)
+                fig = display_feedback_charts(filtered_df=filtered_df)
+                st.plotly_chart(fig)
             with col2:
                 pass
             msg_df = build_msg_df_over_time(
                 filtered_df=filtered_df, nb_reponse_lissage=nb_reponse_lissage
             )
-            display_feedback_charts_over_time(
+            fig = display_feedback_charts_over_time(
                 msg_df=msg_df, nb_reponse_lissage=nb_reponse_lissage
             )
+            st.plotly_chart(fig)
 
         with st.expander("Users analysis", expanded=True):
             users_df = build_users_df(filtered_df=filtered_df)
-            display_user_graph(users_df=users_df)
+            fig = display_user_graph(users_df=users_df)
             users_satisfaction = build_users_satisfaction_over_nb_eval(
                 users_df=users_df
             )
-            display_users_satisfaction_over_nb_eval(
+            st.plotly_chart(fig)
+            fig = display_users_satisfaction_over_nb_eval(
                 users_satisfaction=users_satisfaction
             )
-            display_user_hist_over_eval(users_df=users_df)
+            st.plotly_chart(fig)
+            fig = display_user_hist_over_eval(users_df=users_df)
+            st.plotly_chart(fig)
 
         with st.expander("Users raw data", expanded=False):
             st.write(users_df)
@@ -199,7 +207,8 @@ def main():
                     extracts_pivot=relevant_extracts_df
                 )
 
-                display_extracts_graph(extracts_pivot=extracts_pivot)
+                fig = display_extracts_graph(extracts_pivot=extracts_pivot)
+                st.plotly_chart(fig)
 
             with st.expander(f"Filtrage des extraits", expanded=False):
 

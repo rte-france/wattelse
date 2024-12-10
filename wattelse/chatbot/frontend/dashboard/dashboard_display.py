@@ -27,16 +27,19 @@ FEEDBACK_COLORS = {
 
 
 def display_indicators(
-    filtered_df: pd.DataFrame, number_of_files: int, number_of_chunks: int
+    filtered_df: pd.DataFrame, 
+    full_df : pd.DataFrame,
+    number_of_files: int, 
+    number_of_chunks: int
 ):
     nb_questions = len(filtered_df.message)
     nb_conversations = len(filtered_df.conversation_id.unique())
-    avg_nb_questions = len(st.session_state["full_data"].message) // len(
-        st.session_state["full_data"].username.unique()
+    avg_nb_questions = len(full_df.message) // len(
+        full_df.username.unique()
     )
     avg_nb_conversations = len(
-        st.session_state["full_data"].conversation_id.unique()
-    ) // len(st.session_state["full_data"].username.unique())
+        full_df.conversation_id.unique()
+    ) // len(full_df.username.unique())
     nb_short_feedback = (filtered_df.short_feedback != "").sum()
     nb_long_feedback = (filtered_df.long_feedback != "").sum()
     median_answer_delay = filtered_df.answer_delay.median() / 1e6
@@ -93,7 +96,8 @@ def display_indicators(
     col8.metric("Number of chunks", f"{number_of_chunks}")
 
 
-def display_feedback_charts_over_time(msg_df: pd.DataFrame, nb_reponse_lissage: str):
+def display_feedback_charts_over_time(
+    msg_df: pd.DataFrame, nb_reponse_lissage: str)->go.Figure:
 
     # Création de l'histogramme empilé
     fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -190,12 +194,11 @@ def display_feedback_charts_over_time(msg_df: pd.DataFrame, nb_reponse_lissage: 
         yaxis2_title="Percentage",
         barmode="stack",
     )
-    st.plotly_chart(fig)
 
-    return
+    return fig
 
 
-def display_feedback_charts(filtered_df: pd.DataFrame):
+def display_feedback_charts(filtered_df: pd.DataFrame)->go.Figure:
 
     # Filter data for feedback values in the color map
     filtered_df = filtered_df[
@@ -223,15 +226,14 @@ def display_feedback_charts(filtered_df: pd.DataFrame):
         marker_color=[FEEDBACK_COLORS[val] for val in short_feedback_counts.index]
     )
 
-    # Display the chart in Streamlit
-    st.plotly_chart(fig_short_feedback_total)
+    return fig_short_feedback_total
 
 
-def display_feedback_rates(filtered_df: pd.DataFrame):
+def display_feedback_rates(filtered_df: pd.DataFrame)-> None:
 
     short_feedback_counts = filtered_df["short_feedback"].value_counts()
     total_short_feedback = (
-        st.session_state["filtered_data"].short_feedback != ""
+        filtered_df.short_feedback != ""
     ).sum()
     cols = st.columns(4)
     for i, feedback_type in enumerate(FEEDBACK_COLORS.keys()):
@@ -241,9 +243,10 @@ def display_feedback_rates(filtered_df: pd.DataFrame):
                 f"{short_feedback_counts[feedback_type] / total_short_feedback * 100:.1f}%",
                 "",
             )
+    return
 
 
-def display_user_graph(users_df: pd.DataFrame) -> None:
+def display_user_graph(users_df: pd.DataFrame) -> go.Figure:
     """Generate a plotly graph showing the number of questions and evaluation of each users
 
     Args:
@@ -328,13 +331,13 @@ def display_user_graph(users_df: pd.DataFrame) -> None:
         yaxis2_title="Pourcentage",
         barmode="stack",
     )
-    st.plotly_chart(fig)
-    return
+
+    return fig
 
 
 def display_users_satisfaction_over_nb_eval(
     users_satisfaction: pd.DataFrame,
-) -> pd.DataFrame:
+) -> go.Figure:
 
     fig = go.Figure()
 
@@ -425,11 +428,11 @@ def display_users_satisfaction_over_nb_eval(
         xaxis_title="nb d'évaluations réalisées",
         yaxis_title="Evaluation moyenne, entre 0 et 1",
     )
-    st.plotly_chart(fig)
-    return
+
+    return fig
 
 
-def display_user_hist_over_eval(users_df):
+def display_user_hist_over_eval(users_df)-> go.Figure:
 
     distinct_count_with_na = users_df["evalue"].value_counts()
 
@@ -447,11 +450,11 @@ def display_user_hist_over_eval(users_df):
         yaxis_title="nombre d'utilisateurs",
         xaxis_title="nombre de questions évaluées",
     )
-    st.plotly_chart(fig)
-    return
+
+    return fig
 
 
-def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
+def display_extracts_graph(extracts_pivot: pd.DataFrame) -> go.Figure:
     """Generate a plotly graph showing the number of questions and evaluation of each users
 
     Args:
@@ -570,6 +573,4 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> None:
         hovermode="x",
     )
 
-    st.plotly_chart(fig)
-
-    return
+    return fig
