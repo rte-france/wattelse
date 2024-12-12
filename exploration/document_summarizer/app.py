@@ -54,12 +54,11 @@ base_system_prompt = (
 st.text_area("System prompt", value=base_system_prompt, key="system_prompt")
 
 
-
 st.subheader(OPENAI_API.model_name)
 if uploaded_file:
-    openai_api_tokens_number = format(
-        len(OPENAI_TOKENIZER.encode(text)), ","
-    ).replace(",", " ")
+    openai_api_tokens_number = format(len(OPENAI_TOKENIZER.encode(text)), ",").replace(
+        ",", " "
+    )
     st.write(f"Number of tokens: {openai_api_tokens_number}")
     if st.button("Summarize"):
         openai_summary_stream = OPENAI_API.generate(
