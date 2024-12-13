@@ -11,6 +11,7 @@ import ast
 from configparser import BasicInterpolation
 from typing import Any
 
+
 def _resolve_env_variables(config_dict: dict) -> dict:
     """
     Recursively resolve environment variables in a dictionary.
@@ -24,6 +25,7 @@ def _resolve_env_variables(config_dict: dict) -> dict:
         elif isinstance(value, dict):
             config_dict[key] = _resolve_env_variables(value)
     return config_dict
+
 
 def load_toml_config(config_file_path: Path) -> dict:
     """
