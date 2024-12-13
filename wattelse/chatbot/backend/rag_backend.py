@@ -114,7 +114,7 @@ class RAGBackEnd:
         self.group_id = group_id
         self.config = load_toml_config(config_file_path)
         self._apply_config()
-    
+
     def _apply_config(self):
         """
         Set Class attributes based on the configuration file.
@@ -132,7 +132,7 @@ class RAGBackEnd:
         self.llm = get_chat_model(generator_config)
         self.remember_recent_messages = generator_config["remember_recent_messages"]
         self.temperature = generator_config["temperature"]
-        
+
         # Document collection
         self.document_collection = load_document_collection(self.group_id)
 
