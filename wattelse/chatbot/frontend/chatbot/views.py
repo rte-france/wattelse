@@ -26,13 +26,14 @@ from xlsx2html import xlsx2html
 
 from wattelse.api.rag_orchestrator.rag_client import RAGAPIError
 from wattelse.chatbot.backend import DATA_DIR
-from .models import Chat, GroupSystemPrompt, SuperUserPermissions, UserProfile
+from .models import Chat, GroupProfile, SuperUserPermissions, UserProfile
 
 from .utils import (
     get_user_active_group_id,
     get_user_groups,
     get_group_usernames_list,
     get_group_system_prompt,
+    get_group_rag_config_file_path,
     new_user_created,
     get_conversation_history,
     streaming_generator,
@@ -152,7 +153,8 @@ def login(request):
             else:
                 auth.login(request, user)
                 logger.info(f"[User: {request.user.username}] logged in")
-                RAG_API.create_session(user_group_id)
+                rag_config_file_path = get_group_rag_config_file_path(user_group_id)
+                RAG_API.create_session(user_group_id, rag_config_file_path)
                 return redirect("/")
         # Else return error
         else:
@@ -804,11 +806,12 @@ def update_group_system_prompt(request):
         # Get group id
         user = request.user
         group_id = get_user_active_group_id(user)
+        group = Group.objects.get(name=group_id)
 
         # Set new group system prompt
         try:
-            group_system_prompt = GroupSystemPrompt.objects.get_or_create(
-                group_id=group_id, defaults={"system_prompt": ""}
+            group_system_prompt = GroupProfile.objects.get_or_create(
+                group=group, defaults={"system_prompt": ""}
             )[0]
             group_system_prompt.system_prompt = new_system_prompt
             group_system_prompt.save()

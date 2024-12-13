@@ -1,0 +1,22 @@
+# Local LLM RAGBackend configuration file
+
+[retriever]
+# Maximum number of extracts to return
+top_n_extracts = 10
+# Retrieval method, choose among "mmr", "similarity", "similarity_score_threshold", "bm25", "ensemble"
+retrieval_method = "similarity_score_threshold"
+# similarity threshold (applies only for the method "similarity_score_threshold")
+similarity_threshold = 0.3
+# Generate alternative questions and retrieve documents based on those questions
+# NB. Experimental feature... (generated questions may be out of scope)
+multi_query_mode = false
+
+[generator]
+# Type of LLM API: select the right environment variables (LEGACY_*, LOCAL_*, AZURE_WATTELSE_*)
+openai_api_key = "$AZURE_SE_WATTELSE_OPENAI_API_KEY_DEV"
+openai_endpoint = "$AZURE_SE_WATTELSE_OPENAI_ENDPOINT_DEV"
+openai_default_model = "$AZURE_SE_WATTELSE_OPENAI_DEFAULT_MODEL_NAME_DEV"
+# Use recent memory in interactions
+remember_recent_messages = true
+# Generation temperature
+temperature = 0.1

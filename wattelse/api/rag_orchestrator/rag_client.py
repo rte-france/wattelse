@@ -67,9 +67,12 @@ class RAGOrchestratorClient:
                 f"[Group: {group_id}] Error: {response.status_code, response.text}"
             )
 
-    def create_session(self, group_id: str) -> str:
+    def create_session(self, group_id: str, config_file_path: Path | str) -> str:
         """Create session associated to a group"""
-        response = requests.post(self.url + ENDPOINT_CREATE_SESSION + f"/{group_id}")
+        response = requests.post(
+            self.url + ENDPOINT_CREATE_SESSION + f"/{group_id}",
+            params={"config_file_path": str(config_file_path)},
+        )
         if response.status_code == 200:
             group_id = response.json()
             logger.info(f"[Group: {group_id}] RAGBackend created")
