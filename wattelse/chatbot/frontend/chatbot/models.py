@@ -52,9 +52,10 @@ class GPTChat(models.Model):
         return f"{self.user.username}: {self.message}"
 
 
-class GroupSystemPrompt(models.Model):
-    group_id = models.TextField(primary_key=True)
-    system_prompt = models.TextField()
+class GroupProfile(models.Model):
+    group = models.OneToOneField(Group, on_delete=models.CASCADE, primary_key=True)
+    llm_deployment = models.CharField(max_length=10, default="azure")
+    system_prompt = models.TextField(null=True, blank=True, default='')
 
     def __str__(self) -> str:
         return f"{self.group_id}: {self.system_prompt}"

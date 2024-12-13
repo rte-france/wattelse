@@ -7,6 +7,7 @@ import json
 
 from loguru import logger
 from typing import List, Dict
+from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
@@ -58,12 +59,13 @@ def home():
 
 
 @app.post(ENDPOINT_CREATE_SESSION + "/{group_id}")
-def create_session(group_id: str) -> str:
+def create_session(group_id: str, config_file_path: str) -> str:
     """When this is called, instantiates a RAG backend for a group."""
     if group_id not in RAG_SESSIONS.keys():
-        RAG_SESSIONS[group_id] = RAGBackEnd(group_id)
+        RAG_SESSIONS[group_id] = RAGBackEnd(group_id, Path(config_file_path))
         logger.info(f"[Group: {group_id}] RAGBackend created")
-    logger.warning(f"[Group: {group_id}] RAGBackend already created")
+    else:
+        logger.warning(f"[Group: {group_id}] RAGBackend already created")
     return group_id
 
 

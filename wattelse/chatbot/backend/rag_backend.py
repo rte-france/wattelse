@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import shutil
+from pathlib import Path
 from typing import BinaryIO, List, Dict, Union
 
 from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
@@ -38,8 +39,6 @@ from wattelse.api.prompts import (
     FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3,
 )
 from wattelse.chatbot.backend import (
-    retriever_config,
-    generator_config,
     BM25,
     ENSEMBLE,
     MMR,
@@ -48,6 +47,8 @@ from wattelse.chatbot.backend import (
 )
 from wattelse.indexer.document_splitter import split_file
 from wattelse.indexer.document_parser import parse_file
+
+from wattelse.common.config_utils import load_toml_config
 
 logging.basicConfig()
 logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
@@ -59,7 +60,7 @@ class RAGError(Exception):
     pass
 
 
-def get_chat_model() -> BaseChatModel:
+def get_chat_model(generator_config: dict) -> BaseChatModel:
     endpoint = generator_config["openai_endpoint"]
     if "azure.com" not in endpoint:
         llm_config = {
@@ -109,24 +110,31 @@ def filter_history(history, window_size):
 
 
 class RAGBackEnd:
-    def __init__(self, group_id: str):
-        logger.info(f"[Group: {group_id}] Initialization of chatbot backend")
-
-        # Load document collection
-        self.document_collection = load_document_collection(group_id)
-
+    def __init__(self, group_id: str, config_file_path: Path):
+        self.group_id = group_id
+        self.config = load_toml_config(config_file_path)
+        self._apply_config()
+    
+    def _apply_config(self):
+        """
+        Set Class attributes based on the configuration file.
+        This method is called when the class is instantiated.
+        """
         # Retriever parameters
+        retriever_config = self.config["retriever"]
         self.top_n_extracts = retriever_config["top_n_extracts"]
         self.retrieval_method = retriever_config["retrieval_method"]
         self.similarity_threshold = retriever_config["similarity_threshold"]
         self.multi_query_mode = retriever_config["multi_query_mode"]
 
         # Generator parameters
-        self.expected_answer_size = generator_config["expected_answer_size"]
+        generator_config = self.config["generator"]
+        self.llm = get_chat_model(generator_config)
         self.remember_recent_messages = generator_config["remember_recent_messages"]
         self.temperature = generator_config["temperature"]
-        # Generate llm config for langchain
-        self.llm = get_chat_model()
+        
+        # Document collection
+        self.document_collection = load_document_collection(self.group_id)
 
         # Prompts
         self.system_prompt = FR_SYSTEM_RAG_LLAMA3
@@ -426,10 +434,6 @@ class RAGBackEnd:
             )
             logger.debug(f"Contextualized question: {contextualized_question}")
             return contextualized_question
-
-    def get_detail_level(self, question: str):
-        """Returns the level of detail we wish in the answer. Values are in this range: {"courte", "détaillée"}"""
-        return "courte" if self.expected_answer_size == "short" else "détaillée"
 
 
 def streamer(stream):

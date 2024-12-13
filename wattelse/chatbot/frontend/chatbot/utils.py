@@ -20,7 +20,7 @@ from django.contrib.auth.models import User, Group
 from django.http import Http404, JsonResponse
 
 from wattelse.common.config_utils import parse_literal
-from .models import Chat, GPTChat, GroupSystemPrompt, UserProfile
+from .models import Chat, GPTChat, GroupProfile, UserProfile
 
 from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
 
@@ -52,6 +52,11 @@ LLM_MAPPING = {
 ChatModels = {
     "/doc/": Chat,
     "/gpt/": GPTChat,
+}
+
+LLM_to_RAGBackend_config = {
+    "local": Path("wattelse/chatbot/backend/configs/local_rag_config.toml"),
+    "azure": Path("wattelse/chatbot/backend/configs/azure_rag_config.toml"),
 }
 
 
@@ -255,17 +260,20 @@ def get_group_system_prompt(group_id: str) -> str:
     Gets the group system prompt of a group.
     Returns empty string if not found.
     """
-    group_system_prompt = GroupSystemPrompt.objects.filter(group_id=group_id).first()
+    group = Group.objects.get(name=group_id)
+    group_system_prompt = GroupProfile.objects.filter(group=group).first()
     return group_system_prompt.system_prompt if group_system_prompt else ""
 
 
-def get_group_system_prompt(group_id: str) -> str:
+def get_group_rag_config_file_path(group_id: str) -> Path:
     """
-    Gets the group system prompt of a group.
-    Returns empty string if not found.
+    Gets the group RAG config file path of a group.
+    Returns None if not found.
     """
-    group_system_prompt = GroupSystemPrompt.objects.filter(group_id=group_id).first()
-    return group_system_prompt.system_prompt if group_system_prompt else ""
+    group = Group.objects.get(name=group_id)
+    group_profile, _ = GroupProfile.objects.get_or_create(group=group)
+    llm_deployment = group_profile.llm_deployment
+    return LLM_to_RAGBackend_config[llm_deployment]
 
 
 def new_user_created(request, username=None):
