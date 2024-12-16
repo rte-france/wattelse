@@ -24,6 +24,7 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_LIST_AVAILABLE_DOCS,
     ENDPOINT_CLEAN_SESSIONS,
     ENDPOINT_DOWNLOAD,
+    ENDPOINT_GENERATION_MODEL_NAME,
 )
 
 
@@ -49,6 +50,22 @@ class RAGOrchestratorClient:
         """Check if RAG Orchestrator is running"""
         resp = requests.get(url=self.url + ENDPOINT_CHECK_SERVICE)
         return resp.json() == {"Status": "OK"}
+
+    def get_rag_llm_model(self, group_id: str) -> str:
+        """Returns the name of the LLM used by the RAG"""
+        response = requests.get(
+            url=f"{self.url}{ENDPOINT_GENERATION_MODEL_NAME}/{group_id}"
+        )
+        if response.status_code == 200:
+            logger.debug(f"[Group: {group_id}] LLM model name for RAG {response}")
+            return response.json()
+        else:
+            logger.error(
+                f"[Group: {group_id}] Error: {response.status_code, response.text}"
+            )
+            raise RAGAPIError(
+                f"[Group: {group_id}] Error: {response.status_code, response.text}"
+            )
 
     def create_session(self, group_id: str) -> str:
         """Create session associated to a group"""

@@ -138,6 +138,9 @@ class RAGBackEnd:
             FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
         )
 
+    def get_llm_model_name(self):
+        return self.llm.model_name
+
     def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
         # Store the file

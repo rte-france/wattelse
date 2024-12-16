@@ -40,7 +40,7 @@ const NO_EXTRACT_MSG = "Pas d'extraits pertinents dans les documents, le texte g
 const WELCOME_MSG = "Bonjour <span class='username'>"+userName+"</span> !"
 
 // Empty disclaimer for WattElse Doc
-const DISCLAIMER = "";
+const DISCLAIMER = "<i class=\"fa-solid fa-lock\"></i> Veillez à ne pas divulguer d'informations sensibles (C3, C4)."
 
 // Message timeout
 const timeout = 120000; // 120 seconds timeout
@@ -121,7 +121,7 @@ function initializeLayout(){
         });
     }
     //  Create welcome message
-    createWelcomeMessage(WELCOME_MSG);
+    createWelcomeMessage(WELCOME_MSG, DISCLAIMER);
 }
 
 async function postUserMessageToChatBot(userMessage) {
