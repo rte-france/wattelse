@@ -33,7 +33,7 @@ from .utils import (
     get_user_groups,
     get_group_usernames_list,
     get_group_system_prompt,
-    get_group_rag_config_file_path,
+    get_group_rag_config_name,
     new_user_created,
     get_conversation_history,
     streaming_generator,
@@ -153,8 +153,8 @@ def login(request):
             else:
                 auth.login(request, user)
                 logger.info(f"[User: {request.user.username}] logged in")
-                rag_config_file_path = get_group_rag_config_file_path(user_group_id)
-                RAG_API.create_session(user_group_id, rag_config_file_path)
+                rag_config_name = get_group_rag_config_name(user_group_id)
+                RAG_API.create_session(user_group_id, config_name=rag_config_name)
                 return redirect("/")
         # Else return error
         else:

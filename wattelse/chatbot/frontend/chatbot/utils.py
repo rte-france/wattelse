@@ -52,11 +52,6 @@ ChatModels = {
     "/gpt/": GPTChat,
 }
 
-LLM_to_RAGBackend_config = {
-    "local": Path("wattelse/chatbot/backend/configs/local_rag_config.toml"),
-    "azure": Path("wattelse/chatbot/backend/configs/azure_rag_config.toml"),
-}
-
 
 def get_chat_model(source_path: str) -> Type[GPTChat | Chat]:
     """Return the database class associated to the current page (RAG vs secureGPT)
@@ -263,15 +258,14 @@ def get_group_system_prompt(group_id: str) -> str:
     return group_system_prompt.system_prompt if group_system_prompt else ""
 
 
-def get_group_rag_config_file_path(group_id: str) -> Path:
+def get_group_rag_config_name(group_id: str) -> str:
     """
     Gets the group RAG config file path of a group.
     Returns None if not found.
     """
     group = Group.objects.get(name=group_id)
     group_profile, _ = GroupProfile.objects.get_or_create(group=group)
-    llm_deployment = group_profile.llm_deployment
-    return LLM_to_RAGBackend_config[llm_deployment]
+    return group_profile.llm_deployment
 
 
 def new_user_created(request, username=None):
