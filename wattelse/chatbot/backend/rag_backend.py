@@ -3,7 +3,6 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-import json
 import logging
 import os
 import shutil
@@ -13,7 +12,6 @@ from typing import BinaryIO, List, Dict, Union
 from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
-from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -22,7 +20,6 @@ from langchain_core.prompts import (
     PromptTemplate,
 )
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
-from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from loguru import logger
 from starlette.responses import StreamingResponse
 
@@ -48,74 +45,84 @@ from wattelse.chatbot.backend import (
 from wattelse.indexer.document_splitter import split_file
 from wattelse.indexer.document_parser import parse_file
 
+from wattelse.chatbot.backend.utils import (
+    CONFIG_NAME_TO_CONFIG_PATH,
+    RAGError,
+    get_chat_model,
+    preprocess_streaming_data,
+    filter_history,
+    get_history_as_text,
+)
+
 from wattelse.common.config_utils import load_toml_config
 
 logging.basicConfig()
 logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
-AZURE_API_VERSION = "2024-02-01"
-
-
-class RAGError(Exception):
-    pass
-
-
-def get_chat_model(generator_config: dict) -> BaseChatModel:
-    endpoint = generator_config["openai_endpoint"]
-    if "azure.com" not in endpoint:
-        llm_config = {
-            "openai_api_key": generator_config["openai_api_key"],
-            "openai_api_base": generator_config["openai_endpoint"],
-            "model_name": generator_config["openai_default_model"],
-            "temperature": generator_config["temperature"],
-        }
-        return ChatOpenAI(**llm_config)
-    else:
-        llm_config = {
-            "openai_api_key": generator_config["openai_api_key"],
-            "azure_endpoint": generator_config["openai_endpoint"],
-            "azure_deployment": generator_config["openai_default_model"],
-            "api_version": AZURE_API_VERSION,
-            "temperature": generator_config["temperature"],
-        }
-        llm = AzureChatOpenAI(**llm_config)
-        llm.model_name = generator_config[
-            "openai_default_model"
-        ]  # with Azure, set to gpt3.5-turbo by default
-        return llm
-
-
-def preprocess_streaming_data(streaming_data):
-    """Generator to preprocess the streaming data coming from LangChain `rag_chain.stream()`.
-    First sent chunk contains relevant_extracts in a convenient format.
-    Following chunks contain the actual response from the model token by token.
-    """
-    for chunk in streaming_data:
-        context_chunk = chunk.get("context", None)
-        if context_chunk is not None:
-            relevant_extracts = [
-                {"content": s.page_content, "metadata": s.metadata}
-                for s in context_chunk
-            ]
-            relevant_extracts = {"relevant_extracts": relevant_extracts}
-            yield json.dumps(relevant_extracts)
-        answer_chunk = chunk.get("answer")
-        if answer_chunk:
-            yield json.dumps(chunk)
-
-
-def filter_history(history, window_size):
-    # window size = question + answser, we return the last ones
-    return history[-2 * window_size :]
-
 
 class RAGBackEnd:
-    def __init__(self, group_id: str, config_file_path: Path):
+    def __init__(
+        self,
+        group_id: str,
+        config_name: str | None = None,
+        config_dict: dict | None = None,
+        config_file_path: Path | None = None,
+    ):
+        """
+        3 ways to set the configuration for RAGBackend class:
+            - `config_name` [str]: default config name, 'local' or 'azure'
+            - `config_dict` [dict]: config dict that should follow format found in default config files
+            - 'config_file_path [Path]: path to a .toml config file
+        Only one config must be passed as argument when instanciating the class.
+        """
+        # Set init attributes
         self.group_id = group_id
-        self.config = load_toml_config(config_file_path)
+        self.config_name = config_name
+        self.config_dict = config_dict
+        self.config_file_path = config_file_path
+
+        # Get config and set attrubutes
+        self.config = self._get_config()
         self._apply_config()
 
-    def _apply_config(self):
+    def _get_config(self) -> dict:
+        """
+        Function that implements RAGBAckend configuration logic:
+            - if 0 or more than 1 way to set RAG configuration are provided: raise error.
+            - else: load config
+        """
+        # Count how many arguments config arguments are provided
+        provided_config_count = sum(
+            arg is not None
+            for arg in (self.config_name, self.config_dict, self.config_file_path)
+        )
+
+        # If no config provided:
+        if provided_config_count == 0:
+            raise Exception(
+                "No configuration found. Please provide one of: 'config_name', 'config_dict', or 'config_file_path'"
+            )
+        if provided_config_count > 1:
+            raise Exception(
+                "Too many configurations found. Please provide a unique configuration: 'config_name', 'config_dict', or 'config_file_path'"
+            )
+
+        # If default config name provided
+        if self.config_name:
+            if self.config_name not in CONFIG_NAME_TO_CONFIG_PATH:
+                raise Exception(
+                    f"config_name '{self.config_name}' not found. Please use one of the following: {list(CONFIG_NAME_TO_CONFIG_PATH.keys())}"
+                )
+            config_file_path = CONFIG_NAME_TO_CONFIG_PATH[self.config_name]
+            return load_toml_config(config_file_path)
+        # If config dict provided
+        if self.config_dict:
+            return self.config_dict
+        # If config file path
+        if self.config_file_path:
+            return load_toml_config(self.config_file_path)
+
+    def _apply_config(self) -> None:
         """
         Set Class attributes based on the configuration file.
         This method is called when the class is instantiated.
@@ -434,20 +441,3 @@ class RAGBackEnd:
             )
             logger.debug(f"Contextualized question: {contextualized_question}")
             return contextualized_question
-
-
-def streamer(stream):
-    for chunk in stream:
-        if chunk.get("context"):
-            yield ""
-        else:
-            yield json.dumps(chunk) + "\n"
-
-
-def get_history_as_text(history: List[dict[str, str]]) -> str:
-    """Format conversation history as a text string"""
-    history_as_text = ""
-    if history is not None:
-        for turn in history:
-            history_as_text += f"{turn['role']}: {turn['content']}\n"
-    return history_as_text
