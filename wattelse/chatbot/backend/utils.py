@@ -12,8 +12,10 @@ CONFIG_NAME_TO_CONFIG_PATH = {
     "azure": Path("wattelse/chatbot/backend/configs/azure_rag_config.toml"),
 }
 
+
 class RAGError(Exception):
     pass
+
 
 def get_chat_model(generator_config: dict) -> BaseChatModel:
     endpoint = generator_config["openai_endpoint"]
@@ -38,7 +40,8 @@ def get_chat_model(generator_config: dict) -> BaseChatModel:
             "openai_default_model"
         ]  # with Azure, set to gpt3.5-turbo by default
         return llm
-    
+
+
 def preprocess_streaming_data(streaming_data: Iterable[Any]):
     """Generator to preprocess the streaming data coming from LangChain `rag_chain.stream()`.
     First sent chunk contains relevant_extracts in a convenient format.
@@ -56,12 +59,14 @@ def preprocess_streaming_data(streaming_data: Iterable[Any]):
         answer_chunk = chunk.get("answer")
         if answer_chunk:
             yield json.dumps(chunk)
-            
+
+
 def filter_history(history: list[dict], window_size: int):
     """
     Return last `window_size` interactions (question + answer) from a history.
     """
     return history[-2 * window_size :]
+
 
 def get_history_as_text(history: list[dict[str, str]]) -> str:
     """
@@ -72,4 +77,3 @@ def get_history_as_text(history: list[dict[str, str]]) -> str:
         for turn in history:
             history_as_text += f"{turn['role']}: {turn['content']}\n"
     return history_as_text
-            
