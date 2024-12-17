@@ -91,9 +91,13 @@ def initialize_state_session():
     if "selected_table" not in st.session_state:
         st.session_state["selected_table"] = list(DATA_TABLES)[0]
     if "full_data" not in st.session_state:
-        st.session_state["full_data"] = get_db_data(path_to_db=DB_PATH, data_tables=DATA_TABLES)
-        st.session_state["unfiltered_data"] = st.session_state["full_data"][st.session_state["selected_table"]]
-        st.session_state["filtered_data"] = st.session_state["unfiltered_data"] 
+        st.session_state["full_data"] = get_db_data(
+            path_to_db=DB_PATH, data_tables=DATA_TABLES
+        )
+        st.session_state["unfiltered_data"] = st.session_state["full_data"][
+            st.session_state["selected_table"]
+        ]
+        st.session_state["filtered_data"] = st.session_state["unfiltered_data"]
     if "user" not in st.session_state:
         st.session_state["user"] = None
     if "group" not in st.session_state:
