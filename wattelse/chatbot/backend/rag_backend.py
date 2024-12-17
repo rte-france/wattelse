@@ -61,97 +61,79 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
 
 class RAGBackEnd:
-    def __init__(
-        self,
-        group_id: str,
-        config_name: str | None = None,
-        config_dict: dict | None = None,
-        config_file_path: Path | None = None,
-    ):
+    def __init__(self, group_id: str, config: str | dict | Path):
         """
-        3 ways to set the configuration for RAGBackend class:
-            - `config_name` [str]: default config name, 'local' or 'azure'
-            - `config_dict` [dict]: config dict that should follow format found in default config files
-            - 'config_file_path [Path]: path to a .toml config file
-        Only one config must be passed as argument when instanciating the class.
+        Creates a RAGBackend for a given `group_id`.
+        3 ways to set the configuration depending on `config` type:
+            - str: default config name ('local' or 'azure')
+            - dict: config dict that should follow format found in default config files
+            - Path: path to a .toml config file
         """
-        # Set init attributes
         self.group_id = group_id
-        self.config_name = config_name
-        self.config_dict = config_dict
-        self.config_file_path = config_file_path
-
-        # Get config and set attrubutes
-        self.config = self._get_config()
+        self.config = self._load_config(config)
         self._apply_config()
 
-    def _get_config(self) -> dict:
+    def _load_config(self, config: str | dict | Path) -> dict:
         """
-        Function that implements RAGBAckend configuration logic:
-            - if 0 or more than 1 way to set RAG configuration are provided: raise error.
-            - else: load config
+        Function that implements RAGBackend configuration logic.
         """
-        # Count how many arguments config arguments are provided
-        provided_config_count = sum(
-            arg is not None
-            for arg in (self.config_name, self.config_dict, self.config_file_path)
-        )
-
-        # If no config provided:
-        if provided_config_count == 0:
-            raise Exception(
-                "No configuration found. Please provide one of: 'config_name', 'config_dict', or 'config_file_path'"
-            )
-        if provided_config_count > 1:
-            raise Exception(
-                "Too many configurations found. Please provide a unique configuration: 'config_name', 'config_dict', or 'config_file_path'"
-            )
-
-        # If default config name provided
-        if self.config_name:
-            if self.config_name not in CONFIG_NAME_TO_CONFIG_PATH:
+        # If `config` is str, return associated default config
+        if isinstance(config, str):
+            if config not in CONFIG_NAME_TO_CONFIG_PATH:
                 raise Exception(
-                    f"config_name '{self.config_name}' not found. Please use one of the following: {list(CONFIG_NAME_TO_CONFIG_PATH.keys())}"
+                    f"config_name '{config}' not found. Please use one of the following: {list(CONFIG_NAME_TO_CONFIG_PATH.keys())}"
                 )
-            config_file_path = CONFIG_NAME_TO_CONFIG_PATH[self.config_name]
+            config_file_path = CONFIG_NAME_TO_CONFIG_PATH[config]
             return load_toml_config(config_file_path)
-        # If config dict provided
-        if self.config_dict:
-            return self.config_dict
-        # If config file path
-        if self.config_file_path:
+
+        # If `config` is dict, return it directly
+        elif isinstance(config, dict):
+            return config
+
+        # If `config` is Path, load config from toml file
+        elif isinstance(config, Path):
             return load_toml_config(self.config_file_path)
+
+        # Else raise TypeError
+        else:
+            raise TypeError(
+                f"Invalid input type for 'config': {type(config).__name__}. "
+                "Expected one of: str, dict, or pathlib.Path."
+            )
 
     def _apply_config(self) -> None:
         """
         Set Class attributes based on the configuration file.
         This method is called when the class is instantiated.
         """
-        # Retriever parameters
-        retriever_config = self.config["retriever"]
-        self.top_n_extracts = retriever_config["top_n_extracts"]
-        self.retrieval_method = retriever_config["retrieval_method"]
-        self.similarity_threshold = retriever_config["similarity_threshold"]
-        self.multi_query_mode = retriever_config["multi_query_mode"]
+        try:
+            # Retriever parameters
+            retriever_config = self.config["retriever"]
+            self.top_n_extracts = retriever_config["top_n_extracts"]
+            self.retrieval_method = retriever_config["retrieval_method"]
+            self.similarity_threshold = retriever_config["similarity_threshold"]
+            self.multi_query_mode = retriever_config["multi_query_mode"]
 
-        # Generator parameters
-        generator_config = self.config["generator"]
-        self.llm = get_chat_model(generator_config)
-        self.remember_recent_messages = generator_config["remember_recent_messages"]
-        self.temperature = generator_config["temperature"]
+            # Generator parameters
+            generator_config = self.config["generator"]
+            self.llm = get_chat_model(generator_config)
+            self.remember_recent_messages = generator_config["remember_recent_messages"]
+            self.temperature = generator_config["temperature"]
 
-        # Document collection
-        self.document_collection = load_document_collection(self.group_id)
+            # Document collection
+            self.document_collection = load_document_collection(self.group_id)
 
-        # Prompts
-        self.system_prompt = FR_SYSTEM_RAG_LLAMA3
-        self.user_prompt = FR_USER_RAG_LLAMA3
-        self.system_prompt_query_contextualization = (
-            FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3
-        )
-        self.user_prompt_query_contextualization = (
-            FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
-        )
+            # Prompts
+            self.system_prompt = FR_SYSTEM_RAG_LLAMA3
+            self.user_prompt = FR_USER_RAG_LLAMA3
+            self.system_prompt_query_contextualization = (
+                FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3
+            )
+            self.user_prompt_query_contextualization = (
+                FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
+            )
+        except Exception as e:
+            raise Exception(f"Error while loading RAGBackend configuration: {e}")
 
     def get_llm_model_name(self):
         return self.llm.model_name

@@ -154,7 +154,7 @@ def login(request):
                 auth.login(request, user)
                 logger.info(f"[User: {request.user.username}] logged in")
                 rag_config_name = get_group_rag_config_name(user_group_id)
-                RAG_API.create_session(user_group_id, config_name=rag_config_name)
+                RAG_API.create_session(user_group_id, config=rag_config_name)
                 return redirect("/")
         # Else return error
         else:

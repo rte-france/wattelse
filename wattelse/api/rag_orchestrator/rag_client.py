@@ -67,19 +67,11 @@ class RAGOrchestratorClient:
                 f"[Group: {group_id}] Error: {response.status_code, response.text}"
             )
 
-    def create_session(
-        self,
-        group_id: str,
-        config_name: str | None = None,
-        config_dict: dict | None = None,
-    ) -> str:
+    def create_session(self, group_id: str, config: str | dict) -> str:
         """Create session associated to a group"""
         response = requests.post(
             self.url + ENDPOINT_CREATE_SESSION + f"/{group_id}",
-            json={
-                "config_name": config_name,
-                "config_dict": config_dict,
-            },
+            json={"config": config},
         )
         if response.status_code == 200:
             logger.info(response.json()["message"])
