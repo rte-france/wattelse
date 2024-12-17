@@ -59,13 +59,9 @@ def side_bar():
         )
 
         # Get user and group names and sort them
-        user_names_list = list(
-            st.session_state["unfiltered_data"].username.unique()
-        )
+        user_names_list = list(st.session_state["unfiltered_data"].username.unique())
         user_names_list.sort(key=str.lower)
-        group_names_list = list(
-            st.session_state["unfiltered_data"].group_id.unique()
-        )
+        group_names_list = list(st.session_state["unfiltered_data"].group_id.unique())
         group_names_list.sort(key=str.lower)
 
         # Format group_names_list so DRH and Expé_Métiers are at the top of the list
@@ -126,8 +122,8 @@ def side_bar():
             st.session_state["extract_substring"] = st.session_state["filter_str"]
 
         parameters_sidebar_clicked = st.form_submit_button(
-                "Update", type="primary", on_click=update_state_session
-            )
+            "Update", type="primary", on_click=update_state_session
+        )
 
     return parameters_sidebar_clicked
 
