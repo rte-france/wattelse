@@ -176,7 +176,7 @@ def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
     data = filtered_df[
         ["username", "group_id", "conversation_id", "response", "long_feedback"]
     ]
-    data["long_feedback_bool"] = (data["long_feedback"] != "").astype(int)
+    data.loc[:, "long_feedback_bool"] = (data["long_feedback"] != "").astype(int)
 
     users_df = data.groupby(
         by="username",
@@ -189,7 +189,10 @@ def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
     )
     users_df = users_df.join(users_feedback)
     users_df.fillna(value=0, inplace=True)
-    users_df.sort_values(by="response", ascending=False, inplace=True)
+
+    for feedback in ["great", "ok", "missing_info", "wrong"]:
+        if feedback not in users_df.columns:
+            users_df[feedback] = 0
     users_df.rename(
         columns={
             "conversation_id": "nb_conversation",
@@ -199,12 +202,10 @@ def build_users_df(filtered_df: pd.DataFrame) -> pd.DataFrame:
         },
         inplace=True,
     )
+    users_df["evalue"] = users_df["nb_questions"] - users_df["non_evalue"]
+    users_df.sort_values(by="evalue", ascending=False, inplace=True)
 
-    for feedback in ["great", "ok", "missing_info", "wrong"]:
-        if feedback not in users_df.columns:
-            users_df[feedback] = 0
-
-    users_df["tx_feedback"] = 1 - users_df["non_evalue"] / users_df["nb_questions"]
+    users_df["tx_feedback"] = users_df["evalue"] / users_df["nb_questions"]
     users_df.reset_index(inplace=True)
 
     return users_df
@@ -226,8 +227,6 @@ def build_users_satisfaction_over_nb_eval(users_df: pd.DataFrame) -> pd.DataFram
     Returns:
         pd.DataFrame: _description_
     """
-    users_df["evalue"] = users_df["nb_questions"] - users_df["non_evalue"]
-    users_df.sort_values(by="evalue", ascending=True, inplace=True)
     users_df["eval_mean"] = (
         users_df["great"] + 2.0 * users_df["ok"] / 3.0 + users_df["missing_info"] / 3.0
     ) / users_df["evalue"]
@@ -302,7 +301,7 @@ def build_extracts_pivot(extracts_pivot: pd.DataFrame) -> pd.DataFrame:
     data = extracts_pivot[
         ["content", "group_id", "conversation_id", "response", "long_feedback"]
     ]
-    data["long_feedback_bool"] = (data["long_feedback"] != "").astype(int)
+    data.loc[:, "long_feedback_bool"] = (data["long_feedback"] != "").astype(int)
 
     extracts_pivot = data.groupby(
         by="content",

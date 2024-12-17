@@ -32,7 +32,16 @@ with open(GROUP_NAMES_LIST_FILE_PATH) as f:
     GROUP_NAMES_LIST = yaml.safe_load(f)
 
 
-def get_db_data(path_to_db: Path) -> pd.DataFrame:
+def get_db_data(path_to_db: Path=DB_PATH, data_tables:dict[str, str]=DATA_TABLES) -> dict[str, pd.DataFrame]:
+    """extract the django db of questions, answers and relevant_extracts. All is put in a dataframe
+
+    Args:
+        path_to_db (Path, optional): the path where the db can be found. Defaults to DB_PATH.
+        data_tables (dict[str], optional): A dict containing the table_names in the streamlit and in the django_db. Defaults to DATA_TABLES.
+
+    Returns:
+        pd.DataFrame: _description_
+    """    
     """extract the django db of questions, answers and relevant_extracts. All is put in a dataframe
 
     Args:
@@ -41,49 +50,56 @@ def get_db_data(path_to_db: Path) -> pd.DataFrame:
     Returns:
         pd.DataFrame: the resulting dataframe
     """
+
+    full_data = dict()
     con = sqlite3.connect(path_to_db)
 
     # Get column names from the table
     cur = con.cursor()
-    table = DATA_TABLES[st.session_state["selected_table"]]
+    for table_name, db_table in data_tables.items():
 
-    query = f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, answer_delay, short_feedback, long_feedback"
+        query = f"SELECT username, group_id, conversation_id, message, response, answer_timestamp, answer_delay, short_feedback, long_feedback"
 
-    if st.session_state["selected_table"] == "RAG":
-        query += ", relevant_extracts, group_system_prompt"
-    query += f" FROM {table}, {USER_TABLE} WHERE {table}.user_id = {USER_TABLE}.id"
+        if table_name == "RAG":
+            query += ", relevant_extracts, group_system_prompt"
+        query += f" FROM {db_table}, {USER_TABLE} WHERE {db_table}.user_id = {USER_TABLE}.id"
 
-    cur.execute(query)
-    column_names = [
-        desc[0] for desc in cur.description
-    ]  # Get column names from description
-    data = cur.fetchall()
+        cur.execute(query)
+        column_names = [
+            desc[0] for desc in cur.description
+        ]  # Get column names from description
+        data = cur.fetchall()
 
-    # Create DataFrame with column names
-    df = pd.DataFrame(data, columns=column_names)
-    df.answer_timestamp = pd.to_datetime(df.answer_timestamp)
+        # Create DataFrame with column names
+        df = pd.DataFrame(data, columns=column_names)
+        df.answer_timestamp = pd.to_datetime(df.answer_timestamp)
+        df["long_feedback_bool"] = (df["long_feedback"] != "").astype(int)
+
+        full_data[table_name] = df
+
     con.close()
 
-    df["long_feedback_bool"] = (df["long_feedback"] != "").astype(int)
-
-    return df
+    return full_data
 
 
 def initialize_state_session():
-
+    """Initialise the streamlit state_session with default values.
+    """
     if "selected_table" not in st.session_state:
         st.session_state["selected_table"] = list(DATA_TABLES)[0]
     if "full_data" not in st.session_state:
-        st.session_state["full_data"] = get_db_data(DB_PATH)
+        st.session_state["full_data"] = get_db_data(path_to_db=DB_PATH, data_tables=DATA_TABLES)
+    st.session_state["unfiltered_data"] = st.session_state["full_data"][st.session_state["selected_table"]]
+    st.session_state["filtered_data"] = st.session_state["unfiltered_data"] 
     if "user" not in st.session_state:
         st.session_state["user"] = None
     if "group" not in st.session_state:
         st.session_state["group"] = None
     if "nb_reponse_lissage" not in st.session_state:
-        st.session_state["nb_reponse_lissage"] = 1
+        st.session_state["nb_reponse_lissage"] = 15
 
     # Select time range
-    min_max = st.session_state["full_data"]["answer_timestamp"].agg(["min", "max"])
+    min_max = st.session_state["unfiltered_data"]["answer_timestamp"].agg(["min", "max"])
     min_date = min_max["min"].to_pydatetime()
     max_date = min_max["max"].to_pydatetime()
 
@@ -94,6 +110,9 @@ def initialize_state_session():
         )
     if "extract_substring" not in st.session_state:
         st.session_state["extract_substring"] = ""
+    print(f"debug_initialize : {st.session_state["filtered_data"]}")
+
+    return
 
 
 def update_state_session():
@@ -101,7 +120,8 @@ def update_state_session():
     filter it with the values selected in the side bar (left part of the screen),
     write the result in st.session_state["filtered_data"]
     """
-    filtered = st.session_state["full_data"]
+    st.session_state["unfiltered_data"] = st.session_state["full_data"][st.session_state["selected_table"]]
+    filtered = st.session_state["unfiltered_data"]
     if st.session_state["user"]:
         filtered = filtered[filtered.username == st.session_state["user"]]
     if st.session_state["group"]:
@@ -117,6 +137,7 @@ def update_state_session():
     )
 
     st.session_state["filtered_data"] = filtered
+    print(f"debug_update : {st.session_state["filtered_data"]}")
 
     return
 
@@ -124,11 +145,15 @@ def update_state_session():
 def reset_state_session():
     st.session_state["selected_table"] = list(DATA_TABLES)[0]
     st.session_state["full_data"] = get_db_data(DB_PATH)
+    st.session_state["filtered_data"] = st.session_state["full_data"][st.session_state["selected_table"]]
     st.session_state["user"] = None
     st.session_state["group"] = None
-    st.session_state["nb_reponse_lissage"] = 1
+    st.session_state["nb_reponse_lissage"] = 15
     st.session_state["filtered_data"] = st.session_state["full_data"]
     st.session_state["timestamp_range"] = st.session_state["unfiltered_timestamp_range"]
+    print(f"debug_reset : {st.session_state["filtered_data"]}")
+
+    return
 
 
 def check_password():
@@ -153,3 +178,4 @@ def check_password():
     if "password_correct" in st.session_state:
         st.error("😕 Password incorrect")
     return False
+

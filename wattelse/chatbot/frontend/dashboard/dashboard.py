@@ -25,6 +25,7 @@ from wattelse.chatbot.frontend.dashboard.dashboard_utils import (
     DATA_TABLES,
     initialize_state_session,
     update_state_session,
+    reset_state_session,
     check_password,
 )
 from wattelse.chatbot.frontend.dashboard.dashboard_display import (
@@ -59,10 +60,11 @@ def side_bar():
         )
 
         # Get user and group names and sort them
-        user_names_list = list(st.session_state["full_data"].username.unique())
+        user_names_list = list(st.session_state["full_data"][st.session_state["selected_table"]].username.unique())
         user_names_list.sort(key=str.lower)
-        group_names_list = list(st.session_state["full_data"].group_id.unique())
+        group_names_list = list(st.session_state["full_data"][st.session_state["selected_table"]].group_id.unique())
         group_names_list.sort(key=str.lower)
+        
 
         # Format group_names_list so DRH and Expé_Métiers are at the top of the list
         # Only if DRH_GROUP_NAME in group_names (so this option only appear on server 1)
@@ -71,6 +73,7 @@ def side_bar():
             group_names_list.insert(0, DRH_GROUP_NAME)
             group_names_list.insert(0, METIERS_GROUP_NAME)
 
+
         st.selectbox(
             "Select user",
             user_names_list,
@@ -78,6 +81,8 @@ def side_bar():
             placeholder="Select user...",
             key="user",
         )
+
+        
         st.selectbox(
             "Select group",
             group_names_list,
@@ -85,6 +90,7 @@ def side_bar():
             placeholder="Select group...",
             key="group",
         )
+
 
         # Select time range
         (min_date, max_date) = st.session_state["unfiltered_timestamp_range"]
@@ -120,9 +126,16 @@ def side_bar():
 
             st.session_state["extract_substring"] = st.session_state["filter_str"]
 
-        parameters_sidebar_clicked = st.form_submit_button(
-            "Update", type="primary", on_click=update_state_session
-        )
+        col1, col2 = st.columns(2)
+        with col1:
+            parameters_sidebar_clicked = st.form_submit_button(
+                "Update", type="primary", on_click=update_state_session
+            )
+        with col2:
+            # parameters_sidebar_clicked = True si update OU reset (boolean)
+            parameters_sidebar_clicked += st.form_submit_button(
+                "Reset", type="secondary", on_click=reset_state_session
+            )
 
     return parameters_sidebar_clicked
 
@@ -146,7 +159,7 @@ def main():
 
     if side_bar():
         filtered_df = st.session_state["filtered_data"]
-        full_df = st.session_state["full_data"]
+        full_df = st.session_state["unfiltered_data"]
         nb_reponse_lissage = st.session_state["nb_reponse_lissage"]
 
         with st.expander("Raw data"):
