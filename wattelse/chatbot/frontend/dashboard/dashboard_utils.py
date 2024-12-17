@@ -151,21 +151,6 @@ def update_state_session():
     return
 
 
-def reset_state_session():
-    st.session_state["selected_table"] = list(DATA_TABLES)[0]
-    st.session_state["full_data"] = get_db_data(DB_PATH)
-    st.session_state["filtered_data"] = st.session_state["full_data"][
-        st.session_state["selected_table"]
-    ]
-    st.session_state["user"] = None
-    st.session_state["group"] = None
-    st.session_state["nb_reponse_lissage"] = 15
-    st.session_state["filtered_data"] = st.session_state["full_data"]
-    st.session_state["timestamp_range"] = st.session_state["unfiltered_timestamp_range"]
-
-    return
-
-
 def check_password():
     """Returns `True` if the user had the correct password."""
 

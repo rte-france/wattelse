@@ -25,7 +25,6 @@ from wattelse.chatbot.frontend.dashboard.dashboard_utils import (
     DATA_TABLES,
     initialize_state_session,
     update_state_session,
-    reset_state_session,
     check_password,
 )
 from wattelse.chatbot.frontend.dashboard.dashboard_display import (
@@ -61,15 +60,11 @@ def side_bar():
 
         # Get user and group names and sort them
         user_names_list = list(
-            st.session_state["full_data"][
-                st.session_state["selected_table"]
-            ].username.unique()
+            st.session_state["unfiltered_data"].username.unique()
         )
         user_names_list.sort(key=str.lower)
         group_names_list = list(
-            st.session_state["full_data"][
-                st.session_state["selected_table"]
-            ].group_id.unique()
+            st.session_state["unfiltered_data"].group_id.unique()
         )
         group_names_list.sort(key=str.lower)
 
@@ -130,15 +125,8 @@ def side_bar():
 
             st.session_state["extract_substring"] = st.session_state["filter_str"]
 
-        col1, col2 = st.columns(2)
-        with col1:
-            parameters_sidebar_clicked = st.form_submit_button(
+        parameters_sidebar_clicked = st.form_submit_button(
                 "Update", type="primary", on_click=update_state_session
-            )
-        with col2:
-            # parameters_sidebar_clicked = True si update OU reset (boolean)
-            parameters_sidebar_clicked += st.form_submit_button(
-                "Reset", type="secondary", on_click=reset_state_session
             )
 
     return parameters_sidebar_clicked
