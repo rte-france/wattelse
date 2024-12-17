@@ -394,32 +394,35 @@ def display_users_satisfaction_over_nb_eval(
             stackgroup="one",  # define stack group
         )
     )
-    fig.add_trace(
-        go.Bar(
-            y=users_satisfaction["eval_mean"],
-            x=users_satisfaction.index,
-            name="eval moyenne",
-            marker_color="blue",
+    if "eval_mean" in users_satisfaction.columns:
+        fig.add_trace(
+            go.Bar(
+                y=users_satisfaction["eval_mean"],
+                x=users_satisfaction.index,
+                name="eval moyenne",
+                marker_color="blue",
+            )
         )
-    )
-    fig.add_trace(
-        go.Scatter(
-            y=users_satisfaction["eval_std"],
-            x=users_satisfaction.index,
-            mode="lines",
-            name="variabilité moyenne par utilisateurs",
-            line=dict(color="lightblue"),
+    if "eval_std" in users_satisfaction.columns:
+        fig.add_trace(
+            go.Scatter(
+                y=users_satisfaction["eval_std"],
+                x=users_satisfaction.index,
+                mode="lines",
+                name="variabilité moyenne par utilisateurs",
+                line=dict(color="lightblue"),
+            )
         )
-    )
-    fig.add_trace(
-        go.Scatter(
-            y=users_satisfaction["eval_mean_std"],
-            x=users_satisfaction.index,
-            mode="lines",
-            name="variabilité moyenne entre utilisateurs",
-            line=dict(color="lightgreen"),
+    if "eval_mean_std" in users_satisfaction.columns:
+        fig.add_trace(
+            go.Scatter(
+                y=users_satisfaction["eval_mean_std"],
+                x=users_satisfaction.index,
+                mode="lines",
+                name="variabilité moyenne entre utilisateurs",
+                line=dict(color="lightgreen"),
+            )
         )
-    )
     fig.update_layout(
         title="Evaluation moyenne des réponses par utilisateurs, en fonction du nombre d'évaluations réalisées",
         xaxis_title="nb d'évaluations réalisées",

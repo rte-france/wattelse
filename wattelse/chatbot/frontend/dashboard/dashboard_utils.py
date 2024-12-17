@@ -91,13 +91,9 @@ def initialize_state_session():
     if "selected_table" not in st.session_state:
         st.session_state["selected_table"] = list(DATA_TABLES)[0]
     if "full_data" not in st.session_state:
-        st.session_state["full_data"] = get_db_data(
-            path_to_db=DB_PATH, data_tables=DATA_TABLES
-        )
-    st.session_state["unfiltered_data"] = st.session_state["full_data"][
-        st.session_state["selected_table"]
-    ]
-    st.session_state["filtered_data"] = st.session_state["unfiltered_data"]
+        st.session_state["full_data"] = get_db_data(path_to_db=DB_PATH, data_tables=DATA_TABLES)
+        st.session_state["unfiltered_data"] = st.session_state["full_data"][st.session_state["selected_table"]]
+        st.session_state["filtered_data"] = st.session_state["unfiltered_data"] 
     if "user" not in st.session_state:
         st.session_state["user"] = None
     if "group" not in st.session_state:
@@ -119,7 +115,6 @@ def initialize_state_session():
         )
     if "extract_substring" not in st.session_state:
         st.session_state["extract_substring"] = ""
-    print(f"debug_initialize : {st.session_state["filtered_data"]}")
 
     return
 
@@ -148,7 +143,6 @@ def update_state_session():
     )
 
     st.session_state["filtered_data"] = filtered
-    print(f"debug_update : {st.session_state["filtered_data"]}")
 
     return
 
@@ -164,7 +158,6 @@ def reset_state_session():
     st.session_state["nb_reponse_lissage"] = 15
     st.session_state["filtered_data"] = st.session_state["full_data"]
     st.session_state["timestamp_range"] = st.session_state["unfiltered_timestamp_range"]
-    print(f"debug_reset : {st.session_state["filtered_data"]}")
 
     return
 
