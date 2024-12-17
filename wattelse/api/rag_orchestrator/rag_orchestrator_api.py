@@ -43,9 +43,8 @@ class RAGOrchestratorAPIError(Exception):
     pass
 
 
-class SessionCreateRequest(BaseModel):
-    config_name: str | None = None
-    config_dict: dict | None = None
+class RAGBackendConfig(BaseModel):
+    config: str | dict
 
 
 class RAGQuery(BaseModel):
@@ -64,17 +63,13 @@ def home():
 
 
 @app.post(ENDPOINT_CREATE_SESSION + "/{group_id}")
-def create_session(
-    group_id: str,
-    request: SessionCreateRequest = Body(None),
-) -> dict:
+def create_session(group_id: str, config: RAGBackendConfig) -> dict:
     """When this is called, instantiates a RAG backend for a group."""
     if group_id not in RAG_SESSIONS.keys():
         try:
             RAG_SESSIONS[group_id] = RAGBackEnd(
                 group_id,
-                config_name=request.config_name,
-                config_dict=request.config_dict,
+                config=config.config,
             )
             logger.info(f"[Group: {group_id}] RAGBackend created")
             return {"message": f"Session for group '{group_id}' created"}
