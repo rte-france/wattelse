@@ -60,11 +60,18 @@ def side_bar():
         )
 
         # Get user and group names and sort them
-        user_names_list = list(st.session_state["full_data"][st.session_state["selected_table"]].username.unique())
+        user_names_list = list(
+            st.session_state["full_data"][
+                st.session_state["selected_table"]
+            ].username.unique()
+        )
         user_names_list.sort(key=str.lower)
-        group_names_list = list(st.session_state["full_data"][st.session_state["selected_table"]].group_id.unique())
+        group_names_list = list(
+            st.session_state["full_data"][
+                st.session_state["selected_table"]
+            ].group_id.unique()
+        )
         group_names_list.sort(key=str.lower)
-        
 
         # Format group_names_list so DRH and Expé_Métiers are at the top of the list
         # Only if DRH_GROUP_NAME in group_names (so this option only appear on server 1)
@@ -72,7 +79,6 @@ def side_bar():
             group_names_list.remove(DRH_GROUP_NAME)
             group_names_list.insert(0, DRH_GROUP_NAME)
             group_names_list.insert(0, METIERS_GROUP_NAME)
-
 
         st.selectbox(
             "Select user",
@@ -82,7 +88,6 @@ def side_bar():
             key="user",
         )
 
-        
         st.selectbox(
             "Select group",
             group_names_list,
@@ -90,7 +95,6 @@ def side_bar():
             placeholder="Select group...",
             key="group",
         )
-
 
         # Select time range
         (min_date, max_date) = st.session_state["unfiltered_timestamp_range"]

@@ -32,7 +32,9 @@ with open(GROUP_NAMES_LIST_FILE_PATH) as f:
     GROUP_NAMES_LIST = yaml.safe_load(f)
 
 
-def get_db_data(path_to_db: Path=DB_PATH, data_tables:dict[str, str]=DATA_TABLES) -> dict[str, pd.DataFrame]:
+def get_db_data(
+    path_to_db: Path = DB_PATH, data_tables: dict[str, str] = DATA_TABLES
+) -> dict[str, pd.DataFrame]:
     """extract the django db of questions, answers and relevant_extracts. All is put in a dataframe
 
     Args:
@@ -41,7 +43,7 @@ def get_db_data(path_to_db: Path=DB_PATH, data_tables:dict[str, str]=DATA_TABLES
 
     Returns:
         pd.DataFrame: _description_
-    """    
+    """
     """extract the django db of questions, answers and relevant_extracts. All is put in a dataframe
 
     Args:
@@ -62,7 +64,9 @@ def get_db_data(path_to_db: Path=DB_PATH, data_tables:dict[str, str]=DATA_TABLES
 
         if table_name == "RAG":
             query += ", relevant_extracts, group_system_prompt"
-        query += f" FROM {db_table}, {USER_TABLE} WHERE {db_table}.user_id = {USER_TABLE}.id"
+        query += (
+            f" FROM {db_table}, {USER_TABLE} WHERE {db_table}.user_id = {USER_TABLE}.id"
+        )
 
         cur.execute(query)
         column_names = [
@@ -83,14 +87,17 @@ def get_db_data(path_to_db: Path=DB_PATH, data_tables:dict[str, str]=DATA_TABLES
 
 
 def initialize_state_session():
-    """Initialise the streamlit state_session with default values.
-    """
+    """Initialise the streamlit state_session with default values."""
     if "selected_table" not in st.session_state:
         st.session_state["selected_table"] = list(DATA_TABLES)[0]
     if "full_data" not in st.session_state:
-        st.session_state["full_data"] = get_db_data(path_to_db=DB_PATH, data_tables=DATA_TABLES)
-    st.session_state["unfiltered_data"] = st.session_state["full_data"][st.session_state["selected_table"]]
-    st.session_state["filtered_data"] = st.session_state["unfiltered_data"] 
+        st.session_state["full_data"] = get_db_data(
+            path_to_db=DB_PATH, data_tables=DATA_TABLES
+        )
+    st.session_state["unfiltered_data"] = st.session_state["full_data"][
+        st.session_state["selected_table"]
+    ]
+    st.session_state["filtered_data"] = st.session_state["unfiltered_data"]
     if "user" not in st.session_state:
         st.session_state["user"] = None
     if "group" not in st.session_state:
@@ -99,7 +106,9 @@ def initialize_state_session():
         st.session_state["nb_reponse_lissage"] = 15
 
     # Select time range
-    min_max = st.session_state["unfiltered_data"]["answer_timestamp"].agg(["min", "max"])
+    min_max = st.session_state["unfiltered_data"]["answer_timestamp"].agg(
+        ["min", "max"]
+    )
     min_date = min_max["min"].to_pydatetime()
     max_date = min_max["max"].to_pydatetime()
 
@@ -120,7 +129,9 @@ def update_state_session():
     filter it with the values selected in the side bar (left part of the screen),
     write the result in st.session_state["filtered_data"]
     """
-    st.session_state["unfiltered_data"] = st.session_state["full_data"][st.session_state["selected_table"]]
+    st.session_state["unfiltered_data"] = st.session_state["full_data"][
+        st.session_state["selected_table"]
+    ]
     filtered = st.session_state["unfiltered_data"]
     if st.session_state["user"]:
         filtered = filtered[filtered.username == st.session_state["user"]]
@@ -145,7 +156,9 @@ def update_state_session():
 def reset_state_session():
     st.session_state["selected_table"] = list(DATA_TABLES)[0]
     st.session_state["full_data"] = get_db_data(DB_PATH)
-    st.session_state["filtered_data"] = st.session_state["full_data"][st.session_state["selected_table"]]
+    st.session_state["filtered_data"] = st.session_state["full_data"][
+        st.session_state["selected_table"]
+    ]
     st.session_state["user"] = None
     st.session_state["group"] = None
     st.session_state["nb_reponse_lissage"] = 15
@@ -178,4 +191,3 @@ def check_password():
     if "password_correct" in st.session_state:
         st.error("😕 Password incorrect")
     return False
-
