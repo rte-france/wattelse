@@ -175,18 +175,16 @@ def main():
             with col2:
                 pass
             msg_df = build_msg_df_over_time(
-                filtered_df=filtered_df, 
-                nb_reponse_lissage=nb_reponse_lissage
+                filtered_df=filtered_df, nb_reponse_lissage=nb_reponse_lissage
             )
             fig = display_feedback_charts_over_time(
-                msg_df=msg_df,
-                nb_reponse_lissage=nb_reponse_lissage
-                )
+                msg_df=msg_df, nb_reponse_lissage=nb_reponse_lissage
+            )
             st.plotly_chart(fig)
 
         with st.expander("Users analysis", expanded=True):
             users_df = build_users_df(filtered_df=filtered_df)
-            if len(users_df)>0:
+            if len(users_df) > 0:
                 fig = display_user_graph(users_df=users_df)
                 st.plotly_chart(fig)
                 users_satisfaction = build_users_satisfaction_over_nb_eval(
@@ -207,7 +205,7 @@ def main():
         if st.session_state["selected_table"] == "RAG":
             with st.expander("Relevant extracts analysis", expanded=True):
                 relevant_extracts_df = build_extracts_df(filtered_df=filtered_df)
-                if len(relevant_extracts_df)>0:
+                if len(relevant_extracts_df) > 0:
                     extracts_pivot = build_extracts_pivot(
                         extracts_pivot=relevant_extracts_df
                     )
@@ -219,7 +217,7 @@ def main():
 
             with st.expander(f"Filtrage des extraits", expanded=False):
 
-                if len(relevant_extracts_df)>0:
+                if len(relevant_extracts_df) > 0:
                     filtered_extracts_df = relevant_extracts_df.loc[
                         relevant_extracts_df["content"].str.contains(
                             st.session_state["filter_str"]
