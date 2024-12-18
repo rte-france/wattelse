@@ -11,7 +11,7 @@ from pathlib import Path
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
 # Initialize the RAGBackend
-rag = RAGBackEnd("test_backend")
+rag = RAGBackEnd("test_backend", config="local_20240628")
 
 # Add a document
 path_to_doc = Path("test_document.pdf")
@@ -35,3 +35,10 @@ for extract in response["relevant_extracts"]:
 # !!! WARNING: This will delete all documents and associated embeddings !!!
 rag.clear_collection()
 ```
+
+# RAGBackend configurations
+
+`RAGBackend` configurations are handled using the `config` input argument. It can either be:
+- `str`: an ID referencing a pre-defined config located in [configs](configs/)
+- `dict`: a config dict
+- `pathlib.Path`: a path to a config `.toml` file
