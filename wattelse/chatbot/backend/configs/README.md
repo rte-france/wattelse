@@ -1,4 +1,4 @@
-# RAGBackend default configuration
+# RAGBackend default configurations
 
 This folder contains default configurations for `RAGBackend` class. Each configuration should be a `.toml` file.
 
