@@ -323,6 +323,9 @@ def save_interaction(request):
             chatmodel_params["relevant_extracts"] = relevant_extracts
             # Add group system prompt
             chatmodel_params["group_system_prompt"] = group_system_prompt
+            # Add rag_config
+            rag_config = get_group_rag_config_name(user_group_id)
+            chatmodel_params["rag_config"] = rag_config
 
         # Save interaction
         try:

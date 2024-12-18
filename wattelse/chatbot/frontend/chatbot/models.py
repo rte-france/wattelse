@@ -26,6 +26,7 @@ class Chat(models.Model):
     answer_delay = models.DurationField(null=True, blank=True)  # Optional fields
     relevant_extracts = models.JSONField(default=list)
     group_system_prompt = models.TextField(default="")
+    rag_config = models.CharField(max_length=100, null=False, blank=False)
 
     def __str__(self):
         return f"{self.user.username}: {self.message}"
@@ -54,11 +55,10 @@ class GPTChat(models.Model):
 
 class GroupProfile(models.Model):
     group = models.OneToOneField(Group, on_delete=models.CASCADE, primary_key=True)
-    llm_deployment = models.CharField(max_length=10, default="azure")
+    rag_config = models.CharField(
+        max_length=100, default="azure_20241216", null=False, blank=False
+    )
     system_prompt = models.TextField(null=True, blank=True, default="")
-
-    def __str__(self) -> str:
-        return f"{self.group_id}: {self.system_prompt}"
 
 
 class SuperUserPermissions(models.Model):
