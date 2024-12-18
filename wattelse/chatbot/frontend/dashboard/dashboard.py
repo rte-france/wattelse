@@ -91,9 +91,8 @@ def side_bar():
         st.slider(
             "Select the range of timestamps",
             min_value=min_date,
-            max_value=(
-                max_date,
-                min_date + timedelta(minutes=1),
+            max_value=max(
+                max_date, min_date + timedelta(days=1)
             ),  # to avoid slider errors
             value=(min_date, max_date),
             step=timedelta(days=1),
@@ -176,24 +175,31 @@ def main():
             with col2:
                 pass
             msg_df = build_msg_df_over_time(
-                filtered_df=filtered_df, nb_reponse_lissage=nb_reponse_lissage
+                filtered_df=filtered_df, 
+                nb_reponse_lissage=nb_reponse_lissage
             )
-            fig = display_feedback_charts_over_time(msg_df=msg_df)
+            fig = display_feedback_charts_over_time(
+                msg_df=msg_df,
+                nb_reponse_lissage=nb_reponse_lissage
+                )
             st.plotly_chart(fig)
 
         with st.expander("Users analysis", expanded=True):
             users_df = build_users_df(filtered_df=filtered_df)
-            fig = display_user_graph(users_df=users_df)
-            st.plotly_chart(fig)
-            users_satisfaction = build_users_satisfaction_over_nb_eval(
-                users_df=users_df
-            )
-            fig = display_users_satisfaction_over_nb_eval(
-                users_satisfaction=users_satisfaction
-            )
-            st.plotly_chart(fig)
-            fig = display_user_hist_over_eval(users_df=users_df)
-            st.plotly_chart(fig)
+            if len(users_df)>0:
+                fig = display_user_graph(users_df=users_df)
+                st.plotly_chart(fig)
+                users_satisfaction = build_users_satisfaction_over_nb_eval(
+                    users_df=users_df
+                )
+                fig = display_users_satisfaction_over_nb_eval(
+                    users_satisfaction=users_satisfaction
+                )
+                st.plotly_chart(fig)
+                fig = display_user_hist_over_eval(users_df=users_df)
+                st.plotly_chart(fig)
+            else:
+                st.write("no user to display")
 
         with st.expander("Users raw data", expanded=False):
             st.write(users_df)
@@ -201,27 +207,30 @@ def main():
         if st.session_state["selected_table"] == "RAG":
             with st.expander("Relevant extracts analysis", expanded=True):
                 relevant_extracts_df = build_extracts_df(filtered_df=filtered_df)
+                if len(relevant_extracts_df)>0:
+                    extracts_pivot = build_extracts_pivot(
+                        extracts_pivot=relevant_extracts_df
+                    )
 
-                extracts_pivot = build_extracts_pivot(
-                    extracts_pivot=relevant_extracts_df
-                )
-
-                fig = display_extracts_graph(extracts_pivot=extracts_pivot)
-                st.plotly_chart(fig)
+                    fig = display_extracts_graph(extracts_pivot=extracts_pivot)
+                    st.plotly_chart(fig)
+                else:
+                    st.write("no relevant extract to display")
 
             with st.expander(f"Filtrage des extraits", expanded=False):
 
-                filtered_extracts_df = relevant_extracts_df.loc[
-                    relevant_extracts_df["content"].str.contains(
-                        st.session_state["filter_str"]
-                    )
-                ]
+                if len(relevant_extracts_df)>0:
+                    filtered_extracts_df = relevant_extracts_df.loc[
+                        relevant_extracts_df["content"].str.contains(
+                            st.session_state["filter_str"]
+                        )
+                    ]
 
-                st.write(
-                    f"{filtered_extracts_df.shape[0]} réponses ont utilisées cet extrait"
-                )
-                if filtered_extracts_df.shape[0] > 0:
-                    st.dataframe(data=filtered_extracts_df)
+                    st.write(
+                        f"{filtered_extracts_df.shape[0]} réponses ont utilisées cet extrait"
+                    )
+                    if len(filtered_extracts_df) > 0:
+                        st.dataframe(data=filtered_extracts_df)
 
 
 main()
