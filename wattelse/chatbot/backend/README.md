@@ -38,7 +38,7 @@ rag.clear_collection()
 
 # RAGBackend configurations
 
-`RAGBackend` configurations are handled using the `config` input argument. It can either be:
+`RAGBackend` configuration is handled using the `config` input argument. It can either be:
 - `str`: an ID referencing a pre-defined config located in [configs](configs/)
 - `dict`: a config dict
 - `pathlib.Path`: a path to a config `.toml` file
