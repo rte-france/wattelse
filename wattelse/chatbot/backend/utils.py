@@ -7,11 +7,6 @@ from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
 AZURE_API_VERSION = "2024-02-01"
 
-CONFIG_NAME_TO_CONFIG_PATH = {
-    "local": Path(__file__).parent / "configs" / "local_rag_config.toml",
-    "azure": Path(__file__).parent / "configs" / "azure_rag_config.toml",
-}
-
 
 class RAGError(Exception):
     pass

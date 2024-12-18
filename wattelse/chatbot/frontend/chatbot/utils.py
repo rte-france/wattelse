@@ -265,7 +265,7 @@ def get_group_rag_config_name(group_id: str) -> str:
     """
     group = Group.objects.get(name=group_id)
     group_profile, _ = GroupProfile.objects.get_or_create(group=group)
-    return group_profile.llm_deployment
+    return group_profile.rag_config
 
 
 def new_user_created(request, username=None):

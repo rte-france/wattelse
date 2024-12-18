@@ -46,13 +46,14 @@ from wattelse.indexer.document_splitter import split_file
 from wattelse.indexer.document_parser import parse_file
 
 from wattelse.chatbot.backend.utils import (
-    CONFIG_NAME_TO_CONFIG_PATH,
     RAGError,
     get_chat_model,
     preprocess_streaming_data,
     filter_history,
     get_history_as_text,
 )
+
+from wattelse.chatbot.backend.configs import CONFIG_NAME_TO_CONFIG_PATH
 
 from wattelse.common.config_utils import load_toml_config
 

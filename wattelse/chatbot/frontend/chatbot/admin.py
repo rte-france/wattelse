@@ -19,6 +19,31 @@ class ChatAdmin(admin.ModelAdmin):
         "answer_delay",
         "short_feedback",
         "long_feedback",
+        "rag_config",
+    )
+    list_filter = (
+        "user_id",
+        "group_id",
+        "conversation_id",
+        "question_timestamp",
+        "answer_timestamp",
+        "answer_delay",
+        "short_feedback",
+    )
+
+
+class GPTChatAdmin(admin.ModelAdmin):
+    list_display = (
+        "user_id",
+        "group_id",
+        "conversation_id",
+        "message",
+        "response",
+        "question_timestamp",
+        "answer_timestamp",
+        "answer_delay",
+        "short_feedback",
+        "long_feedback",
     )
     list_filter = (
         "user_id",
@@ -42,7 +67,7 @@ class GroupProfileAdmin(admin.ModelAdmin):
 class GroupProfileAdmin(admin.ModelAdmin):
     list_display = (
         "group",
-        "llm_deployment",
+        "rag_config",
         "system_prompt",
     )
     list_filter = ("group_id",)
@@ -54,6 +79,6 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 # Register your models here.
 admin.site.register(Chat, ChatAdmin)
-admin.site.register(GPTChat, ChatAdmin)
+admin.site.register(GPTChat, GPTChatAdmin)
 admin.site.register(GroupProfile, GroupProfileAdmin)
 admin.site.register(UserProfile, UserProfileAdmin)
