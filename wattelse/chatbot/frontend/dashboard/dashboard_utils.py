@@ -129,8 +129,8 @@ def update_state_session():
     write the result in st.session_state["filtered_data"]
     """
     st.session_state["full_data"] = get_db_data(
-        path_to_db=DB_PATH,
-        data_tables=DATA_TABLES)
+        path_to_db=DB_PATH, data_tables=DATA_TABLES
+    )
     st.session_state["unfiltered_data"] = st.session_state["full_data"][
         st.session_state["selected_table"]
     ]
