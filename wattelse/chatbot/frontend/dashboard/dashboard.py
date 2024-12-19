@@ -58,7 +58,6 @@ def side_bar():
             key="selected_table",
         )
 
-
         # Get user and group names and sort them
         user_names_list = list(st.session_state["unfiltered_data"].username.unique())
         user_names_list.sort(key=str.lower)
@@ -87,7 +86,7 @@ def side_bar():
             key="group",
         )
 
-        (min_date, max_date) = st.session_state["unfiltered_timestamp_range"] 
+        (min_date, max_date) = st.session_state["unfiltered_timestamp_range"]
 
         st.slider(
             "Select the range of timestamps",

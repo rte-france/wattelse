@@ -69,7 +69,7 @@ def get_db_data(
         # Create DataFrame with column names
         df = pd.DataFrame(data, columns=column_names)
         df.answer_timestamp = pd.to_datetime(df.answer_timestamp)
-        df["answer_date"] =  df.answer_timestamp.dt.date
+        df["answer_date"] = df.answer_timestamp.dt.date
         df["long_feedback_bool"] = (df["long_feedback"] != "").astype(int)
 
         full_data[table_name] = df
@@ -97,7 +97,6 @@ def initialize_state_session():
         st.session_state["group"] = None
     if "nb_reponse_lissage" not in st.session_state:
         st.session_state["nb_reponse_lissage"] = 15
-
 
     if "unfiltered_timestamp_range" not in st.session_state:
         # Select time range
@@ -130,9 +129,8 @@ def update_state_session():
     write the result in st.session_state["filtered_data"]
     """
     st.session_state["full_data"] = get_db_data(
-        path_to_db=DB_PATH,
-        data_tables=DATA_TABLES
-        )
+        path_to_db=DB_PATH, data_tables=DATA_TABLES
+    )
     # Select time range
     min_date = date.today()
     max_date = date(year=1900, month=1, day=1)
@@ -163,8 +161,9 @@ def update_state_session():
     # Filter dataset to select only text within time range
     timestamp_range = st.session_state["timestamp_range"]
     filtered = filtered.loc[
-        (filtered["answer_date"]>=timestamp_range[0]) & (filtered["answer_date"]<=timestamp_range[1])
-        ]
+        (filtered["answer_date"] >= timestamp_range[0])
+        & (filtered["answer_date"] <= timestamp_range[1])
+    ]
 
     st.session_state["filtered_data"] = filtered
 
