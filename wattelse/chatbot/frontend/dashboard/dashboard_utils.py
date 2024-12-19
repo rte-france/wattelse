@@ -4,7 +4,7 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import hmac
-
+from datetime import date
 from pathlib import Path
 import sqlite3
 import yaml
@@ -42,14 +42,6 @@ def get_db_data(
         data_tables (dict[str], optional): A dict containing the table_names in the streamlit and in the django_db. Defaults to DATA_TABLES.
 
     Returns:
-        pd.DataFrame: _description_
-    """
-    """extract the django db of questions, answers and relevant_extracts. All is put in a dataframe
-
-    Args:
-        path_to_db (Path): the path where the db can be found
-
-    Returns:
         pd.DataFrame: the resulting dataframe
     """
 
@@ -77,6 +69,7 @@ def get_db_data(
         # Create DataFrame with column names
         df = pd.DataFrame(data, columns=column_names)
         df.answer_timestamp = pd.to_datetime(df.answer_timestamp)
+        df["answer_date"] =  df.answer_timestamp.dt.date
         df["long_feedback_bool"] = (df["long_feedback"] != "").astype(int)
 
         full_data[table_name] = df
@@ -105,14 +98,22 @@ def initialize_state_session():
     if "nb_reponse_lissage" not in st.session_state:
         st.session_state["nb_reponse_lissage"] = 15
 
-    # Select time range
-    min_max = st.session_state["unfiltered_data"]["answer_timestamp"].agg(
-        ["min", "max"]
-    )
-    min_date = min_max["min"].to_pydatetime()
-    max_date = min_max["max"].to_pydatetime()
 
     if "unfiltered_timestamp_range" not in st.session_state:
+        # Select time range
+        min_date = date.today()
+        max_date = date(year=1900, month=1, day=1)
+        for table in st.session_state["full_data"]:
+            tmp_min_max = st.session_state["full_data"][table]["answer_date"].agg(
+                ["min", "max"]
+            )
+            min_date = min(min_date, tmp_min_max["min"])
+            max_date = max(max_date, tmp_min_max["max"])
+
+        st.session_state["unfiltered_timestamp_range"] = (
+            min_date,
+            max_date,
+        )
         st.session_state["unfiltered_timestamp_range"] = (
             min_date,
             max_date,
@@ -129,8 +130,24 @@ def update_state_session():
     write the result in st.session_state["filtered_data"]
     """
     st.session_state["full_data"] = get_db_data(
-        path_to_db=DB_PATH, data_tables=DATA_TABLES
+        path_to_db=DB_PATH,
+        data_tables=DATA_TABLES
+        )
+    # Select time range
+    min_date = date.today()
+    max_date = date(year=1900, month=1, day=1)
+    for table in st.session_state["full_data"]:
+        tmp_min_max = st.session_state["full_data"][table]["answer_date"].agg(
+            ["min", "max"]
+        )
+        min_date = min(min_date, tmp_min_max["min"])
+        max_date = max(max_date, tmp_min_max["max"])
+
+    st.session_state["unfiltered_timestamp_range"] = (
+        min_date,
+        max_date,
     )
+
     st.session_state["unfiltered_data"] = st.session_state["full_data"][
         st.session_state["selected_table"]
     ]
@@ -145,9 +162,9 @@ def update_state_session():
 
     # Filter dataset to select only text within time range
     timestamp_range = st.session_state["timestamp_range"]
-    filtered = filtered.query(
-        f"answer_timestamp >= '{timestamp_range[0]}' and answer_timestamp <= '{timestamp_range[1]}'"
-    )
+    filtered = filtered.loc[
+        (filtered["answer_date"]>=timestamp_range[0]) & (filtered["answer_date"]<=timestamp_range[1])
+        ]
 
     st.session_state["filtered_data"] = filtered
 
