@@ -27,18 +27,42 @@ class EmbeddingAPI(Embeddings):
 
     def __init__(self):
         config = configparser.ConfigParser()
-        config.read(Path(__file__).parent / "embedding_api.cfg")
-        self.port = config.get("EMBEDDING_API_CONFIG", "port")
-        self.host = config.get("EMBEDDING_API_CONFIG", "host")
+        config.read(Path(__file__).parent / "embedding_client.cfg")
+        self.port = config.get("EMBEDDING_CLIENT_CONFIG", "port")
+        self.host = config.get("EMBEDDING_CLIENT_CONFIG", "host")
         self.url = f"http://{self.host}:{self.port}"
-        self.model_name = config.get("EMBEDDING_API_CONFIG", "model_name")
-        self.num_workers = config.getint("EMBEDDING_API_CONFIG", "number_workers")
+        self.model_name = self.get_api_model_name()
+        self.num_workers = self.get_num_workers()
 
     def get_api_model_name(self) -> str:
         """
         Return currently loaded model name in Embedding API.
         """
-        return self.model_name
+        response = requests.get(
+            self.url + "/model_name",
+        )
+        if response.status_code == 200:
+            model_name = response.json()
+            logger.debug(f"Model name: {model_name}")
+            return model_name
+        else:
+            logger.error(f"Error: {response.status_code}")
+            raise Exception(f"Error: {response.status_code}")
+
+    def get_num_workers(self) -> int:
+        """
+        Return currently loaded number of workers in Embedding API.
+        """
+        response = requests.get(
+            self.url + "/num_workers",
+        )
+        if response.status_code == 200:
+            num_workers = response.json()
+            logger.debug(f"Number of workers: {num_workers}")
+            return num_workers
+        else:
+            logger.error(f"Error: {response.status_code}")
+            raise Exception(f"Error: {response.status_code}")
 
     def embed_query(
         self, text: str | List[str], show_progress_bar: bool = False
