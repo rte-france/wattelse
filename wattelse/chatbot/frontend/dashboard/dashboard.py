@@ -39,12 +39,6 @@ from wattelse.chatbot.frontend.dashboard.dashboard_display import (
 )
 
 
-# Get Expé_Métiers group names list
-TEST_GROUP_NAMES_LIST_FILE_PATH = Path(__file__).parent / "test_groups_list.yaml"
-with open(TEST_GROUP_NAMES_LIST_FILE_PATH) as f:
-    TEST_GROUP_NAMES_LIST = yaml.safe_load(f)
-
-
 def side_bar():
     ### SIDEBAR OPTIONS ###
     with st.sidebar.form("parameters_sidebar"):
