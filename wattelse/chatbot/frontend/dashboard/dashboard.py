@@ -46,9 +46,9 @@ DRH_GROUP_NAME = "DRH"
 METIERS_GROUP_NAME = "Expé_Métiers"
 
 # Get Expé_Métiers group names list
-GROUP_NAMES_LIST_FILE_PATH = Path(__file__).parent / "expe_metier_group_name_list.yaml"
-with open(GROUP_NAMES_LIST_FILE_PATH) as f:
-    GROUP_NAMES_LIST = yaml.safe_load(f)
+TEST_GROUP_NAMES_LIST_FILE_PATH = Path(__file__).parent / "test_groups_list.yaml"
+with open(TEST_GROUP_NAMES_LIST_FILE_PATH) as f:
+    TEST_GROUP_NAMES_LIST = yaml.safe_load(f)
 
 
 def get_db_data(path_to_db: Path) -> pd.DataFrame:
@@ -155,7 +155,7 @@ def filter_data():
         filtered = filtered[filtered.username == st.session_state["user"]]
     if st.session_state["group"]:
         if st.session_state["group"] == METIERS_GROUP_NAME:
-            filtered = filtered[filtered.group_id.isin(GROUP_NAMES_LIST)]
+            filtered = filtered[~filtered.group_id.isin(TEST_GROUP_NAMES_LIST)]
         else:
             filtered = filtered[filtered.group_id == st.session_state["group"]]
 
