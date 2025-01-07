@@ -16,7 +16,7 @@ from sentence_transformers import SentenceTransformer
 EMBEDDING_API_CONFIG_FILE_PATH = Path(__file__).parent / "embedding_api.cfg"
 config = configparser.ConfigParser()
 config.read(EMBEDDING_API_CONFIG_FILE_PATH)
-EMBEDDING_MODEL_NAME = config.get("EMBEDDING_API_CONFIG", "model_name")
+EMBEDDING_MODEL_NAME = config.get("EMBEDDING_SERVICE_CONFIG", "model_name")
 
 logger.debug(f"Loading embedding model : {EMBEDDING_MODEL_NAME}")
 EMBEDDING_MODEL = SentenceTransformer(EMBEDDING_MODEL_NAME)
@@ -39,3 +39,13 @@ app = FastAPI()
 def embed(input: InputText):
     emb = EMBEDDING_MODEL.encode(input.text, show_progress_bar=input.show_progress_bar)
     return {"embeddings": emb.tolist()}
+
+
+@app.get("/model_name")
+def get_model_name():
+    return EMBEDDING_MODEL_NAME
+
+
+@app.get("/num_workers")
+def get_num_workers():
+    return config.getint("EMBEDDING_SERVICE_CONFIG", "number_workers")
