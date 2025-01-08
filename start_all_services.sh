@@ -10,11 +10,11 @@ mkdir -p $WATTELSE_LOGS_DIR
 
 echo "Starting Embedding service..."
 screen -dmS embedding bash -c 'bash `pwd`/wattelse/api/embedding/start.sh 2>&1| tee -a $WATTELSE_LOGS_DIR/embedding.log; bash'
-sleep 3  # Waits 5 seconds.
+sleep 10  # Waits 5 seconds.
 
 echo "Starting RAG service..."
 screen -dmS rag bash -c 'bash `pwd`/wattelse/api/rag_orchestrator/start.sh 2>&1 | tee -a $WATTELSE_LOGS_DIR/rag.log; bash'
-sleep 3  # Waits 5 seconds.
+sleep 10  # Waits 5 seconds.
 
 echo "Starting Django..."
 screen -dmS django bash -c 'cd `pwd`/wattelse/chatbot/frontend && ./start.sh 2>&1 | tee -a $WATTELSE_LOGS_DIR/django.log; bash'
