@@ -144,7 +144,7 @@ class RAGOrchestratorClient:
         # TODO: handle additional parameters to temporarily change the default config: number of retrieved docs & memory
         logger.debug(f"[Group: {group_id}] Question: {message}")
 
-        response = requests.get(
+        response = requests.post(
             url=self.url + ENDPOINT_QUERY_RAG,
             data=json.dumps(
                 {
