@@ -10,7 +10,7 @@ mkdir -p $WATTELSE_LOGS_DIR
 
 echo "Starting Embedding service..."
 screen -dmS embedding bash -c 'bash `pwd`/wattelse/api/embedding/start.sh 2>&1| tee -a $WATTELSE_LOGS_DIR/embedding.log; bash'
-sleep 15  # Waits 5 seconds.
+sleep 20  # Full service start is required before to launch the RAG
 
 echo "Starting RAG service..."
 screen -dmS rag bash -c 'bash `pwd`/wattelse/api/rag_orchestrator/start.sh 2>&1 | tee -a $WATTELSE_LOGS_DIR/rag.log; bash'
