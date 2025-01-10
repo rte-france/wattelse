@@ -140,7 +140,7 @@ def data_streamer(stream_data):
         yield f"{i}".encode("utf-8")
 
 
-@app.get(ENDPOINT_QUERY_RAG)
+@app.post(ENDPOINT_QUERY_RAG)
 async def query_rag(rag_query: RAGQuery) -> StreamingResponse:
     """Query the RAG and returns the answer and associated sources"""
     check_if_session_exists(rag_query.group_id)
