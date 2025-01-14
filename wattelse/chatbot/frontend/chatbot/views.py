@@ -200,6 +200,40 @@ def register(request):
     return render(request, "chatbot/register.html")
 
 
+def change_password(request):
+    """Main function for change password page.
+    If request method is GET : render change_password.html
+    If request method is POST : change user password and print an password_changed webpage
+    """
+    if request.method == "POST":
+        user = request.user
+        password1 = request.POST.get("password1")
+        password2 = request.POST.get("password2")
+
+        # Check both password are the same
+        if password1 == password2:
+            try:
+                user.set_password(password1)
+                user.save()
+                return render(request, "chatbot/password_changed.html")
+            except:
+                error_message = "Erreur lors du changement du mot de passe"
+                return render(
+                    request,
+                    "chatbot/change_password.html",
+                    {"error_message": error_message},
+                )
+        else:
+            error_message = "Mots de passe non identiques"
+            return render(
+                request,
+                "chatbot/change_password.html",
+                {"error_message": error_message},
+            )
+    else:
+        return render(request, "chatbot/change_password.html")
+
+
 def logout(request):
     """Log a user out and redirect to login page"""
     logger.info(f"[User: {request.user.username}] logged out")
