@@ -126,25 +126,37 @@ function initializeLayout(){
 }
 
 async function postUserMessageToChatBot(userMessage) {
+
+    // Handle too long response from backend
     const startTime = Date.now();
+
+    // Question timestamp
     const queryStartTimestamp = new Date();
+
+    // Get conversation id
     const conversationId = chatHistory.id;
 
+    // If new conversation: add conversation to history
     if (chatHistory.childElementCount < 2) {
         addNewConversationToHistory(userMessage, conversationId);
         removeActiveConversation();
     }
 
+    // Go to extracts tab
     activateTab("extracts");
+
+    // Create bot waiting div
     const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
     botDiv.classList.add("waiting-div", "animate");
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
+    // Get selected files
     let selectedFiles = getSelectedFileNames("available-list");
     if (selectedFiles.length === availableDocs.length) {
         selectedFiles = [];
     }
 
+    // Fetch response
     const response = await fetch('/query_rag/', {
         method: 'POST',
         headers: {
@@ -158,6 +170,7 @@ async function postUserMessageToChatBot(userMessage) {
         }),
     });
 
+    // Initialize variables to handle streaming response
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let isFirstChunk = true;
@@ -165,6 +178,7 @@ async function postUserMessageToChatBot(userMessage) {
     let streamResponse = "";
     let relevantExtracts;
 
+    // Iterate over the streamed response
     try {
         while (true) {
             if (Date.now() - startTime > timeout) {
@@ -208,15 +222,20 @@ async function postUserMessageToChatBot(userMessage) {
         console.error(error.message);
         showPopup("Réponse du serveur trop lente", true);
     } finally {
+        // Compute answer delay
         const queryEndTimestamp = new Date();
         const answerDelay = queryEndTimestamp - queryStartTimestamp;
 
+        // Remove waiting animation
         botDiv.classList.remove("animate");
+
+        // Show feedback section 
         if (relevantExtracts && relevantExtracts.length > 0) {
             provideFeedback(userMessage, streamResponse);
         }
         chatHistory.scrollTop = chatHistory.scrollHeight;
 
+        // Save interaction
         saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay, relevantExtracts);
     }
 }
