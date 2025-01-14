@@ -231,7 +231,10 @@ def change_password(request):
                 {"error_message": error_message},
             )
     else:
-        return render(request, "chatbot/change_password.html")
+        if request.user.is_authenticated:
+            return render(request, "chatbot/change_password.html")
+        else:
+            return redirect("/login")
 
 
 def logout(request):
