@@ -159,11 +159,10 @@ async function postUserMessageToChatBot(userMessage) {
     });
 
     const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let accumulatedData = "";
-    let streamResponse = "";
-    let noExtract = false;
+    const decoder = new TextDecoder("utf-8");
     let isFirstChunk = true;
+    let jsonBuffer = "";
+    let streamResponse = "";
     let relevantExtracts;
 
     try {
@@ -175,20 +174,34 @@ async function postUserMessageToChatBot(userMessage) {
             const { value, done } = await reader.read();
             if (done) break;
 
-            accumulatedData += decoder.decode(value);
-            const jsonChunks = extractCompleteJSONObjects(accumulatedData);
-            accumulatedData = jsonChunks.remaining;
+            const chunkText = decoder.decode(value);
 
-            for (const chunk of jsonChunks.parsed) {
-                await processChunk(chunk, isFirstChunk, botDiv);
-                if (isFirstChunk) {
-                    isFirstChunk = false;
-                    relevantExtracts = chunk.relevant_extracts;
-                    noExtract = relevantExtracts.length === 0;
-                } else {
-                    streamResponse += chunk.answer;
-                    botDiv.innerHTML = marked.parse(streamResponse);
+            if (isFirstChunk) {
+                // Accumulate chunks for the JSON object containing relevant extracts
+                jsonBuffer += chunkText;
+
+                try {
+                    const firstChunk = JSON.parse(jsonBuffer);
+                    relevantExtracts = firstChunk.relevant_extracts;
+                    updateRelevantExtracts(relevantExtracts);
+
+                    if (relevantExtracts.length === 0) {
+                        createWarningMessage(NO_EXTRACT_MSG);
+                    }
+
+                    isFirstChunk = false; // JSON is fully received, switch to plain text mode
+                    jsonBuffer = ""; // Clear buffer as JSON is processed
+                } catch (err) {
+                    // Wait for more data if JSON parsing fails
+                    continue;
                 }
+            } else {
+                if (botDiv.classList.contains("waiting-div")) {
+                    botDiv.innerHTML = "";
+                    botDiv.classList.remove("waiting-div");
+                }
+                streamResponse += chunkText;
+                botDiv.innerHTML = marked.parse(streamResponse);
             }
         }
     } catch (error) {
@@ -199,7 +212,7 @@ async function postUserMessageToChatBot(userMessage) {
         const answerDelay = queryEndTimestamp - queryStartTimestamp;
 
         botDiv.classList.remove("animate");
-        if (!noExtract) {
+        if (relevantExtracts && relevantExtracts.length > 0) {
             provideFeedback(userMessage, streamResponse);
         }
         chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -208,6 +221,7 @@ async function postUserMessageToChatBot(userMessage) {
     }
 }
 
+
 function addNewConversationToHistory(userMessage, conversationId) {
     const todayListHistory = document.getElementById("today-history");
     const tempDiv = document.createElement("div");
@@ -215,42 +229,6 @@ function addNewConversationToHistory(userMessage, conversationId) {
     const newListItem = tempDiv.firstChild;
     newListItem.textContent = userMessage;
     todayListHistory.insertBefore(newListItem, todayListHistory.firstChild);
-}
-
-function extractCompleteJSONObjects(data) {
-    const parts = data.split(SPECIAL_SEPARATOR).filter(Boolean);
-    const complete = [];
-    let remaining = "";
-
-    for (const part of parts) {
-        if (isCompleteJSON(part)) {
-            try {
-                complete.push(JSON.parse(part));
-            } catch (err) {
-                console.error("Failed to parse JSON:", err);
-            }
-        } else {
-            remaining = part;
-            break;
-        }
-    }
-
-    return { parsed: complete, remaining };
-}
-
-async function processChunk(chunk, isFirstChunk, botDiv) {
-    if (isFirstChunk) {
-        const relevantExtracts = chunk.relevant_extracts;
-        updateRelevantExtracts(relevantExtracts);
-        if (relevantExtracts.length === 0) {
-            createWarningMessage(NO_EXTRACT_MSG);
-        }
-    } else {
-        if (botDiv.classList.contains("waiting-div")) {
-            botDiv.innerHTML = "";
-            botDiv.classList.remove("waiting-div");
-        }
-    }
 }
 
 

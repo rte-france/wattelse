@@ -266,7 +266,7 @@ def query_rag(request):
             return StreamingHttpResponse(
                 streaming_generator(response),
                 status=200,
-                content_type="text/event-stream",
+                content_type="text/plain",
             )
 
         except RAGAPIError as e:
