@@ -211,7 +211,7 @@ def change_password(request):
         password2 = request.POST.get("new_password2")
 
         # Check both password are the same
-        if password1 == password2:
+        if password1 == password2 and password1 != "":
             try:
                 user.set_password(password1)
                 user.save()
