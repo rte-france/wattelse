@@ -17,6 +17,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
 
 from django.contrib import auth
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from loguru import logger
@@ -207,14 +208,15 @@ def change_password(request):
     """
     if request.method == "POST":
         user = request.user
-        password1 = request.POST.get("password1")
-        password2 = request.POST.get("password2")
+        password1 = request.POST.get("new_password1")
+        password2 = request.POST.get("new_password2")
 
         # Check both password are the same
         if password1 == password2:
             try:
                 user.set_password(password1)
                 user.save()
+                update_session_auth_hash(request, user)
                 return render(request, "chatbot/password_changed.html")
             except:
                 error_message = "Erreur lors du changement du mot de passe"
