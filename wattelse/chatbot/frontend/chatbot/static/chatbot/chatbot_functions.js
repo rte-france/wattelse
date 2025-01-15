@@ -126,6 +126,7 @@ function initializeLayout(){
 }
 
 async function postUserMessageToChatBot(userMessage) {
+
     // Handle too long response from backend
     const startTime = Date.now();
 
@@ -137,20 +138,14 @@ async function postUserMessageToChatBot(userMessage) {
 
     // If new conversation: add conversation to history
     if (chatHistory.childElementCount < 2) {
-        let todayListHistory = document.getElementById("today-history");
-        const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = `<li class="active" id="${conversationId}" onclick="getConversationHistory(this, '${conversationId}')"></li>`;
-        const newListItem = tempDiv.firstChild;
-        newListItem.textContent = userMessage;
-        todayListHistory.insertBefore(newListItem, todayListHistory.firstChild);
-
-        // Remove old active conversation
+        addNewConversationToHistory(userMessage, conversationId);
         removeActiveConversation();
     }
 
-    // Create bot waiting div
-    // - Call first the function to activate the "Extracts" tab
+    // Go to extracts tab
     activateTab("extracts");
+
+    // Create bot waiting div
     const botDiv = createBotMessage('<i class="fa-solid fa-ellipsis fa-fade"></i>');
     botDiv.classList.add("waiting-div", "animate");
     chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -169,84 +164,92 @@ async function postUserMessageToChatBot(userMessage) {
             'X-CSRFToken': csrfmiddlewaretoken,
         },
         body: JSON.stringify({
-            'message': userMessage,
-            'selected_docs': selectedFiles,
-            'conversation_id': conversationId,
-        })
+            message: userMessage,
+            selected_docs: selectedFiles,
+            conversation_id: conversationId,
+        }),
     });
 
-    let isFirstChunk = true; // Track for first chunk processing containing relevant extracts
+    // Initialize variables to handle streaming response
     const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    let accumulatedData = "";
-    let chunk;
-    let noExtract = false;
+    const decoder = new TextDecoder("utf-8");
+    let isFirstChunk = true;
+    let jsonBuffer = "";
     let streamResponse = "";
     let relevantExtracts;
 
-    do {
-        // Handle too long response from backend
-        if (Date.now() - startTime > timeout) {
-            reader.cancel();
-            botDiv.classList.remove("animate"); // remove generation animation
-            showPopup("Réponse du serveur trop lente", error=true);
-            return;
-        }
-        // Read streaming chunks
-        chunk = await reader.read();
+    // Iterate over the streamed response
+    try {
+        while (true) {
+            if (Date.now() - startTime > timeout) {
+                throw new Error("Server response timed out");
+            }
 
-        // Handle last chunk
-        if (chunk.done) {
-            break;
-        }
+            const { value, done } = await reader.read();
+            if (done) break;
 
-        // Must handle cases where multiple chunks are received in one read and
-        // also the case in which long json chunks are received in multiple (incomplete json chunks)
-        accumulatedData += decoder.decode(chunk.value);
-        if (! isCompleteJSON(accumulatedData.split(SPECIAL_SEPARATOR)[0]))
-        {
-            continue;
-        }
-        const strJsonObjects = accumulatedData.split(SPECIAL_SEPARATOR).filter(elm => elm);
-        accumulatedData="";
-        const dataChunks = strJsonObjects.map(JSON.parse);
+            const chunkText = decoder.decode(value);
 
-        // Handle other chunks
-        dataChunks.forEach((json_chunk) => {
             if (isFirstChunk) {
-                relevantExtracts = JSON.parse(JSON.stringify(json_chunk.relevant_extracts));
-                updateRelevantExtracts(relevantExtracts);
-                if (relevantExtracts.length===0){
-                    createWarningMessage(NO_EXTRACT_MSG);
-                    noExtract = true;
+                // Accumulate chunks for the JSON object containing relevant extracts
+                jsonBuffer += chunkText;
+
+                try {
+                    const firstChunk = JSON.parse(jsonBuffer);
+                    relevantExtracts = firstChunk.relevant_extracts;
+                    updateRelevantExtracts(relevantExtracts);
+
+                    if (relevantExtracts.length === 0) {
+                        createWarningMessage(NO_EXTRACT_MSG);
+                    }
+
+                    isFirstChunk = false; // JSON is fully received, switch to plain text mode
+                    jsonBuffer = ""; // Clear buffer as JSON is processed
+                } catch (err) {
+                    // Wait for more data if JSON parsing fails
+                    continue;
                 }
-                isFirstChunk = false;
             } else {
-                // Remove wainting div
                 if (botDiv.classList.contains("waiting-div")) {
                     botDiv.innerHTML = "";
                     botDiv.classList.remove("waiting-div");
                 }
-                streamResponse += json_chunk.answer;
-                botDiv.innerHTML = marked.parse(streamResponse);
+                streamResponse += chunkText;
+                botDiv.innerHTML = md.render(streamResponse);
             }
-        });
+        }
+    } catch (error) {
+        console.error(error.message);
+        showPopup("Réponse du serveur trop lente", true);
+    } finally {
+        // Compute answer delay
+        const queryEndTimestamp = new Date();
+        const answerDelay = queryEndTimestamp - queryStartTimestamp;
 
-    } while (true);
+        // Remove waiting animation
+        botDiv.classList.remove("animate");
 
-    // When streaming is done, show feedback section and save interaction
-    const queryEndTimestamp = new Date();
-    const answerDelay = queryEndTimestamp - queryStartTimestamp;
+        // Show feedback section 
+        if (relevantExtracts && relevantExtracts.length > 0) {
+            provideFeedback(userMessage, streamResponse);
+        }
+        chatHistory.scrollTop = chatHistory.scrollHeight;
 
-    botDiv.classList.remove("animate"); // remove generation animation
-    if (!noExtract){
-        provideFeedback(userMessage, streamResponse);
+        // Save interaction
+        saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay, relevantExtracts);
     }
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-
-    saveInteraction(conversationId, userMessage, streamResponse, queryStartTimestamp.toISOString(), answerDelay, relevantExtracts)
 }
+
+
+function addNewConversationToHistory(userMessage, conversationId) {
+    const todayListHistory = document.getElementById("today-history");
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = `<li class="active" id="${conversationId}" onclick="getConversationHistory(this, '${conversationId}')"></li>`;
+    const newListItem = tempDiv.firstChild;
+    newListItem.textContent = userMessage;
+    todayListHistory.insertBefore(newListItem, todayListHistory.firstChild);
+}
+
 
 function updateAvailableDocuments(){
     // Update the visible list of documents, after and before removal

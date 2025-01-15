@@ -27,9 +27,6 @@ from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGA
 # RAG API
 RAG_API = RAGOrchestratorClient()
 
-# Separator to split json object from streaming chunks
-SPECIAL_SEPARATOR = "¤¤¤¤¤"
-
 # Feedback identifiers in the database
 GREAT = "great"
 OK = "ok"
@@ -282,11 +279,17 @@ def new_user_created(request, username=None):
 
 def streaming_generator(data_stream):
     """Generator to decode the chunks received from RAGOrchestratorClient"""
+    first_chunk = True
     with data_stream as r:
-        for chunk in r.iter_content(chunk_size=None):
-            # Add delimiter `\n` at the end because if streaming is too fast,
-            # frontend can receive multiple chunks in one pass, so we need to split them.
-            yield chunk.decode("utf-8") + SPECIAL_SEPARATOR
+        for chunk in r.iter_content(chunk_size=None, decode_unicode=True):
+            # First chunk is a JSON object for relevant extracts
+            if first_chunk:
+                yield chunk
+                first_chunk = False
+            # Remaining chunks are plain text
+            else:
+                chunk = json.loads(chunk)
+                yield chunk["answer"]
 
 
 def streaming_generator_llm(data_stream):
