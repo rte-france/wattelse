@@ -11,7 +11,6 @@ import tempfile
 from datetime import datetime, timedelta
 
 import mammoth
-import pytz
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
