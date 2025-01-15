@@ -11,12 +11,12 @@ import tempfile
 from datetime import datetime, timedelta
 
 import mammoth
-import pytz
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
 
 from django.contrib import auth
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from loguru import logger
@@ -198,6 +198,44 @@ def register(request):
                 request, "chatbot/register.html", {"error_message": error_message}
             )
     return render(request, "chatbot/register.html")
+
+
+def change_password(request):
+    """Main function for change password page.
+    If request method is GET : render change_password.html
+    If request method is POST : change user password and print an password_changed webpage
+    """
+    if request.method == "POST":
+        user = request.user
+        password1 = request.POST.get("new_password1")
+        password2 = request.POST.get("new_password2")
+
+        # Check both password are the same
+        if password1 == password2:
+            try:
+                user.set_password(password1)
+                user.save()
+                update_session_auth_hash(request, user)
+                return render(request, "chatbot/password_changed.html")
+            except:
+                error_message = "Erreur lors du changement du mot de passe"
+                return render(
+                    request,
+                    "chatbot/change_password.html",
+                    {"error_message": error_message},
+                )
+        else:
+            error_message = "Mots de passe non identiques"
+            return render(
+                request,
+                "chatbot/change_password.html",
+                {"error_message": error_message},
+            )
+    else:
+        if request.user.is_authenticated:
+            return render(request, "chatbot/change_password.html")
+        else:
+            return redirect("/login")
 
 
 def logout(request):

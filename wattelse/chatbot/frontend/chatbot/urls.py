@@ -13,6 +13,7 @@ urlpatterns = [
     path("doc/", views.rag_page, name="main_page"),
     path("login/", views.login, name="login"),
     path("register/", views.register, name="register"),
+    path("change_password/", views.change_password, name="register"),
     path("logout/", views.logout, name="logout"),
     # Chatbot
     path("query_rag/", views.query_rag, name="query_rag"),
