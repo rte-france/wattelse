@@ -215,7 +215,7 @@ async function postUserMessageToChatBot(userMessage) {
                     botDiv.classList.remove("waiting-div");
                 }
                 streamResponse += chunkText;
-                botDiv.innerHTML = marked.parse(streamResponse);
+                botDiv.innerHTML = md.render(streamResponse);
             }
         }
     } catch (error) {
