@@ -38,7 +38,7 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 SECRET_KEY = "django-insecure-wsa9k4v_goql%t8rn@q4*5flo+xnnxa%8!^p2g(4g-=py==ur)"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     "localhost",
