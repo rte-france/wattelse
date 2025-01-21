@@ -502,7 +502,7 @@ function initializeUploadArea(){
 function typeValidation(filename) {
     const fileExt = filename.split('.').pop().toLowerCase();
     return fileExt === "pdf" || fileExt === "docx" || fileExt === "pptx" || fileExt === "xlsx" || fileExt === "html"
-        || fileExt === "htm" || fileExt === "md" || fileExt === "csv" || fileExt === "txt";
+        || fileExt === "htm" || fileExt === "md" || fileExt === "csv" || fileExt === "txt" || fileExt === "py";
 }
 
 // upload file function
@@ -568,6 +568,7 @@ function iconSelector(filename) {
     const pptxIcon = '<i class="fa-solid fa-file-powerpoint fa-xl" style="color: #df0000;"></i>'
     const csvIcon = '<i class="fa-solid fa-file-csv fa-xl" style="color: #63E6BE;"></i>'
     const htmlIcon = '<i class="fa-solid fa-file-code fa-xl" style="color: #400080;"></i>'
+    const pyIcon = '<i class="fa-brands fa-python fa-xl" style="color: #008040;"></i>'
     const defaultIcon = '<i class="fa-solid fa-file fa-xl" style="color: #000000;"></i>'
     const fileExt = filename.split('.').pop().toLowerCase();
     switch (fileExt) {
@@ -585,6 +586,8 @@ function iconSelector(filename) {
             return htmlIcon
         case 'md':
             return htmlIcon
+        case 'py':
+            return pyIcon
         default:
             return defaultIcon
     }

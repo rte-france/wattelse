@@ -84,8 +84,8 @@ def split_file(
                 d.metadata = doc.metadata
             splits += new_docs
         return splits
-    elif file_extension == ".csv" or file_extension == ".xlsx":
-        # already split by row
+    elif file_extension in [".csv", ".xlsx", ".py"]:
+        # already split
         return docs
     else:
         if use_sentence_splitter:

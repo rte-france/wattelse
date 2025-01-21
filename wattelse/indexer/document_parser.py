@@ -18,8 +18,11 @@ from langchain_community.document_loaders import (
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from pathlib import Path
 
+from langchain_community.document_loaders.parsers import LanguageParser
 from langchain_core.document_loaders import BaseLoader
 from langchain_core.documents import Document
+from langchain_core.documents.base import Blob
+from langchain_text_splitters import Language
 
 
 class ParsingException(Exception):
@@ -44,6 +47,8 @@ def parse_file(file: Path) -> List[Document]:
         docs = _parse_csv(file)
     elif extension in [".htm", ".html"]:
         docs = _parse_html(file)
+    elif extension == ".py":
+        docs = _parse_py(file)
     else:
         raise ParsingException(f"Unsupported file format: {file.suffix}!")
 
@@ -130,6 +135,14 @@ def _parse_html(file: Path) -> List[Document]:
     data = loader.load()
     # NB. return one document
     return data
+
+
+def _parse_py(file: Path) -> List[Document]:
+    # Each top-level function and class in the code is loaded into separate documents. Furthermore, an extra document
+    # is generated, containing the remaining top-level code that excludes the already segmented functions and classes.
+    blob = Blob.from_path(file)
+    parser = LanguageParser(language=Language.PYTHON)
+    return parser.parse(blob)
 
 
 def _clean_text(x):
