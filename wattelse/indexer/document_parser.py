@@ -22,7 +22,8 @@ from langchain_community.document_loaders.parsers import LanguageParser
 from langchain_core.document_loaders import BaseLoader
 from langchain_core.documents import Document
 from langchain_core.documents.base import Blob
-from langchain_text_splitters import Language
+
+from wattelse.indexer import CODE_EXTENSIONS, CFG_EXTENSIONS
 
 
 class ParsingException(Exception):
@@ -31,7 +32,7 @@ class ParsingException(Exception):
 
 def parse_file(file: Path) -> List[Document]:
     extension = file.suffix.lower()
-    if extension == ".txt":
+    if extension in [".txt"] + CFG_EXTENSIONS:
         docs = _parse_txt(file)
     elif extension == ".pdf":
         docs = _parse_pdf(file)
@@ -47,8 +48,8 @@ def parse_file(file: Path) -> List[Document]:
         docs = _parse_csv(file)
     elif extension in [".htm", ".html"]:
         docs = _parse_html(file)
-    elif extension == ".py":
-        docs = _parse_py(file)
+    elif extension in CODE_EXTENSIONS:
+        docs = _parse_language(file, extension)
     else:
         raise ParsingException(f"Unsupported file format: {file.suffix}!")
 
@@ -137,11 +138,11 @@ def _parse_html(file: Path) -> List[Document]:
     return data
 
 
-def _parse_py(file: Path) -> List[Document]:
+def _parse_language(file: Path, extension: str) -> List[Document]:
     # Each top-level function and class in the code is loaded into separate documents. Furthermore, an extra document
     # is generated, containing the remaining top-level code that excludes the already segmented functions and classes.
     blob = Blob.from_path(file)
-    parser = LanguageParser(language=Language.PYTHON)
+    parser = LanguageParser(language=extension[1:])
     return parser.parse(blob)
 
 

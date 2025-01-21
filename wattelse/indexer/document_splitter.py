@@ -13,6 +13,8 @@ from langchain_text_splitters import (
     RecursiveCharacterTextSplitter,
 )
 from llama_index.core import node_parser
+
+from wattelse.indexer import CODE_EXTENSIONS, CFG_EXTENSIONS
 from wattelse.indexer.structured_document_header_hierarchy import (
     get_html_hierarchy,
     get_markdown_hierarchy,
@@ -84,7 +86,7 @@ def split_file(
                 d.metadata = doc.metadata
             splits += new_docs
         return splits
-    elif file_extension in [".csv", ".xlsx", ".py"]:
+    elif file_extension in [".csv", ".xlsx"] + CFG_EXTENSIONS + CODE_EXTENSIONS:
         # already split
         return docs
     else:

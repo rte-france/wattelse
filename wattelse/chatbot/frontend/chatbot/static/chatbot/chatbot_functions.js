@@ -501,8 +501,10 @@ function initializeUploadArea(){
 // check the file type
 function typeValidation(filename) {
     const fileExt = filename.split('.').pop().toLowerCase();
-    return fileExt === "pdf" || fileExt === "docx" || fileExt === "pptx" || fileExt === "xlsx" || fileExt === "html"
-        || fileExt === "htm" || fileExt === "md" || fileExt === "csv" || fileExt === "txt" || fileExt === "py";
+    const validExtensions = ["pdf", "docx", "pptx", "xlsx", "html", "htm", "md", "csv", "txt"];
+    const validConfigExtensions = ["toml", "cfg"];
+    const validCodeExtensions = ["py", "cpp", "java", "kotlin", "js", "php", "ts", "c", "sql", "latex"];
+    return  validExtensions.includes(fileExt) || validConfigExtensions.includes(fileExt) || validCodeExtensions.includes(fileExt);
 }
 
 // upload file function
@@ -568,7 +570,8 @@ function iconSelector(filename) {
     const pptxIcon = '<i class="fa-solid fa-file-powerpoint fa-xl" style="color: #df0000;"></i>'
     const csvIcon = '<i class="fa-solid fa-file-csv fa-xl" style="color: #63E6BE;"></i>'
     const htmlIcon = '<i class="fa-solid fa-file-code fa-xl" style="color: #400080;"></i>'
-    const pyIcon = '<i class="fa-brands fa-python fa-xl" style="color: #008040;"></i>'
+    const pyIcon = '<i class="fa-brands fa-python fa-xl" style="color:  #3776ab;"></i>'
+    const javaIcon = '<i class="fa-brands fa-java fa-xl" style="color: #4169e1;"></i>'
     const defaultIcon = '<i class="fa-solid fa-file fa-xl" style="color: #000000;"></i>'
     const fileExt = filename.split('.').pop().toLowerCase();
     switch (fileExt) {
@@ -588,6 +591,8 @@ function iconSelector(filename) {
             return htmlIcon
         case 'py':
             return pyIcon
+        case 'java':
+            return javaIcon
         default:
             return defaultIcon
     }
