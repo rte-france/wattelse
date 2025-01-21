@@ -34,10 +34,9 @@ def parse_eval_response(eval_text, metric_key, regex_patterns):
         f"{metric_key}": eval_match.group(1).strip() if eval_match else eval_text,
         f"{metric_key}_score": int(score_match.group(1)) if score_match else np.nan
     }
-
 def evaluate_metrics(llm_client, question, answer, context_extracted, config: EvalConfig) -> dict:
     """
-    Evaluates the answer based on multiple metrics (faithfulness, correctness, retrievability) using the LLM.
+    Evaluates the answer based on configured metrics using the LLM.
 
     Args:
         llm_client (OpenAI_Client): The client to interact with the OpenAI LLM.
@@ -47,51 +46,56 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
         config (EvalConfig): Configuration object for model-specific settings.
 
     Returns:
-        dict: A dictionary containing the evaluations and scores for faithfulness, correctness, and retrievability.
+        dict: A dictionary containing the evaluations and scores for enabled metrics.
     """
     # Fetch model-specific configurations
     model_name = getattr(llm_client, 'model_name', config.default_model)
-    
-    # Get prompts for this model
-    faithfulness_prompt = config.get_prompt("faithfulness", model_name)
-    correctness_prompt = config.get_prompt("correctness", model_name)
-    retrievability_prompt = config.get_prompt("retrievability", model_name)
-    
-    # Get regex patterns for this model
     regex_patterns = config.get_regex_patterns(model_name)
-
-    # Evaluate metrics
-    faithfulness_eval = llm_client.generate(
-        faithfulness_prompt.format(
-            retrieved_contexts=context_extracted,
-            answer=answer,
-            question=question,  # Added for prometheus format
-        ),
-    )
-    correctness_eval = llm_client.generate(
-        correctness_prompt.format(
-            question=question,
-            answer=answer
-        ),
-    )
-    retrievability_eval = llm_client.generate(
-        retrievability_prompt.format(
-            question=question,
-            retrieved_contexts=context_extracted
-        ),
-    )
-
-    # Parse evaluations
+    
     evaluations = {}
-    logger.debug(f"faithfulness LLM response: {faithfulness_eval}")
-    evaluations.update(parse_eval_response(faithfulness_eval, "faithfulness", regex_patterns))
-
-    logger.debug(f"correctness LLM response: {correctness_eval}")
-    evaluations.update(parse_eval_response(correctness_eval, "correctness", regex_patterns))
-
-    logger.debug(f"retrievability LLM response: {retrievability_eval}")
-    evaluations.update(parse_eval_response(retrievability_eval, "retrievability", regex_patterns))
-
+    
+    # Only evaluate enabled and available metrics
+    for metric in config.active_metrics:
+        try:
+            prompt = config.get_prompt(metric, model_name)
+            
+            # Format prompt based on metric type
+            if metric == "faithfulness":
+                eval_text = llm_client.generate(
+                    prompt.format(
+                        retrieved_contexts=context_extracted,
+                        answer=answer,
+                        question=question,
+                    ),
+                )
+            elif metric == "correctness":
+                eval_text = llm_client.generate(
+                    prompt.format(
+                        question=question,
+                        answer=answer
+                    ),
+                )
+            elif metric == "retrievability":
+                eval_text = llm_client.generate(
+                    prompt.format(
+                        question=question,
+                        retrieved_contexts=context_extracted
+                    ),
+                )
+            else:
+                logger.warning(f"Unknown metric type: {metric}")
+                continue
+                
+            logger.debug(f"{metric} LLM response: {eval_text}")
+            evaluations.update(parse_eval_response(eval_text, metric, regex_patterns))
+            
+        except Exception as e:
+            logger.error(f"Error evaluating {metric}: {e}")
+            evaluations.update({
+                f"{metric}": f"Error: {str(e)}",
+                f"{metric}_score": np.nan
+            })
+    
     return evaluations
 
 def evaluate_row(row: pd.Series, config: EvalConfig) -> dict:

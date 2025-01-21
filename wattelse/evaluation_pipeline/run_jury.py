@@ -15,11 +15,10 @@ def kill_process_on_port(port):
     """Kill any process running on the specified port"""
     for proc in psutil.process_iter(['pid', 'name']):
         try:
-            # Use net_connections() instead of connections attribute
             for conn in proc.net_connections():
                 if hasattr(conn.laddr, 'port') and conn.laddr.port == port:
                     os.kill(proc.pid, signal.SIGTERM)
-                    time.sleep(2)  # Give it time to terminate gracefully
+                    time.sleep(2)
                     if psutil.pid_exists(proc.pid):
                         os.kill(proc.pid, signal.SIGKILL)
                     logger.info(f"Killed process {proc.pid} using port {port}")
@@ -54,22 +53,30 @@ def create_screen_session(session_name: str) -> None:
         logger.error(f"Error creating screen session: {e}")
         raise
 
-def get_env_vars(model_name: str) -> dict:
-    """Get the appropriate environment variables based on model name"""
-    base_vars = {
-        "OPENAI_ENDPOINT": "http://localhost:8888/v1",
-        "OPENAI_API_KEY": "EMPTY"
-    }
+def get_model_type(model_name: str, config: configparser.ConfigParser) -> str:
+    """Determine if the model is local or cloud-based"""
+    section_name = f"MODEL_{model_name.replace('/', '_').upper()}"
+    if section_name in config:
+        return config[section_name].get('deployment_type', 'local')
+    return 'local'
+def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
+    """Get the appropriate environment variables based on model name and type"""
+    model_type = get_model_type(model_name, config)
+    section_name = f"MODEL_{model_name.replace('/', '_').upper()}"
     
-    if "prometheus" in model_name.lower():
-        base_vars["OPENAI_DEFAULT_MODEL_NAME"] = "prometheus-eval/prometheus-7b-v2.0"
-    elif "llama-3-8b" in model_name.lower():
-        base_vars["OPENAI_DEFAULT_MODEL_NAME"] = "meta-llama/Meta-Llama-3-8B-Instruct"
+    if model_type == 'azure':
+        return {
+            "OPENAI_API_TYPE": "azure",
+            "OPENAI_API_BASE": config[section_name]['api_base'],
+            "OPENAI_API_KEY": config[section_name]['api_key'],
+            "OPENAI_DEFAULT_MODEL_NAME": config[section_name]['deployment_name']
+        }
     else:
-        logger.warning(f"Unknown model type {model_name}, using Meta-Llama as default")
-        base_vars["OPENAI_DEFAULT_MODEL_NAME"] = "meta-llama/Meta-Llama-3-8B-Instruct"
-    
-    return base_vars
+        return {
+            "OPENAI_ENDPOINT": "http://localhost:8888/v1",
+            "OPENAI_API_KEY": "EMPTY",
+            "OPENAI_DEFAULT_MODEL_NAME": model_name
+        }
 
 def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str:
     """Start the VLLM server with specified model"""
@@ -97,8 +104,7 @@ def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str
     try:
         subprocess.run(screen_cmd, check=True)
         logger.info(f"Started VLLM server for {model_name}")
-        # Give the model time to load
-        time.sleep(45)
+        time.sleep(60)  # Give the model time to load
         return session_name
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to start VLLM server: {e}")
@@ -107,23 +113,18 @@ def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str
 def stop_vllm_server(session_name: str, config: configparser.ConfigParser):
     """Stop the VLLM server and clean up"""
     try:
-        # Send Ctrl+C to the screen session
         subprocess.run(["screen", "-S", session_name, "-X", "stuff", "\x03"])
         time.sleep(5)
         
-        # Kill the screen session
         subprocess.run(["screen", "-S", session_name, "-X", "quit"])
         logger.info(f"Stopped screen session: {session_name}")
         
-        # Clean up port
         port = int(config['EVAL_CONFIG']['port'])
         kill_process_on_port(port)
         
-        # Additional cleanup time
-        time.sleep(15)
+        time.sleep(15)  # Additional cleanup time
     except Exception as e:
         logger.error(f"Error stopping VLLM server: {e}")
-        # Force cleanup
         kill_process_on_port(int(config['EVAL_CONFIG']['port']))
 
 def combine_evaluations(eval_files: list, output_path: Path):
@@ -150,6 +151,46 @@ def combine_evaluations(eval_files: list, output_path: Path):
     else:
         logger.error("No data to combine")
 
+def run_evaluation(model_name: str, config: configparser.ConfigParser, 
+                  qr_df_path: Path, config_path: Path, output_path: Path):
+    """Run evaluation for a single model"""
+    model_type = get_model_type(model_name, config)
+    session_name = None
+    
+    try:
+        # Only start VLLM server for local models
+        if model_type == 'local':
+            kill_process_on_port(int(config['EVAL_CONFIG']['port']))
+            session_name = start_vllm_server(model_name, config)
+        
+        # Get environment variables
+        env_vars = get_env_vars(model_name, config)
+        
+        # Prepare and run evaluation command
+        cmd = [
+            "python",
+            str(Path(__file__).parent / "evaluation.py"),
+            str(qr_df_path),
+            "--config-path", str(config_path),
+            "--report-output-path", str(output_path)
+        ]
+        
+        env = os.environ.copy()
+        env.update(env_vars)
+        
+        subprocess.run(cmd, env=env, check=True)
+        logger.info(f"Completed evaluation with model: {model_name}")
+        
+    except Exception as e:
+        logger.error(f"Error during evaluation with {model_name}: {e}")
+        raise
+    finally:
+        # Clean up VLLM server only if it was started
+        if session_name and model_type == 'local':
+            stop_vllm_server(session_name, config)
+            kill_process_on_port(int(config['EVAL_CONFIG']['port']))
+            time.sleep(10)
+
 @app.command()
 def main(
     qr_df_path: Path,
@@ -157,18 +198,14 @@ def main(
     output_dir: Path = Path("evaluation_results")
 ):
     """Run sequential evaluation with multiple models as a jury"""
-    # Initial cleanup
     cleanup_screen_sessions()
     
-    # Load configuration
     config = configparser.ConfigParser()
     config.read(config_path)
     
-    # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Get list of models
-    models = [model.strip() for model in config['EVALUATION_SEQUENCE']['models'].split(',')]
+    models = [model.strip() for model in config['JURY_ROOM']['models'].split(',')]
     logger.info(f"Running evaluation with {len(models)} models as jury")
     
     evaluation_files = []
@@ -176,58 +213,25 @@ def main(
         logger.info(f"Starting evaluation with model: {model}")
         model_name = model.split('/')[-1]
         
-        # Ensure clean state before starting
-        kill_process_on_port(int(config['EVAL_CONFIG']['port']))
-        
         # Update config for current model
         if 'DEFAULT_MODEL' not in config:
             config.add_section('DEFAULT_MODEL')
         config['DEFAULT_MODEL']['default_model'] = model
         
+        output_path = output_dir / f"evaluation_{model_name}.xlsx"
+        evaluation_files.append(output_path)
+        
         try:
-            # Start VLLM server
-            session_name = start_vllm_server(model, config)
-            
-            # Run evaluation with correct environment
-            output_path = output_dir / f"evaluation_{model_name}.xlsx"
-            evaluation_files.append(output_path)
-            
-            # Get the appropriate environment variables
-            env_vars = get_env_vars(model)
-            
-            # Prepare the evaluation command
-            cmd = [
-                "python",
-                str(Path(__file__).parent / "evaluation.py"),
-                str(qr_df_path),
-                "--config-path", str(config_path),
-                "--report-output-path", str(output_path)
-            ]
-            
-            # Update environment with our variables
-            env = os.environ.copy()
-            env.update(env_vars)
-            
-            # Run the command with the updated environment
-            subprocess.run(cmd, env=env, check=True)
-            logger.info(f"Completed evaluation with model: {model}")
-            
+            run_evaluation(model, config, qr_df_path, config_path, output_path)
         except Exception as e:
-            logger.error(f"Error during evaluation with {model}: {e}")
-        finally:
-            # Stop VLLM server and clean up
-            if 'session_name' in locals():
-                stop_vllm_server(session_name, config)
-            
-            # Extra cleanup step
-            kill_process_on_port(int(config['EVAL_CONFIG']['port']))
-            time.sleep(10)  # Additional cool-down period
+            logger.error(f"Failed to evaluate with {model}: {e}")
+            continue
     
     # Combine evaluations
-    output_suffix = config.get('EVALUATION_SEQUENCE', 'output_suffix', fallback='combined')
+    output_suffix = config.get('JURY_ROOM', 'output_suffix', fallback='combined')
     combined_output = output_dir / f"{output_suffix}_evaluation.xlsx"
     combine_evaluations(evaluation_files, combined_output)
-    logger.info("All evaluations completed!")
+    logger.success("All evaluations completed!")
 
 if __name__ == "__main__":
     typer.run(main)

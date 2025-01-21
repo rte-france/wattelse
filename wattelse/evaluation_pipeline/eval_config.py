@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 import configparser
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 from wattelse.evaluation_pipeline.regex_patterns import RegexPatterns
 from wattelse.evaluation_pipeline.prompt_eval import PROMPTS
 
@@ -14,11 +14,12 @@ class EvalConfig:
     model_configs: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     prompts: Dict[str, Dict[str, str]] = field(default_factory=dict)
     regex_patterns: RegexPatterns = field(default_factory=RegexPatterns)
+    enabled_metrics: Set[str] = field(default_factory=set)
     
     def __post_init__(self):
         self.load_config()
-        self.prompts = PROMPTS  # Load prompts directly from prompt_eval.py
-    
+        self.prompts = PROMPTS
+        
     def load_config(self):
         """Load configuration from the config file."""
         config = configparser.ConfigParser()
@@ -31,6 +32,10 @@ class EvalConfig:
                 self.server_config['cuda_visible_devices'] = [
                     int(x.strip()) for x in self.server_config['cuda_visible_devices'].split(',')
                 ]
+                
+            # Load enabled metrics
+            metrics_str = self.server_config.get('enabled_metrics', 'faithfulness,correctness,retrievability')
+            self.enabled_metrics = {metric.strip() for metric in metrics_str.split(',')}
         
         # Load default model
         if 'DEFAULT_MODEL' in config:
@@ -48,6 +53,8 @@ class EvalConfig:
     
     def get_prompt(self, metric: str, model_name: str) -> str:
         """Get the appropriate prompt for a given metric and model."""
+        if metric not in self.enabled_metrics:
+            raise ValueError(f"Metric '{metric}' is not enabled in the configuration")
         prompt_type = self.get_prompt_type(model_name)
         return self.prompts[metric][prompt_type]
     
@@ -69,6 +76,16 @@ class EvalConfig:
     def get_model_config(self, model_name: str) -> Dict[str, Any]:
         """Get the complete configuration for a specific model."""
         return self.model_configs.get(model_name, {})
+    
+    @property
+    def available_metrics(self) -> Set[str]:
+        """Get all available metrics from prompts."""
+        return set(self.prompts.keys())
+    
+    @property
+    def active_metrics(self) -> Set[str]:
+        """Get currently enabled metrics that are also available."""
+        return self.enabled_metrics.intersection(self.available_metrics)
     
     @property
     def cuda_devices(self) -> List[int]:
