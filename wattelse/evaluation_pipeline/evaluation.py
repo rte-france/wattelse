@@ -1,4 +1,3 @@
-# evaluation.py
 import re
 import typer
 import pandas as pd
@@ -65,7 +64,7 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
                     prompt.format(
                         retrieved_contexts=context_extracted,
                         answer=answer,
-                        question=question,
+                        question=question, # added for prometheus testing (It's not passed)
                     ),
                 )
             elif metric == "correctness":
@@ -155,6 +154,7 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame, config: EvalConfig) -> pd.DataFr
 
     return eval_df
 
+# FIXME Already loaded or not, doesn't make sense here.
 @app.command()
 def main(
     qr_df_path: Path,

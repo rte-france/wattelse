@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph Orchestration["Pipeline Orchestration"]
-        RS[Sequential Executor<br/>run_sequential.py]
+        RS[Sequential Executor<br/>run_jury.py]
         subgraph ModelManagement
             VM1[VLLM Server<br/>Model 1]
             VM2[VLLM Server<br/>Model 2]
@@ -100,34 +100,11 @@ The diagram shows the main components and data flow of the evaluation pipeline:
 
 ## Prerequisites
 
-- Python 3.8+
-- CUDA-compatible GPU(s)
-- Required Python packages (install via `pip`):
-  ```
-  typer
-  pandas
-  numpy
-  loguru
-  joblib
-  tqdm-joblib
-  psutil
-  configparser
-  openpyxl
-  vllm
-  ```
+- TODO
 
 ## Installation
 
-1. Clone the repository:
-```bash
-git clone [your-repo-url]
-cd wattelse
-```
-
-2. Install the required dependencies:
-```bash
-pip install -r requirements.txt
-```
+- TODO
 
 ## Configuration
 
@@ -141,15 +118,16 @@ host = 0.0.0.0
 port = 8888
 cuda_visible_devices = 2,1
 
-[EVALUATION_SEQUENCE]
+[JURY_ROOM]
 models = meta-llama/Meta-Llama-3-8B-Instruct, prometheus-eval/prometheus-7b-v2.0
-output_suffix = model_comparison
 
 [MODEL_META-LLAMA-3-8B]
 model_name = meta-llama/Meta-Llama-3-8B-Instruct
 prompt_type = meta-llama-3-8b
 regex_type = re_llama3
 temperature = 0.0
+
+...
 ```
 
 ### Configuration Parameters
@@ -158,8 +136,6 @@ temperature = 0.0
 - `port`: Server port number
 - `cuda_visible_devices`: GPUs to use for evaluation
 - `models`: Comma-separated list of evaluation models
-- `output_suffix`: Suffix for the combined output file
-- Model-specific configurations (temperature, prompt type, etc.)
 
 ## Usage
 
@@ -222,7 +198,7 @@ python run_sequential.py ./data/rag_responses.xlsx \
     --output-dir ./results/jury_evaluation
 
 # Example with default config but custom output directory
-python run_sequential.py ./data/responses.xlsx \
+python run_jury.py ./data/responses.xlsx \
     --output-dir ./custom_results
 ```
 
@@ -236,7 +212,7 @@ python run_sequential.py ./data/responses.xlsx \
 
 2. Run the evaluation pipeline:
 ```bash
-python run_sequential.py path/to/your/data.xlsx --config-path eval_config.cfg --output-dir evaluation_results
+python run_jury.py path/to/your/data.xlsx --config-path eval_config.cfg --output-dir evaluation_results
 ```
 
 ### Command-line Arguments
@@ -313,25 +289,12 @@ The pipeline includes robust error handling:
 
 ## Logging
 
-Comprehensive logging is implemented using the `loguru` library. Logs include:
-- Evaluation progress
-- Model loading/unloading
-- Error messages
-- Performance metrics
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
-[Your License]
 
 ## Acknowledgments
 
-- The evaluation methodology is inspired by research in RAG system evaluation
-- Thanks to the open-source community for the tools and libraries used in this project

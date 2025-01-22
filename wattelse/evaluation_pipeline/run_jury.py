@@ -1,7 +1,6 @@
 import time
 import subprocess
 import typer
-import pandas as pd
 from pathlib import Path
 import configparser
 from loguru import logger
@@ -59,6 +58,8 @@ def get_model_type(model_name: str, config: configparser.ConfigParser) -> str:
     if section_name in config:
         return config[section_name].get('deployment_type', 'local')
     return 'local'
+
+# FIXME Azure model not loading properly
 def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
     """Get the appropriate environment variables based on model name and type"""
     model_type = get_model_type(model_name, config)
@@ -127,30 +128,6 @@ def stop_vllm_server(session_name: str, config: configparser.ConfigParser):
         logger.error(f"Error stopping VLLM server: {e}")
         kill_process_on_port(int(config['EVAL_CONFIG']['port']))
 
-def combine_evaluations(eval_files: list, output_path: Path):
-    """Combine evaluations from multiple models"""
-    combined_df = None
-    
-    for file_path in eval_files:
-        try:
-            df = pd.read_excel(file_path)
-            if combined_df is None:
-                combined_df = df
-            else:
-                model_name = file_path.stem.split('_')[-1]
-                df_columns = df.columns.difference(['question'])
-                renamed_columns = {col: f"{col}_{model_name}" for col in df_columns}
-                df = df.rename(columns=renamed_columns)
-                combined_df = pd.merge(combined_df, df, on='question', how='outer')
-        except Exception as e:
-            logger.error(f"Error processing {file_path}: {e}")
-    
-    if combined_df is not None:
-        combined_df.to_excel(output_path, index=False)
-        logger.info(f"Combined evaluation saved to {output_path}")
-    else:
-        logger.error("No data to combine")
-
 def run_evaluation(model_name: str, config: configparser.ConfigParser, 
                   qr_df_path: Path, config_path: Path, output_path: Path):
     """Run evaluation for a single model"""
@@ -197,7 +174,7 @@ def main(
     config_path: Path = Path("eval_config.cfg"),
     output_dir: Path = Path("evaluation_results")
 ):
-    """Run sequential evaluation with multiple models as a jury"""
+    """Run sequential evaluation with multiple models"""
     cleanup_screen_sessions()
     
     config = configparser.ConfigParser()
@@ -206,9 +183,8 @@ def main(
     output_dir.mkdir(parents=True, exist_ok=True)
     
     models = [model.strip() for model in config['JURY_ROOM']['models'].split(',')]
-    logger.info(f"Running evaluation with {len(models)} models as jury")
+    logger.info(f"Running evaluation with {len(models)} models")
     
-    evaluation_files = []
     for model in models:
         logger.info(f"Starting evaluation with model: {model}")
         model_name = model.split('/')[-1]
@@ -219,7 +195,6 @@ def main(
         config['DEFAULT_MODEL']['default_model'] = model
         
         output_path = output_dir / f"evaluation_{model_name}.xlsx"
-        evaluation_files.append(output_path)
         
         try:
             run_evaluation(model, config, qr_df_path, config_path, output_path)
@@ -227,10 +202,6 @@ def main(
             logger.error(f"Failed to evaluate with {model}: {e}")
             continue
     
-    # Combine evaluations
-    output_suffix = config.get('JURY_ROOM', 'output_suffix', fallback='combined')
-    combined_output = output_dir / f"{output_suffix}_evaluation.xlsx"
-    combine_evaluations(evaluation_files, combined_output)
     logger.success("All evaluations completed!")
 
 if __name__ == "__main__":

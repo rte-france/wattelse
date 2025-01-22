@@ -55,6 +55,8 @@ unstructured = "^0.15.13"
 uvicorn = "^0.31.0"
 vllm = "^0.6.1"
 xlsx2html = "^0.6.1"
+tqdm_joblib= "^0.0.4"
+
 
 
 [build-system]

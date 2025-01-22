@@ -1,4 +1,4 @@
-# Dictionary-Based Prompts
+# Dictionary-Based Prompts (you have to define a prompts each time)
 
 # Correctness evaluation prompts
 CORRECTNESS_EVAL_PROMPT = {

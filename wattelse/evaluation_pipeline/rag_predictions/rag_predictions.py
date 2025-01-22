@@ -11,7 +11,7 @@ from pathlib import Path
 from tqdm import tqdm
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
-#TODO Parellelize (optional)
+# TODO Parellelize (optional)
 # from joblib import Parallel, delayed
 # from tqdm_joblib import tqdm_joblib
 

@@ -1,7 +1,6 @@
 import re
 import typer
 import pandas as pd
-import numpy as np
 from loguru import logger
 from typing import List, Dict
 from tqdm import tqdm
