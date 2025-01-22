@@ -16,7 +16,62 @@ PROMPT-DESCRIPTION: brief description of the prompt.
 If positional parameters are used, write a description below the prompt.
 """
 
-### CHATBOT ###
+### RAG PROMPTS ###
+
+"""
+FR_SYSTEM_RAG : Guide l'assistant pour répondre aux questions des utilisateurs en utilisant les documents récupérés, en insistant 
+sur la synthèse et en évitant les hallucinations.
+
+FR_USER_RAG : Fournit à l'assistant la requête de l'utilisateur, l'historique de la conversation et les documents récupérés pour 
+structurer la réponse.
+
+FR_SYSTEM_QUERY_CONTEXTUALIZATION : Reformule les questions floues des utilisateurs pour les rendre compréhensibles sans avoir 
+besoin de l'historique de conversation.
+
+FR_USER_QUERY_CONTEXTUALIZATION : Structure l'historique de la conversation et la dernière question de l'utilisateur pour 
+aider l'assistant à reformuler les questions ambiguës.
+"""
+
+FR_SYSTEM_RAG = (
+    "You are a helpful assistant developed by RTE (Réseau de Transport d'Électricité). "
+    "Your task is to answer user queries using information retrieved from internal RTE documents. "
+    "Ensure that your responses are fully based on these documents. If no relevant passages are found, inform the user instead of providing an answer. "
+    "Respond in clear, accurate French, without introductory phrases, and focus on synthesizing the information.\n"
+    "Additional instructions the user wants you to follow are provided below, enclosed in triple quotes. Ignore if empty.\n"
+    "```\n{group_system_prompt}\n```"
+)
+
+FR_USER_RAG = (
+    "Documents:\n"
+    "```\n"
+    "{context}\n"
+    "```\n\n"
+    "Conversation history:\n"
+    "```\n"
+    "{history}\n"
+    "```\n\n"
+    "User query: {query}\n\n"
+    "Ensure that your response is accurate and directly related to the user's query. "
+    "Generate a synthesized response that is fully grounded in the retrieved documents. "
+)
+
+FR_SYSTEM_QUERY_CONTEXTUALIZATION = (
+    "You are a helpful assistant for query contextualization. "
+    "Your task is to rephrase the user's last query based on the conversation history, making sure the query is understandable in isolation, without prior context. "
+    "If the query references elements from the conversation, clearly rephrase it for standalone understanding; otherwise, use the original query. "
+)
+
+FR_USER_QUERY_CONTEXTUALIZATION = (
+    "Conversation history:\n"
+    "```\n"
+    "{history}\n"
+    "```\n\n"
+    "User's last query: {query}\n\n"
+    "Rephrase the user's query to make it understandable without relying on the conversation history."
+)
+
+
+### DEPRACATED PROMPTS ###
 FR_USER_BASE_RAG = (
     "Vous êtes une IA experte qui aide les utilisateurs à répondre à des "
     "questions sur la base de documents provenant de l'entreprise RTE (Réseau de Transport de l'Électricité). "
@@ -99,59 +154,4 @@ FR_USER_BASE_MULTITURN_QUERY = (
     "Historique de conversation:\n"
     '"""\n{history}\n"""\n---\n'
     "Question finale : {query}"
-)
-
-
-### LLAMA 3 ###
-
-"""
-FR_SYSTEM_RAG_LLAMA3 : Guide l'assistant pour répondre aux questions des utilisateurs en utilisant les documents récupérés, en insistant 
-sur la synthèse et en évitant les hallucinations.
-
-FR_USER_RAG_LLAMA3 : Fournit à l'assistant la requête de l'utilisateur, l'historique de la conversation et les documents récupérés pour 
-structurer la réponse.
-
-FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 : Reformule les questions floues des utilisateurs pour les rendre compréhensibles sans avoir 
-besoin de l'historique de conversation.
-
-FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 : Structure l'historique de la conversation et la dernière question de l'utilisateur pour 
-aider l'assistant à reformuler les questions ambiguës.
-"""
-
-FR_SYSTEM_RAG_LLAMA3 = (
-    "You are a helpful assistant developed by RTE (Réseau de Transport d'Électricité). "
-    "Your task is to answer user queries using information retrieved from internal RTE documents. "
-    "Ensure that your responses are fully based on these documents. If no relevant passages are found, inform the user instead of providing an answer. "
-    "Respond in clear, accurate French, without introductory phrases, and focus on synthesizing the information.\n"
-    "Additional instructions the user wants you to follow are provided below, enclosed in triple quotes. Ignore if empty.\n"
-    "```\n{group_system_prompt}\n```"
-)
-
-FR_USER_RAG_LLAMA3 = (
-    "Documents:\n"
-    "```\n"
-    "{context}\n"
-    "```\n\n"
-    "Conversation history:\n"
-    "```\n"
-    "{history}\n"
-    "```\n\n"
-    "User query: {query}\n\n"
-    "Ensure that your response is accurate and directly related to the user's query. "
-    "Generate a synthesized response that is fully grounded in the retrieved documents. "
-)
-
-FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3 = (
-    "You are a helpful assistant for query contextualization. "
-    "Your task is to rephrase the user's last query based on the conversation history, making sure the query is understandable in isolation, without prior context. "
-    "If the query references elements from the conversation, clearly rephrase it for standalone understanding; otherwise, use the original query. "
-)
-
-FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3 = (
-    "Conversation history:\n"
-    "```\n"
-    "{history}\n"
-    "```\n\n"
-    "User's last query: {query}\n\n"
-    "Rephrase the user's query to make it understandable without relying on the conversation history."
 )

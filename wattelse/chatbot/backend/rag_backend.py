@@ -30,10 +30,10 @@ from wattelse.chatbot.backend.vector_database import (
 )
 
 from wattelse.api.prompts import (
-    FR_SYSTEM_RAG_LLAMA3,
-    FR_USER_RAG_LLAMA3,
-    FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3,
-    FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3,
+    FR_SYSTEM_RAG,
+    FR_USER_RAG,
+    FR_SYSTEM_QUERY_CONTEXTUALIZATION,
+    FR_USER_QUERY_CONTEXTUALIZATION,
 )
 from wattelse.chatbot.backend import (
     BM25,
@@ -66,7 +66,7 @@ class RAGBackEnd:
         """
         Creates a RAGBackend for a given `group_id`.
         3 ways to set the configuration depending on `config` type:
-            - str: default config name ('local' or 'azure')
+            - str: default config name (see `wattelse/chatbot/backend/configs`)
             - dict: config dict that should follow format found in default config files
             - Path: path to a .toml config file
         """
@@ -125,14 +125,12 @@ class RAGBackEnd:
             self.document_collection = load_document_collection(self.group_id)
 
             # Prompts
-            self.system_prompt = FR_SYSTEM_RAG_LLAMA3
-            self.user_prompt = FR_USER_RAG_LLAMA3
+            self.system_prompt = FR_SYSTEM_RAG
+            self.user_prompt = FR_USER_RAG
             self.system_prompt_query_contextualization = (
-                FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3
+                FR_SYSTEM_QUERY_CONTEXTUALIZATION
             )
-            self.user_prompt_query_contextualization = (
-                FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
-            )
+            self.user_prompt_query_contextualization = FR_USER_QUERY_CONTEXTUALIZATION
         except Exception as e:
             raise Exception(f"Error while loading RAGBackend configuration: {e}")
 
