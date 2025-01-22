@@ -5,8 +5,6 @@ from typing import Iterable, Any
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
-AZURE_API_VERSION = "2024-02-01"
-
 
 class RAGError(Exception):
     pass
@@ -27,7 +25,7 @@ def get_chat_model(generator_config: dict) -> BaseChatModel:
             "openai_api_key": generator_config["openai_api_key"],
             "azure_endpoint": generator_config["openai_endpoint"],
             "azure_deployment": generator_config["openai_default_model"],
-            "api_version": AZURE_API_VERSION,
+            "api_version": generator_config["azure_api_version"],
             "temperature": generator_config["temperature"],
         }
         llm = AzureChatOpenAI(**llm_config)
