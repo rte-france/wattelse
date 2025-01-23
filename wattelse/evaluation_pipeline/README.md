@@ -181,19 +181,19 @@ export OPENAI_DEFAULT_MODEL_NAME="prometheus-eval/prometheus-7b-v2.0"
 
 Make sure your VLLM server is running with the appropriate model before starting the evaluation.
 
-### Running the Full Evaluation Pipeline (Multiple Models as Jury)
+### Running the Full Evaluation Pipeline (LLM as Jury)
 
 ```bash
 # Basic usage
-python run_sequential.py /path/to/data.xlsx
+python run_jury.py /path/to/data.xlsx
 
 # With all options specified
-python run_sequential.py /path/to/data.xlsx \
+python run_jury.py /path/to/data.xlsx \
     --config-path /path/to/eval_config.cfg \
     --output-dir /path/to/evaluation_results
 
 # Example with specific paths
-python run_sequential.py ./data/rag_responses.xlsx \
+python run_jury.py ./data/rag_responses.xlsx \
     --config-path ./configs/jury_eval_config.cfg \
     --output-dir ./results/jury_evaluation
 
@@ -222,7 +222,7 @@ For evaluation.py (Single Model):
 - `--config-path`: Path to the configuration file (default: "config.cfg")
 - `--report-output-path`: Path for the evaluation results Excel file (default: "report_output.xlsx")
 
-For run_sequential.py (Multiple Models):
+For run_jury.py (Multiple Models):
 - `qr_df_path`: Path to the Excel file containing questions and responses
 - `--config-path`: Path to the configuration file (default: "eval_config.cfg")
 - `--output-dir`: Directory for evaluation results (default: "evaluation_results")
@@ -261,7 +261,7 @@ The pipeline generates:
 
 The evaluation pipeline consists of several key components:
 
-1. **Evaluation Controller** (`run_sequential.py`):
+1. **Evaluation Controller** (`run_jury.py`):
    - Manages the evaluation sequence
    - Handles model switching
    - Coordinates result aggregation

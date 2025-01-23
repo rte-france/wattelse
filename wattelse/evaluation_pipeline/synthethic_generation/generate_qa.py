@@ -21,7 +21,7 @@ DOCS_PER_QA = 2
 CHUNKS_PER_DOC = 2
 DEFAULT_GENERATIONS = 100
 
-#TODO Can't set the chunk_size & chunk_overlap unless I modify document_splitter.py
+#FIXME Can't set the chunk_size & chunk_overlap unless I modify document_splitter.py
 
 # Define the Typer app
 app = typer.Typer()

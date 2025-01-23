@@ -10,6 +10,9 @@ from tqdm_joblib import tqdm_joblib
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.evaluation_pipeline.eval_config import EvalConfig
 
+CONFIG_EVAL = Path("config.cfg")
+REPORT_PATH = Path("report_output.xlsx")
+
 # Column definitions
 QUERY_COLUMN = "question"
 ANSWER_COLUMN = "answer"
@@ -64,7 +67,7 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
                     prompt.format(
                         retrieved_contexts=context_extracted,
                         answer=answer,
-                        question=question, # added for prometheus testing (It's not passed)
+                        question=question, # added for prometheus testing (It's not passed for all)
                     ),
                 )
             elif metric == "correctness":
@@ -154,48 +157,23 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame, config: EvalConfig) -> pd.DataFr
 
     return eval_df
 
-# FIXME Already loaded or not, doesn't make sense here.
 @app.command()
 def main(
     qr_df_path: Path,
-    config_path: Path = Path("config.cfg"),
-    report_output_path: Path = Path(__file__).parent / "report_output.xlsx"
+    config_path: Path = CONFIG_EVAL,
+    report_output_path: Path = REPORT_PATH
 ):
     """Main function to evaluate the RAG pipeline."""
-    # Load the configuration
     config = EvalConfig(config_path)
     logger.info(f"Loaded configuration from {config_path}")
-
-    try:
-        if report_output_path.exists():
-            existing_df = pd.read_excel(report_output_path)
-            logger.info(f"Loaded existing evaluation file from {report_output_path}")
-        else:
-            existing_df = pd.DataFrame()
-            logger.info("No existing evaluation file found. Starting fresh.")
-    except Exception as e:
-        logger.error(f"Failed to load existing evaluation file: {e}")
-        existing_df = pd.DataFrame()
 
     eval_df = pd.read_excel(qr_df_path)
     logger.info(f"Loaded input dataset from {qr_df_path}")
 
     evaluated_df = evaluate_rag_metrics(eval_df, config)
-
-    if not existing_df.empty:
-        evaluated_df = evaluated_df.add_suffix(f"_{config.default_model}")
-        merged_df = existing_df.merge(
-            evaluated_df,
-            left_on=QUERY_COLUMN,
-            right_on=f"{QUERY_COLUMN}_{config.default_model}",
-            how="outer",
-            suffixes=('', f'_{config.default_model}')
-        )
-    else:
-        merged_df = evaluated_df
-
-    merged_df.to_excel(report_output_path, index=False)
-    logger.info(f"Updated evaluation file saved to {report_output_path}")
+    
+    evaluated_df.to_excel(report_output_path, index=False)
+    logger.info(f"Evaluation results saved to {report_output_path}")
 
 if __name__ == "__main__":
     typer.run(main)
