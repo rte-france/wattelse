@@ -68,7 +68,8 @@ def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
     if model_type == 'azure':
         return {
             "OPENAI_API_TYPE": "azure",
-            "OPENAI_API_BASE": config[section_name]['api_base'],
+            "OPENAI_API_VERSION": config[section_name].get('api_version', '2024-02-01'),
+            "OPENAI_ENDPOINT": config[section_name]['api_base'],
             "OPENAI_API_KEY": config[section_name]['api_key'],
             "OPENAI_DEFAULT_MODEL_NAME": config[section_name]['deployment_name']
         }
