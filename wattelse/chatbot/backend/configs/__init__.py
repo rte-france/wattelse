@@ -1,6 +1,6 @@
 from pathlib import Path
 
+# Mapping between the configuration name as it should appear in Django (file name without extension and full path
 CONFIG_NAME_TO_CONFIG_PATH = {
-    "local_20240628": Path(__file__).parent / "local_20240628.toml",
-    "azure_20241216": Path(__file__).parent / "azure_20241216.toml",
+    path.stem: path for path in Path(__file__).parent.glob("*.toml")
 }
