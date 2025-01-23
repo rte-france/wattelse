@@ -5,6 +5,8 @@ from typing import Iterable, Any
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
+from wattelse.api.openai.client_openai_api import GPT_FAMILY
+
 
 class RAGError(Exception):
     pass
@@ -32,6 +34,10 @@ def get_chat_model(generator_config: dict) -> BaseChatModel:
         llm.model_name = generator_config[
             "openai_default_model"
         ]  # with Azure, set to gpt3.5-turbo by default
+        # Workaround to make it work with non OpenAI model on Azure
+        if GPT_FAMILY not in llm.model_name:
+            llm.model_name = None
+            llm.root_client.base_url = generator_config["openai_endpoint"]
         return llm
 
 
