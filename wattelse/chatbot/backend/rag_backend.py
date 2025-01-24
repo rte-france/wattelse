@@ -135,7 +135,7 @@ class RAGBackEnd:
             raise Exception(f"Error while loading RAGBackend configuration: {e}")
 
     def get_llm_model_name(self):
-        return self.llm.model_name
+        return self.config["generator"]["openai_default_model"]
 
     def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
