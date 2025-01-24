@@ -67,16 +67,18 @@ class RAGOrchestratorClient:
                 f"[Group: {group_id}] Error: {response.status_code, response.text}"
             )
 
-    def create_session(self, group_id: str) -> str:
+    def create_session(self, group_id: str, config: str | dict) -> str:
         """Create session associated to a group"""
-        response = requests.post(self.url + ENDPOINT_CREATE_SESSION + f"/{group_id}")
+        response = requests.post(
+            self.url + ENDPOINT_CREATE_SESSION + f"/{group_id}",
+            json={"config": config},
+        )
         if response.status_code == 200:
-            group_id = response.json()
-            logger.info(f"[Group: {group_id}] RAGBackend created")
+            logger.info(response.json()["message"])
             return group_id
         else:
-            logger.error(f"Error: {response.status_code, response.text}")
-            raise RAGAPIError(f"Error: {response.status_code, response.text}")
+            logger.error(f"Error {response.status_code}: {response.text}")
+            raise RAGAPIError(f"Error {response.status_code}: {response.text}")
 
     def upload_files(self, group_id: str, file_paths: List[Path]):
         files = [("files", open(p, "rb")) for p in file_paths]

@@ -16,7 +16,8 @@ TIMEOUT = 60.0
 DEFAULT_TEMPERATURE = 0.1
 DEFAULT_MAX_TOKENS = 512
 
-AZURE_API_VERSION = "2024-02-01"
+AZURE_API_VERSION = "2024-10-21"
+GPT_FAMILY = "gpt"
 
 
 class OpenAI_Client:
@@ -70,9 +71,16 @@ class OpenAI_Client:
                 **common_params,
                 **azure_params,
             )
+
         self.model_name = model if model else os.getenv("OPENAI_DEFAULT_MODEL_NAME")
         self.temperature = temperature
         self.max_tokens = DEFAULT_MAX_TOKENS
+
+        # workaround for non OpenAI models on Azure
+        if run_on_azure and GPT_FAMILY not in self.model_name:
+            base_url = str(self.llm_client.base_url)
+            if base_url.endswith("/openai/"):
+                self.llm_client.base_url = base_url[:-8]
 
     def generate(
         self,
@@ -116,7 +124,8 @@ class OpenAI_Client:
         """
         # For important parameters, set default value if not given
         if not kwargs.get("model"):
-            kwargs["model"] = self.model_name
+            # NB. If we use e.g. a Mistral or Phi deployment on Azure, passing the name here generates an error
+            kwargs["model"] = self.model_name if GPT_FAMILY in self.model_name else None
         if not kwargs.get("temperature"):
             kwargs["temperature"] = self.temperature
         if not kwargs.get("max_tokens"):

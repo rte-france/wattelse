@@ -4,10 +4,35 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 from django.contrib import admin
-from .models import Chat, GPTChat, GroupSystemPrompt, UserProfile
+from .models import Chat, GPTChat, GroupProfile, UserProfile
 
 
 class ChatAdmin(admin.ModelAdmin):
+    list_display = (
+        "user_id",
+        "group_id",
+        "conversation_id",
+        "message",
+        "response",
+        "question_timestamp",
+        "answer_timestamp",
+        "answer_delay",
+        "short_feedback",
+        "long_feedback",
+        "rag_config",
+    )
+    list_filter = (
+        "user_id",
+        "group_id",
+        "conversation_id",
+        "question_timestamp",
+        "answer_timestamp",
+        "answer_delay",
+        "short_feedback",
+    )
+
+
+class GPTChatAdmin(admin.ModelAdmin):
     list_display = (
         "user_id",
         "group_id",
@@ -31,7 +56,7 @@ class ChatAdmin(admin.ModelAdmin):
     )
 
 
-class GroupSystemPromptAdmin(admin.ModelAdmin):
+class GroupProfileAdmin(admin.ModelAdmin):
     list_display = (
         "group_id",
         "system_prompt",
@@ -39,9 +64,10 @@ class GroupSystemPromptAdmin(admin.ModelAdmin):
     list_filter = ("group_id",)
 
 
-class GroupSystemPromptAdmin(admin.ModelAdmin):
+class GroupProfileAdmin(admin.ModelAdmin):
     list_display = (
-        "group_id",
+        "group",
+        "rag_config",
         "system_prompt",
     )
     list_filter = ("group_id",)
@@ -53,6 +79,6 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 # Register your models here.
 admin.site.register(Chat, ChatAdmin)
-admin.site.register(GPTChat, ChatAdmin)
-admin.site.register(GroupSystemPrompt, GroupSystemPromptAdmin)
+admin.site.register(GPTChat, GPTChatAdmin)
+admin.site.register(GroupProfile, GroupProfileAdmin)
 admin.site.register(UserProfile, UserProfileAdmin)

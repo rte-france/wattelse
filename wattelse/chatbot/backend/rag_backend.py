@@ -3,16 +3,15 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-import json
 import logging
 import os
 import shutil
+from pathlib import Path
 from typing import BinaryIO, List, Dict, Union
 
 from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
-from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -21,7 +20,6 @@ from langchain_core.prompts import (
     PromptTemplate,
 )
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
-from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from loguru import logger
 from starlette.responses import StreamingResponse
 
@@ -32,14 +30,12 @@ from wattelse.chatbot.backend.vector_database import (
 )
 
 from wattelse.api.prompts import (
-    FR_SYSTEM_RAG_LLAMA3,
-    FR_USER_RAG_LLAMA3,
-    FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3,
-    FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3,
+    FR_SYSTEM_RAG,
+    FR_USER_RAG,
+    FR_SYSTEM_QUERY_CONTEXTUALIZATION,
+    FR_USER_QUERY_CONTEXTUALIZATION,
 )
 from wattelse.chatbot.backend import (
-    retriever_config,
-    generator_config,
     BM25,
     ENSEMBLE,
     MMR,
@@ -49,97 +45,97 @@ from wattelse.chatbot.backend import (
 from wattelse.indexer.document_splitter import split_file
 from wattelse.indexer.document_parser import parse_file
 
+from wattelse.chatbot.backend.utils import (
+    RAGError,
+    get_chat_model,
+    preprocess_streaming_data,
+    filter_history,
+    get_history_as_text,
+)
+
+from wattelse.chatbot.backend.configs import CONFIG_NAME_TO_CONFIG_PATH
+
+from wattelse.common.config_utils import load_toml_config
+
 logging.basicConfig()
 logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
-AZURE_API_VERSION = "2024-02-01"
-
-
-class RAGError(Exception):
-    pass
-
-
-def get_chat_model() -> BaseChatModel:
-    endpoint = generator_config["openai_endpoint"]
-    if "azure.com" not in endpoint:
-        llm_config = {
-            "openai_api_key": generator_config["openai_api_key"],
-            "openai_api_base": generator_config["openai_endpoint"],
-            "model_name": generator_config["openai_default_model"],
-            "temperature": generator_config["temperature"],
-        }
-        return ChatOpenAI(**llm_config)
-    else:
-        llm_config = {
-            "openai_api_key": generator_config["openai_api_key"],
-            "azure_endpoint": generator_config["openai_endpoint"],
-            "azure_deployment": generator_config["openai_default_model"],
-            "api_version": AZURE_API_VERSION,
-            "temperature": generator_config["temperature"],
-        }
-        llm = AzureChatOpenAI(**llm_config)
-        llm.model_name = generator_config[
-            "openai_default_model"
-        ]  # with Azure, set to gpt3.5-turbo by default
-        return llm
-
-
-def preprocess_streaming_data(streaming_data):
-    """Generator to preprocess the streaming data coming from LangChain `rag_chain.stream()`.
-    First sent chunk contains relevant_extracts in a convenient format.
-    Following chunks contain the actual response from the model token by token.
-    """
-    for chunk in streaming_data:
-        context_chunk = chunk.get("context", None)
-        if context_chunk is not None:
-            relevant_extracts = [
-                {"content": s.page_content, "metadata": s.metadata}
-                for s in context_chunk
-            ]
-            relevant_extracts = {"relevant_extracts": relevant_extracts}
-            yield json.dumps(relevant_extracts)
-        answer_chunk = chunk.get("answer")
-        if answer_chunk:
-            yield json.dumps(chunk)
-
-
-def filter_history(history, window_size):
-    # window size = question + answser, we return the last ones
-    return history[-2 * window_size :]
-
 
 class RAGBackEnd:
-    def __init__(self, group_id: str):
-        logger.info(f"[Group: {group_id}] Initialization of chatbot backend")
+    def __init__(self, group_id: str, config: str | dict | Path):
+        """
+        Creates a RAGBackend for a given `group_id`.
+        3 ways to set the configuration depending on `config` type:
+            - str: default config name (see `wattelse/chatbot/backend/configs`)
+            - dict: config dict that should follow format found in default config files
+            - Path: path to a .toml config file
+        """
+        self.group_id = group_id
+        self.config = self._load_config(config)
+        self._apply_config()
 
-        # Load document collection
-        self.document_collection = load_document_collection(group_id)
+    def _load_config(self, config: str | dict | Path) -> dict:
+        """
+        Function that implements RAGBackend configuration logic.
+        """
+        # If `config` is str, return associated default config
+        if isinstance(config, str):
+            if config not in CONFIG_NAME_TO_CONFIG_PATH:
+                raise Exception(
+                    f"config_name '{config}' not found. Please use one of the following: {list(CONFIG_NAME_TO_CONFIG_PATH.keys())}"
+                )
+            config_file_path = CONFIG_NAME_TO_CONFIG_PATH[config]
+            return load_toml_config(config_file_path)
 
-        # Retriever parameters
-        self.top_n_extracts = retriever_config["top_n_extracts"]
-        self.retrieval_method = retriever_config["retrieval_method"]
-        self.similarity_threshold = retriever_config["similarity_threshold"]
-        self.multi_query_mode = retriever_config["multi_query_mode"]
+        # If `config` is dict, return it directly
+        elif isinstance(config, dict):
+            return config
 
-        # Generator parameters
-        self.expected_answer_size = generator_config["expected_answer_size"]
-        self.remember_recent_messages = generator_config["remember_recent_messages"]
-        self.temperature = generator_config["temperature"]
-        # Generate llm config for langchain
-        self.llm = get_chat_model()
+        # If `config` is Path, load config from toml file
+        elif isinstance(config, Path):
+            return load_toml_config(self.config_file_path)
 
-        # Prompts
-        self.system_prompt = FR_SYSTEM_RAG_LLAMA3
-        self.user_prompt = FR_USER_RAG_LLAMA3
-        self.system_prompt_query_contextualization = (
-            FR_SYSTEM_QUERY_CONTEXTUALIZATION_LLAMA3
-        )
-        self.user_prompt_query_contextualization = (
-            FR_USER_QUERY_CONTEXTUALIZATION_LLAMA3
-        )
+        # Else raise TypeError
+        else:
+            raise TypeError(
+                f"Invalid input type for 'config': {type(config).__name__}. "
+                "Expected one of: str, dict, or pathlib.Path."
+            )
+
+    def _apply_config(self) -> None:
+        """
+        Set Class attributes based on the configuration file.
+        This method is called when the class is instantiated.
+        """
+        try:
+            # Retriever parameters
+            retriever_config = self.config["retriever"]
+            self.top_n_extracts = retriever_config["top_n_extracts"]
+            self.retrieval_method = retriever_config["retrieval_method"]
+            self.similarity_threshold = retriever_config["similarity_threshold"]
+            self.multi_query_mode = retriever_config["multi_query_mode"]
+
+            # Generator parameters
+            generator_config = self.config["generator"]
+            self.llm = get_chat_model(generator_config)
+            self.remember_recent_messages = generator_config["remember_recent_messages"]
+            self.temperature = generator_config["temperature"]
+
+            # Document collection
+            self.document_collection = load_document_collection(self.group_id)
+
+            # Prompts
+            self.system_prompt = FR_SYSTEM_RAG
+            self.user_prompt = FR_USER_RAG
+            self.system_prompt_query_contextualization = (
+                FR_SYSTEM_QUERY_CONTEXTUALIZATION
+            )
+            self.user_prompt_query_contextualization = FR_USER_QUERY_CONTEXTUALIZATION
+        except Exception as e:
+            raise Exception(f"Error while loading RAGBackend configuration: {e}")
 
     def get_llm_model_name(self):
-        return self.llm.model_name
+        return self.config["generator"]["openai_default_model"]
 
     def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
@@ -426,24 +422,3 @@ class RAGBackEnd:
             )
             logger.debug(f"Contextualized question: {contextualized_question}")
             return contextualized_question
-
-    def get_detail_level(self, question: str):
-        """Returns the level of detail we wish in the answer. Values are in this range: {"courte", "détaillée"}"""
-        return "courte" if self.expected_answer_size == "short" else "détaillée"
-
-
-def streamer(stream):
-    for chunk in stream:
-        if chunk.get("context"):
-            yield ""
-        else:
-            yield json.dumps(chunk) + "\n"
-
-
-def get_history_as_text(history: List[dict[str, str]]) -> str:
-    """Format conversation history as a text string"""
-    history_as_text = ""
-    if history is not None:
-        for turn in history:
-            history_as_text += f"{turn['role']}: {turn['content']}\n"
-    return history_as_text

@@ -7,8 +7,9 @@ import json
 
 from loguru import logger
 from typing import List, Dict
+from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Body
 from pydantic import BaseModel
 from starlette.responses import FileResponse, StreamingResponse
 
@@ -42,6 +43,10 @@ class RAGOrchestratorAPIError(Exception):
     pass
 
 
+class RAGBackendConfig(BaseModel):
+    config: str | dict
+
+
 class RAGQuery(BaseModel):
     group_id: str
     message: str
@@ -58,13 +63,21 @@ def home():
 
 
 @app.post(ENDPOINT_CREATE_SESSION + "/{group_id}")
-def create_session(group_id: str) -> str:
+def create_session(group_id: str, config: RAGBackendConfig) -> dict:
     """When this is called, instantiates a RAG backend for a group."""
     if group_id not in RAG_SESSIONS.keys():
-        RAG_SESSIONS[group_id] = RAGBackEnd(group_id)
-        logger.info(f"[Group: {group_id}] RAGBackend created")
-    logger.warning(f"[Group: {group_id}] RAGBackend already created")
-    return group_id
+        try:
+            RAG_SESSIONS[group_id] = RAGBackEnd(
+                group_id,
+                config=config.config,
+            )
+            logger.info(f"[Group: {group_id}] RAGBackend created")
+            return {"message": f"Session for group '{group_id}' created"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    else:
+        logger.warning(f"[Group: {group_id}] RAGBackend already created")
+        return {"message": f"Session for group '{group_id}' already exists"}
 
 
 @app.get(ENDPOINT_CURRENT_SESSIONS)
