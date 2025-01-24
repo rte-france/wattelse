@@ -43,7 +43,7 @@ LLM_MAPPING = {
     "wattelse-gpt4o-sweden": "gpt-4o",
     "wattelse-gpt4o-mini-sweden-dev": "gpt-4o-mini-dev",
     "wattelse-gpt4o-sweden-dev": "gpt-4o-dev",
-    "wattelse-Mistral-large": "Mistral-large",
+    "wattelse-mistral-Large-2411": "Mistral-large",
     "meta-llama/Meta-Llama-3-8B-Instruct": "Meta-Llama-3-8B-Instruct",
     "wattelse-Phi-4": "phi-4",
 }
