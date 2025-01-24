@@ -45,6 +45,7 @@ LLM_MAPPING = {
     "wattelse-gpt4o-sweden-dev": "gpt-4o-dev",
     "wattelse-Mistral-large": "Mistral-large",
     "meta-llama/Meta-Llama-3-8B-Instruct": "Meta-Llama-3-8B-Instruct",
+    "wattelse-Phi-4": "phi-4",
 }
 
 ChatModels = {
