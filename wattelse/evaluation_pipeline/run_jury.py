@@ -59,7 +59,6 @@ def get_model_type(model_name: str, config: configparser.ConfigParser) -> str:
         return config[section_name].get('deployment_type', 'local')
     return 'local'
 
-# FIXME Azure model not loading properly
 def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
     """Get the appropriate environment variables based on model name and type"""
     model_type = get_model_type(model_name, config)
@@ -80,6 +79,7 @@ def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
             "OPENAI_DEFAULT_MODEL_NAME": model_name
         }
 
+# TODO Set a configuration for --max-model-len {max_model_len} (Optional)
 def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str:
     """Start the VLLM server with specified model"""
     port = int(config['EVAL_CONFIG']['port'])
@@ -98,6 +98,7 @@ def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str
         --worker-use-ray \
         --tensor-parallel-size 2 \
         --enforce-eager \
+        --max-model-len 3000 \
         --dtype=half"""
     
     env_vars = f"CUDA_VISIBLE_DEVICES={config['EVAL_CONFIG']['cuda_visible_devices']}"
@@ -106,7 +107,7 @@ def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str
     try:
         subprocess.run(screen_cmd, check=True)
         logger.info(f"Started VLLM server for {model_name}")
-        time.sleep(60)  # Give the model time to load
+        time.sleep(120)  # Give the model time to load (need to increase the time)
         return session_name
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to start VLLM server: {e}")

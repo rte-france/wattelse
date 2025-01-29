@@ -1,4 +1,4 @@
-# Dictionary-Based Prompts (you have to define a prompts each time)
+# Dictionary-Based Prompts (Where you define your prompt for evaluation)
 
 # Correctness evaluation prompts
 CORRECTNESS_EVAL_PROMPT = {
@@ -59,6 +59,34 @@ A question, a response to evaluate, and a score rubric representing evaluation c
 5: Fully correct and aligned with the question.
 
 ### Feedback:
+""",
+    "skywork":"""
+Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
+Your evaluation should consider:
+
+Alignment: Does the response address all aspects of the question directly?
+Accuracy: Are there factual errors or inaccuracies?
+Completeness: Does the response cover the essential details without omitting critical parts of the question?
+Do not penalize for additional but accurate information provided it that does not introduce confusion. Use the following criteria to assign a Judgment score from 1 to 5:
+
+1: Very insufficient – Largely incorrect, with major errors.
+2: Insufficient – Partially correct, with significant errors or inaccuracies.
+3: Acceptable – Generally answers the question but contains several inaccuracies.
+4: Satisfactory – Answers the question well, with only a few minor inaccuracies.
+5: Very satisfactory – Completely correct, precise, and perfectly aligned with the question.
+You must provide:
+
+Evaluation: Explain your reasoning based on correctness, citing specific alignment or errors.
+Judgment: Assign a score (1–5).
+
+Structure for evaluation:
+
+Question: {question}
+Response: {answer}
+
+Response:::
+Evaluation: (Explain reasoning here.)
+Judgment: (Score from 1–5)
 """
 }
 
@@ -184,6 +212,32 @@ A question, a retrieved context, and a score rubric representing evaluation crit
 5: Fully relevant and comprehensive.
 
 ### Feedback:
+""",
+    "skywork":"""
+Evaluate whether the retrieved context is relevant and sufficient to answer the given question. Your evaluation should consider:
+
+Relevance: Does the context align with the question and response?
+Sufficiency: Does the context provide all necessary information to address the question completely?
+Irrelevance: Consider the proportion of irrelevant excerpts in the context and their impact on clarity and comprehension.
+Use the following criteria to assign a Judgment score from 1 to 5:
+
+1: Very insufficient – Context is mostly off-topic and lacks useful information.
+2: Insufficient – Context is partially relevant, missing key information, with many irrelevant excerpts.
+3: Acceptable – Context is generally relevant but diluted by several irrelevant excerpts.
+4: Satisfactory – Context is mostly relevant, with only a few irrelevant excerpts that do not strongly affect comprehension.
+5: Very satisfactory – Context is entirely relevant and comprehensive, containing all necessary information.
+You must provide:
+
+Evaluation: Explain whether the context directly supports answering the question, citing any issues like irrelevance or insufficiency.
+Judgment: Assign a score (1–5).
+Structure for evaluation:
+
+Question: {question}
+Context: {retrieved_contexts}
+
+Response:::
+Evaluation: (Explain reasoning here.)
+Judgment: (Score from 1–5
 """
 }
 
