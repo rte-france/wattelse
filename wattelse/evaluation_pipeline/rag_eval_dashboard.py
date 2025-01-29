@@ -4,6 +4,14 @@ import plotly.graph_objects as go
 import pandas as pd
 from pathlib import Path
 
+def get_available_metrics(df: pd.DataFrame) -> list:
+    """Get list of available metrics from DataFrame columns"""
+    metrics = []
+    for metric in ['faithfulness', 'correctness', 'retrievability']:
+        if f'{metric}_score' in df.columns:
+            metrics.append(metric)
+    return metrics
+
 def load_evaluation_files(eval_dir: str = "evaluation_results"):
     """Load and combine all evaluation Excel files from the directory"""
     eval_path = Path(eval_dir)
@@ -31,6 +39,8 @@ def load_evaluation_files(eval_dir: str = "evaluation_results"):
 
 def calculate_good_score_percentage(scores):
     """Calculate percentage of good scores (4-5) in the series"""
+    if scores is None or len(scores) == 0:
+        return 0
     good_scores = scores[scores.isin([4, 5])].count()
     total_scores = scores.count()
     return (good_scores / total_scores * 100) if total_scores > 0 else 0
@@ -40,13 +50,18 @@ def create_metric_comparison_plot(all_dfs: dict, metric: str):
     fig = go.Figure()
     
     for model_name, df in all_dfs.items():
-        fig.add_trace(go.Violin(
-            y=df[f"{metric}_score"],
-            name=model_name,
-            box_visible=True,
-            meanline_visible=True,
-            points='all'
-        ))
+        metric_col = f"{metric}_score"
+        if metric_col in df.columns:
+            fig.add_trace(go.Violin(
+                y=df[metric_col],
+                name=model_name,
+                box_visible=True,
+                meanline_visible=True,
+                points='all'
+            ))
+    
+    if len(fig.data) == 0:
+        return None
     
     fig.update_layout(
         title=f"{metric.title()} Score Distribution Across Judges",
@@ -64,20 +79,22 @@ def create_metric_comparison_plot(all_dfs: dict, metric: str):
 
 def create_score_distribution_plot(df: pd.DataFrame, model_name: str):
     """Create a bar plot of score distributions for a specific judge"""
-    metrics = ['faithfulness_score', 'correctness_score', 'retrievability_score']
-    
-    fig = go.Figure()
-    for metric in metrics:
-        score_counts = df[metric].value_counts().sort_index()
+    available_metrics = get_available_metrics(df)
+    if not available_metrics:
+        return None
         
-        # Color bars based on good/bad scores
+    fig = go.Figure()
+    for metric in available_metrics:
+        metric_col = f'{metric}_score'
+        score_counts = df[metric_col].value_counts().sort_index()
+        
         colors = ['rgb(239, 85, 59)' if score <= 3 else 'rgb(99, 110, 250)' 
                  for score in score_counts.index]
         
         fig.add_trace(go.Bar(
             x=score_counts.index,
             y=score_counts.values,
-            name=metric.replace('_score', '').title(),
+            name=metric.title(),
             opacity=0.7,
             marker_color=colors
         ))
@@ -101,14 +118,29 @@ def create_radar_plot(all_dfs: dict):
     """Create a radar plot comparing good score percentages across judges"""
     fig = go.Figure()
     
-    metrics = ['faithfulness_score', 'correctness_score', 'retrievability_score']
+    # Get all available metrics across all DataFrames
+    all_metrics = set()
+    for df in all_dfs.values():
+        all_metrics.update(get_available_metrics(df))
+    
+    if not all_metrics:
+        return None
+        
+    metrics = sorted(list(all_metrics))
     
     for model_name, df in all_dfs.items():
-        good_score_percentages = [calculate_good_score_percentage(df[metric]) for metric in metrics]
+        good_score_percentages = []
+        for metric in metrics:
+            metric_col = f'{metric}_score'
+            if metric_col in df.columns:
+                percentage = calculate_good_score_percentage(df[metric_col])
+            else:
+                percentage = 0
+            good_score_percentages.append(percentage)
         
         fig.add_trace(go.Scatterpolar(
             r=good_score_percentages,
-            theta=[m.replace('_score', '').title() for m in metrics],
+            theta=[m.title() for m in metrics],
             fill='toself',
             name=f"Judge: {model_name}"
         ))
@@ -134,7 +166,7 @@ def main():
     
     st.title("RAG Evaluation Analysis Dashboard")
     
-    eval_dir = st.text_input("Evaluation Results Directory", "evaluation_results")
+    eval_dir = st.text_input("Evaluation Results Directory", "evaluation_politique_voyageur")
     
     try:
         all_dfs, combined_df = load_evaluation_files(eval_dir)
@@ -152,14 +184,21 @@ def main():
             st.header("Overall Evaluation Results")
             
             # Radar plot for good score percentages
-            st.plotly_chart(create_radar_plot(all_dfs), use_container_width=True)
+            radar_plot = create_radar_plot(all_dfs)
+            if radar_plot:
+                st.plotly_chart(radar_plot, use_container_width=True)
+            else:
+                st.warning("No metrics available for radar plot")
             
             # Metric comparisons
-            for metric in ['faithfulness', 'correctness', 'retrievability']:
-                st.plotly_chart(
-                    create_metric_comparison_plot(all_dfs, metric),
-                    use_container_width=True
-                )
+            available_metrics = set()
+            for df in all_dfs.values():
+                available_metrics.update(get_available_metrics(df))
+            
+            for metric in sorted(available_metrics):
+                plot = create_metric_comparison_plot(all_dfs, metric)
+                if plot:
+                    st.plotly_chart(plot, use_container_width=True)
         
         elif analysis_type == "Judge-Specific Analysis":
             st.header("Judge-Specific Analysis")
@@ -167,31 +206,34 @@ def main():
             selected_model = st.selectbox("Select Judge", list(all_dfs.keys()))
             
             # Score distribution
-            st.plotly_chart(
-                create_score_distribution_plot(all_dfs[selected_model], selected_model),
-                use_container_width=True
-            )
+            dist_plot = create_score_distribution_plot(all_dfs[selected_model], selected_model)
+            if dist_plot:
+                st.plotly_chart(dist_plot, use_container_width=True)
+            else:
+                st.warning("No score metrics available for distribution plot")
             
             # Detailed metrics table with reasoning
             st.subheader("Detailed Evaluation Results")
-            # Get all columns from the DataFrame
-            df_columns = all_dfs[selected_model].columns
+            df = all_dfs[selected_model]
             
-            # Start with required columns
+            # Get all columns that contain either scores or reasoning
             display_columns = ['question']
+            available_metrics = get_available_metrics(df)
             
-            # Add score and reasoning columns if they exist
-            for metric in ['faithfulness', 'correctness', 'retrievability']:
+            for metric in available_metrics:
                 score_col = f'{metric}_score'
-                reasoning_col = f'{metric}'
+                reasoning_col = metric
                 
-                if score_col in df_columns:
+                if score_col in df.columns:
                     display_columns.append(score_col)
-                if reasoning_col in df_columns:
+                if reasoning_col in df.columns:
                     display_columns.append(reasoning_col)
             
-            metrics_df = all_dfs[selected_model][display_columns]
-            st.dataframe(metrics_df, height=400)
+            if len(display_columns) > 1:
+                metrics_df = df[display_columns]
+                st.dataframe(metrics_df, height=400)
+            else:
+                st.warning("No evaluation metrics found in the data")
         
         elif analysis_type == "Comparative Analysis":
             st.header("Comparative Analysis")
@@ -203,19 +245,21 @@ def main():
                 stats_data = []
                 for model_name in all_dfs.keys():
                     df = all_dfs[model_name]
-                    model_stats = {
-                        'Judge': model_name,
-                        'Performance Faithfulness %': f"{calculate_good_score_percentage(df['faithfulness_score']):.1f}%",
-                        'Performance Correctness %': f"{calculate_good_score_percentage(df['correctness_score']):.1f}%",
-                        'Performance Retrievability %': f"{calculate_good_score_percentage(df['retrievability_score']):.1f}%",
-                        'Number of Evaluations': len(df)
-                    }
+                    available_metrics = get_available_metrics(df)
+                    
+                    model_stats = {'Judge': model_name}
+                    for metric in available_metrics:
+                        metric_col = f'{metric}_score'
+                        if metric_col in df.columns:
+                            model_stats[f'Performance {metric.title()} %'] = f"{calculate_good_score_percentage(df[metric_col]):.1f}%"
+                    
+                    model_stats['Number of Evaluations'] = len(df)
                     stats_data.append(model_stats)
                 
-                stats_df = pd.DataFrame(stats_data)
-                st.dataframe(stats_df, height=200)
+                if stats_data:
+                    stats_df = pd.DataFrame(stats_data)
+                    st.dataframe(stats_df, height=200)
                 
-                # FIXME Columns needs to be filtered
                 # Combined results with all scores and reasoning
                 st.subheader("Detailed Combined Results")
                 st.dataframe(combined_df, height=400)
