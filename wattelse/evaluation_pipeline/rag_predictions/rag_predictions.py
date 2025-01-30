@@ -11,14 +11,11 @@ from pathlib import Path
 from tqdm import tqdm
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 
-# TODO Parellelize (optional)
-# from joblib import Parallel, delayed
-# from tqdm_joblib import tqdm_joblib
-
 QUERY_COLUMN = "question"
 DOC_LIST_COLUMN = "source_doc"
 RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
 RAG_QUERY_TIME_COLUMN = "rag_query_time_seconds"
+RAG_RETRIEVER_TIME_COLUMN = "rag_retriever_time_seconds"  # Tracking Retriever Time
 SPECIAL_CHARACTER_FILTER = (
     r"[\t\n\r\x07\x08\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009]"
 )
@@ -78,9 +75,16 @@ def main(
     rag_answers = []
     rag_relevant_extracts = []
     rag_query_times = []
+    rag_retriever_times = []
     
     for _, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Getting RAG Predictions"):
         logger.info(f"Processing row: question={row[QUERY_COLUMN]}")
+
+        # Measure retriever time
+        retriever_start_time = time.time()
+        retriever = RAG_EVAL_BACKEND.document_collection.collection.as_retriever()
+        _ = retriever.get_relevant_documents(row[QUERY_COLUMN])
+        retriever_time = time.time() - retriever_start_time
 
         # Measure query time
         start_time = time.time()
@@ -98,10 +102,12 @@ def main(
         logger.info(f"RAG Answer for question '{row[QUERY_COLUMN]}': {answer}")
         logger.info(f"RAG Relevant Extracts: {relevant_extracts}")
         logger.info(f"Query time: {query_time:.2f} seconds")
+        logger.info(f"Retriever time: {retriever_time:.2f} seconds")
 
         rag_answers.append(answer)
         rag_relevant_extracts.append(relevant_extracts)
         rag_query_times.append(query_time)
+        rag_retriever_times.append(retriever_time)  # Added retriever time
 
     # Save predictions to a DataFrame
     eval_df["rag_answer"] = rag_answers
@@ -110,11 +116,17 @@ def main(
         for sublist in rag_relevant_extracts
     ]
     eval_df[RAG_QUERY_TIME_COLUMN] = rag_query_times
+    eval_df[RAG_RETRIEVER_TIME_COLUMN] = rag_retriever_times  # Added retriever time column
 
     # Add summary statistics for query times
     logger.info(f"Average query time: {pd.Series(rag_query_times).mean():.2f} seconds")
     logger.info(f"Maximum query time: {pd.Series(rag_query_times).max():.2f} seconds")
     logger.info(f"Minimum query time: {pd.Series(rag_query_times).min():.2f} seconds")
+
+    # Add summary statistics for retriever times
+    logger.info(f"Average retriever time: {pd.Series(rag_retriever_times).mean():.2f} seconds")
+    logger.info(f"Maximum retriever time: {pd.Series(rag_retriever_times).max():.2f} seconds")
+    logger.info(f"Minimum retriever time: {pd.Series(rag_retriever_times).min():.2f} seconds")
 
     # Save the predictions to an Excel file
     eval_df.to_excel(predictions_output_path, index=False)
