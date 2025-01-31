@@ -12,7 +12,10 @@ from tqdm_joblib import tqdm_joblib
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.indexer.document_parser import parse_file
 from wattelse.indexer.document_splitter import split_file
-from wattelse.evaluation_pipeline.synthethic_generation.prompt_QA_gen import QA_GENERATION_PROMPT
+from wattelse.evaluation_pipeline.synthethic_generation.prompt_QA_gen import QA_GENERATION_PROMPT_POLITIQUE_VOYAGE
+
+# TODO : The logic of the nuances is not flexible for QA Generation
+# FIXME : Refactor the code too dependent on the previous versions + create a GeneConfig class
 
 # Constants for default values
 OUTPUT_PATH = Path("qa_output.xlsx")
@@ -20,8 +23,9 @@ REPORT_PATH = Path("report_output.xlsx")
 DOCS_PER_QA = 2
 CHUNKS_PER_DOC = 2
 DEFAULT_GENERATIONS = 100
+DEFAULT_MAX_TOKENS = 60000
 
-#FIXME Can't set the chunk_size & chunk_overlap unless I modify document_splitter.py
+# FIXME Can't set the chunk_size & chunk_overlap unless I modify document_splitter.py
 
 # Define the Typer app
 app = typer.Typer()
@@ -147,18 +151,19 @@ def process_single_generation(batch: List[LangchainDocument]) -> Dict:
         return None
         
     llm_client = OpenAI_Client()
+    llm_client.max_tokens = DEFAULT_MAX_TOKENS
     
     try:
         combined_context = "\n\n".join(chunk.page_content for chunk in batch)
         output_QA_couple = llm_client.generate(
-            QA_GENERATION_PROMPT.format(context=combined_context),
+            QA_GENERATION_PROMPT_POLITIQUE_VOYAGE.format(context=combined_context),
             temperature=0
         )
         
         labels = ["simple", "de raisonnement", "multi-contexte"]
         parsed_qa = parse_generated_qa(output_QA_couple, labels)
         
-        assert all(len(ans) < 2000 for ans in parsed_qa["answers"].values()), "Answer is too long"
+        # assert all(len(ans) < 2000 for ans in parsed_qa["answers"].values()), "Answer is too long"
         
         source_docs = [Path(chunk.metadata["source"]).name for chunk in batch]
         return {

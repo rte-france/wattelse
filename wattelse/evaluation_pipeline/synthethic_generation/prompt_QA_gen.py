@@ -29,7 +29,7 @@ Contexte : {context}\n
 Sortie:::
 """
 
-QA_GENERATION_PROMPT_DEEPSEEK = """
+QA_GENERATION_PROMPT_POLITIQUE_VOYAGE = """
 Vous êtes un employé de l'entreprise et vous avez des questions concernant la politique de voyage de celle-ci. 
 Votre tâche est de rédiger une question factuelle ainsi que sa réponse, en fonction d'un contexte donné.
 Les questions doivent être du type qu'un employé poserait pour obtenir des informations liées à la politique de voyage de l'entreprise.
@@ -43,7 +43,7 @@ Vous devez créer trois types de questions :
 Votre question factuelle doit être répondue par des éléments d'information factuelle provenant du contexte. 
 Cela signifie que votre question factuelle NE DOIT PAS mentionner quelque chose comme "selon le passage" ou "Dans le contexte".
 
-NE FOURNIS PAS DE RAISONNEMENT ou d'explication dans les réponses. Les réponses doivent se limiter aux informations directement issues du contexte.
+Les réponses doivent se limiter aux informations directement issues du contexte.
 
 Fournissez votre réponse comme suit :
 

@@ -15,7 +15,7 @@ QUERY_COLUMN = "question"
 DOC_LIST_COLUMN = "source_doc"
 RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
 RAG_QUERY_TIME_COLUMN = "rag_query_time_seconds"
-RAG_RETRIEVER_TIME_COLUMN = "rag_retriever_time_seconds"  # Tracking Retriever Time
+RAG_RETRIEVER_TIME_COLUMN = "rag_retriever_time_seconds"  # Added Retriever Time
 SPECIAL_CHARACTER_FILTER = (
     r"[\t\n\r\x07\x08\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009]"
 )
@@ -75,7 +75,7 @@ def main(
     rag_answers = []
     rag_relevant_extracts = []
     rag_query_times = []
-    rag_retriever_times = []
+    rag_retriever_times = []  # Added new list
     
     for _, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Getting RAG Predictions"):
         logger.info(f"Processing row: question={row[QUERY_COLUMN]}")
@@ -87,11 +87,11 @@ def main(
         retriever_time = time.time() - retriever_start_time
 
         # Measure query time
-        start_time = time.time()
+        query_start_time = time.time()
         response = RAG_EVAL_BACKEND.query_rag(
             row[QUERY_COLUMN], selected_files=row[DOC_LIST_COLUMN]
         )
-        query_time = time.time() - start_time
+        query_time = time.time() - query_start_time
         
         answer = response.get("answer", "")
         relevant_extracts = [

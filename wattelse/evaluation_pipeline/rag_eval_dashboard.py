@@ -4,6 +4,16 @@ import plotly.graph_objects as go
 import pandas as pd
 from pathlib import Path
 
+# Column definitions
+QUERY_COLUMN = "question"
+ANSWER_COLUMN = "answer"
+DOC_LIST_COLUMN = "source_doc"
+CONTEXT_COLUMN = "context"
+COMPLEXITY_COLUMN = "complexity"
+RAG_RELEVANT_EXTRACTS_COLUMN = "relevant_extracts"
+RAG_QUERY_TIME_COLUMN = "rag_query_time_seconds"  # Added timing column
+RAG_RETRIEVER_TIME_COLUMN = "rag_retriever_time_seconds"  # Added timing column
+
 def get_available_metrics(df: pd.DataFrame) -> list:
     """Get list of available metrics from DataFrame columns"""
     metrics = []
@@ -45,6 +55,32 @@ def calculate_good_score_percentage(scores):
     total_scores = scores.count()
     return (good_scores / total_scores * 100) if total_scores > 0 else 0
 
+def create_timing_boxplot(all_dfs: dict):
+    """Create box plot comparing query and retriever times"""
+    fig = go.Figure()
+    
+    for model_name, df in all_dfs.items():
+        if RAG_QUERY_TIME_COLUMN in df.columns:
+            fig.add_trace(go.Box(
+                y=df[RAG_QUERY_TIME_COLUMN],
+                name=f"{model_name} (Query)",
+                boxpoints='all'
+            ))
+        if RAG_RETRIEVER_TIME_COLUMN in df.columns:
+            fig.add_trace(go.Box(
+                y=df[RAG_RETRIEVER_TIME_COLUMN],
+                name=f"{model_name} (Retriever)",
+                boxpoints='all'
+            ))
+    
+    fig.update_layout(
+        title="RAG Timing Analysis",
+        yaxis_title="Time (seconds)",
+        height=500
+    )
+    
+    return fig
+
 def create_metric_comparison_plot(all_dfs: dict, metric: str):
     """Create a violin plot comparing a specific metric across judges"""
     fig = go.Figure()
@@ -84,6 +120,7 @@ def create_score_distribution_plot(df: pd.DataFrame, model_name: str):
         return None
         
     fig = go.Figure()
+    
     for metric in available_metrics:
         metric_col = f'{metric}_score'
         score_counts = df[metric_col].value_counts().sort_index()
@@ -118,7 +155,6 @@ def create_radar_plot(all_dfs: dict):
     """Create a radar plot comparing good score percentages across judges"""
     fig = go.Figure()
     
-    # Get all available metrics across all DataFrames
     all_metrics = set()
     for df in all_dfs.values():
         all_metrics.update(get_available_metrics(df))
@@ -183,12 +219,14 @@ def main():
         if analysis_type == "Overview":
             st.header("Overall Evaluation Results")
             
+            # Add timing overview
+            timing_plot = create_timing_boxplot(all_dfs)
+            st.plotly_chart(timing_plot, use_container_width=True)
+            
             # Radar plot for good score percentages
             radar_plot = create_radar_plot(all_dfs)
             if radar_plot:
                 st.plotly_chart(radar_plot, use_container_width=True)
-            else:
-                st.warning("No metrics available for radar plot")
             
             # Metric comparisons
             available_metrics = set()
@@ -209,21 +247,24 @@ def main():
             dist_plot = create_score_distribution_plot(all_dfs[selected_model], selected_model)
             if dist_plot:
                 st.plotly_chart(dist_plot, use_container_width=True)
-            else:
-                st.warning("No score metrics available for distribution plot")
             
-            # Detailed metrics table with reasoning
+            # Detailed metrics table
             st.subheader("Detailed Evaluation Results")
             df = all_dfs[selected_model]
             
-            # Get all columns that contain either scores or reasoning
+            # Get all relevant columns including timing
             display_columns = ['question']
-            available_metrics = get_available_metrics(df)
             
+            # Add timing columns if available
+            if RAG_QUERY_TIME_COLUMN in df.columns:
+                display_columns.append(RAG_QUERY_TIME_COLUMN)
+            if RAG_RETRIEVER_TIME_COLUMN in df.columns:
+                display_columns.append(RAG_RETRIEVER_TIME_COLUMN)
+            
+            available_metrics = get_available_metrics(df)
             for metric in available_metrics:
                 score_col = f'{metric}_score'
                 reasoning_col = metric
-                
                 if score_col in df.columns:
                     display_columns.append(score_col)
                 if reasoning_col in df.columns:
@@ -239,9 +280,28 @@ def main():
             st.header("Comparative Analysis")
             
             if combined_df is not None:
-                # Calculate and display aggregate statistics
-                st.subheader("Performance Summary")
+                # Calculate and display timing statistics
+                st.subheader("Timing Statistics")
+                timing_stats = []
+                for model_name, df in all_dfs.items():
+                    stats = {'Judge': model_name}
+                    if RAG_QUERY_TIME_COLUMN in df.columns:
+                        stats.update({
+                            'Avg Query Time (s)': f"{df[RAG_QUERY_TIME_COLUMN].mean():.3f}",
+                            'Max Query Time (s)': f"{df[RAG_QUERY_TIME_COLUMN].max():.3f}"
+                        })
+                    if RAG_RETRIEVER_TIME_COLUMN in df.columns:
+                        stats.update({
+                            'Avg Retriever Time (s)': f"{df[RAG_RETRIEVER_TIME_COLUMN].mean():.3f}",
+                            'Max Retriever Time (s)': f"{df[RAG_RETRIEVER_TIME_COLUMN].max():.3f}"
+                        })
+                    timing_stats.append(stats)
                 
+                if timing_stats:
+                    st.dataframe(pd.DataFrame(timing_stats))
+                
+                # Performance summary
+                st.subheader("Performance Summary")
                 stats_data = []
                 for model_name in all_dfs.keys():
                     df = all_dfs[model_name]
@@ -260,7 +320,6 @@ def main():
                     stats_df = pd.DataFrame(stats_data)
                     st.dataframe(stats_df, height=200)
                 
-                # Combined results with all scores and reasoning
                 st.subheader("Detailed Combined Results")
                 st.dataframe(combined_df, height=400)
     

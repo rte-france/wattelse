@@ -98,7 +98,7 @@ def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str
         --worker-use-ray \
         --tensor-parallel-size 2 \
         --enforce-eager \
-        --max-model-len 3000 \
+        --max-model-len 60000 \
         --dtype=half"""
     
     env_vars = f"CUDA_VISIBLE_DEVICES={config['EVAL_CONFIG']['cuda_visible_devices']}"

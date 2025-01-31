@@ -19,7 +19,7 @@ ANSWER_COLUMN = "answer"
 DOC_LIST_COLUMN = "source_doc"
 CONTEXT_COLUMN = "context"
 COMPLEXITY_COLUMN = "complexity"
-RAG_RELEVANT_EXTRACTS_COLUMN = "relevant_extracts"
+RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
 
 SPECIAL_CHARACTER_FILTER = (
     r"[\t\n\r\x07\x08\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009]"
@@ -66,8 +66,8 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
                 eval_text = llm_client.generate(
                     prompt.format(
                         retrieved_contexts=context_extracted,
-                        answer=answer,
-                        question=question, # added for prometheus testing (It's not passed for all)
+                        answer=answer
+                        # question=question, # added for prometheus testing
                     ),
                 )
             elif metric == "correctness":
