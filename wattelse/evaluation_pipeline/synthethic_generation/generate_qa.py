@@ -12,7 +12,7 @@ from tqdm_joblib import tqdm_joblib
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.indexer.document_parser import parse_file
 from wattelse.indexer.document_splitter import split_file
-from wattelse.evaluation_pipeline.synthethic_generation.prompt_QA_gen import QA_GENERATION_PROMPT_POLITIQUE_VOYAGE
+from wattelse.evaluation_pipeline.synthethic_generation.prompt_QA_gen import QA_GENERATION_PROMPT_POLITIQUE_VOYAGE_SYNDICALE
 
 # TODO : The logic of the nuances is not flexible for QA Generation
 # FIXME : Refactor the code too dependent on the previous versions + create a GeneConfig class
@@ -21,7 +21,7 @@ from wattelse.evaluation_pipeline.synthethic_generation.prompt_QA_gen import QA_
 OUTPUT_PATH = Path("qa_output.xlsx")
 REPORT_PATH = Path("report_output.xlsx")
 DOCS_PER_QA = 2
-CHUNKS_PER_DOC = 2
+CHUNKS_PER_DOC = 10
 DEFAULT_GENERATIONS = 100
 DEFAULT_MAX_TOKENS = 60000
 
@@ -58,7 +58,7 @@ def parse_generated_qa(output: str, labels: List[str]) -> Dict[str, Dict[str, st
     - labels (List[str]): The list of labels to categorize questions and answers.
 
     Returns:
-    - Dict[str, Dict[str, str]]: Parsed questions and answers organized by labels.
+    - Dict[str]
     """
     parsed_qa = {
         "questions": {},
@@ -66,11 +66,21 @@ def parse_generated_qa(output: str, labels: List[str]) -> Dict[str, Dict[str, st
     }
 
     for label in labels:
-        question_match = re.search(rf"\*?\*?Question {label}\*?\*?\s*:\s*(.*)", output)
-        answer_match = re.search(rf"\*?\*?Réponse {label}\*?\*?\s*:\s*(.*)", output)
+        # Handle both multiline and single line cases, stop at either Réponse or next Question
+        question_match = re.search(
+            rf"\*\*Question {label}\s*:\*\*\s*(.*?)(?=\s*\*\*(?:Réponse|Question)|\n\n|$)", 
+            output, 
+            re.DOTALL
+        )
+        
+        answer_match = re.search(
+            rf"\*\*Réponse {label}\s*:\*\*\s*(.*?)(?=\s*\*\*Question|\n\n---|$)", 
+            output, 
+            re.DOTALL
+        )
 
-        parsed_qa["questions"][label] = question_match.group(1).split("\n")[0].strip() if question_match else ""
-        parsed_qa["answers"][label] = answer_match.group(1).split("\n")[0].strip() if answer_match else ""
+        parsed_qa["questions"][label] = question_match.group(1).strip() if question_match else ""
+        parsed_qa["answers"][label] = answer_match.group(1).strip() if answer_match else ""
 
     return parsed_qa
 
@@ -156,7 +166,7 @@ def process_single_generation(batch: List[LangchainDocument]) -> Dict:
     try:
         combined_context = "\n\n".join(chunk.page_content for chunk in batch)
         output_QA_couple = llm_client.generate(
-            QA_GENERATION_PROMPT_POLITIQUE_VOYAGE.format(context=combined_context),
+            QA_GENERATION_PROMPT_POLITIQUE_VOYAGE_SYNDICALE.format(context=combined_context),
             temperature=0
         )
         
