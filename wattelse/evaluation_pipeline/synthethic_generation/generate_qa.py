@@ -12,7 +12,7 @@ from tqdm_joblib import tqdm_joblib
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.indexer.document_parser import parse_file
 from wattelse.indexer.document_splitter import split_file
-from wattelse.evaluation_pipeline.synthethic_generation.prompt_QA_gen import QA_GENERATION_PROMPT_POLITIQUE_VOYAGE_SYNDICALE
+from wattelse.evaluation_pipeline.synthethic_generation.prompt_QA_gen import QA_GENERATION_PROMPT_POLITIQUE_VOYAGE_SYNDICALE_TEST
 
 # TODO : The logic of the nuances is not flexible for QA Generation
 # FIXME : Refactor the code too dependent on the previous versions + create a GeneConfig class
@@ -20,7 +20,7 @@ from wattelse.evaluation_pipeline.synthethic_generation.prompt_QA_gen import QA_
 # Constants for default values
 OUTPUT_PATH = Path("qa_output.xlsx")
 REPORT_PATH = Path("report_output.xlsx")
-DOCS_PER_QA = 2
+DOCS_PER_QA = 1
 CHUNKS_PER_DOC = 10
 DEFAULT_GENERATIONS = 100
 DEFAULT_MAX_TOKENS = 60000
@@ -166,7 +166,7 @@ def process_single_generation(batch: List[LangchainDocument]) -> Dict:
     try:
         combined_context = "\n\n".join(chunk.page_content for chunk in batch)
         output_QA_couple = llm_client.generate(
-            QA_GENERATION_PROMPT_POLITIQUE_VOYAGE_SYNDICALE.format(context=combined_context),
+            QA_GENERATION_PROMPT_POLITIQUE_VOYAGE_SYNDICALE_TEST.format(context=combined_context),
             temperature=0
         )
         
@@ -277,22 +277,24 @@ def main(
     qa_pairs = generate_qa_pairs(eval_corpus_path, n_generations, output_path)
 
     if qa_pairs:
-        # evaluated_pairs = evaluate_qa_pairs(qa_pairs)
         output_data = []
         for output in qa_pairs:
             for complexity in ["simple", "reasoning", "multi_context"]:
+                question = output["questions"][complexity]
                 output_data.append({
                     "context": output["context"],
-                    "question": output["questions"][complexity],
+                    "question": question,
+                    "question_length_chars": len(question),  
+                    "question_length_words": len(question.split()),
                     "answer": output["answers"][complexity],
                     "complexity": complexity,
-                    "source_doc": ", ".join(output["source_docs"]),  # Join multiple sources as a single string
+                    "source_doc": ", ".join(output["source_docs"]),
                 })
 
         # Save the final evaluated QA pairs to an Excel file
         df_output = pd.DataFrame(output_data)
         df_output.to_excel(output_path, index=False)
-        logger.success(f"Filtered QA dataset saved to {output_path}")
+        logger.success(f"Synthetic QA saved to {output_path}")
 
 # Run the app
 if __name__ == "__main__":
