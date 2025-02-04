@@ -284,8 +284,6 @@ def main(
                 output_data.append({
                     "context": output["context"],
                     "question": question,
-                    "question_length_chars": len(question),  
-                    "question_length_words": len(question.split()),
                     "answer": output["answers"][complexity],
                     "complexity": complexity,
                     "source_doc": ", ".join(output["source_docs"]),

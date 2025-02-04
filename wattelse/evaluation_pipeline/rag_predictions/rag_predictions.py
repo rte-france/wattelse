@@ -8,6 +8,7 @@ from tqdm import tqdm
 from wattelse.chatbot.backend.rag_backend import RAGBackEnd
 from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
 
+CONFIG_RAG = "azure_20241216"
 QUERY_COLUMN = "question"
 DOC_LIST_COLUMN = "source_doc"
 RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
@@ -22,6 +23,8 @@ RAG_CONFIG_SHEET_NAME = "prompts_config"
 RETRIEVER_CONFIG_SHEET_NAME = "retriever_config"
 GENERATOR_CONFIG_SHEET_NAME = "generator_config"
 COLLECTION_CONFIG_SHEET_NAME = "collection_config"
+QUERY_LENGTH_CHARS = "question_length_chars"
+QUERY_LENGTH_WORDS = "question_length_words"
 
 app = typer.Typer()
 
@@ -43,9 +46,10 @@ def main(
         predictions_output_path (Path, optional): Path to save the predictions (Excel file).
     """
     # Initialize RAG backend
+
     eval_group_id = "rag_eval"
-    RAGBackEnd(eval_group_id).clear_collection()
-    RAG_EVAL_BACKEND = RAGBackEnd(eval_group_id)
+    RAGBackEnd(eval_group_id, CONFIG_RAG).clear_collection()
+    RAG_EVAL_BACKEND = RAGBackEnd(eval_group_id, CONFIG_RAG)
     logger.info(f"RAG Backend initialized with LLM: {RAG_EVAL_BACKEND.llm.model_name}")
 
     EMBEDDING_API = EmbeddingAPI()
@@ -95,7 +99,6 @@ def main(
     generator_configs = {
         "LLM Model": RAG_EVAL_BACKEND.get_llm_model_name(),
         "Temperature": RAG_EVAL_BACKEND.temperature,
-        "Expected Answer Size": RAG_EVAL_BACKEND.expected_answer_size,
         "Remember Recent Messages": RAG_EVAL_BACKEND.remember_recent_messages,
         "Multi Query Mode": RAG_EVAL_BACKEND.multi_query_mode,
     }
@@ -168,6 +171,12 @@ def main(
     ]
     eval_df[RAG_QUERY_TIME_COLUMN] = rag_query_times
     eval_df[RAG_RETRIEVER_TIME_COLUMN] = rag_retriever_times
+
+    eval_df[QUERY_LENGTH_CHARS] = eval_df[QUERY_COLUMN].str.len()
+    eval_df[QUERY_LENGTH_WORDS] = eval_df[QUERY_COLUMN].str.split().str.len()
+
+    # Save predictions to DataFrame
+    eval_df["rag_answer"] = rag_answers
 
     # Log timing statistics
     logger.info(f"Average query time: {pd.Series(rag_query_times).mean():.2f} seconds")
