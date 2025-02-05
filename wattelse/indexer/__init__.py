@@ -6,6 +6,8 @@
 CODE_EXTENSIONS = [
     ".py",
     ".cpp",
+    ".cc",
+    ".h",
     ".java",
     ".kotlin",
     ".js",
