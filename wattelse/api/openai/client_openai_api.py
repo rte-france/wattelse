@@ -46,7 +46,7 @@ class OpenAI_Client:
         if endpoint == "":  # check empty env var
             endpoint = None
 
-        run_on_azure = "azure.com" in endpoint if endpoint else False
+        self.run_on_azure = "azure.com" in endpoint if endpoint else False
 
         common_params = {
             "api_key": api_key,
@@ -61,7 +61,7 @@ class OpenAI_Client:
             "api_version": api_version if api_version else AZURE_API_VERSION,
         }
 
-        if not run_on_azure:
+        if not self.run_on_azure:
             self.llm_client = OpenAI(
                 **common_params,
                 **openai_params,
@@ -77,7 +77,7 @@ class OpenAI_Client:
         self.max_tokens = DEFAULT_MAX_TOKENS
 
         # workaround for non OpenAI models on Azure
-        if run_on_azure and GPT_FAMILY not in self.model_name:
+        if self.run_on_azure and GPT_FAMILY not in self.model_name:
             base_url = str(self.llm_client.base_url)
             if base_url.endswith("/openai/"):
                 self.llm_client.base_url = base_url[:-8]
@@ -124,8 +124,12 @@ class OpenAI_Client:
         """
         # For important parameters, set default value if not given
         if not kwargs.get("model"):
+            # If model is local or Azure OpenAI, pass the model name
+            if not self.run_on_azure or GPT_FAMILY in self.model_name:
+                kwargs["model"] = self.model_name
             # NB. If we use e.g. a Mistral or Phi deployment on Azure, passing the name here generates an error
-            kwargs["model"] = self.model_name if GPT_FAMILY in self.model_name else None
+            else:
+                kwargs["model"] = None
         if not kwargs.get("temperature"):
             kwargs["temperature"] = self.temperature
         if not kwargs.get("max_tokens"):
