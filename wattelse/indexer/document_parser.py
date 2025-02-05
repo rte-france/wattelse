@@ -32,7 +32,10 @@ class ParsingException(Exception):
 
 def parse_file(file: Path) -> List[Document]:
     extension = file.suffix.lower()
-    if extension in [".txt"] + CFG_EXTENSIONS:
+    if extension in [".txt"] + CFG_EXTENSIONS + [
+        ".cc",
+        ".h",
+    ]:  # NB .cc, .h handled as text files due to current limitation of langchain LanguageParser
         docs = _parse_txt(file)
     elif extension == ".pdf":
         docs = _parse_pdf(file)
