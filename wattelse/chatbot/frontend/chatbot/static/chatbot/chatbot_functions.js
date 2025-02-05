@@ -503,7 +503,7 @@ function typeValidation(filename) {
     const fileExt = filename.split('.').pop().toLowerCase();
     const validExtensions = ["pdf", "docx", "pptx", "xlsx", "html", "htm", "md", "csv", "txt"];
     const validConfigExtensions = ["toml", "cfg"];
-    const validCodeExtensions = ["py", "cpp", "java", "kotlin", "js", "php", "ts", "c", "sql", "latex"];
+    const validCodeExtensions = ["py", "cpp", "cc", "h", "java", "kotlin", "js", "php", "ts", "c", "sql", "latex"];
     return  validExtensions.includes(fileExt) || validConfigExtensions.includes(fileExt) || validCodeExtensions.includes(fileExt);
 }
 
