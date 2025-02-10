@@ -85,7 +85,7 @@ def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
         return {
             "OPENAI_API_KEY": config[section_name]['api_key'],
             "OPENAI_ENDPOINT": config[section_name]['api_base'],
-            "OPENAI_DEFAULT_MODEL_NAME": config[section_name]['deployment_name']
+            "OPENAI_DEFAULT_MODEL_NAME": config[section_name]['model_name']
         }
     else:
         return {
@@ -94,7 +94,6 @@ def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
             "OPENAI_DEFAULT_MODEL_NAME": model_name
         }
 
-# TODO Set a configuration for --max-model-len {max_model_len} (Optional)
 def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str:
     """Start the VLLM server for local models only"""
     model_type = get_model_type(model_name, config)
@@ -183,7 +182,6 @@ def stop_vllm_server(session_name: str, config: configparser.ConfigParser):
     except Exception as e:
         logger.error(f"Error stopping VLLM server: {e}")
         kill_process_on_port(int(config['EVAL_CONFIG']['port']))
-
 
 def main(
     qr_df_path: Path,
