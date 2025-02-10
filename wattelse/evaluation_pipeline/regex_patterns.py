@@ -17,6 +17,10 @@ class RegexPatterns:
                 "evaluation": r"Evaluation:\s*(.*)",
                 "judgment": r"Judgment:\s*([1-5])"
             },
+            "re_deepseek": {
+                "evaluation": r"Evaluation:\s*(.*)",
+                "judgment": r"Judgment:\s*([1-5])"
+            },
             "re_prometheus": {
                 "evaluation": r"(.*?)(?=\[SCORE\])",
                 "judgment": r"\[SCORE\]\s*([1-5])"

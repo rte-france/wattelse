@@ -53,6 +53,8 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
     # Fetch model-specific configurations
     model_name = getattr(llm_client, 'model_name', config.default_model)
     regex_patterns = config.get_regex_patterns(model_name)
+
+    kwargs = {"max_tokens": 4096}
     
     evaluations = {}
     
@@ -67,8 +69,8 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
                     prompt.format(
                         retrieved_contexts=context_extracted,
                         answer=answer
-                        # question=question, # added for prometheus testing
                     ),
+                    **kwargs
                 )
             elif metric == "correctness":
                 eval_text = llm_client.generate(
@@ -76,6 +78,7 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
                         question=question,
                         answer=answer
                     ),
+                    **kwargs
                 )
             elif metric == "retrievability":
                 eval_text = llm_client.generate(
@@ -83,6 +86,7 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
                         question=question,
                         retrieved_contexts=context_extracted
                     ),
+                    **kwargs
                 )
             else:
                 logger.warning(f"Unknown metric type: {metric}")

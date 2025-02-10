@@ -1,3 +1,4 @@
+# run_jury.py
 import time
 import subprocess
 import typer
@@ -26,20 +27,30 @@ def kill_process_on_port(port):
             continue
     return False
 
-def cleanup_screen_sessions():
-    """Clean up any existing VLLM screen sessions"""
+def cleanup_screen_sessions(model_name: str = None, config: configparser.ConfigParser = None):
+    """Clean up VLLM screen sessions, checking model type if provided"""
     try:
         result = subprocess.run(["screen", "-ls"], capture_output=True, text=True)
         for line in result.stdout.split('\n'):
             if 'vllm_' in line:
                 session_name = line.split('\t')[1].split('.')[1]
+                # If model info provided, only clean if it's a local model
+                if model_name and config:
+                    model_type = get_model_type(model_name, config)
+                    if model_type != 'local':
+                        continue
                 subprocess.run(["screen", "-S", session_name, "-X", "quit"])
                 logger.info(f"Cleaned up screen session: {session_name}")
     except Exception as e:
         logger.error(f"Error cleaning up screen sessions: {e}")
 
-def create_screen_session(session_name: str) -> None:
-    """Create a new screen session if it doesn't exist"""
+def create_screen_session(session_name: str, model_name: str = None, config: configparser.ConfigParser = None) -> None:
+    """Create a new screen session if it doesn't exist and model is local"""
+    if model_name and config:
+        model_type = get_model_type(model_name, config)
+        if model_type != 'local':
+            return
+
     try:
         check_cmd = ["screen", "-ls"]
         result = subprocess.run(check_cmd, capture_output=True, text=True)
@@ -52,24 +63,28 @@ def create_screen_session(session_name: str) -> None:
         logger.error(f"Error creating screen session: {e}")
         raise
 
+def get_section_name(model_name: str) -> str:
+    """Convert model name to config section name format."""
+    return f"MODEL_{model_name.replace('/', '_').replace('-', '_').replace('.', '_').upper()}"
+
 def get_model_type(model_name: str, config: configparser.ConfigParser) -> str:
-    """Determine if the model is local or cloud-based"""
-    section_name = f"MODEL_{model_name.replace('/', '_').upper()}"
+    """Determine if the model is local or cloud-based."""
+    section_name = get_section_name(model_name)
     if section_name in config:
-        return config[section_name].get('deployment_type', 'local')
+        model_type = config[section_name].get('deployment_type', 'local')
+        logger.debug(f"Model type for {model_name}: {model_type}")
+        return model_type
     return 'local'
 
 def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
-    """Get the appropriate environment variables based on model name and type"""
+    """Get environment variables based on model configuration."""
     model_type = get_model_type(model_name, config)
-    section_name = f"MODEL_{model_name.replace('/', '_').upper()}"
+    section_name = get_section_name(model_name)
     
-    if model_type == 'azure':
+    if model_type == 'cloud':
         return {
-            "OPENAI_API_TYPE": "azure",
-            "OPENAI_API_VERSION": config[section_name].get('api_version', '2024-02-01'),
-            "OPENAI_ENDPOINT": config[section_name]['api_base'],
             "OPENAI_API_KEY": config[section_name]['api_key'],
+            "OPENAI_ENDPOINT": config[section_name]['api_base'],
             "OPENAI_DEFAULT_MODEL_NAME": config[section_name]['deployment_name']
         }
     else:
@@ -81,14 +96,18 @@ def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
 
 # TODO Set a configuration for --max-model-len {max_model_len} (Optional)
 def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str:
-    """Start the VLLM server with specified model"""
+    """Start the VLLM server for local models only"""
+    model_type = get_model_type(model_name, config)
+    logger.info(f"Attempting to start VLLM server for {model_name} (type: {model_type})")
+    if model_type != 'local':
+        logger.info(f"Skipping VLLM server for non-local model {model_name}")
+        return None
+        
     port = int(config['EVAL_CONFIG']['port'])
-    
-    # First, ensure no process is using our port
     kill_process_on_port(port)
     
     session_name = f"vllm_{model_name.replace('/', '_')}"
-    create_screen_session(session_name)
+    create_screen_session(session_name, model_name, config) 
     
     vllm_cmd = f"""python -m vllm.entrypoints.openai.api_server \
         --model {model_name} \
@@ -98,7 +117,7 @@ def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str
         --worker-use-ray \
         --tensor-parallel-size 2 \
         --enforce-eager \
-        --max-model-len 8120 \
+        --max-model-len 8192 \
         --dtype=half"""
     
     env_vars = f"CUDA_VISIBLE_DEVICES={config['EVAL_CONFIG']['cuda_visible_devices']}"
@@ -107,11 +126,46 @@ def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str
     try:
         subprocess.run(screen_cmd, check=True)
         logger.info(f"Started VLLM server for {model_name}")
-        time.sleep(120)  # Give the model time to load (need to increase the time)
+        time.sleep(90)
         return session_name
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to start VLLM server: {e}")
         raise
+
+def run_evaluation(model_name: str, config: configparser.ConfigParser, 
+                  qr_df_path: Path, config_path: Path, output_path: Path):
+    """Run evaluation for a single model"""
+    model_type = get_model_type(model_name, config)
+    session_name = None
+    
+    try:
+        env_vars = get_env_vars(model_name, config)
+        cmd = [
+            "python",
+            str(Path(__file__).parent / "evaluation.py"),
+            str(qr_df_path),
+            "--config-path", str(config_path),
+            "--report-output-path", str(output_path)
+        ]
+        
+        env = os.environ.copy()
+        env.update(env_vars)
+        
+        if model_type == 'local':
+            kill_process_on_port(int(config['EVAL_CONFIG']['port']))
+            session_name = start_vllm_server(model_name, config)
+        
+        subprocess.run(cmd, env=env, check=True)
+        logger.info(f"Completed evaluation with model: {model_name}")
+        
+    except Exception as e:
+        logger.error(f"Error during evaluation with {model_name}: {e}")
+        raise
+    finally:
+        if session_name and model_type == 'local':
+            stop_vllm_server(session_name, config)
+            kill_process_on_port(int(config['EVAL_CONFIG']['port']))
+            time.sleep(5)
 
 def stop_vllm_server(session_name: str, config: configparser.ConfigParser):
     """Stop the VLLM server and clean up"""
@@ -125,73 +179,29 @@ def stop_vllm_server(session_name: str, config: configparser.ConfigParser):
         port = int(config['EVAL_CONFIG']['port'])
         kill_process_on_port(port)
         
-        time.sleep(15)  # Additional cleanup time
+        time.sleep(10)  # Additional cleanup time
     except Exception as e:
         logger.error(f"Error stopping VLLM server: {e}")
         kill_process_on_port(int(config['EVAL_CONFIG']['port']))
 
-def run_evaluation(model_name: str, config: configparser.ConfigParser, 
-                  qr_df_path: Path, config_path: Path, output_path: Path):
-    """Run evaluation for a single model"""
-    model_type = get_model_type(model_name, config)
-    session_name = None
-    
-    try:
-        # Only start VLLM server for local models
-        if model_type == 'local':
-            kill_process_on_port(int(config['EVAL_CONFIG']['port']))
-            session_name = start_vllm_server(model_name, config)
-        
-        # Get environment variables
-        env_vars = get_env_vars(model_name, config)
-        
-        # Prepare and run evaluation command
-        cmd = [
-            "python",
-            str(Path(__file__).parent / "evaluation.py"),
-            str(qr_df_path),
-            "--config-path", str(config_path),
-            "--report-output-path", str(output_path)
-        ]
-        
-        env = os.environ.copy()
-        env.update(env_vars)
-        
-        subprocess.run(cmd, env=env, check=True)
-        logger.info(f"Completed evaluation with model: {model_name}")
-        
-    except Exception as e:
-        logger.error(f"Error during evaluation with {model_name}: {e}")
-        raise
-    finally:
-        # Clean up VLLM server only if it was started
-        if session_name and model_type == 'local':
-            stop_vllm_server(session_name, config)
-            kill_process_on_port(int(config['EVAL_CONFIG']['port']))
-            time.sleep(10)
 
-@app.command()
 def main(
     qr_df_path: Path,
     config_path: Path = Path("eval_config.cfg"),
     output_dir: Path = Path("evaluation_results")
 ):
-    """Run sequential evaluation with multiple models"""
-    cleanup_screen_sessions()
-    
     config = configparser.ConfigParser()
     config.read(config_path)
     
     output_dir.mkdir(parents=True, exist_ok=True)
-    
     models = [model.strip() for model in config['JURY_ROOM']['models'].split(',')]
     logger.info(f"Running evaluation with {len(models)} models")
     
     for model in models:
+        cleanup_screen_sessions(model, config)  # Pass model info for type checking
         logger.info(f"Starting evaluation with model: {model}")
         model_name = model.split('/')[-1]
         
-        # Update config for current model
         if 'DEFAULT_MODEL' not in config:
             config.add_section('DEFAULT_MODEL')
         config['DEFAULT_MODEL']['default_model'] = model

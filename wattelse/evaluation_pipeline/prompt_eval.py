@@ -37,6 +37,30 @@ Question: {question}
 Response: {answer}  
 Response:::
 """,
+ "deepseek": """
+Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
+
+Response:::
+Evaluation:
+
+Judgment: (Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Largely incorrect, with major errors.
+- 2: Insufficient – Partially correct, with significant errors or inaccuracies.
+- 3: Acceptable – Generally answers the question but contains several inaccuracies.
+- 4: Satisfactory – Answers the question well, with only a few minor inaccuracies.
+- 5: Very satisfactory – Completely correct, precise, and perfectly aligned with the question.
+
+Evaluation Guidelines:
+- Verify whether the response addresses all key aspects of the question without omissions.
+- Ensure there are no misinterpretations or irrelevant information.
+- Avoid penalizing the response for additional information that, while unnecessary, does not introduce errors or confusion.
+
+You MUST provide values for 'Judgment:' in your response.
+
+Question: {question}  
+Response: {answer}  
+Response:::
+""",
     "prometheus": """
 ### Task Description:
 A question, a response to evaluate, and a score rubric representing evaluation criteria are given.
@@ -60,34 +84,6 @@ A question, a response to evaluate, and a score rubric representing evaluation c
 
 ### Feedback:
 """,
-    "skywork":"""
-Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
-Your evaluation should consider:
-
-Alignment: Does the response address all aspects of the question directly?
-Accuracy: Are there factual errors or inaccuracies?
-Completeness: Does the response cover the essential details without omitting critical parts of the question?
-Do not penalize for additional but accurate information provided it that does not introduce confusion. Use the following criteria to assign a Judgment score from 1 to 5:
-
-1: Very insufficient – Largely incorrect, with major errors.
-2: Insufficient – Partially correct, with significant errors or inaccuracies.
-3: Acceptable – Generally answers the question but contains several inaccuracies.
-4: Satisfactory – Answers the question well, with only a few minor inaccuracies.
-5: Very satisfactory – Completely correct, precise, and perfectly aligned with the question.
-You must provide:
-
-Evaluation: Explain your reasoning based on correctness, citing specific alignment or errors.
-Judgment: Assign a score (1–5).
-
-Structure for evaluation:
-
-Question: {question}
-Response: {answer}
-
-Response:::
-Evaluation: (Explain reasoning here.)
-Judgment: (Score from 1–5)
-"""
 }
 
 # Faithfulness evaluation prompts
@@ -121,6 +117,29 @@ Evaluation Guidelines:
 - Ensure that the response faithfully reflects the main points of the context.
 
 You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
+
+Response: {answer}
+Context: {retrieved_contexts}
+Response:::
+""",
+    "deepseek": """
+Evaluate whether the response is based on the provided context, without introducing unsupported information. If the answer specifically says that it doesn't find the information, count it as a faithful Judgemnent.
+
+Response:::
+Evaluation:
+
+Judgment: (Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Response is largely unfaithful to the context, with unsupported information.
+- 2: Insufficient – Some elements relate to the context, but there is unsupported information.
+- 3: Passable – Relevant information, but with some inaccuracies.
+- 4: Satisfactory – Mostly faithful, with a few missing details.
+- 5: Very satisfactory – Fully faithful and complete according to the context.
+
+Evaluation Guidelines:
+- Verify if the response relies exclusively on the provided context without introducing external information.
+- Ensure that the response faithfully reflects the main points of the context.
+
+You MUST provide values for 'Judgment:' in your response.
 
 Response: {answer}
 Context: {retrieved_contexts}
@@ -189,6 +208,30 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Question: {question}
 Context: {retrieved_contexts}
 Response:::
+""",
+    "deepseek": """
+Evaluate whether the retrieved context is relevant and sufficient to answer the given question.
+
+Evaluation:
+
+Judgment: (Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Context is mostly off-topic and lacks useful information.
+- 2: Insufficient – Context is partially relevant, missing key information, with many irrelevant excerpts.
+- 3: Acceptable – Context is generally relevant but diluted by several irrelevant excerpts.
+- 4: Satisfactory – Context is mostly relevant, with only a few irrelevant excerpts that do not strongly affect comprehension.
+- 5: Very satisfactory – Context is entirely relevant and comprehensive, containing all necessary information.
+
+Evaluation Guidelines:
+- Check whether the context directly answers the question and if the excerpts are relevant to the response.
+- Assess whether the presence of irrelevant excerpts affects clarity and comprehension.
+
+You MUST provide a score for 'Judgment:' in your response.
+
+Here is the question :
+Question: {question}
+
+Here is the context :
+Context: {retrieved_contexts}
 """,
     "prometheus": """
 ### Task Description:
