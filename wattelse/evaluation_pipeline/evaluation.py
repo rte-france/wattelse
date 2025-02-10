@@ -54,7 +54,7 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
     model_name = getattr(llm_client, 'model_name', config.default_model)
     regex_patterns = config.get_regex_patterns(model_name)
 
-    kwargs = {"max_tokens": 4096}
+    kwargs = {"max_tokens": 1024}
     
     evaluations = {}
     
