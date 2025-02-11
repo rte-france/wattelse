@@ -19,11 +19,11 @@ class RegexPatterns:
             },
             "re_deepseek": {
                 "evaluation": r"Evaluation:\s*(.*)",
-                "judgment": r"Judgment:\s*([1-5])"
+                "judgment": r"(?:\*\*)?Judgment:(?:\*\*)?\s*([1-5])"
             },
             "re_selene": {
                 "evaluation": r"Reasoning:\s*(.*)",
-                "judgment": r"\*\*Result:\*\*\s*(\d+)\'?"
+                "judgment": r"\*\*Result:\*\*\s*([1-5])\'?"
             },
             "re_prometheus": {
                 "evaluation": r"(.*?)(?=\[SCORE\])",

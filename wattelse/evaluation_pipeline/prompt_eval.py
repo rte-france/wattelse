@@ -15,7 +15,7 @@ Response: {answer}
 """,
 
 
- "meta-llama-3-8b": """
+    "meta-llama-3-8b": """
 Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
 
 Response:::
@@ -41,7 +41,47 @@ Response:::
 """,
 
 
- "deepseek": """
+    "selene-mini": """
+You are tasked with evaluating a response based on a given instruction (which may contain an Input) and a scoring rubric that serves as the evaluation standard. Provide comprehensive feedback on the response quality strictly adhering to the scoring rubric, without any general evaluation. Follow this with a score between 1 and 5, referring to the scoring rubric. Avoid generating any additional opening, closing, or explanations.  
+
+Here are some rules of the evaluation:  
+(1) Prioritize evaluating whether the response satisfies the provided rubric. The score should be based strictly on the rubric criteria. The response does not need to explicitly address all rubric points, but it should be assessed according to the outlined criteria.  
+
+Your reply should strictly follow this format:  
+**Reasoning:** <Your feedback>  
+
+**Result:** <an integer between 1 and 5>  
+
+### Here is the data:  
+
+**Question:**  
+{question}  
+
+**Response:**  
+{answer}  
+
+**Instruction:**  
+Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.  
+
+**Evaluation:**  
+Indicate whether the response correctly answers the question, addressing all key aspects without omissions. Explicitly identify points of alignment or divergence with the question to support your judgment. Mention any factual errors, misinterpretations, or missing details that impact correctness.  
+
+**Evaluation Guidelines:**  
+- Verify whether the response addresses all key aspects of the question without omissions.  
+- Ensure there are no misinterpretations or irrelevant information.  
+- Avoid penalizing the response for additional information that, while unnecessary, does not introduce errors or confusion.  
+
+**Score Rubrics:**  
+[Evaluation of response correctness]  
+- **Score 1:** Very insufficient – Largely incorrect, with major errors.  
+- **Score 2:** Insufficient – Partially correct, with significant errors or inaccuracies.  
+- **Score 3:** Acceptable – Generally answers the question but contains several inaccuracies.  
+- **Score 4:** Satisfactory – Answers the question well, with only a few minor inaccuracies.  
+- **Score 5:** Very satisfactory – Completely correct, precise, and perfectly aligned with the question.  
+""",
+
+
+    "deepseek": """
 Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
 
 Response:::
@@ -58,6 +98,7 @@ Evaluation Guidelines:
 - Verify whether the response addresses all key aspects of the question without omissions.
 - Ensure there are no misinterpretations or irrelevant information.
 - Avoid penalizing the response for additional information that, while unnecessary, does not introduce errors or confusion.
+- Distinguish between missing information (which doesn't affect accuracy) and incorrect information
 
 You MUST provide values for 'Judgment:' in your response.
 
@@ -110,6 +151,45 @@ Context: {retrieved_contexts}
 """,
 
 
+    "selene-mini":"""
+You are tasked with evaluating a response based on a given instruction (which may contain an Input) and a scoring rubric that serves as the evaluation standard. Provide comprehensive feedback on the response quality strictly adhering to the scoring rubric, without any general evaluation. Follow this with a score between 1 and 5, referring to the scoring rubric. Avoid generating any additional opening, closing, or explanations.  
+
+Here are some rules of the evaluation:  
+(1) Prioritize evaluating whether the response satisfies the provided rubric. The score should be based strictly on the rubric criteria. The response does not need to explicitly address all rubric points, but it should be assessed according to the outlined criteria.  
+
+Your reply should strictly follow this format:  
+**Reasoning:** <Your feedback>  
+
+**Result:** <an integer between 1 and 5>  
+
+### Here is the data:  
+
+**Response:**  
+{answer}  
+
+**Context:**  
+{retrieved_contexts}  
+
+**Instruction:**
+Evaluate whether the response is factually accurate according to the provided context. The evaluation should focus on truth value rather than completeness.
+
+**Evaluation:**  
+Indicate whether the response is faithful to the provided context in terms of relevance and sufficiency. Explicitly identify points of alignment or divergence with the context. Specify whether missing details impact the completeness of the response.  
+
+**Evaluation Guidelines:**
+- Verify if each statement in the response is explicitly supported by the context
+- Check if the response contains any claims that contradict the context
+- Distinguish between missing information (which doesn't affect accuracy) and incorrect information
+
+**Score Rubrics:**  
+[Evaluation of response faithfulness]  
+- **Score 1:** Incorrect – Response contains statements that directly contradict the context
+- **Score 2:** Mostly incorrect – Response contains multiple statements not supported by the context
+- **Score 3:** Mixed – Response contains both supported and unsupported statements
+- **Score 4:** Mostly accurate – Response statements are supported by context with minor imprecisions
+- **Score 5:** Completely accurate – All statements are directly supported by the context
+""",
+
 
     "meta-llama-3-8b": """
 Evaluate whether the response is based on the provided context, without introducing unsupported information.
@@ -134,7 +214,6 @@ Response: {answer}
 Context: {retrieved_contexts}
 Response:::
 """,
-
 
 
     "deepseek": """
@@ -164,7 +243,6 @@ Here is the context :
 Context: {retrieved_contexts}
 Response:::
 """,
-
 
 
     "prometheus": """
@@ -209,8 +287,6 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Question: {question}
 Context: {retrieved_contexts}
 """,
-
-
 
 
     "meta-llama-3-8b": """
@@ -264,8 +340,6 @@ Context: {retrieved_contexts}
 """,
 
 
-
-
     "prometheus": """
 ### Task Description:
 A question, a retrieved context, and a score rubric representing evaluation criteria are given.
@@ -289,8 +363,6 @@ A question, a retrieved context, and a score rubric representing evaluation crit
 
 ### Feedback:
 """,
-
-
 
 
     "selene-mini":"""
@@ -329,7 +401,6 @@ Indicate whether the context allows the question to be answered and contains the
 - **Score 3:** Context is generally relevant but diluted by several irrelevant excerpts.  
 - **Score 4:** Context is mostly relevant, with only a few irrelevant excerpts that do not strongly affect comprehension.  
 - **Score 5:** Context is entirely relevant and comprehensive, containing all necessary information.  
-
 """
 }
 
