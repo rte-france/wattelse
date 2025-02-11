@@ -62,7 +62,7 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
 
 class RAGBackEnd:
-    def __init__(self, group_id: str, config: str | dict | Path):
+    def __init__(self, group_id: str, config: str | dict | Path = "azure_20241216"):
         """
         Creates a RAGBackend for a given `group_id`.
         3 ways to set the configuration depending on `config` type:
