@@ -1,6 +1,6 @@
 # Dictionary-Based Prompts (Where you define your prompt for evaluation)
 
-# Correctness evaluation prompts
+                                                #################### Correctness evaluation prompts ####################
 CORRECTNESS_EVAL_PROMPT = {
     "default": """
 You are a helpful assistant, please evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
@@ -13,6 +13,8 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Question: {question}  
 Response: {answer}  
 """,
+
+
  "meta-llama-3-8b": """
 Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
 
@@ -37,6 +39,8 @@ Question: {question}
 Response: {answer}  
 Response:::
 """,
+
+
  "deepseek": """
 Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
 
@@ -57,10 +61,15 @@ Evaluation Guidelines:
 
 You MUST provide values for 'Judgment:' in your response.
 
-Question: {question}  
+Here is the question:
+Question: {question} 
+
+Here is the response:
 Response: {answer}  
 Response:::
 """,
+
+
     "prometheus": """
 ### Task Description:
 A question, a response to evaluate, and a score rubric representing evaluation criteria are given.
@@ -86,7 +95,7 @@ A question, a response to evaluate, and a score rubric representing evaluation c
 """,
 }
 
-# Faithfulness evaluation prompts
+                                                #################### Faithfulness evaluation prompts ####################
 FAITHFULNESS_EVAL_PROMPT = {
     "default": """
 You are a helpful assistant, please evaluate whether the response is based on the provided context, without introducing unsupported information.
@@ -99,6 +108,9 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Response: {answer}  
 Context: {retrieved_contexts}
 """,
+
+
+
     "meta-llama-3-8b": """
 Evaluate whether the response is based on the provided context, without introducing unsupported information.
 
@@ -122,8 +134,11 @@ Response: {answer}
 Context: {retrieved_contexts}
 Response:::
 """,
+
+
+
     "deepseek": """
-Evaluate whether the response is based on the provided context, without introducing unsupported information. If the answer specifically says that it doesn't find the information, count it as a faithful Judgemnent.
+Evaluate whether the response is based on the provided context, without introducing unsupported information.
 
 Response:::
 Evaluation:
@@ -138,13 +153,20 @@ Judgment: (Assign a score from 1 to 5 based on the following criteria:
 Evaluation Guidelines:
 - Verify if the response relies exclusively on the provided context without introducing external information.
 - Ensure that the response faithfully reflects the main points of the context.
+- If the answer explicitly states that it couldn't find the information, it is not unfaithful.
 
 You MUST provide values for 'Judgment:' in your response.
 
+Here is the asnwer :
 Response: {answer}
+
+Here is the context :
 Context: {retrieved_contexts}
 Response:::
 """,
+
+
+
     "prometheus": """
 ### Task Description:
 A context, a question, a response to evaluate, and a score rubric representing evaluation criteria are given.
@@ -173,7 +195,8 @@ A context, a question, a response to evaluate, and a score rubric representing e
 """
 }
 
-# Retrievability evaluation prompts
+                                                #################### Retrievability evaluation prompts ####################
+
 RETRIEVABILITY_EVAL_PROMPT = {
     "default": """
 You are a helpful assistant, please evaluate whether the retrieved context is relevant and sufficient to answer the given question.
@@ -186,6 +209,10 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Question: {question}
 Context: {retrieved_contexts}
 """,
+
+
+
+
     "meta-llama-3-8b": """
 Evaluate whether the retrieved context is relevant and sufficient to answer the given question.
 
@@ -209,6 +236,8 @@ Question: {question}
 Context: {retrieved_contexts}
 Response:::
 """,
+
+
     "deepseek": """
 Evaluate whether the retrieved context is relevant and sufficient to answer the given question.
 
@@ -233,6 +262,10 @@ Question: {question}
 Here is the context :
 Context: {retrieved_contexts}
 """,
+
+
+
+
     "prometheus": """
 ### Task Description:
 A question, a retrieved context, and a score rubric representing evaluation criteria are given.
@@ -256,31 +289,47 @@ A question, a retrieved context, and a score rubric representing evaluation crit
 
 ### Feedback:
 """,
-    "skywork":"""
-Evaluate whether the retrieved context is relevant and sufficient to answer the given question. Your evaluation should consider:
 
-Relevance: Does the context align with the question and response?
-Sufficiency: Does the context provide all necessary information to address the question completely?
-Irrelevance: Consider the proportion of irrelevant excerpts in the context and their impact on clarity and comprehension.
-Use the following criteria to assign a Judgment score from 1 to 5:
 
-1: Very insufficient – Context is mostly off-topic and lacks useful information.
-2: Insufficient – Context is partially relevant, missing key information, with many irrelevant excerpts.
-3: Acceptable – Context is generally relevant but diluted by several irrelevant excerpts.
-4: Satisfactory – Context is mostly relevant, with only a few irrelevant excerpts that do not strongly affect comprehension.
-5: Very satisfactory – Context is entirely relevant and comprehensive, containing all necessary information.
-You must provide:
 
-Evaluation: Explain whether the context directly supports answering the question, citing any issues like irrelevance or insufficiency.
-Judgment: Assign a score (1–5).
-Structure for evaluation:
 
-Question: {question}
-Context: {retrieved_contexts}
+    "selene-mini":"""
+You are tasked with evaluating a response based on a given instruction (which may contain an Input) and a scoring rubric that serves as the evaluation standard. Provide comprehensive feedback on the response quality strictly adhering to the scoring rubric, without any general evaluation. Follow this with a score between 1 and 5, referring to the scoring rubric. Avoid generating any additional opening, closing, or explanations.  
 
-Response:::
-Evaluation: (Explain reasoning here.)
-Judgment: (Score from 1–5
+Here are some rules of the evaluation:  
+(1) Prioritize evaluating whether the response satisfies the provided rubric. The score should be based strictly on the rubric criteria. The response does not need to explicitly address all rubric points, but it should be assessed according to the outlined criteria.  
+
+Your reply should strictly follow this format:  
+**Reasoning:** <Your feedback>  
+
+**Result:** <an integer between 1 and 5>  
+
+### Here is the data:  
+
+**Question:**  
+{question}  
+
+**Context:**  
+{retrieved_contexts}  
+
+**Instruction:**  
+Evaluate whether the retrieved context is relevant and sufficient to answer the given question.  
+
+**Evaluation:**  
+Indicate whether the context allows the question to be answered and contains the necessary information. Specify if the proportion of irrelevant excerpts compared to the total impacts the quality of the response, and mention any lack of completeness.  
+
+**Evaluation Guidelines:**  
+- Check whether the context directly answers the question and if the excerpts are relevant.  
+- Assess whether the presence of irrelevant excerpts affects clarity and comprehension.  
+
+**Score Rubrics:**  
+[Evaluation of context relevance and sufficiency]  
+- **Score 1:** Context is mostly off-topic and lacks useful information.  
+- **Score 2:** Context is partially relevant, missing key information, with many irrelevant excerpts.  
+- **Score 3:** Context is generally relevant but diluted by several irrelevant excerpts.  
+- **Score 4:** Context is mostly relevant, with only a few irrelevant excerpts that do not strongly affect comprehension.  
+- **Score 5:** Context is entirely relevant and comprehensive, containing all necessary information.  
+
 """
 }
 
