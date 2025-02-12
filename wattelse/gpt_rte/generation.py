@@ -8,11 +8,12 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from loguru import logger
 
-from wattelse.common import MODEL_BASE_PATH
+# from wattelse.common import MODEL_BASE_PATH
 
 # Parameters
 
-model_name = MODEL_BASE_PATH / "asi/gpt-fr-cased-small/checkpoint-9294"
+# model_name = MODEL_BASE_PATH / "asi/gpt-fr-cased-small/checkpoint-9294"
+model_name = "asi/gpt-fr-cased-small"
 tokenizer_name = "asi/gpt-fr-cased-base"
 
 

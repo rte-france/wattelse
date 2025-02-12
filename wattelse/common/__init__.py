@@ -16,10 +16,4 @@ BASE_PATH = (
     else Path(__file__).parent.parent.parent
 )
 
-BASE_DATA_PATH = BASE_PATH / "data"
-BASE_OUTPUT_PATH = BASE_PATH / "output"
-BASE_CACHE_PATH = BASE_PATH / "cache"
-MODEL_BASE_PATH = BASE_PATH / "models"
-WATTELSE_LOG_PATH = BASE_PATH / "logs" / "wattelse"
-
-WATTELSE_LOG_PATH.mkdir(parents=True, exist_ok=True)
+BASE_DATA_PATH = BASE_PATH
