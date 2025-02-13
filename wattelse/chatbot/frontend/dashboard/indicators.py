@@ -25,7 +25,7 @@ def _compute_file_indicators(group: str = None):
         _type_: _description_
     """
     if group and group != METIERS_GROUP_NAME:
-        bak = RAGBackEnd(group)
+        bak = RAGBackEnd(group_id=group, config="azure_20241216")
         nb_files = len(bak.get_available_docs())
         nb_chunks = len(bak.document_collection.collection.get()["documents"])
     else:
