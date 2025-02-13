@@ -7,81 +7,119 @@ The following diagram illustrates how the different components of the evaluation
 
 ```mermaid
 flowchart TB
-    subgraph Input
+    %% Input Files
+    subgraph Input["Input Files"]
         QA[Questions & Answers<br/>Excel File]
-        CF[Configuration File<br/>eval_config.cfg]
+        CF[Evaluation Config<br/>eval_config.cfg]
+        SF[Server Config<br/>server_config.cfg]
     end
 
+    %% Configuration System with clearer separation
     subgraph ConfigSystem["Configuration System"]
-        EC[EvalConfig Class<br/>eval_config.py]
-        RP[Response Parsing<br/>regex_patterns.py]
-        PE[Prompt Templates<br/>prompt_eval.py]
+        direction TB
+                
+        subgraph ServerConfig["Server Configuration"]
+            SC[ServerConfig Class<br/>server_config.py]
+        end
+
+        subgraph EvalConfig["Evaluation Configuration"]
+            EC[EvalConfig Class<br/>eval_config.py]
+            RP[Response Parsing<br/>regex_patterns.py]
+            PE[Prompt Templates<br/>prompt_eval.py]
+        end
     end
 
+    %% Orchestration with improved model setup
+    subgraph Orchestration["Pipeline Orchestration"]
+        RS[Pipeline Controller<br/>run_jury.py]
+        
+        subgraph ModelSetup["Model Setup & Deployment"]
+            direction TB
+            MS[Model Type Detection]
+            
+            subgraph LocalModels["Local Model Deployment"]
+                VM[vLLM Server<br/>Configuration]
+                SS[Screen Session<br/>Management]
+                PC[Port & CUDA<br/>Management]
+            end
+            
+            subgraph CloudModels["Cloud Model Setup"]
+                API[API Endpoint<br/>Configuration]
+                AUTH[Authentication<br/>Management]
+            end
+        end
+    end
+
+    %% Evaluation Process with metrics
     subgraph Evaluation["Evaluation Process"]
         direction TB
-        EV[Core Evaluation Logic<br/>evaluation.py]
-        subgraph Metrics
-            CO[Correctness<br/>Evaluation]
-            FA[Faithfulness<br/>Evaluation]
-            RE[Retrievability<br/>Evaluation]
+        EV[Evaluation Engine<br/>evaluation.py]
+        
+        subgraph LLMEval["LLM Evaluation"]
+            LG[["LLM as a Judge<br/>"]]
+            
+            subgraph LLMOutput["Output Processing"]
+                direction TB
+                RE1[Reasoning<br/>Analysis]
+                JU1[Judgment<br/>Score 1-5]
+                subgraph Metrics["Metric Evaluation"]
+                    FA[Faithfulness]
+                    CO[Correctness]
+                    RE[Retrievability]
+                end
+            end
         end
     end
 
-    subgraph Orchestration["Pipeline Orchestration"]
-        RS[Sequential Executor<br/>run_jury.py]
-        subgraph ModelManagement
-            VM1[VLLM Server<br/>Model 1]
-            VM2[VLLM Server<br/>Model 2]
-        end
+    %% Output generation
+    subgraph Output["Result Generation"]
+        IR[Model-Specific<br/>Results]
+        FR[Consolidated<br/>Report]
     end
 
-    subgraph Output
-        IR1[Individual Results<br/>Model 1]
-        IR2[Individual Results<br/>Model 2]
-        CR[Combined Results<br/>Jury Evaluation]
-    end
-
-    %% Configuration Flow
+    %% Main flow connections - reorganized for clarity
     CF --> EC
-    EC --> PE
-    EC --> RP
-
-    %% Input Flow
+    SF --> SC
+    EC <--> PE & RP
     QA --> RS
-    QA --> EV
+    SC --> RS
+    EC --> RS
 
-    %% Evaluation Flow
-    EV --> CO & FA & RE
-    PE --> EV
-    RP --> EV
+    RS --> MS
+    MS --> |Local|LocalModels
+    MS --> |Cloud|CloudModels
+    LocalModels --> EV
+    CloudModels --> EV
+    EV --> LLMEval
+    LG --> |Generation| LLMOutput
+    Metrics --> IR
+    IR --> FR
+    PE --> LG
+    RP --> RE1
+    RP --> JU1
 
-    %% Orchestration Flow
-    RS --> VM1 & VM2
-    RS --> EV
-
-    %% Model Management
-    VM1 --> IR1
-    VM2 --> IR2
-    
-    %% Results Flow
-    IR1 & IR2 --> CR
 
     %% Styling
-    classDef configFile fill:#f9f,stroke:#333,stroke-width:2px
-    classDef codeFile fill:#bbf,stroke:#333,stroke-width:2px
-    classDef process fill:#bfb,stroke:#333,stroke-width:2px
-    classDef output fill:#ffb,stroke:#333,stroke-width:2px
+    classDef configFile fill:#f9f9ff,stroke:#333,stroke-width:2px
+    classDef codeFile fill:#e6e6ff,stroke:#333,stroke-width:2px
+    classDef process fill:#e6ffe6,stroke:#333,stroke-width:2px
+    classDef output fill:#fff9e6,stroke:#333,stroke-width:2px
+    classDef setup fill:#ffe6e6,stroke:#333,stroke-width:1px
+    classDef llm fill:#e6ffff,stroke:#333,stroke-width:1px
+    classDef container fill:#ffffff,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
 
-    class QA,CF configFile
-    class EC,RP,PE,EV,RS codeFile
-    class CO,FA,RE,VM1,VM2 process
-    class IR1,IR2,CR output
+    class QA,CF,SF configFile
+    class EC,RP,PE,EV,RS,SC codeFile
+    class FA,CO,RE,PP,RP1,RP2,RP3 process
+    class IR,FR output
+    class MS,VM,SS,PC,API,AUTH setup
+    class LG,RE1,JU1 llm
+    class ConfigSystem,Orchestration,Evaluation,Output,Input container
 ```
 The diagram shows the main components and data flow of the evaluation pipeline:
 
-- Input layer processes the evaluation data and configuration
-- Configuration system manages evaluation settings and prompts
+- Input layer processes the evaluation data and configuration files
+- Configuration system manages evaluation and server settings
 - Evaluation process performs the core metrics assessment
 - Pipeline orchestration handles model management
 - Output generation combines results from all evaluators
@@ -94,9 +132,9 @@ The diagram shows the main components and data flow of the evaluation pipeline:
   - **Faithfulness**: Measures how well the response aligns with the provided context
   - **Retrievability**: Evaluates the relevance and sufficiency of retrieved context
 - Sequential evaluation pipeline with automatic model switching
-- Configurable evaluation settings
+- Configurable evaluation and server settings
 - Parallel processing for efficient evaluation
-- Comprehensive result aggregation and reporting
+- Comprehensive result aggregation and reporting through a Streamlit app
 
 ## Prerequisites
 
@@ -108,34 +146,47 @@ The diagram shows the main components and data flow of the evaluation pipeline:
 
 ## Configuration
 
-### Main Configuration File (`eval_config.cfg`)
+The evaluation pipeline uses two separate configuration files:
+
+### Evaluation Configuration File (`eval_config.cfg`)
 
 The evaluation pipeline is configured through `eval_config.cfg`. Key sections include:
 
 ```ini
 [EVAL_CONFIG]
-host = 0.0.0.0
-port = 8888
-cuda_visible_devices = 2,1
+enabled_metrics = faithfulness,correctness,retrievability
 
-[JURY_ROOM]
-models = meta-llama/Meta-Llama-3-8B-Instruct, prometheus-eval/prometheus-7b-v2.0
-
-[MODEL_META-LLAMA-3-8B]
+[MODEL_META_LLAMA_META_LLAMA_3_8B_INSTRUCT]
 model_name = meta-llama/Meta-Llama-3-8B-Instruct
 prompt_type = meta-llama-3-8b
 regex_type = re_llama3
 temperature = 0.0
 
+[MODEL_XXX]
+model_name = XXX
+prompt_type = XXX
+regex_type = XXX
+temperature = XXX
+
 ...
 ```
+### Evaluation Configuration:
+- `enabled_metrics`: List of metrics to evaluate
+- Model-specific settings (`model_name`, `prompt_type`, `regex_type`, `temperature`)
 
-### Configuration Parameters
 
-- `host`: Server host address
-- `port`: Server port number
-- `cuda_visible_devices`: GPUs to use for evaluation
-- `models`: Comma-separated list of evaluation models
+### Evaluation Configuration File (`server_config.cfg`)
+
+Manages server and deployment settings:
+
+```ini
+[SERVER_CONFIG]
+host = 0.0.0.0
+port = 8888
+port_controller = 21001
+port_worker = 21002
+cuda_visible_devices = 3,2
+```
 
 ## Usage
 
@@ -149,13 +200,15 @@ python evaluation.py /path/to/data.xlsx
 
 # With all options specified
 python evaluation.py /path/to/data.xlsx \
-    --config-path /path/to/config.cfg \
+    --config-path /path/to/eval_config.cfg \
+    --server-config /path/to/server_config.cfg \
     --report-output-path /path/to/output.xlsx
 
 # Use a specific model configuration
 export OPENAI_DEFAULT_MODEL_NAME="meta-llama/Meta-Llama-3-8B-Instruct"
 python evaluation.py /path/to/rag_responses.xlsx \
     --config-path ./configs/llama_config.cfg \
+    --server-config ./configs/server_config.cfg \
     --report-output-path ./results/llama_evaluation.xlsx
 ```
 
@@ -168,18 +221,18 @@ This mode is useful when you want to:
 The environment variables need to be set according to your model:
 
 ```bash
-# For Meta-Llama model
+# For local models (Meta-Llama, Prometheus)
 export OPENAI_ENDPOINT="http://localhost:8888/v1"
 export OPENAI_API_KEY="EMPTY"
 export OPENAI_DEFAULT_MODEL_NAME="meta-llama/Meta-Llama-3-8B-Instruct"
 
-# For Prometheus model
-export OPENAI_ENDPOINT="http://localhost:8888/v1"
-export OPENAI_API_KEY="EMPTY"
-export OPENAI_DEFAULT_MODEL_NAME="prometheus-eval/prometheus-7b-v2.0"
+# For cloud models
+export OPENAI_ENDPOINT="your-cloud-endpoint"
+export OPENAI_API_KEY="your-api-key"
+export OPENAI_DEFAULT_MODEL_NAME="your-model-name"
 ```
 
-Make sure your VLLM server is running with the appropriate model before starting the evaluation.
+Make sure your vLLM server is running with the appropriate model before starting the evaluation.
 
 ### Running the Full Evaluation Pipeline (LLM as Jury)
 
@@ -189,42 +242,43 @@ python run_jury.py /path/to/data.xlsx
 
 # With all options specified
 python run_jury.py /path/to/data.xlsx \
-    --config-path /path/to/eval_config.cfg \
+    --eval-config-path /path/to/eval_config.cfg \
+    --server-config-path /path/to/server_config.cfg \
     --output-dir /path/to/evaluation_results
 
 # Example with specific paths
 python run_jury.py ./data/rag_responses.xlsx \
-    --config-path ./configs/jury_eval_config.cfg \
+    --eval-config-path ./configs/jury_eval_config.cfg \
+    --server-config-path ./configs/server_config.cfg \
     --output-dir ./results/jury_evaluation
-
-# Example with default config but custom output directory
-python run_jury.py ./data/responses.xlsx \
-    --output-dir ./custom_results
 ```
 
 1. Prepare your evaluation dataset in Excel format with the following columns:
    - `question`: The input question
    - `answer`: The RAG system's response
    - `source_doc`: Source documents used
-   - `context`: Retrieved context
-   - `complexity`: Question complexity (optional)
-   - `relevant_extracts`: Relevant extracts from context
+   - `rag_relevant_extracts`: RAG relevant extracts from context
 
 2. Run the evaluation pipeline:
 ```bash
-python run_jury.py path/to/your/data.xlsx --config-path eval_config.cfg --output-dir evaluation_results
+python run_jury.py path/to/your/data.xlsx \
+    --eval-config-path eval_config.cfg \
+    --server-config-path server_config.cfg \
+    --output-dir evaluation_results
 ```
 
 ### Command-line Arguments
 
 For evaluation.py (Single Model):
 - `qr_df_path`: Path to the Excel file containing questions and responses
-- `--config-path`: Path to the configuration file (default: "config.cfg")
+- `--eval-config-path`: Path to the configuration file (default: "config.cfg")
+- `--server-config-path`: Path to the server configuration file (default: "server_config.cfg")
 - `--report-output-path`: Path for the evaluation results Excel file (default: "report_output.xlsx")
 
 For run_jury.py (Multiple Models):
 - `qr_df_path`: Path to the Excel file containing questions and responses
-- `--config-path`: Path to the configuration file (default: "eval_config.cfg")
+- `--eval-config-path`: Path to the configuration file (default: "eval_config.cfg")
+- `--server-config-path`: Path to the server configuration file (default: "server_config.cfg")
 - `--output-dir`: Directory for evaluation results (default: "evaluation_results")
 
 ## Evaluation Metrics

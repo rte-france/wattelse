@@ -16,9 +16,6 @@ REPORT_PATH = Path("report_output.xlsx")
 # Column definitions
 QUERY_COLUMN = "question"
 ANSWER_COLUMN = "answer"
-DOC_LIST_COLUMN = "source_doc"
-CONTEXT_COLUMN = "context"
-COMPLEXITY_COLUMN = "complexity"
 RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
 
 SPECIAL_CHARACTER_FILTER = (
@@ -53,7 +50,8 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
     # Fetch model-specific configurations
     model_name = getattr(llm_client, 'model_name', config.default_model)
     regex_patterns = config.get_regex_patterns(model_name)
-
+    
+    # TODO : modify existing OpenAI_Client() to control the max_tokens
     kwargs = {"max_tokens": 1024}
     
     evaluations = {}

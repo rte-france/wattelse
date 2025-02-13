@@ -1,11 +1,14 @@
 """Main Streamlit application."""
 
 import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
 from utils import (
     load_evaluation_files, 
     get_available_metrics,
-    create_performance_summary,
+    calculate_good_score_percentage,
     create_timing_plot, 
+    create_radar_plot,
     create_score_distribution_plot,
     RAG_QUERY_TIME_COLUMN, 
     RAG_RETRIEVER_TIME_COLUMN, 
@@ -49,6 +52,12 @@ def handle_experiment_setup():
                     st.rerun()
             st.divider()
 
+def display_metric_descriptions():
+    """Display metric descriptions in an expandable section."""
+    with st.expander("ℹ️ Metric Descriptions", expanded=False):
+        for metric, description in METRIC_DESCRIPTIONS.items():
+            st.markdown(f"**{metric.title()}**: {description}")
+
 def main():
     setup_page()
 
@@ -57,11 +66,11 @@ def main():
         st.session_state.experiments = [
             {
                 'dir': 'eval_GPT4o-mini',
-                'name': 'GPT4 Mini Experiment'
+                'name': 'GPT4o-mini Experiment'
             },
             {
                 'dir': 'eval_llama3-8B',
-                'name': 'Llama3 8B Experiment'
+                'name': 'Llama3-8B Experiment'
             }
         ]
 
@@ -102,11 +111,151 @@ def main():
         st.error("No valid evaluation files found in the specified directories.")
         return
 
-    # Render appropriate page content
     if page == "Performance Overview":
         st.header("Performance Overview")
-        summary_df = create_performance_summary(experiments_data)
-        st.dataframe(summary_df, use_container_width=True, hide_index=True, height=400)
+        
+        # Display metric descriptions at the top of the performance page
+        display_metric_descriptions()
+        
+        # Get all judges
+        all_judges = set()
+        for exp in experiments_data:
+            all_judges.update(exp['dfs'].keys())
+        
+        # Create tabs for Overview and Individual Judges
+        tab_overview, *judge_tabs = st.tabs(["Overall View"] + list(sorted(all_judges)))
+        
+        with tab_overview:
+            # Overall radar plot
+            st.subheader("Overall Radar Plot Analysis")
+            st.caption("Hover over the radar plot to see detailed scores. Each axis represents a different evaluation metric.")
+            fig = create_radar_plot(experiments_data)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Create individual judge tabs
+        for judge_tab, judge_name in zip(judge_tabs, sorted(all_judges)):
+            with judge_tab:
+                st.subheader(f"Analysis by {judge_name}")
+                
+                # Filter data for this judge
+                judge_data = []
+                for exp in experiments_data:
+                    if judge_name in exp['dfs']:
+                        judge_data.append({
+                            'name': exp['name'],
+                            'dfs': {judge_name: exp['dfs'][judge_name]},
+                            'combined': exp['combined'],
+                            'timing': exp['timing']
+                        })
+                
+                if judge_data:
+                    # Create radar plot for this judge
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        fig = create_radar_plot(judge_data)
+                        st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Add experiment comparison
+                    st.subheader("Experiment Comparison")
+                    metrics = [col.replace('_score', '') 
+                             for col in judge_data[0]['dfs'][judge_name].columns 
+                             if col.endswith('_score')]
+                    
+                    for metric in sorted(metrics):
+                        st.write(f"**{metric.title()} Metric**")
+                        if metric in METRIC_DESCRIPTIONS:
+                            st.caption(METRIC_DESCRIPTIONS[metric])
+                        
+                        # Prepare data for both table and plot
+                        metric_data = []
+                        plot_data = []
+                        for exp_data in judge_data:
+                            df = exp_data['dfs'][judge_name]
+                            score_col = f'{metric}_score'
+                            if score_col in df.columns:
+                                good_score_pct = calculate_good_score_percentage(df[score_col])
+                                metric_data.append({
+                                    'Experiment': exp_data['name'],
+                                    'Good Score %': f"{good_score_pct:.1f}%",
+                                })
+                                # Add all scores for the plot
+                                scores = df[score_col].value_counts().sort_index()
+                                for score, count in scores.items():
+                                    plot_data.append({
+                                        'Experiment': exp_data['name'],
+                                        'Score': score,
+                                        'Count': count,
+                                        'Percentage': (count / len(df[score_col])) * 100
+                                    })
+                        
+                        # Create and display table with good score plot side by side
+                        metric_df = pd.DataFrame(metric_data)
+                        col1, col2 = st.columns([1, 2])
+                        with col1:
+                            st.dataframe(metric_df, use_container_width=True, hide_index=True)
+                        
+                        with col2:
+                            # Create good score percentage plot
+                            good_score_fig = go.Figure()
+                            
+                            # Extract experiment names and good judgment percentages
+                            experiments = [row['Experiment'] for row in metric_data]
+                            good_judgments = [float(row['Good Score %'].rstrip('%')) for row in metric_data]
+                            
+                            good_score_fig.add_trace(go.Scatter(
+                                x=experiments,
+                                y=good_judgments,
+                                mode='lines+markers',
+                                name='Good Judgments %',
+                                line=dict(width=3),
+                                marker=dict(size=10),
+                                hovertemplate="Experiment: %{x}<br>Good Judgments: %{y:.1f}%<extra></extra>"
+                            ))
+                            
+                            good_score_fig.update_layout(
+                                yaxis_title="Good Judgments Percentage",
+                                yaxis_ticksuffix="%",
+                                yaxis_range=[0, 100],
+                                showlegend=False,
+                                height=200,
+                                margin=dict(t=0, b=0, l=0, r=0)
+                            )
+                            st.plotly_chart(good_score_fig, use_container_width=True)
+                        
+                        # Create and display score distribution plot
+                        plot_df = pd.DataFrame(plot_data)
+                        if not plot_df.empty:
+                            fig = go.Figure()
+                            
+                            # Add traces for each experiment
+                            for exp_name in plot_df['Experiment'].unique():
+                                exp_data = plot_df[plot_df['Experiment'] == exp_name]
+                                fig.add_trace(go.Scatter(
+                                    x=exp_data['Score'],
+                                    y=exp_data['Percentage'],
+                                    mode='lines+markers',
+                                    name=exp_name,
+                                    hovertemplate="Score: %{x}<br>Percentage: %{y:.1f}%<extra></extra>"
+                                ))
+                            
+                            fig.update_layout(
+                                xaxis_title="Judgment (1-5)",
+                                yaxis_title="Percentage of Responses",
+                                yaxis_ticksuffix="%",
+                                xaxis=dict(
+                                    tickmode='linear',
+                                    tick0=1,
+                                    dtick=1,
+                                    range=[0.5, 5.5]
+                                ),
+                                hovermode='x unified',
+                                showlegend=True,
+                                height=400,
+                                margin=dict(t=0, b=0, l=0, r=0)
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning(f"No data available for {judge_name}")
 
     elif page == "Timing Analysis":
         st.header("Timing Analysis")

@@ -3,11 +3,12 @@ import time
 import subprocess
 import typer
 from pathlib import Path
-import configparser
 from loguru import logger
 import psutil
 import signal
 import os
+from wattelse.evaluation_pipeline.eval_config import EvalConfig
+from wattelse.evaluation_pipeline.server_config import ServerConfig
 
 app = typer.Typer()
 
@@ -27,7 +28,7 @@ def kill_process_on_port(port):
             continue
     return False
 
-def cleanup_screen_sessions(model_name: str = None, config: configparser.ConfigParser = None):
+def cleanup_screen_sessions(model_name: str = None, eval_config: EvalConfig = None):
     """Clean up VLLM screen sessions, checking model type if provided"""
     try:
         result = subprocess.run(["screen", "-ls"], capture_output=True, text=True)
@@ -35,8 +36,8 @@ def cleanup_screen_sessions(model_name: str = None, config: configparser.ConfigP
             if 'vllm_' in line:
                 session_name = line.split('\t')[1].split('.')[1]
                 # If model info provided, only clean if it's a local model
-                if model_name and config:
-                    model_type = get_model_type(model_name, config)
+                if model_name and eval_config:
+                    model_type = get_model_type(model_name, eval_config)
                     if model_type != 'local':
                         continue
                 subprocess.run(["screen", "-S", session_name, "-X", "quit"])
@@ -44,10 +45,10 @@ def cleanup_screen_sessions(model_name: str = None, config: configparser.ConfigP
     except Exception as e:
         logger.error(f"Error cleaning up screen sessions: {e}")
 
-def create_screen_session(session_name: str, model_name: str = None, config: configparser.ConfigParser = None) -> None:
+def create_screen_session(session_name: str, model_name: str = None, eval_config: EvalConfig = None) -> None:
     """Create a new screen session if it doesn't exist and model is local"""
-    if model_name and config:
-        model_type = get_model_type(model_name, config)
+    if model_name and eval_config:
+        model_type = get_model_type(model_name, eval_config)
         if model_type != 'local':
             return
 
@@ -67,25 +68,23 @@ def get_section_name(model_name: str) -> str:
     """Convert model name to config section name format."""
     return f"MODEL_{model_name.replace('/', '_').replace('-', '_').replace('.', '_').upper()}"
 
-def get_model_type(model_name: str, config: configparser.ConfigParser) -> str:
+def get_model_type(model_name: str, eval_config: EvalConfig) -> str:
     """Determine if the model is local or cloud-based."""
-    section_name = get_section_name(model_name)
-    if section_name in config:
-        model_type = config[section_name].get('deployment_type', 'local')
-        logger.debug(f"Model type for {model_name}: {model_type}")
-        return model_type
-    return 'local'
+    model_config = eval_config.get_model_config(model_name)
+    model_type = model_config.get('deployment_type', 'local')
+    logger.debug(f"Model type for {model_name}: {model_type}")
+    return model_type
 
-def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
+def get_env_vars(model_name: str, eval_config: EvalConfig) -> dict:
     """Get environment variables based on model configuration."""
-    model_type = get_model_type(model_name, config)
-    section_name = get_section_name(model_name)
+    model_config = eval_config.get_model_config(model_name)
+    deployment_type = model_config.get('deployment_type', 'local')
     
-    if model_type == 'cloud':
+    if deployment_type == 'cloud':
         return {
-            "OPENAI_API_KEY": config[section_name]['api_key'],
-            "OPENAI_ENDPOINT": config[section_name]['api_base'],
-            "OPENAI_DEFAULT_MODEL_NAME": config[section_name]['model_name']
+            "OPENAI_API_KEY": model_config['api_key'],
+            "OPENAI_ENDPOINT": model_config['api_base'],
+            "OPENAI_DEFAULT_MODEL_NAME": model_config['model_name']
         }
     else:
         return {
@@ -94,24 +93,23 @@ def get_env_vars(model_name: str, config: configparser.ConfigParser) -> dict:
             "OPENAI_DEFAULT_MODEL_NAME": model_name
         }
 
-def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str:
+def start_vllm_server(model_name: str, eval_config: EvalConfig, server_config: ServerConfig) -> str:
     """Start the VLLM server for local models only"""
-    model_type = get_model_type(model_name, config)
+    model_type = get_model_type(model_name, eval_config)
     logger.info(f"Attempting to start VLLM server for {model_name} (type: {model_type})")
     if model_type != 'local':
         logger.info(f"Skipping VLLM server for non-local model {model_name}")
         return None
         
-    port = int(config['EVAL_CONFIG']['port'])
-    kill_process_on_port(port)
+    kill_process_on_port(server_config.port)
     
     session_name = f"vllm_{model_name.replace('/', '_')}"
-    create_screen_session(session_name, model_name, config) 
+    create_screen_session(session_name, model_name, eval_config) 
     
     vllm_cmd = f"""python -m vllm.entrypoints.openai.api_server \
         --model {model_name} \
-        --port {port} \
-        --host {config['EVAL_CONFIG']['host']} \
+        --port {server_config.port} \
+        --host {server_config.host} \
         --device auto \
         --worker-use-ray \
         --tensor-parallel-size 2 \
@@ -119,7 +117,8 @@ def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str
         --max-model-len 8192 \
         --dtype=half"""
     
-    env_vars = f"CUDA_VISIBLE_DEVICES={config['EVAL_CONFIG']['cuda_visible_devices']}"
+    cuda_devices = ','.join(map(str, server_config.cuda_visible_devices))
+    env_vars = f"CUDA_VISIBLE_DEVICES={cuda_devices}"
     
     screen_cmd = ["screen", "-S", session_name, "-X", "stuff", f"{env_vars} {vllm_cmd}\n"]
     try:
@@ -131,14 +130,14 @@ def start_vllm_server(model_name: str, config: configparser.ConfigParser) -> str
         logger.error(f"Failed to start VLLM server: {e}")
         raise
 
-def run_evaluation(model_name: str, config: configparser.ConfigParser, 
+def run_evaluation(model_name: str, eval_config: EvalConfig, server_config: ServerConfig,
                   qr_df_path: Path, config_path: Path, output_path: Path):
     """Run evaluation for a single model"""
-    model_type = get_model_type(model_name, config)
+    model_type = get_model_type(model_name, eval_config)
     session_name = None
     
     try:
-        env_vars = get_env_vars(model_name, config)
+        env_vars = get_env_vars(model_name, eval_config)
         cmd = [
             "python",
             str(Path(__file__).parent / "evaluation.py"),
@@ -151,8 +150,8 @@ def run_evaluation(model_name: str, config: configparser.ConfigParser,
         env.update(env_vars)
         
         if model_type == 'local':
-            kill_process_on_port(int(config['EVAL_CONFIG']['port']))
-            session_name = start_vllm_server(model_name, config)
+            kill_process_on_port(server_config.port)
+            session_name = start_vllm_server(model_name, eval_config, server_config)
         
         subprocess.run(cmd, env=env, check=True)
         logger.info(f"Completed evaluation with model: {model_name}")
@@ -162,11 +161,11 @@ def run_evaluation(model_name: str, config: configparser.ConfigParser,
         raise
     finally:
         if session_name and model_type == 'local':
-            stop_vllm_server(session_name, config)
-            kill_process_on_port(int(config['EVAL_CONFIG']['port']))
+            stop_vllm_server(session_name, server_config)
+            kill_process_on_port(server_config.port)
             time.sleep(5)
 
-def stop_vllm_server(session_name: str, config: configparser.ConfigParser):
+def stop_vllm_server(session_name: str, server_config: ServerConfig):
     """Stop the VLLM server and clean up"""
     try:
         subprocess.run(["screen", "-S", session_name, "-X", "stuff", "\x03"])
@@ -175,39 +174,40 @@ def stop_vllm_server(session_name: str, config: configparser.ConfigParser):
         subprocess.run(["screen", "-S", session_name, "-X", "quit"])
         logger.info(f"Stopped screen session: {session_name}")
         
-        port = int(config['EVAL_CONFIG']['port'])
-        kill_process_on_port(port)
+        kill_process_on_port(server_config.port)
         
         time.sleep(10)  # Additional cleanup time
     except Exception as e:
         logger.error(f"Error stopping VLLM server: {e}")
-        kill_process_on_port(int(config['EVAL_CONFIG']['port']))
+        kill_process_on_port(server_config.port)
 
+@app.command()
 def main(
     qr_df_path: Path,
-    config_path: Path = Path("eval_config.cfg"),
+    eval_config_path: Path = Path("eval_config.cfg"),
+    server_config_path: Path = Path("server_config.cfg"),
     output_dir: Path = Path("evaluation_results")
 ):
-    config = configparser.ConfigParser()
-    config.read(config_path)
+    # Load both configurations
+    eval_config = EvalConfig(eval_config_path)
+    server_config = ServerConfig(server_config_path)
     
     output_dir.mkdir(parents=True, exist_ok=True)
-    models = [model.strip() for model in config['JURY_ROOM']['models'].split(',')]
+    
+    # Get models from evaluation config
+    model_configs = eval_config.model_configs
+    models = list(model_configs.keys())
     logger.info(f"Running evaluation with {len(models)} models")
     
     for model in models:
-        cleanup_screen_sessions(model, config)  # Pass model info for type checking
+        cleanup_screen_sessions(model, eval_config)
         logger.info(f"Starting evaluation with model: {model}")
         model_name = model.split('/')[-1]
-        
-        if 'DEFAULT_MODEL' not in config:
-            config.add_section('DEFAULT_MODEL')
-        config['DEFAULT_MODEL']['default_model'] = model
         
         output_path = output_dir / f"evaluation_{model_name}.xlsx"
         
         try:
-            run_evaluation(model, config, qr_df_path, config_path, output_path)
+            run_evaluation(model, eval_config, server_config, qr_df_path, eval_config_path, output_path)
         except Exception as e:
             logger.error(f"Failed to evaluate with {model}: {e}")
             continue
