@@ -62,6 +62,8 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
 # Load one config key as a default_config name"
 default_config = next(iter(CONFIG_NAME_TO_CONFIG_PATH))
+
+
 class RAGBackEnd:
     def __init__(self, group_id: str, config: str | dict | Path = default_config):
         """
