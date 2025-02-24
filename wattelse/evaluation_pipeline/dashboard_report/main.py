@@ -10,6 +10,7 @@ from utils import (
     create_timing_plot, 
     create_radar_plot,
     create_score_distribution_plot,
+    create_metrics_summary,  # Import the new function
     RAG_QUERY_TIME_COLUMN, 
     RAG_RETRIEVER_TIME_COLUMN, 
     METRIC_DESCRIPTIONS
@@ -65,19 +66,27 @@ def main():
     if 'experiments' not in st.session_state:
         st.session_state.experiments = [
             {
-                'dir': 'eval_GPT4o-mini',
-                'name': 'GPT4o-mini Experiment'
+                'dir': 'AZURE-5',
+                'name': 'Top-5-extracts'
             },
             {
-                'dir': 'eval_llama3-8B',
-                'name': 'Llama3-8B Experiment'
-            }
+                'dir': 'AZURE-10',
+                'name': 'Top-10-extracts'
+            },
+            {
+                'dir': 'AZURE-15',
+                'name': 'Top-15-extracts'
+            },
+            {
+                'dir': 'AZURE-5',
+                'name': 'Top-20-extracts'
+            },
         ]
 
     # Sidebar navigation
     page = st.sidebar.radio(
         "Select a Page",
-        ["Experiment Setup", "Performance Overview", "Timing Analysis", "Score Analysis", "Raw Data"]
+        ["Experiment Setup", "Performance Overview", "Timing Analysis", "Raw Data"]
     )
 
     if page == "Experiment Setup":
@@ -122,15 +131,66 @@ def main():
         for exp in experiments_data:
             all_judges.update(exp['dfs'].keys())
         
-        # Create tabs for Overview and Individual Judges
-        tab_overview, *judge_tabs = st.tabs(["Overall View"] + list(sorted(all_judges)))
+        # Create tabs for Summary and Individual Judges
+        tab_summary, *judge_tabs = st.tabs(["Summary"] + list(sorted(all_judges)))
         
-        with tab_overview:
-            # Overall radar plot
-            st.subheader("Overall Radar Plot Analysis")
-            st.caption("Hover over the radar plot to see detailed scores. Each axis represents a different evaluation metric.")
-            fig = create_radar_plot(experiments_data)
-            st.plotly_chart(fig, use_container_width=True)
+        with tab_summary:
+            st.subheader("Metrics Summary")
+            st.caption("Average good score percentages (scores of 4-5) across all LLM judges")
+            
+            # Generate summary metrics
+            summary_dfs, summary_figs, overall_df, overall_fig = create_metrics_summary(experiments_data)
+            
+            # Display overall summary
+            st.plotly_chart(overall_fig, use_container_width=True)
+            
+            # Display overall summary table with highest scores in bold
+            st.subheader("Summary Table")
+            formatted_df = overall_df.copy()
+            
+            # Format each column with highest value in bold
+            for col in formatted_df.columns:
+                if col != 'Experiment':
+                    # Find max value in this column
+                    max_val = formatted_df[col].max()
+                    # Create display column with bold formatting for maximum values
+                    formatted_df[f"{col}_display"] = formatted_df[col].apply(
+                        lambda x: f"**{x:.1f}%**" if x == max_val else f"{x:.1f}%"
+                    )
+            
+            # Create a new DataFrame with just the display columns
+            display_df = pd.DataFrame()
+            display_df['Experiment'] = formatted_df['Experiment']
+            
+            # Add formatted display columns in the right order
+            for col in overall_df.columns:
+                if col != 'Experiment':
+                    display_df[col] = formatted_df[f"{col}_display"]
+            
+            # Use st.markdown to render the bold formatting
+            st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
+            
+            # Display individual metric summaries in expandable sections
+            st.subheader("Individual Metric Summaries")
+            for metric in sorted(summary_figs.keys()):
+                with st.expander(f"{metric.title()} Metric Details", expanded=False):
+                    st.plotly_chart(summary_figs[metric], use_container_width=True)
+                    
+                    col1, col2 = st.columns([1, 1])
+                    with col1:
+                        # Create display DataFrame with bold formatting
+                        display_df = pd.DataFrame()
+                        display_df['Experiment'] = summary_dfs[metric]['Experiment']
+                        display_df['Average Good Score %'] = summary_dfs[metric]['Display Score']
+                        display_df['Judges Count'] = summary_dfs[metric]['Judges Count']
+                        
+                        # Use st.markdown to render the bold formatting
+                        st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
+                    with col2:
+                        if metric in METRIC_DESCRIPTIONS:
+                            st.info(METRIC_DESCRIPTIONS[metric])
+        
+
         
         # Create individual judge tabs
         for judge_tab, judge_name in zip(judge_tabs, sorted(all_judges)):
@@ -190,9 +250,23 @@ def main():
                         
                         # Create and display table with good score plot side by side
                         metric_df = pd.DataFrame(metric_data)
+                        
+                        # Format with bold for highest score
+                        display_df = pd.DataFrame()
+                        display_df['Experiment'] = metric_df['Experiment']
+                        
+                        # Get the highest score percentage
+                        max_score = max([float(score.rstrip('%')) for score in metric_df['Good Score %']])
+                        
+                        # Create formatted column with bold for maximum values
+                        display_df['Good Score %'] = metric_df['Good Score %'].apply(
+                            lambda x: f"**{x}**" if float(x.rstrip('%')) == max_score else x
+                        )
+                        
                         col1, col2 = st.columns([1, 2])
                         with col1:
-                            st.dataframe(metric_df, use_container_width=True, hide_index=True)
+                            # Use st.markdown to render the bold formatting
+                            st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
                         
                         with col2:
                             # Create good score percentage plot
@@ -269,41 +343,7 @@ def main():
             fig = create_timing_plot(experiments_data, RAG_RETRIEVER_TIME_COLUMN, "Retriever Time Distribution")
             st.plotly_chart(fig, use_container_width=True)
 
-    elif page == "Score Analysis":
-        st.header("LLM Jury Analysis")
-        
-        # Get all available metrics
-        all_metrics = set()
-        for exp in experiments_data:
-            for df in exp['dfs'].values():
-                all_metrics.update(get_available_metrics(df))
 
-        # Metric selection
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            selected_metric = st.selectbox("Metric", options=sorted(all_metrics))
-        with col2:
-            if selected_metric in METRIC_DESCRIPTIONS:
-                st.info(METRIC_DESCRIPTIONS[selected_metric])
-
-        if selected_metric:
-            # Create plots
-            plot_tab1, plot_tab2 = st.tabs(["Violin Plot", "Box Plot"])
-            
-            with plot_tab1:
-                fig = create_score_distribution_plot(experiments_data, selected_metric, "violin")
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with plot_tab2:
-                fig = create_score_distribution_plot(experiments_data, selected_metric, "box")
-                st.plotly_chart(fig, use_container_width=True)
-            
-            st.markdown("""
-            **Key Findings:**
-            - Violin plots show the full distribution of scores from each jury member
-            - Box plots highlight the median, quartiles, and any outliers
-            - Left/Right split in violin plots helps compare experiments directly
-            """)
 
     elif page == "Raw Data":
         st.header("Raw Data")

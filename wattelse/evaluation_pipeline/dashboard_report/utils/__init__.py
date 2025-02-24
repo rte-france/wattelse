@@ -1,6 +1,37 @@
-"""Utils package initialization."""
+"""Utils module initialization."""
 
-from .constants import *
-from .data_loader import load_evaluation_files, get_available_metrics
-from .analysis import calculate_good_score_percentage
-from .visualization import create_timing_plot, create_score_distribution_plot, create_radar_plot
+# Import constants
+from .constants import (
+    QUERY_COLUMN,
+    ANSWER_COLUMN,
+    DOC_LIST_COLUMN,
+    CONTEXT_COLUMN,
+    COMPLEXITY_COLUMN,
+    RAG_RELEVANT_EXTRACTS_COLUMN,
+    RAG_QUERY_TIME_COLUMN,
+    RAG_RETRIEVER_TIME_COLUMN,
+    METRIC_DESCRIPTIONS
+)
+
+# Import data loading functions
+from .data_loader import (
+    get_available_metrics,
+    load_evaluation_files
+)
+
+# Import analysis functions
+from .analysis import (
+    calculate_good_score_percentage
+)
+
+# Import visualization functions
+from .visualization import (
+    create_timing_plot,
+    create_radar_plot,
+    create_score_distribution_plot
+)
+
+# Import the new metrics summary function
+from .metrics_summary import (
+    create_metrics_summary
+)

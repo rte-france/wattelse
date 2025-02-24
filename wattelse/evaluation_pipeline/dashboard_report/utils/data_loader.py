@@ -19,7 +19,7 @@ def load_evaluation_files(eval_dir: str):
     
     # Handle both absolute and relative paths
     if not eval_dir.startswith('/'):
-        # If relative path, construct path relative to project root
+        # TODO If relative path, construct path relative to project root
         eval_path = Path(__file__).parents[2] / 'retriever-testing' / eval_dir
     else:
         eval_path = Path(eval_dir)

@@ -117,7 +117,6 @@ def create_radar_plot(experiments_data):
                     r=metrics_values,
                     theta=sorted(all_metrics),
                     name=f"{exp['name']} - {judge}",
-                    fill='toself',
                     fillcolor=colors[color_idx],
                     line=dict(color=colors[color_idx]),
                     opacity=0.6,
