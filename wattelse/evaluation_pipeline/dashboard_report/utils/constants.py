@@ -16,6 +16,3 @@ METRIC_DESCRIPTIONS = {
     'correctness': 'Evaluates whether the response factually and accurately addresses the question by providing all essential information without significant errors or misinterpretations.',
     'retrievability': 'Evaluates the relevance and sufficiency of the retrieved context in answering the question, considering both the presence of key information and the impact of any irrelevant excerpts on overall clarity.'
 }
-
-
-

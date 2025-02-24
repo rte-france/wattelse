@@ -78,7 +78,7 @@ def main():
                 'name': 'Top-15-extracts'
             },
             {
-                'dir': 'AZURE-5',
+                'dir': 'AZURE-20',
                 'name': 'Top-20-extracts'
             },
         ]
@@ -221,113 +221,121 @@ def main():
                              for col in judge_data[0]['dfs'][judge_name].columns 
                              if col.endswith('_score')]
                     
+                    # Add a brief explanation of the metrics expandable sections
+                    st.info("Click on each metric below to see detailed comparison across experiments")
+                    
                     for metric in sorted(metrics):
-                        st.write(f"**{metric.title()} Metric**")
-                        if metric in METRIC_DESCRIPTIONS:
-                            st.caption(METRIC_DESCRIPTIONS[metric])
-                        
-                        # Prepare data for both table and plot
-                        metric_data = []
-                        plot_data = []
-                        for exp_data in judge_data:
-                            df = exp_data['dfs'][judge_name]
-                            score_col = f'{metric}_score'
-                            if score_col in df.columns:
-                                good_score_pct = calculate_good_score_percentage(df[score_col])
-                                metric_data.append({
-                                    'Experiment': exp_data['name'],
-                                    'Good Score %': f"{good_score_pct:.1f}%",
-                                })
-                                # Add all scores for the plot
-                                scores = df[score_col].value_counts().sort_index()
-                                for score, count in scores.items():
-                                    plot_data.append({
+                        # Use markdown with HTML for larger, more prominent title in the expander
+                        with st.expander(f"### {metric.title()} Metric", expanded=False):
+                            if metric in METRIC_DESCRIPTIONS:
+                                st.info(METRIC_DESCRIPTIONS[metric])
+                            
+                            # Prepare data for both table and plot
+                            metric_data = []
+                            plot_data = []
+                            for exp_data in judge_data:
+                                df = exp_data['dfs'][judge_name]
+                                score_col = f'{metric}_score'
+                                if score_col in df.columns:
+                                    good_score_pct = calculate_good_score_percentage(df[score_col])
+                                    metric_data.append({
                                         'Experiment': exp_data['name'],
-                                        'Score': score,
-                                        'Count': count,
-                                        'Percentage': (count / len(df[score_col])) * 100
+                                        'Good Score %': f"{good_score_pct:.1f}%",
                                     })
-                        
-                        # Create and display table with good score plot side by side
-                        metric_df = pd.DataFrame(metric_data)
-                        
-                        # Format with bold for highest score
-                        display_df = pd.DataFrame()
-                        display_df['Experiment'] = metric_df['Experiment']
-                        
-                        # Get the highest score percentage
-                        max_score = max([float(score.rstrip('%')) for score in metric_df['Good Score %']])
-                        
-                        # Create formatted column with bold for maximum values
-                        display_df['Good Score %'] = metric_df['Good Score %'].apply(
-                            lambda x: f"**{x}**" if float(x.rstrip('%')) == max_score else x
-                        )
-                        
-                        col1, col2 = st.columns([1, 2])
-                        with col1:
-                            # Use st.markdown to render the bold formatting
-                            st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
-                        
-                        with col2:
-                            # Create good score percentage plot
-                            good_score_fig = go.Figure()
+                                    # Add all scores for the plot
+                                    scores = df[score_col].value_counts().sort_index()
+                                    for score, count in scores.items():
+                                        plot_data.append({
+                                            'Experiment': exp_data['name'],
+                                            'Score': score,
+                                            'Count': count,
+                                            'Percentage': (count / len(df[score_col])) * 100
+                                        })
                             
-                            # Extract experiment names and good judgment percentages
-                            experiments = [row['Experiment'] for row in metric_data]
-                            good_judgments = [float(row['Good Score %'].rstrip('%')) for row in metric_data]
+                            # Create and display table with good score plot side by side
+                            metric_df = pd.DataFrame(metric_data)
                             
-                            good_score_fig.add_trace(go.Scatter(
-                                x=experiments,
-                                y=good_judgments,
-                                mode='lines+markers',
-                                name='Good Judgments %',
-                                line=dict(width=3),
-                                marker=dict(size=10),
-                                hovertemplate="Experiment: %{x}<br>Good Judgments: %{y:.1f}%<extra></extra>"
-                            ))
+                            # Format with bold for highest score
+                            display_df = pd.DataFrame()
+                            display_df['Experiment'] = metric_df['Experiment']
                             
-                            good_score_fig.update_layout(
-                                yaxis_title="Good Judgments Percentage",
-                                yaxis_ticksuffix="%",
-                                yaxis_range=[0, 100],
-                                showlegend=False,
-                                height=200,
-                                margin=dict(t=0, b=0, l=0, r=0)
+                            # Get the highest score percentage
+                            max_score = max([float(score.rstrip('%')) for score in metric_df['Good Score %']])
+                            
+                            # Create formatted column with bold for maximum values
+                            display_df['Good Score %'] = metric_df['Good Score %'].apply(
+                                lambda x: f"**{x}**" if float(x.rstrip('%')) == max_score else x
                             )
-                            st.plotly_chart(good_score_fig, use_container_width=True)
-                        
-                        # Create and display score distribution plot
-                        plot_df = pd.DataFrame(plot_data)
-                        if not plot_df.empty:
-                            fig = go.Figure()
                             
-                            # Add traces for each experiment
-                            for exp_name in plot_df['Experiment'].unique():
-                                exp_data = plot_df[plot_df['Experiment'] == exp_name]
-                                fig.add_trace(go.Scatter(
-                                    x=exp_data['Score'],
-                                    y=exp_data['Percentage'],
+                            # Use H3 tag for consistent heading style - same size as the main metric title
+                            st.markdown(f"##### {metric.title()} Metric Analysis")
+                            col1, col2 = st.columns([1, 2])
+                            with col1:
+                                # Use st.markdown to render the bold formatting
+                                st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
+                            
+                            with col2:
+                                # Create good score percentage plot
+                                good_score_fig = go.Figure()
+                                
+                                # Extract experiment names and good judgment percentages
+                                experiments = [row['Experiment'] for row in metric_data]
+                                good_judgments = [float(row['Good Score %'].rstrip('%')) for row in metric_data]
+                                
+                                good_score_fig.add_trace(go.Scatter(
+                                    x=experiments,
+                                    y=good_judgments,
                                     mode='lines+markers',
-                                    name=exp_name,
-                                    hovertemplate="Score: %{x}<br>Percentage: %{y:.1f}%<extra></extra>"
+                                    name='Good Judgments %',
+                                    line=dict(width=3),
+                                    marker=dict(size=10),
+                                    hovertemplate="Experiment: %{x}<br>Good Judgments: %{y:.1f}%<extra></extra>"
                                 ))
+                                
+                                good_score_fig.update_layout(
+                                    yaxis_title="Good Judgments Percentage",
+                                    yaxis_ticksuffix="%",
+                                    yaxis_range=[0, 100],
+                                    showlegend=False,
+                                    height=200,
+                                    margin=dict(t=0, b=0, l=0, r=0)
+                                )
+                                st.plotly_chart(good_score_fig, use_container_width=True)
                             
-                            fig.update_layout(
-                                xaxis_title="Judgment (1-5)",
-                                yaxis_title="Percentage of Responses",
-                                yaxis_ticksuffix="%",
-                                xaxis=dict(
-                                    tickmode='linear',
-                                    tick0=1,
-                                    dtick=1,
-                                    range=[0.5, 5.5]
-                                ),
-                                hovermode='x unified',
-                                showlegend=True,
-                                height=400,
-                                margin=dict(t=0, b=0, l=0, r=0)
-                            )
-                            st.plotly_chart(fig, use_container_width=True)
+                            # Create and display score distribution plot
+                            # Use H3 tag for consistent heading size
+                            st.markdown(f"##### {metric.title()} Score Distribution")
+                            plot_df = pd.DataFrame(plot_data)
+                            if not plot_df.empty:
+                                fig = go.Figure()
+                                
+                                # Add traces for each experiment
+                                for exp_name in plot_df['Experiment'].unique():
+                                    exp_data = plot_df[plot_df['Experiment'] == exp_name]
+                                    fig.add_trace(go.Scatter(
+                                        x=exp_data['Score'],
+                                        y=exp_data['Percentage'],
+                                        mode='lines+markers',
+                                        name=exp_name,
+                                        hovertemplate="Score: %{x}<br>Percentage: %{y:.1f}%<extra></extra>"
+                                    ))
+                                
+                                fig.update_layout(
+                                    xaxis_title="Judgment (1-5)",
+                                    yaxis_title="Percentage of Responses",
+                                    yaxis_ticksuffix="%",
+                                    xaxis=dict(
+                                        tickmode='linear',
+                                        tick0=1,
+                                        dtick=1,
+                                        range=[0.5, 5.5]
+                                    ),
+                                    hovermode='x unified',
+                                    showlegend=True,
+                                    height=400,
+                                    margin=dict(t=0, b=0, l=0, r=0)
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.warning(f"No data available for {judge_name}")
 
@@ -351,12 +359,31 @@ def main():
         tab1, tab2 = st.tabs(["📊 Evaluation Data", "⏱️ Timing Data"])
         
         with tab1:
+            # Get all judges from all experiments
+            all_judges = set()
+            for exp in experiments_data:
+                all_judges.update(exp['dfs'].keys())
+            
+            # Create experiment selection
             selected_exp = st.selectbox(
                 "Select Experiment",
                 [exp['name'] for exp in experiments_data]
             )
             exp_data = next(exp for exp in experiments_data if exp['name'] == selected_exp)
-            st.dataframe(exp_data['combined'], use_container_width=True)
+            
+            # Create tabs for each judge
+            if all_judges:
+                judge_tabs = st.tabs(sorted(all_judges))
+                
+                for tab, judge_name in zip(judge_tabs, sorted(all_judges)):
+                    with tab:
+                        if judge_name in exp_data['dfs']:
+                            st.subheader(f"{judge_name} Evaluation Data")
+                            st.dataframe(exp_data['dfs'][judge_name], use_container_width=True)
+                        else:
+                            st.warning(f"No data available for {judge_name} in this experiment")
+            else:
+                st.warning("No judge data available")
         
         with tab2:
             for exp in experiments_data:
