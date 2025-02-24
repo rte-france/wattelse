@@ -16,11 +16,7 @@ from .constants import (
 # Import data loading functions
 from .data_loader import (
     get_available_metrics,
-    load_evaluation_files
-)
-
-# Import analysis functions
-from .analysis import (
+    load_evaluation_files,
     calculate_good_score_percentage
 )
 

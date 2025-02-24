@@ -12,6 +12,14 @@ def get_available_metrics(df: pd.DataFrame) -> list:
             metrics.append(metric)
     return metrics
 
+def calculate_good_score_percentage(scores):
+    """Calculate percentage of good scores (4-5) in the series."""
+    if scores is None or len(scores) == 0:
+        return 0
+    good_scores = scores[scores.isin([4, 5])].count()
+    total_scores = scores.count()
+    return (good_scores / total_scores * 100) if total_scores > 0 else 0
+
 def load_evaluation_files(eval_dir: str):
     """Load and combine all evaluation Excel files from the directory."""
     if not eval_dir:

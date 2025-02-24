@@ -135,7 +135,7 @@ def main():
         tab_summary, *judge_tabs = st.tabs(["Summary"] + list(sorted(all_judges)))
         
         with tab_summary:
-            st.subheader("Metrics Summary")
+            st.subheader("Evaluation Summary")
             st.caption("Average good score percentages (scores of 4-5) across all LLM judges")
             
             # Generate summary metrics
@@ -333,10 +333,10 @@ def main():
 
     elif page == "Timing Analysis":
         st.header("Timing Analysis")
-        tab1, tab2 = st.tabs(["📊 Query Time", "🔄 Retriever Time"])
+        tab1, tab2 = st.tabs(["📊 Total Time", "🔄 Retriever Time"])
         
         with tab1:
-            fig = create_timing_plot(experiments_data, RAG_QUERY_TIME_COLUMN, "Query Time Distribution")
+            fig = create_timing_plot(experiments_data, RAG_QUERY_TIME_COLUMN, "Total Time Distribution")
             st.plotly_chart(fig, use_container_width=True)
         
         with tab2:
