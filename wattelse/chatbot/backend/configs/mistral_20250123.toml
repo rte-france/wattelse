@@ -1,12 +1,17 @@
-# LLM RAGBackend configuration file
-
 [retriever]
+# Embedding model
+embedding_api_url = "http://localhost:6464"
+embedding_model_name = "OrdalieTech/Solon-embeddings-large-0.1"
+
 # Maximum number of extracts to return
-top_n_extracts = 15
+top_n_extracts = 10
+
 # Retrieval method, choose among "mmr", "similarity", "similarity_score_threshold", "bm25", "ensemble"
 retrieval_method = "similarity_score_threshold"
+
 # similarity threshold (applies only for the method "similarity_score_threshold")
-similarity_threshold = 0.4
+similarity_threshold = 0.3
+
 # Generate alternative questions and retrieve documents based on those questions
 # NB. Experimental feature... (generated questions may be out of scope)
 multi_query_mode = false
@@ -16,8 +21,16 @@ multi_query_mode = false
 openai_api_key = "$MISTRAL_WATTELSE_OPENAI_API_KEY"
 openai_endpoint = "$MISTRAL_WATTELSE_OPENAI_ENDPOINT"
 openai_default_model = "$MISTRAL_WATTELSE_OPENAI_DEFAULT_MODEL_NAME"
-azure_api_version = "2024-10-21"
+azure_api_version = "2024-02-01"
+
 # Use recent memory in interactions
 remember_recent_messages = true
+
 # Generation temperature
 temperature = 0.1
+
+# Prompts
+system_prompt = "FR_SYSTEM_RAG"
+user_prompt = "FR_USER_RAG"
+system_prompt_query_contextualization = "FR_SYSTEM_QUERY_CONTEXTUALIZATION"
+user_prompt_query_contextualization = "FR_USER_QUERY_CONTEXTUALIZATION"

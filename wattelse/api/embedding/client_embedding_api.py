@@ -3,8 +3,6 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-import configparser
-from pathlib import Path
 import requests
 import json
 
@@ -25,12 +23,8 @@ class EmbeddingAPI(Embeddings):
     Custom Embedding API client, can integrate seamlessly with langchain
     """
 
-    def __init__(self):
-        config = configparser.ConfigParser()
-        config.read(Path(__file__).parent / "embedding_client.cfg")
-        self.port = config.get("EMBEDDING_CLIENT_CONFIG", "port")
-        self.host = config.get("EMBEDDING_CLIENT_CONFIG", "host")
-        self.url = f"http://{self.host}:{self.port}"
+    def __init__(self, url: str):
+        self.url = url
         self.model_name = self.get_api_model_name()
         self.num_workers = self.get_num_workers()
 

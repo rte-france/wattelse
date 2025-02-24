@@ -11,16 +11,12 @@ import sys
 
 sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
-
-from typing import Optional, List, Dict
-
 import chromadb
 from chromadb import Embeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from loguru import logger
 
-from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
 from wattelse.common import BASE_DATA_PATH
 
 DATABASE_PERSISTENCE_PATH = BASE_DATA_PATH / "rag_database"
@@ -48,7 +44,7 @@ class DocumentCollection:
     def __init__(
         self,
         collection_name: str,
-        embedding_function: Optional[Embeddings] = EmbeddingAPI(),
+        embedding_function: Embeddings,
     ):
         self.collection_name = collection_name
         self.embedding_function = embedding_function
@@ -67,20 +63,20 @@ class DocumentCollection:
         )
         return langchain_chroma
 
-    def add_texts(self, texts: List[str], metadata: Optional[List[Dict]] = None):
+    def add_texts(self, texts: list[str], metadata: list[dict] | None = None):
         """
         Add a list of texts to the collection in the database
         """
         ids = self.collection.add_texts(texts, metadata)
         logger.debug(f"Added {len(ids)} documents to the collection")
 
-    def add_documents(self, documents: List[Document]):
+    def add_documents(self, documents: list[Document]):
         """
         Add a list of documents to the collection in the database
         """
         self.collection.add_documents(documents)
 
-    def get_ids(self, file_name: str) -> List[str]:
+    def get_ids(self, file_name: str) -> list[str]:
         """Return all the chunks of the collection matching the file name passed as parameter"""
         data = self.collection.get(
             where={"file_name": file_name}, include=["metadatas"]
@@ -90,8 +86,3 @@ class DocumentCollection:
     def is_present(self, file_name: str):
         """Return all file names in the database"""
         return len(self.get_ids(file_name)) > 0
-
-
-def load_document_collection(group: str) -> DocumentCollection:
-    """Retrieves the document collection for the given group name"""
-    return DocumentCollection(group)
