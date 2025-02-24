@@ -26,7 +26,7 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_CLEAR_COLLECTION,
     ENDPOINT_GENERATION_MODEL_NAME,
 )
-from wattelse.chatbot.backend.rag_backend import RAGBackEnd
+from wattelse.chatbot.backend.rag_backend import RAGBackend
 
 SESSION_TIMEOUT = 30  # in minutes
 
@@ -34,7 +34,7 @@ SESSION_TIMEOUT = 30  # in minutes
 app = FastAPI()
 
 # management of sessions
-RAG_SESSIONS: Dict[str, RAGBackEnd] = {}  # used to link a backend to a group
+RAG_SESSIONS: Dict[str, RAGBackend] = {}  # used to link a backend to a group
 
 
 class RAGOrchestratorAPIError(Exception):
@@ -67,7 +67,7 @@ def create_session(group_id: str, config: RAGBackendConfig) -> dict:
     """When this is called, instantiates a RAG backend for a group."""
     if group_id not in RAG_SESSIONS.keys():
         try:
-            RAG_SESSIONS[group_id] = RAGBackEnd(
+            RAG_SESSIONS[group_id] = RAGBackend(
                 group_id,
                 config=config.config,
             )

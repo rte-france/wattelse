@@ -60,7 +60,7 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 default_config = next(iter(CONFIG_NAME_TO_CONFIG_PATH))
 
 
-class RAGBackEnd:
+class RAGBackend:
     def __init__(self, group_id: str, config: str | dict | Path = default_config):
         """
         Creates a RAGBackend for a given `group_id`.

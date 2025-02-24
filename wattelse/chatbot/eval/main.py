@@ -13,7 +13,7 @@ import pandas as pd
 from pathlib import Path
 from bert_score import score
 
-from wattelse.chatbot.backend.rag_backend import RAGBackEnd
+from wattelse.chatbot.backend.rag_backend import RAGBackend
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.chatbot.eval.prompt import EVAL_LLM_PROMPT
 
@@ -40,8 +40,8 @@ def main(
     # Initialize RAG backend and LLM client
     eval_group_id = "rag_eval"
 
-    RAGBackEnd(eval_group_id).clear_collection()  # ensure RAG eval backend is empty
-    RAG_EVAL_BACKEND = RAGBackEnd(eval_group_id)
+    RAGBackend(eval_group_id).clear_collection()  # ensure RAG eval backend is empty
+    RAG_EVAL_BACKEND = RAGBackend(eval_group_id)
     logger.info(f"RAG Backend LLM: {RAG_EVAL_BACKEND.llm.model_name}")
 
     EVAL_LLM_CLIENT = OpenAI_Client()
