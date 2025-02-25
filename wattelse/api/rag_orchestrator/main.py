@@ -3,7 +3,7 @@ from wattelse.api.rag_orchestrator.routers import info, rag_query, sessions, doc
 
 app = FastAPI()
 
-app.include_router(info.router, tags=["Utils"])
+app.include_router(info.router, tags=["Info"])
 app.include_router(sessions.router, tags=["Sessions"])
 app.include_router(documents.router, tags=["Documents"])
 app.include_router(rag_query.router, tags=["Queries"])
