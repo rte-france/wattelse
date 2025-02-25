@@ -6,7 +6,8 @@ from wattelse.api.rag_orchestrator import ENDPOINT_QUERY_RAG
 from wattelse.api.rag_orchestrator.models import RAGQuery
 from starlette.responses import StreamingResponse
 
-from wattelse.api.rag_orchestrator.routers.sessions import RAG_SESSIONS
+
+from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session, data_streamer
 
 

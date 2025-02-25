@@ -4,7 +4,8 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_CHECK_SERVICE,
     ENDPOINT_GENERATION_MODEL_NAME,
 )
-from wattelse.api.rag_orchestrator.routers.sessions import RAG_SESSIONS
+
+from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session
 
 

@@ -1,7 +1,8 @@
 from functools import wraps
 import inspect
 from fastapi import HTTPException
-from wattelse.api.rag_orchestrator.routers.sessions import RAG_SESSIONS
+
+from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 
 
 def require_session(func):

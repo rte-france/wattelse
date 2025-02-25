@@ -7,12 +7,10 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_CURRENT_SESSIONS,
 )
 from wattelse.api.rag_orchestrator.models import RAGConfig
+from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session
 from wattelse.chatbot.backend.rag_backend import RAGBackend
 
-
-# Global session storage
-RAG_SESSIONS: dict[str, RAGBackend] = {}
 
 router = APIRouter()
 

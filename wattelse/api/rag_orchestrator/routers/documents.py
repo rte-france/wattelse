@@ -9,7 +9,8 @@ from wattelse.api.rag_orchestrator import (
 )
 from starlette.responses import FileResponse
 
-from wattelse.api.rag_orchestrator.routers.sessions import RAG_SESSIONS
+
+from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session
 
 
