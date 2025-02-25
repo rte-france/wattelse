@@ -22,7 +22,7 @@ from django.http import Http404, JsonResponse
 from wattelse.common.config_utils import parse_literal
 from .models import Chat, GPTChat, GroupProfile, UserProfile
 
-from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient, RAGAPIError
+from wattelse.api.rag_orchestrator.client import RAGOrchestratorClient, RAGAPIError
 
 # RAG API
 RAG_API = RAGOrchestratorClient()

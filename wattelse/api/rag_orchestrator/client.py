@@ -3,9 +3,8 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-import configparser
 import json
-from typing import List, Dict
+import tomllib
 
 import requests
 from pathlib import Path
@@ -20,12 +19,12 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_REMOVE_DOCS,
     ENDPOINT_CURRENT_SESSIONS,
     ENDPOINT_CLEAR_COLLECTION,
-    ENDPOINT_SELECT_BY_KEYWORDS,
     ENDPOINT_LIST_AVAILABLE_DOCS,
     ENDPOINT_CLEAN_SESSIONS,
     ENDPOINT_DOWNLOAD,
     ENDPOINT_GENERATION_MODEL_NAME,
 )
+from wattelse.api.rag_orchestrator.models import RAGConfig
 
 
 class RAGAPIError(Exception):
@@ -35,11 +34,11 @@ class RAGAPIError(Exception):
 class RAGOrchestratorClient:
     """Class in charge of routing requests to right backend depending on user group"""
 
-    def __init__(self, url: str = None):
-        config = configparser.ConfigParser()
-        config.read(Path(__file__).parent / "rag_orchestrator.cfg")
-        self.port = config.get("RAG_ORCHESTRATOR_API_CONFIG", "port")
-        self.host = config.get("RAG_ORCHESTRATOR_API_CONFIG", "host")
+    def __init__(self, url: str | None = None):
+        with open(Path(__file__).parent / "config.toml", "rb") as f:
+            config = tomllib.load(f)
+        self.port = config.get("port")
+        self.host = config.get("host")
         self.url = f"http://{self.host}:{self.port}" if url is None else url
         if self.check_service():
             logger.debug("RAG Orchestrator is running")
@@ -67,7 +66,7 @@ class RAGOrchestratorClient:
                 f"[Group: {group_id}] Error: {response.status_code, response.text}"
             )
 
-    def create_session(self, group_id: str, config: str | dict) -> str:
+    def create_session(self, group_id: str, config: RAGConfig) -> str:
         """Create session associated to a group"""
         response = requests.post(
             self.url + ENDPOINT_CREATE_SESSION + f"/{group_id}",
@@ -80,7 +79,7 @@ class RAGOrchestratorClient:
             logger.error(f"Error {response.status_code}: {response.text}")
             raise RAGAPIError(f"Error {response.status_code}: {response.text}")
 
-    def upload_files(self, group_id: str, file_paths: List[Path]):
+    def upload_files(self, group_id: str, file_paths: list[Path]):
         files = [("files", open(p, "rb")) for p in file_paths]
 
         response = requests.post(
@@ -92,7 +91,7 @@ class RAGOrchestratorClient:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
-    def remove_documents(self, group_id: str, doc_filenames: List[str]) -> str:
+    def remove_documents(self, group_id: str, doc_filenames: list[str]) -> str:
         """Removes documents from the collection the user has access to, as well as associated embeddings"""
         response = requests.post(
             url=f"{self.url}{ENDPOINT_REMOVE_DOCS}/{group_id}",
@@ -120,7 +119,7 @@ class RAGOrchestratorClient:
             logger.error(f"Error: {response.status_code, response.text}")
             raise RAGAPIError(f"Error: {response.status_code, response.text}")
 
-    def list_available_docs(self, group_id: str) -> List[str]:
+    def list_available_docs(self, group_id: str) -> list[str]:
         """List available documents for a specific user"""
         response = requests.get(
             url=f"{self.url}{ENDPOINT_LIST_AVAILABLE_DOCS}/{group_id}"
@@ -137,20 +136,19 @@ class RAGOrchestratorClient:
         self,
         group_id: str,
         message: str,
-        history: List[Dict[str, str]] = None,
+        history: list[dict[str, str]] = None,
         group_system_prompt: str = None,
-        selected_files: List[str] = None,
+        selected_files: list[str] = None,
         stream: str = False,
-    ) -> Dict:
+    ) -> dict:
         """Query the RAG and returns an answer"""
         # TODO: handle additional parameters to temporarily change the default config: number of retrieved docs & memory
         logger.debug(f"[Group: {group_id}] Question: {message}")
 
         response = requests.post(
-            url=self.url + ENDPOINT_QUERY_RAG,
+            url=self.url + ENDPOINT_QUERY_RAG + "/" + group_id,
             data=json.dumps(
                 {
-                    "group_id": group_id,
                     "message": message,
                     "history": history,
                     "group_system_prompt": group_system_prompt,
@@ -175,7 +173,7 @@ class RAGOrchestratorClient:
                 f"[Group: {group_id}] Error: {response.status_code, response.text}"
             )
 
-    def get_current_sessions(self) -> List[str]:
+    def get_current_sessions(self) -> list[str]:
         """Returns current sessions ids"""
         response = requests.get(url=self.url + ENDPOINT_CURRENT_SESSIONS)
         if response.status_code == 200:

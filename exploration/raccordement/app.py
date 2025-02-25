@@ -6,7 +6,7 @@ from docxtpl import DocxTemplate
 
 import streamlit as st
 
-from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
+from wattelse.api.rag_orchestrator.client import RAGOrchestratorClient
 
 # Streamlit configs
 st.set_page_config(layout="wide")

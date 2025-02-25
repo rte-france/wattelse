@@ -24,7 +24,7 @@ from pathlib import Path
 
 from xlsx2html import xlsx2html
 
-from wattelse.api.rag_orchestrator.rag_client import RAGAPIError
+from wattelse.api.rag_orchestrator.client import RAGAPIError
 from wattelse.chatbot.backend import DATA_DIR
 from .models import Chat, GroupProfile, SuperUserPermissions, UserProfile
 
