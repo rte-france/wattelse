@@ -52,7 +52,7 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
     regex_patterns = config.get_regex_patterns(model_name)
     
     # TODO : modify existing OpenAI_Client() to control the max_tokens
-    kwargs = {"max_tokens": 1024}
+    kwargs = {"max_tokens": 2048}
     
     evaluations = {}
     
