@@ -3,7 +3,7 @@ import tomllib
 from pydantic_settings import BaseSettings
 
 
-class Config(BaseSettings):
+class RAGOrchestratorAPIConfig(BaseSettings):
     host: str
     port: int
 
@@ -11,4 +11,4 @@ class Config(BaseSettings):
 # Load config file
 config_file = Path(__file__).parent / "default_config.toml"
 with open(config_file, "rb") as f:
-    CONFIG = Config(**tomllib.load(f))
+    CONFIG = RAGOrchestratorAPIConfig(**tomllib.load(f))

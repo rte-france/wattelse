@@ -3,7 +3,7 @@ import tomllib
 from pydantic_settings import BaseSettings
 
 
-class Config(BaseSettings):
+class EmbeddingAPIConfig(BaseSettings):
     host: str
     port: int
     model_name: str
@@ -14,4 +14,4 @@ class Config(BaseSettings):
 # Load config file
 config_file = Path(__file__).parent / "default_config.toml"
 with open(config_file, "rb") as f:
-    CONFIG = Config(**tomllib.load(f))
+    CONFIG = EmbeddingAPIConfig(**tomllib.load(f))
