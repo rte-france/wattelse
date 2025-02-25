@@ -6,10 +6,10 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_DOWNLOAD,
     ENDPOINT_LIST_AVAILABLE_DOCS,
     ENDPOINT_REMOVE_DOCS,
-    RAG_SESSIONS,
 )
 from starlette.responses import FileResponse
 
+from wattelse.api.rag_orchestrator.routers.sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session
 
 

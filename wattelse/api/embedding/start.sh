@@ -18,4 +18,4 @@ PORT=$(grep -Po '(?<!#)port=\K.*' "$CONFIG_FILE")
 CUDA_VISIBLE_DEVICES=$(grep -Po '(?<!#)cuda_visible_devices=\K.*' "$CONFIG_FILE")
 NUMBER_WORKERS=$(grep -Po '(?<!#)number_workers=\K.*' "$CONFIG_FILE")
 
-CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES uvicorn --workers $NUMBER_WORKERS wattelse.api.embedding.fastapi_embedding:app --port=$PORT --host 0.0.0.0
+CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES uvicorn --workers $NUMBER_WORKERS wattelse.api.embedding.main:app --port=$PORT --host 0.0.0.0

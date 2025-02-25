@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from wattelse.api.embedding.main import CONFIG
+from wattelse.api.embedding.config.config import CONFIG
 
 
 router = APIRouter()
@@ -13,4 +13,4 @@ def get_model_name():
 
 @router.get("/num_workers")
 def get_num_workers():
-    return CONFIG.num_workers
+    return CONFIG.number_workers

@@ -8,7 +8,7 @@ Before using the `RAGBackend` class, ensure embedding and LLM API are launched.
 
 ```python
 from pathlib import Path
-from wattelse.chatbot.backend.rag_backend import RAGBackEnd
+from wattelse.chatbot.backend.rag_backend import RAGBackend
 
 # Initialize the RAGBackend
 rag = RAGBackEnd("test_backend", config="local_20240628")
@@ -38,7 +38,7 @@ rag.clear_collection()
 
 # RAGBackend configurations
 
-`RAGBackend` configuration is handled using the `config` input argument. It can either be:
+Inside the `RAGBackend` class, the `self.config` attribute stores the configuration as a pydantic model. See [configs/settings.py](configs/settings.py) for a detailed description of the configuration. This is set using the `config` input argument. It can either be:
 - `str`: an ID referencing a pre-defined config located in [configs](configs/)
 - `dict`: a config dict
 - `pathlib.Path`: a path to a config `.toml` file

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from wattelse.api.rag_orchestrator.routers import info, rag_query, sessions, documents
+from wattelse.api.rag_orchestrator.routers import sessions, info, rag_query, documents
 
 app = FastAPI()
 
