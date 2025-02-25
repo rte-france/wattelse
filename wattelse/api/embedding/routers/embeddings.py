@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
-from wattelse.api.embedding.config.config import CONFIG
+from wattelse.api.embedding.config.settings import CONFIG
 from wattelse.api.embedding.models import InputText
 
 # Load embedding model

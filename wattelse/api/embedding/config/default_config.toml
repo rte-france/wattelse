@@ -1,6 +1,7 @@
+host = "localhost"
+port = 6464
 model_name = "OrdalieTech/Solon-embeddings-large-0.1"
 #model_name=dangvantuan/sentence-camembert-large
 #model_name=antoinelouis/biencoder-camembert-base-mmarcoFR
-port = 6464
 number_workers = 2
-cuda_visible_devices = "3"
+cuda_visible_devices = "2"
