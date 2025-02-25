@@ -24,7 +24,7 @@ from loguru import logger
 from starlette.responses import StreamingResponse
 
 from wattelse.chatbot.backend import DATA_DIR
-from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
+from wattelse.api.embedding.client import EmbeddingAPI
 from wattelse.chatbot.backend.vector_database import (
     DocumentCollection,
     format_docs,

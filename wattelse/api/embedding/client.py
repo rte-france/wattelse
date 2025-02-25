@@ -9,7 +9,6 @@ import json
 from joblib import Parallel, delayed
 from langchain_core.embeddings import Embeddings
 from loguru import logger
-from typing import List
 
 import numpy as np
 
@@ -59,8 +58,8 @@ class EmbeddingAPI(Embeddings):
             raise Exception(f"Error: {response.status_code}")
 
     def embed_query(
-        self, text: str | List[str], show_progress_bar: bool = False
-    ) -> List[float]:
+        self, text: str | list[str], show_progress_bar: bool = False
+    ) -> list[float]:
         if type(text) == str:
             text = [text]
         logger.debug(f"Calling EmbeddingAPI using model: {self.model_name}")
@@ -77,8 +76,8 @@ class EmbeddingAPI(Embeddings):
             logger.error(f"Error: {response.status_code}")
 
     def embed_batch(
-        self, texts: List[str], show_progress_bar: bool = True
-    ) -> List[List[float]]:
+        self, texts: list[str], show_progress_bar: bool = True
+    ) -> list[list[float]]:
         logger.debug(f"Computing embeddings...")
         response = requests.post(
             self.url + "/encode",
@@ -94,10 +93,10 @@ class EmbeddingAPI(Embeddings):
 
     def embed_documents(
         self,
-        texts: List[str],
+        texts: list[str],
         show_progress_bar: bool = True,
         batch_size: int = BATCH_DOCUMENT_SIZE,
-    ) -> List[List[float]]:
+    ) -> list[list[float]]:
         if len(texts) > MAX_DOCS_PER_REQUEST_PER_WORKER * self.num_workers:
             # Too many documents to embed in one request, refuse it
             logger.error(
@@ -131,10 +130,10 @@ class EmbeddingAPI(Embeddings):
         assert len(embeddings) == len(texts)
         return embeddings
 
-    async def aembed_query(self, text: str) -> List[float]:
+    async def aembed_query(self, text: str) -> list[float]:
         # FIXME!
         return self.embed_query(text)
 
-    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
+    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         # FIXME!
         return self.embed_documents(texts)
