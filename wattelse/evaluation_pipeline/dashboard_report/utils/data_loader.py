@@ -4,14 +4,6 @@ import pandas as pd
 from pathlib import Path
 from .constants import *
 
-def get_available_metrics(df: pd.DataFrame) -> list:
-    """Get list of available metrics from DataFrame columns."""
-    metrics = []
-    for metric in ['faithfulness', 'correctness', 'retrievability']:
-        if f'{metric}_score' in df.columns:
-            metrics.append(metric)
-    return metrics
-
 def calculate_good_score_percentage(scores):
     """Calculate percentage of good scores (4-5) in the series."""
     if scores is None or len(scores) == 0:
@@ -28,7 +20,7 @@ def load_evaluation_files(eval_dir: str):
     # Handle both absolute and relative paths
     if not eval_dir.startswith('/'):
         # TODO If relative path, construct path relative to project root
-        eval_path = Path(__file__).parents[2] / 'retriever-testing' / eval_dir
+        eval_path = Path('/DSIA/nlp/experiments') / eval_dir
     else:
         eval_path = Path(eval_dir)
     

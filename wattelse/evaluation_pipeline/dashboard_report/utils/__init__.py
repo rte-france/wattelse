@@ -15,7 +15,6 @@ from .constants import (
 
 # Import data loading functions
 from .data_loader import (
-    get_available_metrics,
     load_evaluation_files,
     calculate_good_score_percentage
 )
@@ -24,7 +23,6 @@ from .data_loader import (
 from .visualization import (
     create_timing_plot,
     create_radar_plot,
-    create_score_distribution_plot
 )
 
 # Import the new metrics summary function

@@ -3,14 +3,13 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+from pathlib import Path
 from utils import (
     load_evaluation_files, 
-    get_available_metrics,
     calculate_good_score_percentage,
     create_timing_plot, 
     create_radar_plot,
-    create_score_distribution_plot,
-    create_metrics_summary,  # Import the new function
+    create_metrics_summary,
     RAG_QUERY_TIME_COLUMN, 
     RAG_RETRIEVER_TIME_COLUMN, 
     METRIC_DESCRIPTIONS
@@ -21,16 +20,122 @@ def setup_page():
     st.set_page_config(page_title="RAG Experiment Comparison", layout="wide")
     st.title("RAG Evaluation Pipeline Dashboard")
 
+def get_available_experiments(base_path='/DSIA/nlp/experiments'):
+    """Get all available experiment directories containing evaluation Excel files."""
+    base_path = Path(base_path)
+    
+    if not base_path.exists():
+        return [], {}, []
+    
+    available_experiments = []
+    experiment_paths = {}
+    
+    # First get all major experiment categories (top-level directories)
+    experiment_categories = []
+    for item in base_path.iterdir():
+        if item.is_dir():
+            # Check if this directory contains evaluation files or has subdirectories with them
+            has_excel = list(item.glob("**/evaluation_*.xlsx"))
+            if has_excel:
+                experiment_categories.append(item.name)
+    
+    # Also check the base experiments directory itself
+    excel_files = list(base_path.glob("evaluation_*.xlsx"))
+    if excel_files:
+        available_experiments.append("(Base Directory)")
+        experiment_paths["(Base Directory)"] = str(base_path)
+    
+    # Check all direct subdirectories of the base path for evaluation files
+    for item in base_path.iterdir():
+        if item.is_dir():
+            # Check if this directory contains any evaluation Excel files directly
+            excel_files = list(item.glob("evaluation_*.xlsx"))
+            if excel_files:
+                name = f"({item.name} Base)"
+                available_experiments.append(name)
+                experiment_paths[name] = str(item)
+            
+            # Check subdirectories
+            for subitem in item.iterdir():
+                if subitem.is_dir():
+                    excel_files = list(subitem.glob("evaluation_*.xlsx"))
+                    if excel_files:
+                        # Name format: subdir (category)
+                        name = f"{subitem.name} ({item.name})"
+                        available_experiments.append(name)
+                        experiment_paths[name] = str(subitem)
+    
+    return sorted(available_experiments), experiment_paths, sorted(experiment_categories)
+
 def handle_experiment_setup():
-    """Handle experiment setup page."""
+    """Handle experiment setup page with directory navigation."""
     st.header("Experiment Configuration")
+    
+    # Initialize experiments in session state if not already present
+    if 'experiments' not in st.session_state:
+        st.session_state.experiments = []
     
     st.info("""
     Configure the experiments you want to compare:
-    1. Enter the directory path containing your evaluation Excel files
+    1. Select experiment directories from the available options
     2. Give each experiment a meaningful name
     3. Add more experiments using the '+' button below
     """)
+    
+    # Get available experiments
+    base_path = '/DSIA/nlp/experiments'
+    available_experiments, experiment_paths, experiment_categories = get_available_experiments(base_path)
+    
+    # Display experiment categories at the top for better navigation
+    if experiment_categories:
+        st.subheader("Available Experiment Categories")
+        st.caption("These are the top-level experiment folders that contain evaluation files:")
+        
+        # Display categories as simple text instead of buttons
+        category_text = ", ".join(experiment_categories)
+        st.text(f"Categories: {category_text}")
+    
+    if not available_experiments:
+        st.warning(f"No experiment directories with evaluation files found in {base_path} or its subdirectories")
+        
+        # Add option to check directly for files in current directory
+        st.subheader("Available Excel Files")
+        st.write("The following evaluation files were found in the current working directory:")
+        
+        # List Excel files directly
+        excel_files = list(Path().glob("evaluation_*.xlsx"))
+        if excel_files:
+            for file in excel_files:
+                st.text(f"- {file.name}")
+            
+            # Add a way to use these files directly
+            if st.button("Use Current Directory Files"):
+                st.session_state.experiments = [{
+                    'dir': '',
+                    'name': 'Current Directory'
+                }]
+                st.rerun()
+        else:
+            st.error("No evaluation files found in the current directory either.")
+        
+        return
+    
+    # Add filter for experiment categories
+    if experiment_categories:
+        selected_category = st.selectbox(
+            "Filter by Category", 
+            ["All Categories"] + experiment_categories,
+            key="category_filter"
+        )
+        
+        # Filter the available experiments based on the selected category
+        if selected_category != "All Categories":
+            filtered_experiments = [exp for exp in available_experiments if f"({selected_category})" in exp]
+            display_experiments = filtered_experiments
+        else:
+            display_experiments = available_experiments
+    else:
+        display_experiments = available_experiments
     
     col1, col2 = st.columns([1, 4])
     with col1:
@@ -39,18 +144,87 @@ def handle_experiment_setup():
                 'dir': '',
                 'name': f'Experiment {len(st.session_state.experiments) + 1}'
             })
+            st.rerun()
     
     for i, exp in enumerate(st.session_state.experiments):
         with st.container():
             col1, col2, col3 = st.columns([2, 2, 0.5])
             with col1:
-                exp['dir'] = st.text_input("📁 Directory", value=exp['dir'], key=f"dir_{i}")
+                # Get the current directory value
+                current_dir = exp['dir']
+                
+                # Find the correct index based on the current directory
+                dir_index = 0  # Default to empty selection
+                for idx, option in enumerate(display_experiments):
+                    option_dir = ""
+                    if option == "(Base Directory)":
+                        option_dir = ""
+                    elif option.startswith("(") and option.endswith(" Base)"):
+                        option_dir = option[1:-6]  # Remove "(" and " Base)"
+                    elif " (" in option and ")" in option:
+                        parts = option.split(" (")
+                        exp_name = parts[0]
+                        category = parts[1][:-1]  # Remove the closing ")"
+                        option_dir = f"{category}/{exp_name}"
+                    else:
+                        option_dir = option
+                    
+                    if option_dir == current_dir:
+                        dir_index = idx + 1  # +1 because we add an empty option at index 0
+                        break
+                
+                selected_exp = st.selectbox(
+                    "📁 Directory", 
+                    [''] + display_experiments,
+                    index=dir_index,
+                    key=f"dir_{i}"
+                )
+                
+                # Update the experiment directory based on the selection
+                new_dir = ""
+                if selected_exp == "(Base Directory)":
+                    new_dir = ""
+                elif selected_exp.startswith("(") and selected_exp.endswith(" Base)"):
+                    # Extract the category name and set as dir
+                    category = selected_exp[1:-6]  # Remove "(" and " Base)"
+                    new_dir = category
+                elif selected_exp:
+                    # For experiment with category format: "name (category)"
+                    if " (" in selected_exp and ")" in selected_exp:
+                        parts = selected_exp.split(" (")
+                        exp_name = parts[0]
+                        category = parts[1][:-1]  # Remove the closing ")"
+                        new_dir = f"{category}/{exp_name}"
+                    else:
+                        new_dir = selected_exp
+                
+                # Only update if the directory has changed
+                if new_dir != current_dir:
+                    exp['dir'] = new_dir
+                
+                # Show the full path for clarity
+                if selected_exp and selected_exp in experiment_paths:
+                    st.caption(f"Full path: {experiment_paths[selected_exp]}")
+                
             with col2:
                 exp['name'] = st.text_input("📝 Name", value=exp['name'], key=f"name_{i}")
             with col3:
                 if st.button("🗑️", key=f"remove_{i}", help="Remove this experiment"):
                     st.session_state.experiments.pop(i)
                     st.rerun()
+            
+            # Preview available files in the selected directory
+            if selected_exp and selected_exp in experiment_paths:
+                preview_path = Path(experiment_paths[selected_exp])
+                
+                excel_files = list(preview_path.glob("evaluation_*.xlsx"))
+                if excel_files:
+                    with st.expander("Preview Available Files", expanded=False):
+                        for file in excel_files:
+                            st.text(f"- {file.name}")
+                else:
+                    st.warning("No evaluation files found in this directory")
+            
             st.divider()
 
 def display_metric_descriptions():
@@ -62,26 +236,9 @@ def display_metric_descriptions():
 def main():
     setup_page()
 
-    # Initialize session state
+    # Initialize session state with an empty list
     if 'experiments' not in st.session_state:
-        st.session_state.experiments = [
-            {
-                'dir': 'AZURE-5',
-                'name': 'Top-5-extracts'
-            },
-            {
-                'dir': 'AZURE-10',
-                'name': 'Top-10-extracts'
-            },
-            {
-                'dir': 'AZURE-15',
-                'name': 'Top-15-extracts'
-            },
-            {
-                'dir': 'AZURE-20',
-                'name': 'Top-20-extracts'
-            },
-        ]
+        st.session_state.experiments = []
 
     # Sidebar navigation
     page = st.sidebar.radio(
@@ -91,6 +248,11 @@ def main():
 
     if page == "Experiment Setup":
         handle_experiment_setup()
+        return
+    
+    # Check if experiments are configured
+    if len(st.session_state.experiments) == 0:
+        st.info("No experiments are configured. Please go to the Experiment Setup page to add experiments.")
         return
 
     # Load experiments data
@@ -189,8 +351,6 @@ def main():
                     with col2:
                         if metric in METRIC_DESCRIPTIONS:
                             st.info(METRIC_DESCRIPTIONS[metric])
-        
-
         
         # Create individual judge tabs
         for judge_tab, judge_name in zip(judge_tabs, sorted(all_judges)):
@@ -350,8 +510,6 @@ def main():
         with tab2:
             fig = create_timing_plot(experiments_data, RAG_RETRIEVER_TIME_COLUMN, "Retriever Time Distribution")
             st.plotly_chart(fig, use_container_width=True)
-
-
 
     elif page == "Raw Data":
         st.header("Raw Data")
