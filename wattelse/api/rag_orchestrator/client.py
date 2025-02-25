@@ -25,6 +25,7 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_GENERATION_MODEL_NAME,
 )
 from wattelse.api.rag_orchestrator.models import RAGConfig
+from wattelse.api.rag_orchestrator.config.settings import CONFIG
 
 
 class RAGAPIError(Exception):
@@ -35,10 +36,8 @@ class RAGOrchestratorClient:
     """Class in charge of routing requests to right backend depending on user group"""
 
     def __init__(self, url: str | None = None):
-        with open(Path(__file__).parent / "config.toml", "rb") as f:
-            config = tomllib.load(f)
-        self.port = config.get("port")
-        self.host = config.get("host")
+        self.port = CONFIG.port
+        self.host = CONFIG.host
         self.url = f"http://{self.host}:{self.port}" if url is None else url
         if self.check_service():
             logger.debug("RAG Orchestrator is running")
