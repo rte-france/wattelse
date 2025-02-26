@@ -29,3 +29,9 @@ from .visualization import (
 from .metrics_summary import (
     create_metrics_summary
 )
+
+# Import PDF export functions
+from .pdf_extract import (
+    create_pdf_report,
+    get_pdf_download_link
+)

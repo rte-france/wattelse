@@ -10,6 +10,8 @@ from utils import (
     create_timing_plot, 
     create_radar_plot,
     create_metrics_summary,
+    create_pdf_report,
+    get_pdf_download_link,
     RAG_QUERY_TIME_COLUMN, 
     RAG_RETRIEVER_TIME_COLUMN, 
     METRIC_DESCRIPTIONS
@@ -264,6 +266,72 @@ def display_metric_descriptions():
         for metric, description in METRIC_DESCRIPTIONS.items():
             st.markdown(f"**{metric.title()}**: {description}")
 
+def handle_pdf_export(experiments_data):
+    """Handle PDF report generation."""
+    st.header("PDF Report Generation")
+    
+    st.info("""
+    Generate a PDF report of your experiment results.
+    The report will include:
+    - Performance overview with summary tables
+    - Judge-specific analysis tables
+    - Timing analysis tables
+    
+    The Raw Data section will not be included in the report.
+    """)
+    
+    # Add a description field
+    report_description = st.text_area(
+        "Report Description",
+        height=300,
+        placeholder="Enter a description for your report. This can include experiment objectives, methodology, key findings, and conclusions.",
+        help="This description will appear at the beginning of the PDF report."
+    )
+    
+    # PDF generation options
+    col1, col2 = st.columns(2)
+    with col1:
+        include_tables = st.checkbox("Include tables", value=True, 
+                                     help="Include all performance and timing tables in the report")
+    
+    with col2:
+        filename = st.text_input("Filename", value="rag_evaluation_report.pdf", 
+                                 help="Name of the PDF file that will be downloaded")
+    
+    if st.button("Generate PDF Report", type="primary"):
+        if not experiments_data:
+            st.error("No experiment data available. Please configure and run experiments first.")
+            return
+        
+        # Create spinner while generating PDF
+        with st.spinner("Generating PDF report..."):
+            pdf_bytes = create_pdf_report(experiments_data, report_description, include_tables)
+            
+            # Provide download link
+            st.success("PDF report generated successfully! Click below to download.")
+            
+            # Add some CSS to style the download button
+            st.markdown("""
+            <style>
+            .download-button {
+                display: inline-block;
+                padding: 0.5em 1em;
+                margin: 1em 0;
+                background-color: #4CAF50;
+                color: white;
+                text-decoration: none;
+                border-radius: 4px;
+                text-align: center;
+                font-weight: bold;
+            }
+            .download-button:hover {
+                background-color: #45a049;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(get_pdf_download_link(pdf_bytes, filename), unsafe_allow_html=True)
+
 def main():
     setup_page()
 
@@ -274,7 +342,7 @@ def main():
     # Sidebar navigation
     page = st.sidebar.radio(
         "Select a Page",
-        ["Experiment Setup", "Performance Overview", "Timing Analysis", "Raw Data"]
+        ["Experiment Setup", "Performance Overview", "Timing Analysis", "PDF Export", "Raw Data"]
     )
 
     if page == "Experiment Setup":
@@ -541,6 +609,9 @@ def main():
         with tab2:
             fig = create_timing_plot(experiments_data, RAG_RETRIEVER_TIME_COLUMN, "Retriever Time Distribution")
             st.plotly_chart(fig, use_container_width=True)
+
+    elif page == "PDF Export":
+        handle_pdf_export(experiments_data)
 
     elif page == "Raw Data":
         st.header("Raw Data")
