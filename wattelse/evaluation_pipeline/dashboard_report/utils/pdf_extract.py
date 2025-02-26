@@ -11,14 +11,18 @@ import base64
 import streamlit as st
 from datetime import datetime
 
-def create_pdf_report(experiments_data, description="", include_tables=True):
+def create_pdf_report(experiments_data, experiment_configs=None, description="", include_tables=True, 
+                  custom_title="RAG Evaluation Report", author=""):
     """
     Generate a PDF report from the RAG Evaluation Dashboard.
     
     Args:
         experiments_data: List of experiment data dictionaries
+        experiment_configs: Configuration information for each experiment
         description: Text description to include in the PDF
         include_tables: Whether to include tables in the PDF
+        custom_title: Custom title for the report
+        author: Report author name
     
     Returns:
         BytesIO object containing the PDF
@@ -56,8 +60,13 @@ def create_pdf_report(experiments_data, description="", include_tables=True):
     content = []
     
     # Add title and date
-    content.append(Paragraph("RAG Evaluation Report", title_style))
+    content.append(Paragraph(custom_title, title_style))
     content.append(Paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}", normal_style))
+    
+    # Add author if provided
+    if author:
+        content.append(Paragraph(f"Author: {author}", normal_style))
+    
     content.append(Spacer(1, 0.25*inch))
     
     # Add description
@@ -66,7 +75,36 @@ def create_pdf_report(experiments_data, description="", include_tables=True):
         content.append(Paragraph(description, description_style))
         content.append(Spacer(1, 0.25*inch))
     
-    # Add Performance Overview section
+    # Add Experiment Configuration section
+    if experiment_configs and len(experiment_configs) > 0:
+        content.append(Paragraph("Experiment Configuration", heading_style))
+        
+        # Create a table for experiment configurations
+        config_table_data = [['Experiment Name', 'Directory']]
+        
+        for config in experiment_configs:
+            config_table_data.append([config.get('name', 'Unnamed'), config.get('dir', 'N/A')])
+        
+        if len(config_table_data) > 1:  # Only create if we have data rows
+            table = Table(config_table_data, repeatRows=1)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+                ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            content.append(table)
+            content.append(Spacer(1, 0.25*inch))
+    
+    # Add Performance Overview section (on a new page)
+    content.append(PageBreak())
     content.append(Paragraph("Performance Overview", heading_style))
     content.append(Spacer(1, 0.1*inch))
     
@@ -119,7 +157,27 @@ def create_pdf_report(experiments_data, description="", include_tables=True):
         # Create and style the table
         if len(table_data) > 1:  # Only create if we have data rows
             table = Table(table_data, repeatRows=1)
-            table.setStyle(TableStyle([
+            # Find the maximum value for each column to highlight
+            max_values = {}
+            for col_idx in range(1, len(table_data[0])):
+                col_values = []
+                for row_idx in range(1, len(table_data)):
+                    value = table_data[row_idx][col_idx]
+                    if value != "N/A":
+                        try:
+                            # Extract numeric value from the formatted string
+                            numeric_value = float(value.rstrip('%'))
+                            col_values.append((row_idx, numeric_value))
+                        except (ValueError, AttributeError):
+                            continue
+                
+                if col_values:
+                    # Find row with max value for this column
+                    max_row_idx, _ = max(col_values, key=lambda x: x[1])
+                    max_values[col_idx] = max_row_idx
+            
+            # Create base style
+            style = [
                 ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
                 ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -131,13 +189,29 @@ def create_pdf_report(experiments_data, description="", include_tables=True):
                 ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
                 ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ]))
+            ]
+            
+            # Add bold formatting for highest values in each column
+            for col_idx, row_idx in max_values.items():
+                style.append(('FONTNAME', (col_idx, row_idx), (col_idx, row_idx), 'Helvetica-Bold'))
+                style.append(('BACKGROUND', (col_idx, row_idx), (col_idx, row_idx), colors.lightblue))
+            
+            table.setStyle(TableStyle(style))
             content.append(table)
             content.append(Spacer(1, 0.25*inch))
     
     # Add judge-specific tables
     if include_tables:
+        # Add page break before judge analysis section
+        content.append(PageBreak())
+        
+        # Process each judge
+        judge_count = 0
         for judge_name in sorted(all_judges):
+            # Add page breaks between judges (not before the first one)
+            if judge_count > 0:
+                content.append(PageBreak())
+            
             content.append(Paragraph(f"Analysis by {judge_name}", subheading_style))
             
             # Build judge-specific data for each metric
@@ -157,7 +231,23 @@ def create_pdf_report(experiments_data, description="", include_tables=True):
                 if len(metric_table_data) > 1:  # Only create if we have data rows
                     content.append(Paragraph(f"{metric.title()} Metric", normal_style))
                     table = Table(metric_table_data, repeatRows=1)
-                    table.setStyle(TableStyle([
+                    # Find the maximum value to highlight
+                    max_row_idx = None
+                    max_value = -1
+                    
+                    for row_idx in range(1, len(metric_table_data)):
+                        value = metric_table_data[row_idx][1]
+                        try:
+                            # Extract numeric value from the formatted string
+                            numeric_value = float(value.rstrip('%'))
+                            if numeric_value > max_value:
+                                max_value = numeric_value
+                                max_row_idx = row_idx
+                        except (ValueError, AttributeError):
+                            continue
+                    
+                    # Create base style
+                    style = [
                         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
                         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
                         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -168,13 +258,21 @@ def create_pdf_report(experiments_data, description="", include_tables=True):
                         ('GRID', (0, 0), (-1, -1), 1, colors.black),
                         ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ]))
+                    ]
+                    
+                    # Add bold formatting for highest value
+                    if max_row_idx is not None:
+                        style.append(('FONTNAME', (1, max_row_idx), (1, max_row_idx), 'Helvetica-Bold'))
+                        style.append(('BACKGROUND', (1, max_row_idx), (1, max_row_idx), colors.lightblue))
+                    
+                    table.setStyle(TableStyle(style))
                     content.append(table)
                     content.append(Spacer(1, 0.15*inch))
             
-            content.append(PageBreak())
+            judge_count += 1  # Increment judge counter
     
-    # Add Timing Analysis section
+    # Add Timing Analysis section on a new page
+    content.append(PageBreak())
     content.append(Paragraph("Timing Analysis", heading_style))
     content.append(Spacer(1, 0.1*inch))
     
@@ -257,8 +355,23 @@ def create_pdf_report(experiments_data, description="", include_tables=True):
         else:
             content.append(Paragraph("No timing data available", normal_style))
     
-    # Build the PDF
-    doc.build(content)
+    # Create a custom page template with page numbers
+    def myFirstPage(canvas, doc):
+        canvas.saveState()
+        # Footer with page number
+        canvas.setFont('Helvetica', 9)
+        canvas.drawString(inch, 0.5 * inch, f"Page {doc.page}")
+        canvas.restoreState()
+        
+    def myLaterPages(canvas, doc):
+        canvas.saveState()
+        # Footer with page number
+        canvas.setFont('Helvetica', 9)
+        canvas.drawString(inch, 0.5 * inch, f"Page {doc.page}")
+        canvas.restoreState()
+    
+    # Build the PDF with page templates
+    doc.build(content, onFirstPage=myFirstPage, onLaterPages=myLaterPages)
     buffer.seek(0)
     return buffer
 

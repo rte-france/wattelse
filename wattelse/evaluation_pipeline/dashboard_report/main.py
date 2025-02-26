@@ -265,7 +265,6 @@ def display_metric_descriptions():
     with st.expander("ℹ️ Metric Descriptions", expanded=False):
         for metric, description in METRIC_DESCRIPTIONS.items():
             st.markdown(f"**{metric.title()}**: {description}")
-
 def handle_pdf_export(experiments_data):
     """Handle PDF report generation."""
     st.header("PDF Report Generation")
@@ -273,12 +272,27 @@ def handle_pdf_export(experiments_data):
     st.info("""
     Generate a PDF report of your experiment results.
     The report will include:
+    - Experiment configuration information
     - Performance overview with summary tables
     - Judge-specific analysis tables
     - Timing analysis tables
     
     The Raw Data section will not be included in the report.
     """)
+    
+    # Add a title field
+    report_title = st.text_input(
+        "Report Title", 
+        value="RAG Evaluation Report",
+        help="Custom title for your PDF report"
+    )
+    
+    # Add author field
+    report_author = st.text_input(
+        "Author",
+        placeholder="Enter your name or organization",
+        help="Author name to be displayed in the report"
+    )
     
     # Add a description field
     report_description = st.text_area(
@@ -305,7 +319,18 @@ def handle_pdf_export(experiments_data):
         
         # Create spinner while generating PDF
         with st.spinner("Generating PDF report..."):
-            pdf_bytes = create_pdf_report(experiments_data, report_description, include_tables)
+            # Get experiment configuration from session state
+            experiment_configs = st.session_state.experiments if 'experiments' in st.session_state else None
+            
+            # Generate the PDF
+            pdf_bytes = create_pdf_report(
+                experiments_data, 
+                experiment_configs, 
+                report_description, 
+                include_tables,
+                report_title,
+                report_author,
+            )
             
             # Provide download link
             st.success("PDF report generated successfully! Click below to download.")
