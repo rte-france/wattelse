@@ -75,25 +75,16 @@ def handle_experiment_setup():
     if 'experiments' not in st.session_state:
         st.session_state.experiments = []
     
-    st.info("""
-    Configure the experiments you want to compare:
-    1. Select experiment directories from the available options
-    2. Give each experiment a meaningful name
-    3. Add more experiments using the '+' button below
-    """)
-    
     # Get available experiments
     base_path = '/DSIA/nlp/experiments'
     available_experiments, experiment_paths, experiment_categories = get_available_experiments(base_path)
     
-    # Display experiment categories at the top for better navigation
-    if experiment_categories:
-        st.subheader("Available Experiment Categories")
-        st.caption("These are the top-level experiment folders that contain evaluation files:")
-        
-        # Display categories as simple text instead of buttons
-        category_text = ", ".join(experiment_categories)
-        st.text(f"Categories: {category_text}")
+    st.info("""
+    Configure the experiments you want to compare:
+    1. Select experiment directories from the available options
+    2. Give each experiment a meaningful name
+    3. Use the move up/down buttons to reorder experiments
+    """)
     
     if not available_experiments:
         st.warning(f"No experiment directories with evaluation files found in {base_path} or its subdirectories")
@@ -137,19 +128,42 @@ def handle_experiment_setup():
     else:
         display_experiments = available_experiments
     
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        if st.button("➕ Add Experiment"):
-            st.session_state.experiments.append({
-                'dir': '',
-                'name': f'Experiment {len(st.session_state.experiments) + 1}'
-            })
-            st.rerun()
-    
+    # Display each experiment with reordering controls
     for i, exp in enumerate(st.session_state.experiments):
         with st.container():
-            col1, col2, col3 = st.columns([2, 2, 0.5])
-            with col1:
+            st.markdown(f"### Experiment {i+1}")
+            
+            # First row: Move up/down buttons
+            move_cols = st.columns([0.5, 0.5, 4])
+            
+            with move_cols[0]:
+                # Move up button (disabled for first item)
+                if i > 0:
+                    if st.button("⬆️", key=f"up_{i}", help="Move experiment up"):
+                        # Swap with previous experiment
+                        st.session_state.experiments[i], st.session_state.experiments[i-1] = \
+                            st.session_state.experiments[i-1], st.session_state.experiments[i]
+                        st.rerun()
+                else:
+                    # Disabled button (placeholder to maintain layout)
+                    st.empty()
+            
+            with move_cols[1]:
+                # Move down button (disabled for last item)
+                if i < len(st.session_state.experiments) - 1:
+                    if st.button("⬇️", key=f"down_{i}", help="Move experiment down"):
+                        # Swap with next experiment
+                        st.session_state.experiments[i], st.session_state.experiments[i+1] = \
+                            st.session_state.experiments[i+1], st.session_state.experiments[i]
+                        st.rerun()
+                else:
+                    # Disabled button (placeholder to maintain layout)
+                    st.empty()
+            
+            # Main experiment configuration row
+            config_cols = st.columns([2, 2, 0.5])
+            
+            with config_cols[0]:
                 # Get the current directory value
                 current_dir = exp['dir']
                 
@@ -206,9 +220,10 @@ def handle_experiment_setup():
                 if selected_exp and selected_exp in experiment_paths:
                     st.caption(f"Full path: {experiment_paths[selected_exp]}")
                 
-            with col2:
+            with config_cols[1]:
                 exp['name'] = st.text_input("📝 Name", value=exp['name'], key=f"name_{i}")
-            with col3:
+            
+            with config_cols[2]:
                 if st.button("🗑️", key=f"remove_{i}", help="Remove this experiment"):
                     st.session_state.experiments.pop(i)
                     st.rerun()
@@ -225,7 +240,23 @@ def handle_experiment_setup():
                 else:
                     st.warning("No evaluation files found in this directory")
             
+            # Insert button
+            if st.button("➕ Insert Experiment", key=f"insert_{i}", help="Insert experiment below"):
+                st.session_state.experiments.insert(i+1, {
+                    'dir': '',
+                    'name': f'Experiment {len(st.session_state.experiments) + 1}'
+                })
+                st.rerun()
+            
             st.divider()
+    
+    # Add a final "Add Experiment" button at the bottom for convenience
+    if st.button("➕ Add Experiment", key="add_exp_bottom", use_container_width=True):
+        st.session_state.experiments.append({
+            'dir': '',
+            'name': f'Experiment {len(st.session_state.experiments) + 1}'
+        })
+        st.rerun()
 
 def display_metric_descriptions():
     """Display metric descriptions in an expandable section."""
