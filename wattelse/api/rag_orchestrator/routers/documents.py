@@ -1,5 +1,6 @@
 import json
-from fastapi import APIRouter, File, HTTPException, UploadFile, logger
+from loguru import logger
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from wattelse.api.rag_orchestrator import (
     ENDPOINT_CLEAR_COLLECTION,
