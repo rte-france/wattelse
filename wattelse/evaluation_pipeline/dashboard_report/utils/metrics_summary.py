@@ -16,6 +16,36 @@ def create_metrics_summary(experiments_data):
     # Create dataframes for metric averages
     metric_summary = {metric: [] for metric in all_metrics}
     
+    # Track judge counts for each experiment
+    judge_counts = {}
+    for exp in experiments_data:
+        exp_name = exp['name']
+        judge_counts[exp_name] = len(exp['dfs'])
+    
+    # Track the best experiment for each metric according to each judge
+    best_counts = {metric: {exp['name']: 0 for exp in experiments_data} for metric in all_metrics}
+    
+    # Find the best experiment for each metric according to each judge
+    for metric in sorted(all_metrics):
+        # For each judge, determine the best experiment for this metric
+        for judge in all_judges:
+            judge_scores = {}
+            
+            # Get scores for this judge and metric across all experiments
+            for exp in experiments_data:
+                if judge in exp['dfs']:
+                    df = exp['dfs'][judge]
+                    score_col = f'{metric}_score'
+                    if score_col in df.columns:
+                        good_score_pct = (df[score_col][df[score_col].isin([4, 5])].count() / 
+                                        df[score_col].count() * 100)
+                        judge_scores[exp['name']] = good_score_pct
+            
+            # Find the best experiment for this judge and metric
+            if judge_scores:
+                best_exp = max(judge_scores.items(), key=lambda x: x[1])[0]
+                best_counts[metric][best_exp] += 1
+    
     # Calculate average Performance percentage for each experiment and metric
     for exp in experiments_data:
         exp_name = exp['name']
@@ -35,7 +65,8 @@ def create_metrics_summary(experiments_data):
                 metric_summary[metric].append({
                     'Experiment': exp_name,
                     'Average Performance %': avg_score,
-                    'Judges Count': len(judges_values)
+                    'Judges Count': len(judges_values),
+                    'Best Count': best_counts[metric][exp_name]
                 })
     
     # Create summary dataframes and figures
@@ -106,14 +137,16 @@ def create_metrics_summary(experiments_data):
             overall_data.append({
                 'Experiment': exp_name,
                 'Overall Average': overall_avg,
-                **metrics_values
+                'Number of Judges': judge_counts[exp_name],
+                **metrics_values,
+                **{f"{metric}_best_count": best_counts[metric][exp_name] for metric in all_metrics}
             })
     
     overall_df = pd.DataFrame(overall_data)
     
     # Round values for better display
     for col in overall_df.columns:
-        if col != 'Experiment':
+        if col != 'Experiment' and col != 'Number of Judges' and not col.endswith('_best_count'):
             overall_df[col] = overall_df[col].round(1)
     
     # Create overall summary figure

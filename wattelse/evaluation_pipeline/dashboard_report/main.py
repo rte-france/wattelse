@@ -486,31 +486,47 @@ def main():
             # Display overall summary
             st.plotly_chart(overall_fig, use_container_width=True)
             
-            # Display overall summary table with highest scores in bold
             st.subheader("Summary Table")
             formatted_df = overall_df.copy()
-            
-            # Format each column with highest value in bold
+
+            # Format each column with highest value in bold and add stars for judge agreement
             for col in formatted_df.columns:
-                if col != 'Experiment':
+                if col != 'Experiment' and col != 'Number of Judges' and not col.endswith('_best_count'):
                     # Find max value in this column
                     max_val = formatted_df[col].max()
-                    # Create display column with bold formatting for maximum values
-                    formatted_df[f"{col}_display"] = formatted_df[col].apply(
-                        lambda x: f"**{x:.1f}%**" if x == max_val else f"{x:.1f}%"
-                    )
-            
+                    
+                    # Create display column with bold formatting for maximum values and stars
+                    if col == 'Overall Average':
+                        formatted_df[f"{col}_display"] = formatted_df[col].apply(
+                            lambda x: f"**{x:.1f}%**" if x == max_val else f"{x:.1f}%"
+                        )
+                    else:
+                        # Add stars based on how many judges agree this experiment is best
+                        best_count_col = f"{col}_best_count"
+                        formatted_df[f"{col}_display"] = formatted_df.apply(
+                            lambda row: f"**{row[col]:.1f}%** {'*' * row[best_count_col]}" if row[col] == max_val 
+                            else f"{row[col]:.1f}% {'*' * row[best_count_col]}" 
+                            if row[best_count_col] > 0 else f"{row[col]:.1f}%",
+                            axis=1
+                        )
+
             # Create a new DataFrame with just the display columns
             display_df = pd.DataFrame()
             display_df['Experiment'] = formatted_df['Experiment']
-            
+
             # Add formatted display columns in the right order
             for col in overall_df.columns:
-                if col != 'Experiment':
+                if col != 'Experiment' and col != 'Number of Judges' and not col.endswith('_best_count'):
                     display_df[col] = formatted_df[f"{col}_display"]
-            
+
+            # Add Number of Judges column
+            display_df['Number of Judges'] = formatted_df['Number of Judges']
+
             # Use st.markdown to render the bold formatting
             st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
+
+            # Add a note explaining the stars
+            st.caption("Note: Stars (*) indicate how many judges rated this experiment as the best for that metric.")
             
             # Display individual metric summaries in expandable sections
             st.subheader("Individual Metric Summaries")

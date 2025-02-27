@@ -98,6 +98,17 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
         spaceBefore=12
     )
     
+    # Add a style for notes and captions
+    caption_style = ParagraphStyle(
+        'Caption',
+        parent=styles['Normal'],
+        fontSize=9,
+        fontName='Helvetica-Oblique',
+        textColor=colors.gray,
+        leading=12,
+        spaceAfter=12
+    )
+    
     # Build the content
     content = []
     
@@ -182,13 +193,42 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
             metrics = [col.replace('_score', '') for col in df.columns if col.endswith('_score')]
             all_metrics.update(metrics)
     
+    # Track judge counts for each experiment
+    judge_counts = {}
+    for exp in experiments_data:
+        judge_counts[exp['name']] = len(exp['dfs'])
+    
+    # Track the best experiment for each metric according to each judge
+    best_counts = {metric: {exp['name']: 0 for exp in experiments_data} for metric in all_metrics}
+    
+    # Find the best experiment for each metric according to each judge
+    for metric in sorted(all_metrics):
+        # For each judge, determine the best experiment for this metric
+        for judge in all_judges:
+            judge_scores = {}
+            
+            # Get scores for this judge and metric across all experiments
+            for exp in experiments_data:
+                if judge in exp['dfs']:
+                    df = exp['dfs'][judge]
+                    score_col = f'{metric}_score'
+                    if score_col in df.columns:
+                        good_score_pct = (df[score_col][df[score_col].isin([4, 5])].count() / 
+                                        df[score_col].count() * 100)
+                        judge_scores[exp['name']] = good_score_pct
+            
+            # Find the best experiment for this judge and metric
+            if judge_scores:
+                best_exp = max(judge_scores.items(), key=lambda x: x[1])[0]
+                best_counts[metric][best_exp] += 1
+    
     # Create a summary table
     if include_tables:
         # Create overall summary table
         content.append(Paragraph("Summary of Performances (%)", subheading_style))
         
         # Build overall summary data
-        table_data = [['Experiment'] + ['Overall'] + sorted(all_metrics)]
+        table_data = [['Experiment', 'Overall'] + sorted(all_metrics) + ['Number of Judges']]
         
         for exp in experiments_data:
             exp_name = exp['name']
@@ -213,9 +253,14 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
                 
                 for metric in sorted(all_metrics):
                     if metric in metrics_values:
-                        row_data.append(f"{metrics_values[metric]:.1f}%")
+                        # Add stars based on how many judges rated this experiment as best for this metric
+                        stars = '*' * best_counts[metric][exp_name]
+                        row_data.append(f"{metrics_values[metric]:.1f}%{' ' + stars if stars else ''}")
                     else:
                         row_data.append("N/A")
+                
+                # Add judge count
+                row_data.append(str(judge_counts[exp_name]))
                 
                 table_data.append(row_data)
         
@@ -224,14 +269,14 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
             table = Table(table_data, repeatRows=1)
             # Find the maximum value for each column to highlight
             max_values = {}
-            for col_idx in range(1, len(table_data[0])):
+            for col_idx in range(1, len(table_data[0]) - 1):  # Skip last column (Number of Judges)
                 col_values = []
                 for row_idx in range(1, len(table_data)):
                     value = table_data[row_idx][col_idx]
                     if value != "N/A":
                         try:
-                            # Extract numeric value from the formatted string
-                            numeric_value = float(value.rstrip('%'))
+                            # Extract numeric value from the formatted string (ignoring stars)
+                            numeric_value = float(value.split('%')[0])
                             col_values.append((row_idx, numeric_value))
                         except (ValueError, AttributeError):
                             continue
@@ -263,7 +308,11 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
             
             table.setStyle(TableStyle(style))
             content.append(table)
-            content.append(Spacer(1, 0.25*inch))
+            
+            # Add a note explaining what the stars mean
+            content.append(Spacer(1, 0.1*inch))
+            content.append(Paragraph("Note: Stars (*) indicate how many judges rated this experiment as the best for that metric.", caption_style))
+            content.append(Spacer(1, 0.15*inch))
     
     # Add judge-specific tables
     if include_tables:
