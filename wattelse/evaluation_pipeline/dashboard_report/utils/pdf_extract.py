@@ -201,9 +201,9 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
     # Track the best experiment for each metric according to each judge
     best_counts = {metric: {exp['name']: 0 for exp in experiments_data} for metric in all_metrics}
     
-    # Find the best experiment for each metric according to each judge
+    # Find the best experiment for each metric according to each judge (properly handling ties)
     for metric in sorted(all_metrics):
-        # For each judge, determine the best experiment for this metric
+        # For each judge, determine the best experiments for this metric
         for judge in all_judges:
             judge_scores = {}
             
@@ -217,10 +217,13 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
                                         df[score_col].count() * 100)
                         judge_scores[exp['name']] = good_score_pct
             
-            # Find the best experiment for this judge and metric
+            # Find all experiments with the maximum score for this judge and metric
             if judge_scores:
-                best_exp = max(judge_scores.items(), key=lambda x: x[1])[0]
-                best_counts[metric][best_exp] += 1
+                max_score = max(judge_scores.values())
+                # Find all experiments with this max score (handling ties)
+                for exp_name, score in judge_scores.items():
+                    if score == max_score:
+                        best_counts[metric][exp_name] += 1
     
     # Create a summary table
     if include_tables:
@@ -267,8 +270,9 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
         # Create and style the table
         if len(table_data) > 1:  # Only create if we have data rows
             table = Table(table_data, repeatRows=1)
-            # Find the maximum value for each column to highlight
-            max_values = {}
+            
+            # Find all cells with maximum values in each column to highlight
+            max_value_cells = {}  # Dictionary to store column_idx -> list of row indices with max value
             for col_idx in range(1, len(table_data[0]) - 1):  # Skip last column (Number of Judges)
                 col_values = []
                 for row_idx in range(1, len(table_data)):
@@ -282,9 +286,10 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
                             continue
                 
                 if col_values:
-                    # Find row with max value for this column
-                    max_row_idx, _ = max(col_values, key=lambda x: x[1])
-                    max_values[col_idx] = max_row_idx
+                    # Find max value for this column
+                    max_value = max(col_values, key=lambda x: x[1])[1]
+                    # Find all rows with this max value (handling ties)
+                    max_value_cells[col_idx] = [row_idx for row_idx, value in col_values if value == max_value]
             
             # Create base style
             style = [
@@ -301,17 +306,18 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ]
             
-            # Add bold formatting for highest values in each column
-            for col_idx, row_idx in max_values.items():
-                style.append(('FONTNAME', (col_idx, row_idx), (col_idx, row_idx), 'Helvetica-Bold'))
-                style.append(('BACKGROUND', (col_idx, row_idx), (col_idx, row_idx), colors.lightblue))
+            # Add bold formatting and background color for ALL cells with highest values in each column
+            for col_idx, row_indices in max_value_cells.items():
+                for row_idx in row_indices:
+                    style.append(('FONTNAME', (col_idx, row_idx), (col_idx, row_idx), 'Helvetica-Bold'))
+                    style.append(('BACKGROUND', (col_idx, row_idx), (col_idx, row_idx), colors.lightblue))
             
             table.setStyle(TableStyle(style))
             content.append(table)
             
             # Add a note explaining what the stars mean
             content.append(Spacer(1, 0.1*inch))
-            content.append(Paragraph("Note: Stars (*) indicate how many judges rated this experiment as the best for that metric.", caption_style))
+            content.append(Paragraph("Note: Stars (*) indicate how many judges rated this experiment as the best for that metric. Multiple experiments may be rated as best in case of ties.", caption_style))
             content.append(Spacer(1, 0.15*inch))
     
     # Add judge-specific tables
@@ -345,8 +351,8 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
                 if len(metric_table_data) > 1:  # Only create if we have data rows
                     content.append(Paragraph(f"{metric.title()} Metric", normal_style))
                     table = Table(metric_table_data, repeatRows=1)
-                    # Find the maximum value to highlight
-                    max_row_idx = None
+                    # Find all cells with the maximum value to highlight (for ties)
+                    max_row_indices = []
                     max_value = -1
                     
                     for row_idx in range(1, len(metric_table_data)):
@@ -356,7 +362,9 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
                             numeric_value = float(value.rstrip('%'))
                             if numeric_value > max_value:
                                 max_value = numeric_value
-                                max_row_idx = row_idx
+                                max_row_indices = [row_idx]
+                            elif numeric_value == max_value:
+                                max_row_indices.append(row_idx)
                         except (ValueError, AttributeError):
                             continue
                     
@@ -374,10 +382,10 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                     ]
                     
-                    # Add bold formatting for highest value
-                    if max_row_idx is not None:
-                        style.append(('FONTNAME', (1, max_row_idx), (1, max_row_idx), 'Helvetica-Bold'))
-                        style.append(('BACKGROUND', (1, max_row_idx), (1, max_row_idx), colors.lightblue))
+                    # Add bold formatting for all highest values (handling ties)
+                    for row_idx in max_row_indices:
+                        style.append(('FONTNAME', (1, row_idx), (1, row_idx), 'Helvetica-Bold'))
+                        style.append(('BACKGROUND', (1, row_idx), (1, row_idx), colors.lightblue))
                     
                     table.setStyle(TableStyle(style))
                     content.append(table)

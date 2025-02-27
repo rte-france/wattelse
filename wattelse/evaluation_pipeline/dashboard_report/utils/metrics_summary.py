@@ -1,8 +1,8 @@
+import pandas as pd
+import plotly.graph_objects as go
+
 def create_metrics_summary(experiments_data):
     """Create a summary of Performance percentages across metrics and LLMs."""
-    import pandas as pd
-    import plotly.graph_objects as go
-    
     # Get all available metrics and judges
     all_metrics = set()
     all_judges = set()
@@ -25,9 +25,9 @@ def create_metrics_summary(experiments_data):
     # Track the best experiment for each metric according to each judge
     best_counts = {metric: {exp['name']: 0 for exp in experiments_data} for metric in all_metrics}
     
-    # Find the best experiment for each metric according to each judge
+    # Find the best experiments for each metric according to each judge (handling ties)
     for metric in sorted(all_metrics):
-        # For each judge, determine the best experiment for this metric
+        # For each judge, determine the best experiments for this metric
         for judge in all_judges:
             judge_scores = {}
             
@@ -41,10 +41,13 @@ def create_metrics_summary(experiments_data):
                                         df[score_col].count() * 100)
                         judge_scores[exp['name']] = good_score_pct
             
-            # Find the best experiment for this judge and metric
+            # Find all experiments with the maximum score for this judge and metric
             if judge_scores:
-                best_exp = max(judge_scores.items(), key=lambda x: x[1])[0]
-                best_counts[metric][best_exp] += 1
+                max_score = max(judge_scores.values())
+                # Find all experiments with this max score (handling ties)
+                for exp_name, score in judge_scores.items():
+                    if score == max_score:
+                        best_counts[metric][exp_name] += 1
     
     # Calculate average Performance percentage for each experiment and metric
     for exp in experiments_data:
