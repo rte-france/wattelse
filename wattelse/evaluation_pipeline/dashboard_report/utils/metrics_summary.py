@@ -1,5 +1,5 @@
 def create_metrics_summary(experiments_data):
-    """Create a summary of good score percentages across metrics and LLMs."""
+    """Create a summary of Performance percentages across metrics and LLMs."""
     import pandas as pd
     import plotly.graph_objects as go
     
@@ -16,7 +16,7 @@ def create_metrics_summary(experiments_data):
     # Create dataframes for metric averages
     metric_summary = {metric: [] for metric in all_metrics}
     
-    # Calculate average good score percentage for each experiment and metric
+    # Calculate average Performance percentage for each experiment and metric
     for exp in experiments_data:
         exp_name = exp['name']
         
@@ -34,7 +34,7 @@ def create_metrics_summary(experiments_data):
                 avg_score = sum(judges_values) / len(judges_values)
                 metric_summary[metric].append({
                     'Experiment': exp_name,
-                    'Average Good Score %': avg_score,
+                    'Average Performance %': avg_score,
                     'Judges Count': len(judges_values)
                 })
     
@@ -46,11 +46,11 @@ def create_metrics_summary(experiments_data):
         if data:
             # Create dataframe
             summary_df = pd.DataFrame(data)
-            summary_df['Average Good Score %'] = summary_df['Average Good Score %'].round(1)
+            summary_df['Average Performance %'] = summary_df['Average Performance %'].round(1)
             
             # Format highest score in bold by creating a new display column
-            max_score = summary_df['Average Good Score %'].max()
-            summary_df['Display Score'] = summary_df['Average Good Score %'].apply(
+            max_score = summary_df['Average Performance %'].max()
+            summary_df['Display Score'] = summary_df['Average Performance %'].apply(
                 lambda x: f"**{x:.1f}%**" if x == max_score else f"{x:.1f}%"
             )
             summary_dfs[metric] = summary_df
@@ -60,17 +60,17 @@ def create_metrics_summary(experiments_data):
             
             fig.add_trace(go.Bar(
                 x=summary_df['Experiment'],
-                y=summary_df['Average Good Score %'],
-                text=summary_df['Average Good Score %'].apply(lambda x: f"{x:.1f}%"),
+                y=summary_df['Average Performance %'],
+                text=summary_df['Average Performance %'].apply(lambda x: f"{x:.1f}%"),
                 textposition='auto',
                 marker_color='rgb(55, 83, 139)',
-                hovertemplate='Experiment: %{x}<br>Average Good Score: %{y:.1f}%<extra></extra>'
+                hovertemplate='Experiment: %{x}<br>Average Performance: %{y:.1f}%<extra></extra>'
             ))
             
             fig.update_layout(
-                title=f"Average {metric.title()} Good Scores Across Judges",
+                title=f"Average {metric.title()} Performances Across Judges",
                 xaxis_title="Experiment",
-                yaxis_title="Average Good Score %",
+                yaxis_title="Average Performance %",
                 yaxis=dict(
                     ticksuffix="%",
                     range=[0, 100]
@@ -137,7 +137,7 @@ def create_metrics_summary(experiments_data):
     overall_fig.update_layout(
         title="Overall Performance Summary",
         xaxis_title="Experiment",
-        yaxis_title="Good Score %",
+        yaxis_title="Performance %",
         yaxis=dict(
             ticksuffix="%",
             range=[0, 100]

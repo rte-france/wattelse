@@ -265,12 +265,13 @@ def display_metric_descriptions():
     with st.expander("ℹ️ Metric Descriptions", expanded=False):
         for metric, description in METRIC_DESCRIPTIONS.items():
             st.markdown(f"**{metric.title()}**: {description}")
+    
 def handle_pdf_export(experiments_data):
     """Handle PDF report generation."""
     st.header("PDF Report Generation")
     
     st.info("""
-    Generate a PDF report of your experiment results.
+    Generate a PDF report of your experiment results with structured description sections and formatting.
     The report will include:
     - Experiment configuration information
     - Performance overview with summary tables
@@ -280,27 +281,78 @@ def handle_pdf_export(experiments_data):
     The Raw Data section will not be included in the report.
     """)
     
-    # Add a title field
-    report_title = st.text_input(
+    # Initialize session state variables if they don't exist
+    if 'report_title' not in st.session_state:
+        st.session_state.report_title = "RAG Evaluation Report"
+    
+    if 'report_author' not in st.session_state:
+        st.session_state.report_author = ""
+    
+    # Default template
+    default_template = """## Experiment Objectives
+This experiment aims to evaluate the performance of different RAG configurations...
+
+## Key Findings
+- The highest faithfulness score was achieved by...
+- Response quality improved when...
+
+## Conclusion
+Based on the results, we found that...
+
+## Limitations
+Some limitations of this approach include..."""
+    
+    # Initialize description with template if empty
+    if 'report_description' not in st.session_state:
+        st.session_state.report_description = default_template
+    
+    # Initialize filename if not present
+    if 'filename' not in st.session_state:
+        st.session_state.filename = "rag_evaluation_report.pdf"
+    
+    # Add a title field (using lambda for callback)
+    st.text_input(
         "Report Title", 
-        value="RAG Evaluation Report",
+        value=st.session_state.report_title,
+        key="title_input",
+        on_change=lambda: setattr(st.session_state, 'report_title', st.session_state.title_input),
         help="Custom title for your PDF report"
     )
     
-    # Add author field
-    report_author = st.text_input(
+    # Add author field (using lambda for callback)
+    st.text_input(
         "Author",
+        value=st.session_state.report_author,
+        key="author_input",
+        on_change=lambda: setattr(st.session_state, 'report_author', st.session_state.author_input),
         placeholder="Enter your name or organization",
         help="Author name to be displayed in the report"
     )
     
-    # Add a description field
-    report_description = st.text_area(
-        "Report Description",
+    # Add description guidelines
+    st.subheader("Report Description")
+    st.markdown("""
+    You can use markdown formatting in your description:
+    - Use `**bold**` for **bold text**
+    - Use `*italics*` for *italicized text*
+    - Create sections with `## Section Name` (use double hashtags)
+    - Create subsections with `### Subsection Name` (use triple hashtags)
+    - Use bullet points with `- item`
+    """)
+    
+    # Add a description field with session state persistence (using lambda for callback)
+    st.text_area(
+        "Description",
+        value=st.session_state.report_description,
+        key="description_input",
+        on_change=lambda: setattr(st.session_state, 'report_description', st.session_state.description_input),
         height=300,
-        placeholder="Enter a description for your report. This can include experiment objectives, methodology, key findings, and conclusions.",
-        help="This description will appear at the beginning of the PDF report."
+        help="This description will appear at the beginning of the PDF report with proper formatting."
     )
+
+    # Preview formatted description in an expander
+    with st.expander("Preview Formatted Description", expanded=True):
+        st.markdown(st.session_state.report_description)
     
     # PDF generation options
     col1, col2 = st.columns(2)
@@ -309,8 +361,13 @@ def handle_pdf_export(experiments_data):
                                      help="Include all performance and timing tables in the report")
     
     with col2:
-        filename = st.text_input("Filename", value="rag_evaluation_report.pdf", 
-                                 help="Name of the PDF file that will be downloaded")
+        st.text_input(
+            "Filename", 
+            value=st.session_state.filename, 
+            key="filename_input",
+            on_change=lambda: setattr(st.session_state, 'filename', st.session_state.filename_input),
+            help="Name of the PDF file that will be downloaded"
+        )
     
     if st.button("Generate PDF Report", type="primary"):
         if not experiments_data:
@@ -326,10 +383,10 @@ def handle_pdf_export(experiments_data):
             pdf_bytes = create_pdf_report(
                 experiments_data, 
                 experiment_configs, 
-                report_description, 
+                st.session_state.report_description, 
                 include_tables,
-                report_title,
-                report_author,
+                st.session_state.report_title,
+                st.session_state.report_author
             )
             
             # Provide download link
@@ -355,8 +412,7 @@ def handle_pdf_export(experiments_data):
             </style>
             """, unsafe_allow_html=True)
             
-            st.markdown(get_pdf_download_link(pdf_bytes, filename), unsafe_allow_html=True)
-
+            st.markdown(get_pdf_download_link(pdf_bytes, st.session_state.filename), unsafe_allow_html=True)
 def main():
     setup_page()
 
@@ -422,7 +478,7 @@ def main():
         
         with tab_summary:
             st.subheader("Evaluation Summary")
-            st.caption("Average good score percentages (scores of 4-5) across all LLM judges")
+            st.caption("Average Performance percentages (Judgements of 4-5) across all LLM judges")
             
             # Generate summary metrics
             summary_dfs, summary_figs, overall_df, overall_fig = create_metrics_summary(experiments_data)
@@ -467,7 +523,7 @@ def main():
                         # Create display DataFrame with bold formatting
                         display_df = pd.DataFrame()
                         display_df['Experiment'] = summary_dfs[metric]['Experiment']
-                        display_df['Average Good Score %'] = summary_dfs[metric]['Display Score']
+                        display_df['Average Performance %'] = summary_dfs[metric]['Display Score']
                         display_df['Judges Count'] = summary_dfs[metric]['Judges Count']
                         
                         # Use st.markdown to render the bold formatting
@@ -524,7 +580,7 @@ def main():
                                     good_score_pct = calculate_good_score_percentage(df[score_col])
                                     metric_data.append({
                                         'Experiment': exp_data['name'],
-                                        'Good Score %': f"{good_score_pct:.1f}%",
+                                        'Performance %': f"{good_score_pct:.1f}%",
                                     })
                                     # Add all scores for the plot
                                     scores = df[score_col].value_counts().sort_index()
@@ -536,7 +592,7 @@ def main():
                                             'Percentage': (count / len(df[score_col])) * 100
                                         })
                             
-                            # Create and display table with good score plot side by side
+                            # Create and display table with Performance plot side by side
                             metric_df = pd.DataFrame(metric_data)
                             
                             # Format with bold for highest score
@@ -544,10 +600,10 @@ def main():
                             display_df['Experiment'] = metric_df['Experiment']
                             
                             # Get the highest score percentage
-                            max_score = max([float(score.rstrip('%')) for score in metric_df['Good Score %']])
+                            max_score = max([float(score.rstrip('%')) for score in metric_df['Performance %']])
                             
                             # Create formatted column with bold for maximum values
-                            display_df['Good Score %'] = metric_df['Good Score %'].apply(
+                            display_df['Performance %'] = metric_df['Performance %'].apply(
                                 lambda x: f"**{x}**" if float(x.rstrip('%')) == max_score else x
                             )
                             
@@ -559,12 +615,12 @@ def main():
                                 st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
                             
                             with col2:
-                                # Create good score percentage plot
+                                # Create Performance percentage plot
                                 good_score_fig = go.Figure()
                                 
                                 # Extract experiment names and good judgment percentages
                                 experiments = [row['Experiment'] for row in metric_data]
-                                good_judgments = [float(row['Good Score %'].rstrip('%')) for row in metric_data]
+                                good_judgments = [float(row['Performance %'].rstrip('%')) for row in metric_data]
                                 
                                 good_score_fig.add_trace(go.Scatter(
                                     x=experiments,

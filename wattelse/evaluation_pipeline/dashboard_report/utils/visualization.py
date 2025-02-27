@@ -58,7 +58,7 @@ def create_radar_plot(experiments_data):
                 df = exp['dfs'][judge]
                 metrics_values = []
                 
-                # Calculate good score percentages for each metric
+                # Calculate Performance percentages for each metric
                 for metric in sorted_metrics:
                     score_col = f'{metric}_score'
                     if score_col in df.columns:
@@ -126,7 +126,7 @@ def create_radar_plot(experiments_data):
         ),
         showlegend=True,
         title=dict(
-            text="Performance Metrics Radar Plot (% of Good Scores)",
+            text="Performance Metrics Radar Plot (% of Performances)",
             font=dict(size=20)
         ),
         height=600,

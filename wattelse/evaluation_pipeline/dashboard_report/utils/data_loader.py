@@ -5,7 +5,7 @@ from pathlib import Path
 from .constants import *
 
 def calculate_good_score_percentage(scores):
-    """Calculate percentage of good scores (4-5) in the series."""
+    """Calculate percentage of Performances (4-5) in the series."""
     if scores is None or len(scores) == 0:
         return 0
     good_scores = scores[scores.isin([4, 5])].count()

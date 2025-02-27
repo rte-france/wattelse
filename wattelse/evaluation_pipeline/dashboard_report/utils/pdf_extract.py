@@ -1,6 +1,7 @@
 """PDF generation utilities for the RAG Evaluation Dashboard."""
 
 import io
+import re
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -10,6 +11,37 @@ import pandas as pd
 import base64
 import streamlit as st
 from datetime import datetime
+
+def convert_markdown_to_html(text):
+    """
+    Convert basic markdown formatting to ReportLab-compatible HTML.
+    
+    Args:
+        text: Text with markdown formatting
+        
+    Returns:
+        Text with HTML tags for ReportLab
+    """
+    if not text:
+        return ""
+    
+    # Convert bold: **text** to <b>text</b>
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+    
+    # Convert italics: *text* to <i>text</i>
+    text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+    
+    # Convert headers: ## Header to styled headers
+    text = re.sub(r'^##\s+(.*?)$', r'<font size="14"><b>\1</b></font>', text, flags=re.MULTILINE)
+    text = re.sub(r'^###\s+(.*?)$', r'<font size="12"><b>\1</b></font>', text, flags=re.MULTILINE)
+    
+    # Convert bullet points: - item to • item
+    text = re.sub(r'^-\s+(.*?)$', r'• \1', text, flags=re.MULTILINE)
+    
+    # Handle line breaks properly
+    text = text.replace('\n', '<br/>')
+    
+    return text
 
 def create_pdf_report(experiments_data, experiment_configs=None, description="", include_tables=True, 
                   custom_title="RAG Evaluation Report", author=""):
@@ -47,13 +79,23 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
     subheading_style = styles['Heading2']
     normal_style = styles['Normal']
     
-    # Add a custom style for the description
+    # Add a custom style for the description that supports HTML formatting
     description_style = ParagraphStyle(
         'Description',
         parent=styles['Normal'],
         fontSize=10,
         leading=14,
         spaceAfter=10
+    )
+    
+    # Add a style for section headings in description
+    section_style = ParagraphStyle(
+        'Section',
+        parent=styles['Heading2'],
+        fontSize=12,
+        leading=14,
+        spaceAfter=6,
+        spaceBefore=12
     )
     
     # Build the content
@@ -69,11 +111,34 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
     
     content.append(Spacer(1, 0.25*inch))
     
-    # Add description
+    # Add description with proper formatting
     if description:
-        content.append(Paragraph("Description:", heading_style))
-        content.append(Paragraph(description, description_style))
-        content.append(Spacer(1, 0.25*inch))
+        content.append(Paragraph("Description", heading_style))
+        
+        # Convert markdown to HTML and split into sections if they exist
+        if "## " in description:
+            # Description has section headers, process each section
+            sections = re.split(r'(?=^##\s+)', description, flags=re.MULTILINE)
+            
+            for section in sections:
+                if section.strip():
+                    # If it's a section with a header
+                    if section.strip().startswith("## "):
+                        # Process the section
+                        html_text = convert_markdown_to_html(section)
+                        content.append(Paragraph(html_text, description_style))
+                        content.append(Spacer(1, 0.1*inch))
+                    else:
+                        # It's an intro text before any section
+                        html_text = convert_markdown_to_html(section)
+                        content.append(Paragraph(html_text, description_style))
+                        content.append(Spacer(1, 0.1*inch))
+        else:
+            # No section headers, process as a single block
+            html_text = convert_markdown_to_html(description)
+            content.append(Paragraph(html_text, description_style))
+            
+        content.append(Spacer(1, 0.15*inch))
     
     # Add Experiment Configuration section
     if experiment_configs and len(experiment_configs) > 0:
@@ -120,7 +185,7 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
     # Create a summary table
     if include_tables:
         # Create overall summary table
-        content.append(Paragraph("Summary of Good Scores (%)", subheading_style))
+        content.append(Paragraph("Summary of Performances (%)", subheading_style))
         
         # Build overall summary data
         table_data = [['Experiment'] + ['Overall'] + sorted(all_metrics)]
@@ -217,7 +282,7 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
             # Build judge-specific data for each metric
             for metric in sorted(all_metrics):
                 # Create metric-specific table
-                metric_table_data = [['Experiment', 'Good Score %']]
+                metric_table_data = [['Experiment', 'Performance %']]
                 
                 for exp in experiments_data:
                     if judge_name in exp['dfs']:
