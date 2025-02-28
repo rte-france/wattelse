@@ -5,7 +5,7 @@ CORRECTNESS_EVAL_PROMPT = {
     "default": """
 You are a helpful assistant, please evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
 
-Evaluation: Explain your reasoning for your judgment by indicating whether the response is correct, based on the question asked. Explicitly identify points of alignment or divergence with the question to support your judgment.
+Evaluation: Explain your reasoning for your judgment by indicating whether the response is correct, based on the question asked. Explicitly identify points of alignment or divergence with the question to support your judgment. Do not penalize the response if it states that the documents do not provide specific information on this topic.
 Judgment: (Assign a score from 1 to 5)
 
 You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
@@ -13,7 +13,6 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Question: {question}  
 Response: {answer}  
 """,
-
 
     "meta-llama-3-8b": """
 Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
