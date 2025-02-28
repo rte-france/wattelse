@@ -281,28 +281,39 @@ For run_jury.py (Multiple Models):
 - `--server-config-path`: Path to the server configuration file (default: "server_config.cfg")
 - `--output-dir`: Directory for evaluation results (default: "evaluation_results")
 
-## Evaluation Metrics
+# RAG Evaluation Framework
 
-### 1. Correctness (1-5 scale)
-- 1: Very insufficient – Largely incorrect, major errors
-- 2: Insufficient – Partially correct, significant errors
-- 3: Acceptable – Generally answers with some inaccuracies
-- 4: Satisfactory – Answers well with minor inaccuracies
-- 5: Very satisfactory – Completely correct and precise
+## Evaluation Metrics (Coarsed-grained)
 
-### 2. Faithfulness (1-5 scale)
-- 1: Very insufficient – Largely unfaithful to context
-- 2: Insufficient – Some relevance with unsupported information
-- 3: Passable – Relevant with some inaccuracies
-- 4: Satisfactory – Mostly faithful with few missing details
-- 5: Very satisfactory – Fully faithful and complete
+This framework evaluates three key aspects of RAG systems using a consistent judgment scale from 1-5 (where 1 is very insufficient and 5 is very satisfactory).
 
-### 3. Retrievability (1-5 scale)
-- 1: Very insufficient – Context mostly off-topic
-- 2: Insufficient – Partially relevant with missing key information
-- 3: Acceptable – Generally relevant but diluted
-- 4: Satisfactory – Mostly relevant with few irrelevant parts
-- 5: Very satisfactory – Entirely relevant and comprehensive
+### Correctness Evaluation
+
+Assesses whether the response correctly answers the question by providing essential information without significant factual errors:
+
+- **Completeness Check**: Evaluates if the response addresses all key aspects of the question
+- **Accuracy Assessment**: Identifies factual errors or misinterpretations
+- **Relevance Control**: Ensures the response aligns with what was asked
+
+### Faithfulness Evaluation
+
+Examines whether the response is based solely on the provided context without introducing unsupported information:
+
+- **Alignment Analysis**: Checks for correspondence between response and source context
+- **Support Verification**: Identifies which statements are supported vs. unsupported by the context
+- **Contradiction Detection**: Assesses whether the response contradicts information in the context
+- **Attribution Quality**: Evaluates how well claims are grounded in the provided materials
+
+### Retrievability Evaluation
+
+Determines whether the retrieved context is relevant and sufficient to answer the given question:
+
+- **Information Sufficiency**: Assesses if the context contains all necessary information
+- **Relevance Ratio**: Evaluates the proportion of relevant vs. irrelevant excerpts
+- **Answer Enablement**: Checks if the context directly allows the question to be answered
+- **Comprehensiveness**: Determines if all aspects of the question can be addressed using the retrieved materials
+
+Each metric is evaluated by LLM judges using carefully calibrated prompts specific to each model's capabilities and tendencies.
 
 ## Output
 
