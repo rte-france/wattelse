@@ -10,8 +10,10 @@ from tqdm_joblib import tqdm_joblib
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.evaluation_pipeline.eval_config import EvalConfig
 
-CONFIG_EVAL = Path("config.cfg")
-REPORT_PATH = Path("report_output.xlsx")
+# Define base paths
+BASE_DIR = Path("/DSIA/nlp/experiments")
+CONFIG_EVAL = BASE_DIR / "eval_config.cfg"
+REPORT_PATH = BASE_DIR / "report_output.xlsx"
 
 # Column definitions
 QUERY_COLUMN = "question"
@@ -166,14 +168,20 @@ def main(
     report_output_path: Path = REPORT_PATH
 ):
     """Main function to evaluate the RAG pipeline."""
+    logger.info(f"Using input file: {qr_df_path}")
+    logger.info(f"Using config path: {config_path}")
+    logger.info(f"Output will be saved to: {report_output_path}")
+    
     config = EvalConfig(config_path)
     logger.info(f"Loaded configuration from {config_path}")
 
     eval_df = pd.read_excel(qr_df_path)
-    logger.info(f"Loaded input dataset from {qr_df_path}")
+    logger.info(f"Loaded input dataset from {qr_df_path} with {len(eval_df)} rows")
 
     evaluated_df = evaluate_rag_metrics(eval_df, config)
     
+    # Ensure the directory exists
+    report_output_path.parent.mkdir(parents=True, exist_ok=True)
     evaluated_df.to_excel(report_output_path, index=False)
     logger.info(f"Evaluation results saved to {report_output_path}")
 

@@ -13,6 +13,10 @@ from wattelse.evaluation_pipeline.server_config import ServerConfig
 
 app = typer.Typer()
 
+# Define base paths
+BASE_DIR = Path("/DSIA/nlp/experiments")
+DATA_PREDICTIONS_DIR = BASE_DIR / "data_predictions"
+
 def is_port_in_use(port):
     """Check if a port is already in use"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -285,17 +289,24 @@ def stop_vllm_server(session_name: str, server_config: ServerConfig):
 
 @app.command()
 def main(
-    qr_df_path: Path,
+    qr_df_filename: str,
     eval_config_path: Path = Path("eval_config.cfg"),
     server_config_path: Path = Path("server_config.cfg"),
-    output_dir: Path = Path("evaluation_results"),
+    output_dir: str = "evaluation_results",
     retry_attempts: int = 2  # New parameter for retry attempts
 ):
+    # Convert relative paths to absolute paths based on the base directory
+    qr_df_path = DATA_PREDICTIONS_DIR / qr_df_filename
+    full_output_dir = BASE_DIR / output_dir
+    
+    logger.info(f"Input file path: {qr_df_path}")
+    logger.info(f"Output directory: {full_output_dir}")
+    
     # Load both configurations
     eval_config = EvalConfig(eval_config_path)
     server_config = ServerConfig(server_config_path)
     
-    output_dir.mkdir(parents=True, exist_ok=True)
+    full_output_dir.mkdir(parents=True, exist_ok=True)
     
     # Get models from evaluation config
     model_configs = eval_config.model_configs
@@ -312,7 +323,7 @@ def main(
         logger.info(f"Starting evaluation with model: {model}")
         model_name = model.split('/')[-1]
         
-        output_path = output_dir / f"evaluation_{model_name}.xlsx"
+        output_path = full_output_dir / f"evaluation_{model_name}.xlsx"
         
         # Add retry logic
         for attempt in range(retry_attempts + 1):
