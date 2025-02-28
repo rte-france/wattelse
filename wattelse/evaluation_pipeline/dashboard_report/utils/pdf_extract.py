@@ -7,9 +7,8 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib.units import inch
-import pandas as pd
+from .constants import METRIC_DESCRIPTIONS
 import base64
-import streamlit as st
 from datetime import datetime
 
 def convert_markdown_to_html(text):
@@ -88,16 +87,6 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
         spaceAfter=10
     )
     
-    # Add a style for section headings in description
-    section_style = ParagraphStyle(
-        'Section',
-        parent=styles['Heading2'],
-        fontSize=12,
-        leading=14,
-        spaceAfter=6,
-        spaceBefore=12
-    )
-    
     # Add a style for notes and captions
     caption_style = ParagraphStyle(
         'Caption',
@@ -151,7 +140,8 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
             
         content.append(Spacer(1, 0.15*inch))
     
-    # Add Experiment Configuration section
+    # Add Experiment Configuration section on a new page
+    content.append(PageBreak())
     if experiment_configs and len(experiment_configs) > 0:
         content.append(Paragraph("Experiment Configuration", heading_style))
         
@@ -178,6 +168,26 @@ def create_pdf_report(experiments_data, experiment_configs=None, description="",
             ]))
             content.append(table)
             content.append(Spacer(1, 0.25*inch))
+        
+        # Add Metrics Descriptions subsection       
+        if METRIC_DESCRIPTIONS:
+            content.append(Paragraph("Metrics Descriptions", subheading_style))
+            content.append(Spacer(1, 0.05*inch))
+            
+            for metric, description in METRIC_DESCRIPTIONS.items():
+                metric_name = Paragraph(f"<b>{metric.title()}</b>", normal_style)
+                content.append(metric_name)
+                
+                # Create paragraph with proper wrapping for the description
+                metric_desc = Paragraph(description, ParagraphStyle(
+                    'MetricDescription',
+                    parent=normal_style,
+                    leftIndent=0.25*inch,
+                    spaceBefore=2,
+                    spaceAfter=8
+                ))
+                content.append(metric_desc)
+                content.append(Spacer(1, 0.05*inch))
     
     # Add Performance Overview section (on a new page)
     content.append(PageBreak())

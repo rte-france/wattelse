@@ -3,6 +3,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import uuid  # Use UUID for Guaranteed Unique Keys for charts
 from pathlib import Path
 from utils import (
     load_evaluation_files, 
@@ -484,7 +485,7 @@ def main():
             summary_dfs, summary_figs, overall_df, overall_fig = create_metrics_summary(experiments_data)
             
             # Display overall summary
-            st.plotly_chart(overall_fig, use_container_width=True)
+            st.plotly_chart(overall_fig, use_container_width=True, key=f"overall_summary_chart_{str(uuid.uuid4())}")
             
             st.subheader("Summary Table")
             formatted_df = overall_df.copy()
@@ -532,7 +533,7 @@ def main():
             st.subheader("Individual Metric Summaries")
             for metric in sorted(summary_figs.keys()):
                 with st.expander(f"{metric.title()} Metric Details", expanded=False):
-                    st.plotly_chart(summary_figs[metric], use_container_width=True)
+                    st.plotly_chart(summary_figs[metric], use_container_width=True, key=f"summary_{metric}_chart_{str(uuid.uuid4())}")
                     
                     col1, col2 = st.columns([1, 1])
                     with col1:
@@ -569,7 +570,7 @@ def main():
                     col1, col2 = st.columns([2, 1])
                     with col1:
                         fig = create_radar_plot(judge_data)
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, use_container_width=True, key=f"{judge_name}_radar_chart_{str(uuid.uuid4())}")
                     
                     # Add experiment comparison
                     st.subheader("Experiment Comparison")
@@ -656,7 +657,7 @@ def main():
                                     height=200,
                                     margin=dict(t=0, b=0, l=0, r=0)
                                 )
-                                st.plotly_chart(good_score_fig, use_container_width=True)
+                                st.plotly_chart(good_score_fig, use_container_width=True, key=f"{judge_name}_{metric}_good_score_chart_{str(uuid.uuid4())}")
                             
                             # Create and display score distribution plot
                             # Use H3 tag for consistent heading size
@@ -691,7 +692,7 @@ def main():
                                     height=400,
                                     margin=dict(t=0, b=0, l=0, r=0)
                                 )
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, use_container_width=True, key=f"{judge_name}_{metric}_distribution_chart_{str(uuid.uuid4())}")
                 else:
                     st.warning(f"No data available for {judge_name}")
 
@@ -701,11 +702,11 @@ def main():
         
         with tab1:
             fig = create_timing_plot(experiments_data, RAG_QUERY_TIME_COLUMN, "Total Time Distribution")
-            st.plotly_chart(fig, use_container_width=True)
-        
+            st.plotly_chart(fig, use_container_width=True, key=f"total_time_chart_{str(uuid.uuid4())}")
+
         with tab2:
             fig = create_timing_plot(experiments_data, RAG_RETRIEVER_TIME_COLUMN, "Retriever Time Distribution")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key=f"retriever_time_chart_{str(uuid.uuid4())}")
 
     elif page == "PDF Export":
         handle_pdf_export(experiments_data)
