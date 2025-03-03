@@ -2,11 +2,27 @@
 
 #################### Correctness evaluation prompts ####################
 CORRECTNESS_EVAL_PROMPT = {
-    "default": """
+    "vanilla": """
 You are a helpful assistant, please evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
 
 Evaluation: Explain your reasoning for your judgment by indicating whether the response is correct, based on the question asked. Explicitly identify points of alignment or divergence with the question to support your judgment. Do not penalize the response if it states that the documents do not provide specific information on this topic.
 Judgment: (Assign a score from 1 to 5)
+
+You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
+
+Question: {question}  
+Response: {answer}  
+""",
+    "vanilla-v2": """
+You are a helpful assistant, please evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
+
+Evaluation: Explain your reasoning for your judgment by indicating whether the response is correct, based on the question asked. Explicitly identify points of alignment or divergence with the question to support your judgment. Do not penalize the response if it states that the documents do not provide specific information on this topic.
+Judgment: Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Largely incorrect, with major errors.
+- 2: Insufficient – Partially correct, with significant errors or inaccuracies.
+- 3: Acceptable – Generally answers the question but contains several inaccuracies.
+- 4: Satisfactory – Answers the question well, with only a few minor inaccuracies.
+- 5: Very satisfactory – Completely correct, precise, and perfectly aligned with the question.
 
 You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 
@@ -19,7 +35,7 @@ Evaluate whether the response is correct, meaning it answers the question asked 
 Response:::
 Evaluation: (Explain your reasoning for your judgment by indicating whether the response is correct, based on the question asked. Explicitly identify points of alignment or divergence with the question to support your judgment.)
 
-Judgment: (Assign a score from 1 to 5 based on the following criteria:
+Judgment: Assign a score from 1 to 5 based on the following criteria:
 - 1: Very insufficient – Largely incorrect, with major errors.
 - 2: Insufficient – Partially correct, with significant errors or inaccuracies.
 - 3: Acceptable – Generally answers the question but contains several inaccuracies.
@@ -81,7 +97,7 @@ Evaluate whether the response is correct, meaning it answers the question asked 
 Response:::
 Evaluation:
 
-Judgment: (Assign a score from 1 to 5 based on the following criteria:
+Judgment: Assign a score from 1 to 5 based on the following criteria:
 - 1: Very insufficient – Largely incorrect, with major errors.
 - 2: Insufficient – Partially correct, with significant errors or inaccuracies.
 - 3: Acceptable – Generally answers the question but contains several inaccuracies.
@@ -116,6 +132,45 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 
 Response: {answer}  
 Context: {retrieved_contexts}
+""",
+    "vanilla-v2": """
+You are a helpful assistant, please evaluate whether the response is based on the provided context, without introducing unsupported information.
+
+Evaluation: Explain your reasoning by indicating whether the response is faithful to the information in the context, in terms of relevance and sufficiency. Explicitly identify points of alignment or divergence with the context.
+Judgment: Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Response is largely unfaithful to the context, with unsupported information.
+- 2: Insufficient – Some elements relate to the context, but there is unsupported information.
+- 3: Passable – Relevant information, but with some inaccuracies.
+- 4: Satisfactory – Mostly faithful, with a few missing details.
+- 5: Very satisfactory – Fully faithful and complete according to the context.
+
+You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
+
+Response: {answer}  
+Context: {retrieved_contexts}
+""",
+    "meta-llama-3-8b": """
+Evaluate whether the response is based on the provided context, without introducing unsupported information.
+
+Response:::
+Evaluation: (Explain your reasoning by indicating whether the response is faithful to the information in the context, in terms of relevance and sufficiency. Explicitly identify points of alignment or divergence with the context.)
+
+Judgment: Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Response is largely unfaithful to the context, with unsupported information.
+- 2: Insufficient – Some elements relate to the context, but there is unsupported information.
+- 3: Passable – Relevant information, but with some inaccuracies.
+- 4: Satisfactory – Mostly faithful, with a few missing details.
+- 5: Very satisfactory – Fully faithful and complete according to the context.
+
+Evaluation Guidelines:
+- Verify if the response relies exclusively on the provided context without introducing external information.
+- Ensure that the response faithfully reflects the main points of the context.
+
+You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
+
+Response: {answer}
+Context: {retrieved_contexts}
+Response:::
 """,
     "selene-mini": """
 You are tasked with evaluating a response based on a given instruction (which may contain an Input) and a scoring rubric that serves as the evaluation standard. Provide comprehensive feedback on the response quality strictly adhering to the scoring rubric, without any general evaluation. Follow this with a score between 1 and 5, referring to the scoring rubric. Avoid generating any additional opening, closing, or explanations.  
@@ -155,36 +210,13 @@ Indicate whether the response is faithful to the provided context in terms of re
 - **Score 4:** Mostly accurate – Response statements are supported by context with minor imprecisions
 - **Score 5:** Completely accurate – All statements are directly supported by the context
 """,
-    "meta-llama-3-8b": """
-Evaluate whether the response is based on the provided context, without introducing unsupported information.
-
-Response:::
-Evaluation: (Explain your reasoning by indicating whether the response is faithful to the information in the context, in terms of relevance and sufficiency. Explicitly identify points of alignment or divergence with the context.)
-
-Judgment: (Assign a score from 1 to 5 based on the following criteria:
-- 1: Very insufficient – Response is largely unfaithful to the context, with unsupported information.
-- 2: Insufficient – Some elements relate to the context, but there is unsupported information.
-- 3: Passable – Relevant information, but with some inaccuracies.
-- 4: Satisfactory – Mostly faithful, with a few missing details.
-- 5: Very satisfactory – Fully faithful and complete according to the context.
-
-Evaluation Guidelines:
-- Verify if the response relies exclusively on the provided context without introducing external information.
-- Ensure that the response faithfully reflects the main points of the context.
-
-You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
-
-Response: {answer}
-Context: {retrieved_contexts}
-Response:::
-""",
     "deepseek": """
 Evaluate whether the response is based on the provided context, without introducing unsupported information.
 
 Response:::
 Evaluation:
 
-Judgment: (Assign a score from 1 to 5 based on the following criteria:
+Judgment: Assign a score from 1 to 5 based on the following criteria:
 - 1: Very insufficient – Response is largely unfaithful to the context, with unsupported information.
 - 2: Insufficient – Some elements relate to the context, but there is unsupported information.
 - 3: Passable – Relevant information, but with some inaccuracies.
@@ -220,13 +252,29 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Question: {question}
 Context: {retrieved_contexts}
 """,
+    "vanilla-v2": """
+You are a helpful assistant, please evaluate whether the retrieved context is relevant and sufficient to answer the given question.
+
+Evaluation: Indicate whether the context allows the question to be answered and contains the necessary information. Specify if the proportion of irrelevant excerpts compared to the total impacts the quality of the response, and mention any lack of completeness.
+Judgment: Assign a score from 1 to 5 based on the following criteria:
+- 1: Very insufficient – Context is mostly off-topic and lacks useful information.
+- 2: Insufficient – Context is partially relevant, missing key information, with many irrelevant excerpts.
+- 3: Acceptable – Context is generally relevant but diluted by several irrelevant excerpts.
+- 4: Satisfactory – Context is mostly relevant, with only a few irrelevant excerpts that do not strongly affect comprehension.
+- 5: Very satisfactory – Context is entirely relevant and comprehensive, containing all necessary information.
+
+You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
+
+Question: {question}
+Context: {retrieved_contexts}
+""",
     "meta-llama-3-8b": """
 Evaluate whether the retrieved context is relevant and sufficient to answer the given question.
 
 Response:::
 Evaluation: (Indicate whether the context allows the question to be answered and contains the necessary information. Specify if the proportion of irrelevant excerpts compared to the total impacts the quality of the response, and mention any lack of completeness.)
 
-Judgment: (Assign a score from 1 to 5 based on the following criteria:
+Judgment: Assign a score from 1 to 5 based on the following criteria:
 - 1: Very insufficient – Context is mostly off-topic and lacks useful information.
 - 2: Insufficient – Context is partially relevant, missing key information, with many irrelevant excerpts.
 - 3: Acceptable – Context is generally relevant but diluted by several irrelevant excerpts.
@@ -248,7 +296,7 @@ Evaluate whether the retrieved context is relevant and sufficient to answer the 
 
 Evaluation:
 
-Judgment: (Assign a score from 1 to 5 based on the following criteria:
+Judgment: Assign a score from 1 to 5 based on the following criteria:
 - 1: Very insufficient – Context is mostly off-topic and lacks useful information.
 - 2: Insufficient – Context is partially relevant, missing key information, with many irrelevant excerpts.
 - 3: Acceptable – Context is generally relevant but diluted by several irrelevant excerpts.
