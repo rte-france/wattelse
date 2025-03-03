@@ -18,39 +18,131 @@ BASE_DIR = Path("/DSIA/nlp/experiments")
 DATA_PREDICTIONS_DIR = BASE_DIR / "data_predictions"
 
 
-def is_port_in_use(port):
-    """Check if a port is already in use"""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("localhost", port)) == 0
+class PortManager:
+    """Class to encapsulate all port management operations."""
 
+    def __init__(self, logger):
+        self.logger = logger
+        self._last_checked_port = None
+        self._last_check_time = 0
 
-def kill_process_on_port(port):
-    """Kill any process running on the specified port"""
-    if not is_port_in_use(port):
-        logger.info(f"Port {port} is not in use")
+    def is_in_use(self, port):
+        """Check if a port is already in use"""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(("localhost", port)) == 0
+
+    def kill_process(self, port, verbose=True):
+        """Kill any process running on the specified port"""
+        if not self.is_in_use(port):
+            if verbose:
+                self.logger.info(f"Port {port} is not in use")
+            return False
+
+        for proc in psutil.process_iter(["pid", "name"]):
+            try:
+                for conn in proc.net_connections():
+                    if hasattr(conn.laddr, "port") and conn.laddr.port == port:
+                        self.logger.info(
+                            f"Killing process {proc.pid} using port {port}"
+                        )
+                        os.kill(proc.pid, signal.SIGTERM)
+                        time.sleep(2)
+                        if psutil.pid_exists(proc.pid):
+                            os.kill(proc.pid, signal.SIGKILL)
+                        self.logger.info(f"Killed process {proc.pid} using port {port}")
+
+                        # Verify the port is now free
+                        if self.is_in_use(port):
+                            self.logger.warning(
+                                f"Port {port} is still in use after killing process!"
+                            )
+                            return False
+                        return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
         return False
 
-    for proc in psutil.process_iter(["pid", "name"]):
-        try:
-            for conn in proc.net_connections():
-                if hasattr(conn.laddr, "port") and conn.laddr.port == port:
-                    logger.info(f"Killing process {proc.pid} using port {port}")
-                    os.kill(proc.pid, signal.SIGTERM)
-                    time.sleep(2)
-                    if psutil.pid_exists(proc.pid):
-                        os.kill(proc.pid, signal.SIGKILL)
-                    logger.info(f"Killed process {proc.pid} using port {port}")
+    def wait_for_availability(self, port, timeout=180, check_interval=5, verbose=True):
+        """Wait until port becomes available, with timeout"""
+        start_time = time.time()
+        while self.is_in_use(port):
+            elapsed = time.time() - start_time
+            if elapsed > timeout:
+                self.logger.error(
+                    f"Timeout waiting for port {port} to become available"
+                )
+                raise TimeoutError(f"Port {port} still in use after {timeout} seconds")
 
-                    # Verify the port is now free
-                    if is_port_in_use(port):
-                        logger.warning(
-                            f"Port {port} is still in use after killing process!"
+            if verbose:
+                self.logger.info(
+                    f"Port {port} still in use, waiting {check_interval} seconds..."
+                )
+            time.sleep(check_interval)
+
+        if verbose:
+            self.logger.info(f"Port {port} is now available")
+        return True
+
+    def wait_for_server_startup(self, port, timeout=180, check_interval=5):
+        """Wait until VLLM server is responsive on the given port"""
+        start_time = time.time()
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed > timeout:
+                self.logger.error(
+                    f"Timeout waiting for VLLM server to start on port {port}"
+                )
+                raise TimeoutError(f"VLLM server didn't start after {timeout} seconds")
+
+            # Check if port is in use
+            if self.is_in_use(port):
+                # Try to connect to the OpenAI API endpoint to check if server is responsive
+                try:
+                    response = requests.get(
+                        f"http://localhost:{port}/v1/models", timeout=3
+                    )
+                    if response.status_code == 200:
+                        self.logger.info(
+                            f"VLLM server is now responsive on port {port}"
                         )
-                        return False
-                    return True
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
-    return False
+                        return True
+                except requests.RequestException:
+                    pass
+
+            self.logger.info(f"Waiting for VLLM server to start on port {port}...")
+            time.sleep(check_interval)
+
+    def ensure_port_free(self, port, timeout=180, force=False, verbose=True):
+        """Ensure a port is free by killing any process and waiting for availability
+
+        Args:
+            port (int): The port to check
+            timeout (int): Timeout in seconds
+            force (bool): If True, always perform check regardless of recent checks
+            verbose (bool): If True, log detailed info messages
+        """
+        current_time = time.time()
+
+        # Skip if we just checked this port recently (within 2 seconds) and it was free
+        if (
+            not force
+            and self._last_checked_port == port
+            and current_time - self._last_check_time < 2
+        ):
+            return True
+
+        self.kill_process(port, verbose=verbose)
+        result = self.wait_for_availability(port, timeout, verbose=verbose)
+
+        # Update the last check info
+        self._last_checked_port = port
+        self._last_check_time = time.time()
+
+        return result
+
+
+# Create a global instance of PortManager
+port_manager = PortManager(logger)
 
 
 def cleanup_screen_sessions(model_name: str = None, eval_config: EvalConfig = None):
@@ -143,46 +235,6 @@ def get_env_vars(
         }
 
 
-def wait_for_port_availability(port, timeout=180, check_interval=5):
-    """Wait until port becomes available, with timeout"""
-    start_time = time.time()
-    while is_port_in_use(port):
-        elapsed = time.time() - start_time
-        if elapsed > timeout:
-            logger.error(f"Timeout waiting for port {port} to become available")
-            raise TimeoutError(f"Port {port} still in use after {timeout} seconds")
-
-        logger.info(f"Port {port} still in use, waiting {check_interval} seconds...")
-        time.sleep(check_interval)
-
-    logger.info(f"Port {port} is now available")
-    return True
-
-
-def wait_for_server_startup(port, timeout=180, check_interval=5):
-    """Wait until VLLM server is responsive on the given port"""
-    start_time = time.time()
-    while True:
-        elapsed = time.time() - start_time
-        if elapsed > timeout:
-            logger.error(f"Timeout waiting for VLLM server to start on port {port}")
-            raise TimeoutError(f"VLLM server didn't start after {timeout} seconds")
-
-        # Check if port is in use
-        if is_port_in_use(port):
-            # Try to connect to the OpenAI API endpoint to check if server is responsive
-            try:
-                response = requests.get(f"http://localhost:{port}/v1/models", timeout=3)
-                if response.status_code == 200:
-                    logger.info(f"VLLM server is now responsive on port {port}")
-                    return True
-            except requests.RequestException:
-                pass
-
-        logger.info(f"Waiting for VLLM server to start on port {port}...")
-        time.sleep(check_interval)
-
-
 def start_vllm_server(
     model_name: str, eval_config: EvalConfig, server_config: ServerConfig
 ) -> str:
@@ -195,14 +247,9 @@ def start_vllm_server(
         logger.info(f"Skipping VLLM server for non-local model {model_name}")
         return None
 
-    # Make sure the port is free before starting
+    # Port should already be free from run_evaluation function
+    # We don't need to check again, which would create duplicate logs
     port = server_config.port
-
-    # Kill any process on the port
-    kill_process_on_port(port)
-
-    # Wait for port to be available (with timeout)
-    wait_for_port_availability(port)
 
     session_name = f"vllm_{model_name.replace('/', '_')}"
     create_screen_session(session_name, model_name, eval_config)
@@ -233,8 +280,8 @@ def start_vllm_server(
         subprocess.run(screen_cmd, check=True)
         logger.info(f"Started VLLM server for {model_name}")
 
-        # Wait for server to be responsive (better than fixed sleep)
-        wait_for_server_startup(port)
+        # Wait for server to be responsive using PortManager
+        port_manager.wait_for_server_startup(port)
 
         return session_name
     except subprocess.CalledProcessError as e:
@@ -271,15 +318,14 @@ def run_evaluation(
         env.update(env_vars)
 
         if model_type == "local":
-            # Ensure no process is using our port
-            kill_process_on_port(server_config.port)
-            wait_for_port_availability(server_config.port)
+            # Ensure port is free using PortManager - this is the ONE place we do the port check
+            port_manager.ensure_port_free(server_config.port, force=True, verbose=True)
 
             # Start the VLLM server
             session_name = start_vllm_server(model_name, eval_config, server_config)
 
             # Verify server is actually running before proceeding
-            if not is_port_in_use(server_config.port):
+            if not port_manager.is_in_use(server_config.port):
                 raise RuntimeError(f"VLLM server for {model_name} failed to start")
 
         # Run the evaluation
@@ -294,9 +340,8 @@ def run_evaluation(
         if session_name and model_type == "local":
             stop_vllm_server(session_name, server_config)
 
-            # Make sure port is free for next model
-            kill_process_on_port(server_config.port)
-            wait_for_port_availability(server_config.port, timeout=60)
+            # Make sure port is free for next model using PortManager
+            port_manager.ensure_port_free(server_config.port, timeout=60)
 
 
 def stop_vllm_server(session_name: str, server_config: ServerConfig):
@@ -308,7 +353,7 @@ def stop_vllm_server(session_name: str, server_config: ServerConfig):
             logger.warning(
                 f"Screen session {session_name} not found when trying to stop it"
             )
-            kill_process_on_port(server_config.port)
+            port_manager.kill_process(server_config.port)
             return
 
         # Send Ctrl+C to the screen session
@@ -323,15 +368,15 @@ def stop_vllm_server(session_name: str, server_config: ServerConfig):
             subprocess.run(["screen", "-S", session_name, "-X", "quit"])
             logger.info(f"Stopped screen session: {session_name}")
 
-        # Make sure port is free
-        kill_process_on_port(server_config.port)
+        # Make sure port is free using PortManager
+        port_manager.kill_process(server_config.port)
 
         # Additional cleanup time
         time.sleep(5)
     except Exception as e:
         logger.error(f"Error stopping VLLM server: {e}")
         # Try to kill the port anyway
-        kill_process_on_port(server_config.port)
+        port_manager.kill_process(server_config.port)
 
 
 @app.command()
@@ -363,8 +408,8 @@ def main(
     # Clean up any lingering screen sessions before starting
     cleanup_screen_sessions()
 
-    # Make sure the port is free before starting any evaluation
-    kill_process_on_port(server_config.port)
+    # Make sure the port is free before starting any evaluation using PortManager
+    port_manager.ensure_port_free(server_config.port, force=True)
 
     for model in models:
         logger.info(f"Starting evaluation with model: {model}")
@@ -379,7 +424,7 @@ def main(
                     logger.info(f"Retry attempt {attempt} for model {model}")
                     # More aggressive cleanup before retry
                     cleanup_screen_sessions()
-                    kill_process_on_port(server_config.port)
+                    port_manager.ensure_port_free(server_config.port, force=True)
                     time.sleep(15)  # Give more time for resources to free up
 
                 run_evaluation(
@@ -399,7 +444,7 @@ def main(
 
                 # Clean up after error
                 cleanup_screen_sessions(model, eval_config)
-                kill_process_on_port(server_config.port)
+                port_manager.kill_process(server_config.port, verbose=True)
 
                 # If this was the last retry attempt, continue to next model
                 if attempt == retry_attempts:
@@ -411,7 +456,7 @@ def main(
 
     # Final cleanup
     cleanup_screen_sessions()
-    kill_process_on_port(server_config.port)
+    port_manager.kill_process(server_config.port, verbose=True)
 
     logger.success("All evaluations completed!")
 
