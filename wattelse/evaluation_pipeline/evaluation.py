@@ -26,16 +26,21 @@ SPECIAL_CHARACTER_FILTER = (
 
 app = typer.Typer()
 
+
 def parse_eval_response(eval_text, metric_key, regex_patterns):
     """Parse evaluation responses using configured regex patterns."""
     eval_match = re.search(regex_patterns["evaluation"], eval_text, re.DOTALL)
     score_match = re.search(regex_patterns["judgment"], eval_text)
-    
+
     return {
         f"{metric_key}": eval_match.group(1).strip() if eval_match else eval_text,
-        f"{metric_key}_score": int(score_match.group(1)) if score_match else np.nan
+        f"{metric_key}_score": int(score_match.group(1)) if score_match else np.nan,
     }
-def evaluate_metrics(llm_client, question, answer, context_extracted, config: EvalConfig) -> dict:
+
+
+def evaluate_metrics(
+    llm_client, question, answer, context_extracted, config: EvalConfig
+) -> dict:
     """
     Evaluates the answer based on configured metrics using the LLM.
 
@@ -50,59 +55,51 @@ def evaluate_metrics(llm_client, question, answer, context_extracted, config: Ev
         dict: A dictionary containing the evaluations and scores for enabled metrics.
     """
     # Fetch model-specific configurations
-    model_name = getattr(llm_client, 'model_name', config.default_model)
+    model_name = getattr(llm_client, "model_name", config.default_model)
     regex_patterns = config.get_regex_patterns(model_name)
-    
+
     # TODO : modify existing OpenAI_Client() to control the max_tokens
     kwargs = {"max_tokens": 2048}
-    
+
     evaluations = {}
-    
+
     # Only evaluate enabled and available metrics
     for metric in config.active_metrics:
         try:
             prompt = config.get_prompt(metric, model_name)
-            
+
             # Format prompt based on metric type
             if metric == "faithfulness":
                 eval_text = llm_client.generate(
-                    prompt.format(
-                        retrieved_contexts=context_extracted,
-                        answer=answer
-                    ),
-                    **kwargs
+                    prompt.format(retrieved_contexts=context_extracted, answer=answer),
+                    **kwargs,
                 )
             elif metric == "correctness":
                 eval_text = llm_client.generate(
-                    prompt.format(
-                        question=question,
-                        answer=answer
-                    ),
-                    **kwargs
+                    prompt.format(question=question, answer=answer), **kwargs
                 )
             elif metric == "retrievability":
                 eval_text = llm_client.generate(
                     prompt.format(
-                        question=question,
-                        retrieved_contexts=context_extracted
+                        question=question, retrieved_contexts=context_extracted
                     ),
-                    **kwargs
+                    **kwargs,
                 )
             else:
                 logger.warning(f"Unknown metric type: {metric}")
                 continue
-                
+
             logger.debug(f"{metric} LLM response: {eval_text}")
             evaluations.update(parse_eval_response(eval_text, metric, regex_patterns))
-            
+
         except Exception as e:
             logger.error(f"Error evaluating {metric}: {e}")
-            evaluations.update({
-                f"{metric}": f"Error: {str(e)}",
-                f"{metric}_score": np.nan
-            })
-    
+            evaluations.update(
+                {f"{metric}": f"Error: {str(e)}", f"{metric}_score": np.nan}
+            )
+
     return evaluations
+
 
 def evaluate_row(row: pd.Series, config: EvalConfig) -> dict:
     """Function to evaluate a single row of data (question, answer, and context)."""
@@ -119,7 +116,9 @@ def evaluate_row(row: pd.Series, config: EvalConfig) -> dict:
                 "evaluation": "No context provided",
             }
 
-        eval_results = evaluate_metrics(llm_client, question, answer, context_extracted, config)
+        eval_results = evaluate_metrics(
+            llm_client, question, answer, context_extracted, config
+        )
 
         eval_entry = {"question": question}
         eval_entry.update(eval_results)
@@ -132,6 +131,7 @@ def evaluate_row(row: pd.Series, config: EvalConfig) -> dict:
             "question": row[QUERY_COLUMN],
             "evaluation": "Error during evaluation",
         }
+
 
 def evaluate_rag_metrics(eval_df: pd.DataFrame, config: EvalConfig) -> pd.DataFrame:
     """
@@ -149,29 +149,31 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame, config: EvalConfig) -> pd.DataFr
     # Wrap the Parallel execution with tqdm_joblib to show progress
     with tqdm_joblib(desc="Evaluating Rows", total=eval_df.shape[0]) as progress_bar:
         evaluations = Parallel(n_jobs=-1)(
-            delayed(evaluate_row)(row, config)
-            for _, row in eval_df.iterrows()
+            delayed(evaluate_row)(row, config) for _, row in eval_df.iterrows()
         )
 
     # Combine evaluations into a DataFrame
     evaluation_df = pd.DataFrame(evaluations)
 
     # Join the evaluations to the original DataFrame
-    eval_df = eval_df.join(evaluation_df.set_index("question"), on=QUERY_COLUMN, rsuffix="_eval")
+    eval_df = eval_df.join(
+        evaluation_df.set_index("question"), on=QUERY_COLUMN, rsuffix="_eval"
+    )
 
     return eval_df
+
 
 @app.command()
 def main(
     qr_df_path: Path,
     config_path: Path = CONFIG_EVAL,
-    report_output_path: Path = REPORT_PATH
+    report_output_path: Path = REPORT_PATH,
 ):
     """Main function to evaluate the RAG pipeline."""
     logger.info(f"Using input file: {qr_df_path}")
     logger.info(f"Using config path: {config_path}")
     logger.info(f"Output will be saved to: {report_output_path}")
-    
+
     config = EvalConfig(config_path)
     logger.info(f"Loaded configuration from {config_path}")
 
@@ -179,11 +181,12 @@ def main(
     logger.info(f"Loaded input dataset from {qr_df_path} with {len(eval_df)} rows")
 
     evaluated_df = evaluate_rag_metrics(eval_df, config)
-    
+
     # Ensure the directory exists
     report_output_path.parent.mkdir(parents=True, exist_ok=True)
     evaluated_df.to_excel(report_output_path, index=False)
     logger.info(f"Evaluation results saved to {report_output_path}")
+
 
 if __name__ == "__main__":
     typer.run(main)

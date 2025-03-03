@@ -28,11 +28,12 @@ QUERY_LENGTH_WORDS = "question_length_words"
 
 app = typer.Typer()
 
+
 @app.command()
 def main(
     qr_df_path: Path,
     eval_corpus_path: Path,
-    predictions_output_path: Path = Path(__file__).parent / "predictions_output.xlsx"
+    predictions_output_path: Path = Path(__file__).parent / "predictions_output.xlsx",
 ):
     """
     python rag_predictions.py <qr_df_path> <eval_corpus_path> --report-output-path <output_path>
@@ -73,7 +74,9 @@ def main(
             raise ValueError(f"Document {doc} not found in eval corpus folder")
 
     # Load eval docs in RAG backend
-    for doc in tqdm(eval_corpus_path.iterdir(), desc="Loading documents into RAG Backend"):
+    for doc in tqdm(
+        eval_corpus_path.iterdir(), desc="Loading documents into RAG Backend"
+    ):
         if doc.name in all_doc_list:
             with open(doc, "rb") as f:
                 RAG_EVAL_BACKEND.add_file_to_collection(doc.name, f)
@@ -109,7 +112,9 @@ def main(
         "Total Chunks": len(RAG_EVAL_BACKEND.get_text_list(None)),
         "Total Selected Documents": len(all_doc_list),
         "Total Documents Available": len(RAG_EVAL_BACKEND.get_available_docs()),
-        "Selected Documents": ", ".join(sorted(all_doc_list)) if all_doc_list else "None",
+        "Selected Documents": (
+            ", ".join(sorted(all_doc_list)) if all_doc_list else "None"
+        ),
         "Documents In Use": ", ".join(sorted(all_doc_list)),
         "Timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -119,7 +124,7 @@ def main(
         ("Prompts", prompt_configs),
         ("Retriever", retriever_configs),
         ("Generator", generator_configs),
-        ("Collection", collection_configs)
+        ("Collection", collection_configs),
     ]:
         logger.info(f"\n{config_name} Configuration:")
         for key, value in config_dict.items():
@@ -130,8 +135,10 @@ def main(
     rag_relevant_extracts = []
     rag_query_times = []
     rag_retriever_times = []
-    
-    for _, row in tqdm(eval_df.iterrows(), total=eval_df.shape[0], desc="Getting RAG Predictions"):
+
+    for _, row in tqdm(
+        eval_df.iterrows(), total=eval_df.shape[0], desc="Getting RAG Predictions"
+    ):
         logger.info(f"Processing row: question={row[QUERY_COLUMN]}")
 
         # Measure retriever time
@@ -146,11 +153,13 @@ def main(
             row[QUERY_COLUMN], selected_files=row[DOC_LIST_COLUMN]
         )
         query_time = time.time() - start_time
-        
+
         answer = response.get("answer", "")
         relevant_extracts = [
             re.sub(SPECIAL_CHARACTER_FILTER, " ", extract["content"])
-            for extract in response.get("relevant_extracts", [])
+            for extract in response.get(
+                "relevant_extracts", []
+            )  # TODO: Modify this to rag_relevant_extracts
         ]
 
         logger.info(f"RAG Answer for question '{row[QUERY_COLUMN]}': {answer}")
@@ -166,7 +175,9 @@ def main(
     # Save predictions to DataFrame
     eval_df["rag_answer"] = rag_answers
     eval_df[RAG_RELEVANT_EXTRACTS_COLUMN] = [
-        "\n\n".join([f"Extrait {i + 1}: {extract}" for i, extract in enumerate(sublist)])
+        "\n\n".join(
+            [f"Extrait {i + 1}: {extract}" for i, extract in enumerate(sublist)]
+        )
         for sublist in rag_relevant_extracts
     ]
     eval_df[RAG_QUERY_TIME_COLUMN] = rag_query_times
@@ -182,27 +193,48 @@ def main(
     logger.info(f"Average query time: {pd.Series(rag_query_times).mean():.2f} seconds")
     logger.info(f"Maximum query time: {pd.Series(rag_query_times).max():.2f} seconds")
     logger.info(f"Minimum query time: {pd.Series(rag_query_times).min():.2f} seconds")
-    logger.info(f"Average retriever time: {pd.Series(rag_retriever_times).mean():.2f} seconds")
-    logger.info(f"Maximum retriever time: {pd.Series(rag_retriever_times).max():.2f} seconds")
-    logger.info(f"Minimum retriever time: {pd.Series(rag_retriever_times).min():.2f} seconds")
+    logger.info(
+        f"Average retriever time: {pd.Series(rag_retriever_times).mean():.2f} seconds"
+    )
+    logger.info(
+        f"Maximum retriever time: {pd.Series(rag_retriever_times).max():.2f} seconds"
+    )
+    logger.info(
+        f"Minimum retriever time: {pd.Series(rag_retriever_times).min():.2f} seconds"
+    )
 
     # Save all data to Excel with multiple sheets
-    with pd.ExcelWriter(predictions_output_path, engine='openpyxl') as writer:
-        eval_df.to_excel(writer, sheet_name='predictions', index=False)
-        rag_df = pd.DataFrame(list(prompt_configs.items()), columns=['Parameter', 'Value'])
-        retriever_df = pd.DataFrame(list(retriever_configs.items()), columns=['Parameter', 'Value'])
-        generator_df = pd.DataFrame(list(generator_configs.items()), columns=['Parameter', 'Value'])
-        collection_df = pd.DataFrame(list(collection_configs.items()), columns=['Parameter', 'Value'])
-        
+    with pd.ExcelWriter(predictions_output_path, engine="openpyxl") as writer:
+        eval_df.to_excel(writer, sheet_name="predictions", index=False)
+        rag_df = pd.DataFrame(
+            list(prompt_configs.items()), columns=["Parameter", "Value"]
+        )
+        retriever_df = pd.DataFrame(
+            list(retriever_configs.items()), columns=["Parameter", "Value"]
+        )
+        generator_df = pd.DataFrame(
+            list(generator_configs.items()), columns=["Parameter", "Value"]
+        )
+        collection_df = pd.DataFrame(
+            list(collection_configs.items()), columns=["Parameter", "Value"]
+        )
+
         rag_df.to_excel(writer, sheet_name=RAG_CONFIG_SHEET_NAME, index=False)
-        retriever_df.to_excel(writer, sheet_name=RETRIEVER_CONFIG_SHEET_NAME, index=False)
-        generator_df.to_excel(writer, sheet_name=GENERATOR_CONFIG_SHEET_NAME, index=False)
-        collection_df.to_excel(writer, sheet_name=COLLECTION_CONFIG_SHEET_NAME, index=False)
+        retriever_df.to_excel(
+            writer, sheet_name=RETRIEVER_CONFIG_SHEET_NAME, index=False
+        )
+        generator_df.to_excel(
+            writer, sheet_name=GENERATOR_CONFIG_SHEET_NAME, index=False
+        )
+        collection_df.to_excel(
+            writer, sheet_name=COLLECTION_CONFIG_SHEET_NAME, index=False
+        )
 
     logger.info(f"Predictions and configurations saved to {predictions_output_path}")
 
     # Clear RAG backend
     RAG_EVAL_BACKEND.clear_collection()
+
 
 if __name__ == "__main__":
     typer.run(main)

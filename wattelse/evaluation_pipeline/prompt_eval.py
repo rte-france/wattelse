@@ -1,6 +1,6 @@
 # Dictionary-Based Prompts (Where you define your prompt for evaluation)
 
-                                                #################### Correctness evaluation prompts ####################
+#################### Correctness evaluation prompts ####################
 CORRECTNESS_EVAL_PROMPT = {
     "default": """
 You are a helpful assistant, please evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
@@ -13,7 +13,6 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Question: {question}  
 Response: {answer}  
 """,
-
     "meta-llama-3-8b": """
 Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
 
@@ -38,8 +37,6 @@ Question: {question}
 Response: {answer}  
 Response:::
 """,
-
-
     "selene-mini": """
 You are tasked with evaluating a response based on a given instruction (which may contain an Input) and a scoring rubric that serves as the evaluation standard. Provide comprehensive feedback on the response quality strictly adhering to the scoring rubric, without any general evaluation. Follow this with a score between 1 and 5, referring to the scoring rubric. Avoid generating any additional opening, closing, or explanations.  
 
@@ -78,8 +75,6 @@ Indicate whether the response correctly answers the question, addressing all key
 - **Score 4:** Satisfactory – Answers the question well, with only a few minor inaccuracies.  
 - **Score 5:** Very satisfactory – Completely correct, precise, and perfectly aligned with the question.  
 """,
-
-
     "deepseek": """
 Evaluate whether the response is correct, meaning it answers the question asked by providing essential information without significant factual errors.
 
@@ -107,10 +102,9 @@ Here is the response:
 Response: {answer}  
 Response:::
 """,
-
 }
 
-                                                #################### Faithfulness evaluation prompts ####################
+#################### Faithfulness evaluation prompts ####################
 FAITHFULNESS_EVAL_PROMPT = {
     "default": """
 You are a helpful assistant, please evaluate whether the response is based on the provided context, without introducing unsupported information.
@@ -123,9 +117,7 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Response: {answer}  
 Context: {retrieved_contexts}
 """,
-
-
-    "selene-mini":"""
+    "selene-mini": """
 You are tasked with evaluating a response based on a given instruction (which may contain an Input) and a scoring rubric that serves as the evaluation standard. Provide comprehensive feedback on the response quality strictly adhering to the scoring rubric, without any general evaluation. Follow this with a score between 1 and 5, referring to the scoring rubric. Avoid generating any additional opening, closing, or explanations.  
 
 Here are some rules of the evaluation:  
@@ -163,8 +155,6 @@ Indicate whether the response is faithful to the provided context in terms of re
 - **Score 4:** Mostly accurate – Response statements are supported by context with minor imprecisions
 - **Score 5:** Completely accurate – All statements are directly supported by the context
 """,
-
-
     "meta-llama-3-8b": """
 Evaluate whether the response is based on the provided context, without introducing unsupported information.
 
@@ -188,8 +178,6 @@ Response: {answer}
 Context: {retrieved_contexts}
 Response:::
 """,
-
-
     "deepseek": """
 Evaluate whether the response is based on the provided context, without introducing unsupported information.
 
@@ -216,11 +204,9 @@ Here is the context :
 Context: {retrieved_contexts}
 Response:::
 """,
-
-
 }
 
-                                                #################### Retrievability evaluation prompts ####################
+#################### Retrievability evaluation prompts ####################
 
 RETRIEVABILITY_EVAL_PROMPT = {
     "default": """
@@ -234,8 +220,6 @@ You MUST provide values for 'Evaluation:' and 'Judgment:' in your response.
 Question: {question}
 Context: {retrieved_contexts}
 """,
-
-
     "meta-llama-3-8b": """
 Evaluate whether the retrieved context is relevant and sufficient to answer the given question.
 
@@ -259,8 +243,6 @@ Question: {question}
 Context: {retrieved_contexts}
 Response:::
 """,
-
-
     "deepseek": """
 Evaluate whether the retrieved context is relevant and sufficient to answer the given question.
 
@@ -285,8 +267,7 @@ Question: {question}
 Here is the context :
 Context: {retrieved_contexts}
 """,
-
-    "selene-mini":"""
+    "selene-mini": """
 You are tasked with evaluating a response based on a given instruction (which may contain an Input) and a scoring rubric that serves as the evaluation standard. Provide comprehensive feedback on the response quality strictly adhering to the scoring rubric, without any general evaluation. Follow this with a score between 1 and 5, referring to the scoring rubric. Avoid generating any additional opening, closing, or explanations.  
 
 Here are some rules of the evaluation:  
@@ -322,7 +303,7 @@ Indicate whether the context allows the question to be answered and contains the
 - **Score 3:** Context is generally relevant but diluted by several irrelevant excerpts.  
 - **Score 4:** Context is mostly relevant, with only a few irrelevant excerpts that do not strongly affect comprehension.  
 - **Score 5:** Context is entirely relevant and comprehensive, containing all necessary information.  
-"""
+""",
 }
 
 # Combine prompts in a nested dictionary
