@@ -6,6 +6,7 @@ from loguru import logger
 from pathlib import Path
 from joblib import Parallel, delayed
 from tqdm_joblib import tqdm_joblib
+from openai import Timeout
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.evaluation_pipeline.eval_config import EvalConfig
@@ -59,7 +60,8 @@ def evaluate_metrics(
     regex_patterns = config.get_regex_patterns(model_name)
 
     # TODO : modify existing OpenAI_Client() to control the max_tokens
-    kwargs = {"max_tokens": 2048}
+    custom_timeout = 120.0  # 2 minutes instead of default 60 seconds
+    kwargs = {"max_tokens": 2048, "timeout": Timeout(custom_timeout, connect=10.0)}
 
     evaluations = {}
 
