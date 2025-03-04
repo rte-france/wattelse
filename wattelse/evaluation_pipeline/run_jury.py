@@ -12,6 +12,7 @@ app = typer.Typer()
 
 # Define base paths
 BASE_DIR = Path("/DSIA/nlp/experiments")
+RESULTS_BASE_DIR = Path("/DSIA/nlp/experiments/results")
 DATA_PREDICTIONS_DIR = BASE_DIR / "data_predictions"
 
 # Create a global instance of PortManager
@@ -262,7 +263,7 @@ def main(
 ):
     # Convert relative paths to absolute paths based on the base directory
     qr_df_path = DATA_PREDICTIONS_DIR / qr_df_filename
-    full_output_dir = BASE_DIR / output_dir
+    full_output_dir = RESULTS_BASE_DIR / output_dir
 
     logger.info(f"Input file path: {qr_df_path}")
     logger.info(f"Output directory: {full_output_dir}")

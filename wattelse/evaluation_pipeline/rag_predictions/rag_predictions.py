@@ -26,28 +26,89 @@ COLLECTION_CONFIG_SHEET_NAME = "collection_config"
 QUERY_LENGTH_CHARS = "question_length_chars"
 QUERY_LENGTH_WORDS = "question_length_words"
 
+# Base directories
+BASE_DATA_DIR = Path("/DSIA/nlp/experiments/data")
+BASE_DOCS_DIR = Path("/DSIA/nlp/experiments/docs")
+BASE_OUTPUT_DIR = Path("/DSIA/nlp/experiments/data_predictions")
+
 app = typer.Typer()
+
+
+def resolve_path(path, base_dir):
+    """
+    Resolves a path that might be relative or just a filename to a full path.
+    Handles several cases:
+    1. Absolute path: return as is
+    2. Relative path that exists: return as is
+    3. Path starting with 'data/': resolve against experiment root
+    4. Path starting with 'docs/': resolve against experiment root
+    5. Simple filename: prepend the appropriate base directory
+    """
+    path = Path(path)
+
+    # If it's an absolute path or exists as is, return it
+    if path.is_absolute() or path.exists():
+        return path
+
+    # Handle paths starting with 'data/' or 'docs/'
+    path_str = str(path)
+    if path_str.startswith("data/"):
+        return Path("/DSIA/nlp/experiments") / path_str
+    if path_str.startswith("docs/"):
+        return Path("/DSIA/nlp/experiments") / path_str
+
+    # Otherwise, join with base directory
+    return base_dir / path
 
 
 @app.command()
 def main(
-    qr_df_path: Path,
-    eval_corpus_path: Path,
-    predictions_output_path: Path = Path(__file__).parent / "predictions_output.xlsx",
+    qr_df_path: Path = typer.Argument(
+        ..., help="Path or filename of the query and answer dataset (Excel format)"
+    ),
+    eval_corpus_path: Path = typer.Argument(
+        ..., help="Path or directory name of the evaluation corpus folder"
+    ),
+    predictions_output_path: Path = typer.Option(
+        None,
+        "--predictions-output-path",
+        "-o",
+        help="Path or filename for the predictions output (Excel file)",
+    ),
 ):
     """
-    python rag_predictions.py <qr_df_path> <eval_corpus_path> --report-output-path <output_path>
-
     Main function to generate predictions from the RAG pipeline.
     This function retrieves answers using RAG without performing any evaluation.
 
-    Args:
-        qr_df_path (Path): Path to the query and answer dataset (in Excel format).
-        eval_corpus_path (Path): Path to the evaluation corpus folder.
-        predictions_output_path (Path, optional): Path to save the predictions (Excel file).
-    """
-    # Initialize RAG backend
+    Example usage with simple filenames:
+    python rag_predictions.py Corpus-général.xlsx eval_align -o PHIs.xlsx
 
+    Example usage with relative paths:
+    python rag_predictions.py data/Corpus-général.xlsx docs/eval_align -o PHIs.xlsx
+
+    Example usage with full paths:
+    python rag_predictions.py /DSIA/nlp/experiments/data/Corpus-général.xlsx /DSIA/nlp/experiments/docs/eval_align -o /DSIA/nlp/experiments/data_predictions/PHIs.xlsx
+    """
+    # Resolve paths based on base directories if they are not absolute
+    qr_df_path = resolve_path(qr_df_path, BASE_DATA_DIR)
+    eval_corpus_path = resolve_path(eval_corpus_path, BASE_DOCS_DIR)
+
+    # If output path not provided, create one based on input filename
+    if predictions_output_path is None:
+        input_filename = qr_df_path.stem
+        predictions_output_path = BASE_OUTPUT_DIR / f"{input_filename}_predictions.xlsx"
+    else:
+        # Resolve output path
+        predictions_output_path = resolve_path(predictions_output_path, BASE_OUTPUT_DIR)
+
+    # Ensure output directory exists
+    predictions_output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Input data: {qr_df_path}")
+    logger.info(f"Corpus directory: {eval_corpus_path}")
+    logger.info(f"Output file: {predictions_output_path}")
+
+    # Initialize RAG backend
     eval_group_id = "rag_eval"
     RAGBackEnd(eval_group_id, CONFIG_RAG).clear_collection()
     RAG_EVAL_BACKEND = RAGBackEnd(eval_group_id, CONFIG_RAG)
@@ -173,7 +234,7 @@ def main(
         rag_retriever_times.append(retriever_time)
 
     # Save predictions to DataFrame
-    eval_df["rag_answer"] = rag_answers
+    eval_df["answer"] = rag_answers
     eval_df[RAG_RELEVANT_EXTRACTS_COLUMN] = [
         "\n\n".join(
             [f"Extrait {i + 1}: {extract}" for i, extract in enumerate(sublist)]
@@ -185,9 +246,6 @@ def main(
 
     eval_df[QUERY_LENGTH_CHARS] = eval_df[QUERY_COLUMN].str.len()
     eval_df[QUERY_LENGTH_WORDS] = eval_df[QUERY_COLUMN].str.split().str.len()
-
-    # Save predictions to DataFrame
-    eval_df["rag_answer"] = rag_answers
 
     # Log timing statistics
     logger.info(f"Average query time: {pd.Series(rag_query_times).mean():.2f} seconds")

@@ -25,7 +25,7 @@ def setup_page():
     st.title("RAG Evaluation Pipeline Dashboard")
 
 
-def get_available_experiments(base_path="/DSIA/nlp/experiments"):
+def get_available_experiments(base_path="/DSIA/nlp/experiments/results"):
     """Get all available experiment directories containing evaluation Excel files."""
     base_path = Path(base_path)
 
@@ -86,7 +86,7 @@ def handle_experiment_setup():
         st.session_state.experiments = []
 
     # Get available experiments
-    base_path = "/DSIA/nlp/experiments"
+    base_path = "/DSIA/nlp/experiments/results"
     available_experiments, experiment_paths, experiment_categories = (
         get_available_experiments(base_path)
     )
