@@ -4,9 +4,9 @@ import typer
 from pathlib import Path
 from loguru import logger
 import os
-from wattelse.evaluation_pipeline.eval_config import EvalConfig
-from wattelse.evaluation_pipeline.server_config import ServerConfig
-from wattelse.evaluation_pipeline.port_manager import PortManager
+from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
+from wattelse.evaluation_pipeline.config.server_config import ServerConfig
+from wattelse.evaluation_pipeline.utils.port_manager import PortManager
 
 app = typer.Typer()
 

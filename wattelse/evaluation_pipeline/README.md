@@ -40,7 +40,8 @@ flowchart TB
             subgraph LocalModels["Local Model Deployment"]
                 VM[vLLM Server<br/>Configuration]
                 SS[Screen Session<br/>Management]
-                PC[Port & CUDA<br/>Management]
+                PM[Port Manager<br/>port_manager.py]
+                PC[CUDA<br/>Management]
             end
             
             subgraph CloudModels["Cloud Model Setup"]
@@ -50,23 +51,25 @@ flowchart TB
         end
     end
 
-    %% Evaluation Process with metrics
+    %% Evaluation Process with metrics - ENHANCED SECTION
     subgraph Evaluation["Evaluation Process"]
         direction TB
         EV[Evaluation Engine<br/>evaluation.py]
         
-        subgraph LLMEval["LLM Evaluation"]
-            LG[["LLM as a Judge<br/>"]]
+        subgraph LLMEval["LLM-as-Judge Evaluation"]
+            LG[["LLM Judge<br/>(OpenAI_Client)"]]
             
-            subgraph LLMOutput["Output Processing"]
+            subgraph MetricEval["Metric Evaluation"]
                 direction TB
-                RE1[Reasoning<br/>Analysis]
-                JU1[Judgment<br/>Score 1-5]
-                subgraph Metrics["Metric Evaluation"]
-                    FA[Faithfulness]
-                    CO[Correctness]
-                    RE[Retrievability]
-                end
+                FA[Faithfulness<br/>Context Adherence]
+                CO[Correctness<br/>Question Answering]
+                RE[Retrievability<br/>Context Relevance]
+            end
+            
+            subgraph ResultProc["Result Processing"]
+                direction TB
+                RA[Reasoning<br/>Extraction]
+                SC1[Score<br/>Extraction]
             end
         end
     end
@@ -91,13 +94,16 @@ flowchart TB
     LocalModels --> EV
     CloudModels --> EV
     EV --> LLMEval
-    LG --> |Generation| LLMOutput
-    Metrics --> IR
+    
+    LG --> MetricEval
+    MetricEval --> ResultProc
+    RP --> ResultProc
+    
+    ResultProc --> IR
     IR --> FR
     PE --> LG
-    RP --> RE1
-    RP --> JU1
-
+    
+    RS <--> PM
 
     %% Styling
     classDef configFile fill:#f9f9ff,stroke:#333,stroke-width:2px
@@ -109,11 +115,11 @@ flowchart TB
     classDef container fill:#ffffff,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
 
     class QA,CF,SF configFile
-    class EC,RP,PE,EV,RS,SC codeFile
-    class FA,CO,RE,PP,RP1,RP2,RP3 process
+    class EC,RP,PE,EV,RS,SC,PM codeFile
+    class FA,CO,RE,RA,SC1 process
     class IR,FR output
     class MS,VM,SS,PC,API,AUTH setup
-    class LG,RE1,JU1 llm
+    class LG llm
     class ConfigSystem,Orchestration,Evaluation,Output,Input container
 ```
 The diagram shows the main components and data flow of the evaluation pipeline:

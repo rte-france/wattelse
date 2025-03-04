@@ -9,7 +9,7 @@ from tqdm_joblib import tqdm_joblib
 from openai import Timeout
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.evaluation_pipeline.eval_config import EvalConfig
+from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 
 # Define base paths
 BASE_DIR = Path("/DSIA/nlp/experiments")
