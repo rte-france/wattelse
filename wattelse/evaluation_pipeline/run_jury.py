@@ -2,11 +2,20 @@ import time
 import subprocess
 import typer
 from pathlib import Path
-from loguru import logger
 import os
-from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
-from wattelse.evaluation_pipeline.config.server_config import ServerConfig
-from wattelse.evaluation_pipeline.utils.port_manager import PortManager
+from loguru import logger
+import sys
+
+logger.remove()
+logger.add(sys.stderr, level="INFO")  # Only show INFO and above by default
+
+# Parent directory to sys.path to resolve imports correctly
+parent_dir = str(Path(__file__).resolve().parent.parent.parent)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+from wattelse.evaluation_pipeline.config import EvalConfig, ServerConfig
+from wattelse.evaluation_pipeline.utils import PortManager
 
 app = typer.Typer()
 
@@ -40,7 +49,7 @@ def cleanup_screen_sessions(model_name: str = None, eval_config: EvalConfig = No
                         continue
                 logger.info(f"Cleaning up screen session: {session_name}")
                 subprocess.run(["screen", "-S", session_name, "-X", "quit"])
-                logger.info(f"Cleaned up screen session: {session_name}")
+                logger.success(f"Cleaned up screen session: {session_name}")
     except Exception as e:
         logger.error(f"Error cleaning up screen sessions: {e}")
 
@@ -63,7 +72,7 @@ def create_screen_session(
             logger.info(f"Created new screen session: {session_name}")
             time.sleep(2)
         else:
-            logger.info(f"Screen session {session_name} already exists")
+            logger.warning(f"Screen session {session_name} already exists")
             # Kill the existing session to ensure a clean state
             subprocess.run(["screen", "-S", session_name, "-X", "quit"])
             time.sleep(1)
@@ -84,7 +93,9 @@ def get_model_type(model_name: str, eval_config: EvalConfig) -> str:
     """Determine if the model is local or cloud-based."""
     model_config = eval_config.get_model_config(model_name)
     model_type = model_config.get("deployment_type", "local")
-    logger.debug(f"Model type for {model_name}: {model_type}")
+    # Only log non-local model types to reduce verbosity
+    if model_type != "local":
+        logger.debug(f"Model type for {model_name}: {model_type}")
     return model_type
 
 
@@ -152,7 +163,7 @@ def start_vllm_server(
     ]
     try:
         subprocess.run(screen_cmd, check=True)
-        logger.info(f"Started VLLM server for {model_name}")
+        logger.success(f"Started VLLM server for {model_name}")
 
         # Wait for server to be responsive using PortManager
         port_manager.wait_for_server_startup(port)
@@ -178,9 +189,13 @@ def run_evaluation(
     try:
         # Get proper environment variables with correct port reference
         env_vars = get_env_vars(model_name, eval_config, server_config)
+
+        # Path to evaluation.py based on this file's location
+        evaluation_script = Path(__file__).parent / "evaluation.py"
+
         cmd = [
             "python",
-            str(Path(__file__).parent / "evaluation.py"),
+            str(evaluation_script),
             str(qr_df_path),
             "--config-path",
             str(config_path),
@@ -205,7 +220,7 @@ def run_evaluation(
         # Run the evaluation
         logger.info(f"Running evaluation for {model_name}")
         subprocess.run(cmd, env=env, check=True)
-        logger.info(f"Completed evaluation with model: {model_name}")
+        logger.success(f"Completed evaluation with model: {model_name}")
 
     except Exception as e:
         logger.error(f"Error during evaluation with {model_name}: {e}")
@@ -260,13 +275,40 @@ def main(
     server_config_path: Path = Path("server_config.cfg"),
     output_dir: str = "evaluation_results",
     retry_attempts: int = 2,  # New parameter for retry attempts
-):
+) -> None:
+    """Main function to run evaluation on all models defined in the config."""
     # Convert relative paths to absolute paths based on the base directory
     qr_df_path = DATA_PREDICTIONS_DIR / qr_df_filename
     full_output_dir = RESULTS_BASE_DIR / output_dir
 
-    logger.info(f"Input file path: {qr_df_path}")
-    logger.info(f"Output directory: {full_output_dir}")
+    logger.info(
+        f"Evaluation setup - Input: {'/'.join(qr_df_path.parts[-2:])}, Output dir: {'/'.join(full_output_dir.parts[-2:])}"
+    )
+
+    # Check if eval_config_path is relative and if so, try to resolve it
+    if not eval_config_path.is_absolute():
+        # First try current directory
+        if not eval_config_path.exists():
+            # Try the config directory relative to this file
+            potential_path = Path(__file__).parent / "config" / eval_config_path.name
+            if potential_path.exists():
+                eval_config_path = potential_path
+
+    # Same for server_config_path
+    if not server_config_path.is_absolute():
+        if not server_config_path.exists():
+            potential_path = Path(__file__).parent / "config" / server_config_path.name
+            if potential_path.exists():
+                server_config_path = potential_path
+
+    logger.info(
+        f"Config paths - Eval: {'/'.join(eval_config_path.parts[-2:])}, Server: {'/'.join(server_config_path.parts[-2:])}"
+    )
+
+    # Minimal check to ensure config files exist before loading
+    if not eval_config_path.exists() or not server_config_path.exists():
+        logger.error("Config files are missing. Please provide valid paths.")
+        sys.exit(1)
 
     # Load both configurations
     eval_config = EvalConfig(eval_config_path)
@@ -279,11 +321,16 @@ def main(
     models = list(model_configs.keys())
     logger.info(f"Running evaluation with {len(models)} models")
 
+    if len(models) == 0:
+        logger.error(f"No models found in config file. Please check {eval_config_path}")
+        logger.debug(f"Config sections: {eval_config.config_path.read_text()}")
+        return
+
     # Clean up any lingering screen sessions before starting
     cleanup_screen_sessions()
 
     # Make sure the port is free before starting any evaluation using PortManager
-    port_manager.ensure_port_free(server_config.port, force=True)
+    port_manager.ensure_port_free(server_config.port, force=True, verbose=False)
 
     for model in models:
         logger.info(f"Starting evaluation with model: {model}")

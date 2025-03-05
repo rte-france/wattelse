@@ -101,7 +101,7 @@ class PortManager:
             time.sleep(check_interval)
 
         if verbose:
-            self.logger.info(f"Port {port} is now available")
+            self.logger.success(f"Port {port} is now available")
         return True
 
     def wait_for_server_startup(self, port, timeout=180, check_interval=5):

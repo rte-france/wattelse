@@ -172,22 +172,26 @@ def main(
     report_output_path: Path = REPORT_PATH,
 ):
     """Main function to evaluate the RAG pipeline."""
-    logger.info(f"Using input file: {qr_df_path}")
-    logger.info(f"Using config path: {config_path}")
-    logger.info(f"Output will be saved to: {report_output_path}")
+    logger.info(f"Using input file: {'/'.join(qr_df_path.parts[-2:])}")
+    logger.info(f"Using config path: {'/'.join(config_path.parts[-2:])}")
+    logger.info(f"Output will be saved to: {'/'.join(report_output_path.parts[-2:])}")
 
     config = EvalConfig(config_path)
-    logger.info(f"Loaded configuration from {config_path}")
+    logger.info(f"Loaded configuration from {'/'.join(config_path.parts[-2:])}")
 
     eval_df = pd.read_excel(qr_df_path)
-    logger.info(f"Loaded input dataset from {qr_df_path} with {len(eval_df)} rows")
+    logger.info(
+        f"Loaded input dataset from {'/'.join(qr_df_path.parts[-2:])} with {len(eval_df)} rows"
+    )
 
     evaluated_df = evaluate_rag_metrics(eval_df, config)
 
     # Ensure the directory exists
     report_output_path.parent.mkdir(parents=True, exist_ok=True)
     evaluated_df.to_excel(report_output_path, index=False)
-    logger.info(f"Evaluation results saved to {report_output_path}")
+    logger.info(
+        f"Evaluation results saved to {'/'.join(report_output_path.parts[-3:])}"
+    )
 
 
 if __name__ == "__main__":
