@@ -1,4 +1,4 @@
-"""PDF generation utilities for the RAG Evaluation Dashboard."""
+"""PDF generation utilities for the RAG Evaluation Dashboard with proper Markdown support."""
 
 import io
 import re
@@ -12,73 +12,146 @@ from reportlab.platypus import (
     Table,
     TableStyle,
     PageBreak,
+    ListFlowable,
+    ListItem,
 )
+from reportlab.lib.styles import ListStyle
 from reportlab.lib.units import inch
 from .constants import METRIC_DESCRIPTIONS
 import base64
 from datetime import datetime
+import markdown
+from bs4 import BeautifulSoup
+import logging
 
-import re
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def convert_markdown_to_html(text):
+def convert_markdown_to_reportlab(text):
     """
-    Convert markdown-style text to ReportLab-compatible HTML for scientific reports.
+    Convert markdown text to ReportLab elements.
 
     Args:
         text: Text with markdown formatting
 
     Returns:
-        Text with HTML tags for ReportLab
+        List of ReportLab flowable elements
     """
     if not text:
-        return ""
+        return []
 
-    # Convert bold: **text** to <b>text</b>
-    text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", text)
-
-    # Convert italics: *text* to <i>text</i> (excluding bold cases)
-    text = re.sub(r"(?<!\*)\*(.*?)\*(?!\*)", r"<i>\1</i>", text)
-
-    # Convert headers with proper spacing
-    text = re.sub(
-        r"^#\s+(.*?)$",
-        r'<br/><font size="16"><b>\1</b></font><br/>',
-        text,
-        flags=re.MULTILINE,
+    # Create styles
+    styles = getSampleStyleSheet()
+    normal_style = styles["Normal"]
+    heading1_style = ParagraphStyle(
+        "Heading1", parent=styles["Heading1"], spaceBefore=14, spaceAfter=10
     )
-    text = re.sub(
-        r"^##\s+(.*?)$",
-        r'<br/><font size="14"><b>\1</b></font><br/>',
-        text,
-        flags=re.MULTILINE,
+    heading2_style = ParagraphStyle(
+        "Heading2", parent=styles["Heading2"], spaceBefore=12, spaceAfter=8
     )
-    text = re.sub(
-        r"^###\s+(.*?)$",
-        r'<br/><font size="12"><b>\1</b></font><br/>',
-        text,
-        flags=re.MULTILINE,
+    heading3_style = ParagraphStyle(
+        "Heading3", parent=styles["Heading3"], spaceBefore=10, spaceAfter=6
+    )
+    bullet_style = ParagraphStyle("BulletPoint", parent=normal_style, leftIndent=20)
+
+    # Create list styles
+    bullet_list_style = ListStyle(
+        name="BulletList",
+        leftIndent=20,
+        rightIndent=0,
+        bulletAlign="left",
+        bulletType="bullet",
+        bulletColor=colors.black,
+        bulletFontName="Helvetica",
+        bulletFontSize=10,
+        bulletOffsetY=0,
+        bulletDedent="auto",
+        bulletDir="ltr",
+        bulletFormat="%s",
+        start=None,
     )
 
-    # Convert bullet points: - item → • item
-    text = re.sub(r"^\-\s+(.*?)$", r"• \1", text, flags=re.MULTILINE)
+    numbered_list_style = ListStyle(
+        name="NumberedList",
+        leftIndent=20,
+        rightIndent=0,
+        bulletAlign="left",
+        bulletType="1",
+        bulletColor=colors.black,
+        bulletFontName="Helvetica",
+        bulletFontSize=10,
+        bulletOffsetY=0,
+        bulletDedent="auto",
+        bulletDir="ltr",
+        bulletFormat="%s.",
+        start=1,
+    )
 
-    # Convert numbered lists: 1. item → 1. item
-    text = re.sub(r"^\d+\.\s+(.*?)$", r"\g<0>", text, flags=re.MULTILINE)
+    # Convert markdown to HTML
+    html_content = markdown.markdown(text, extensions=["extra"])
 
-    # Convert blockquotes: > Quote → <i>"Quote"</i>
-    text = re.sub(r"^>\s+(.*?)$", r'<i>"\1"</i>', text, flags=re.MULTILINE)
+    # Parse the HTML
+    soup = BeautifulSoup(html_content, "html.parser")
 
-    # Convert links: [text](url) → <a href="url">text</a>
-    text = re.sub(r"\[(.*?)\]\((.*?)\)", r'<a href="\2">\1</a>', text)
+    # List to store ReportLab elements
+    elements = []
 
-    # Ensure paragraphs are wrapped properly
-    text = re.sub(r"([^\n]+)", r"<p>\1</p>", text)
+    # Process each element
+    for element in soup.children:
+        if element.name is None:
+            continue
 
-    # Handle proper line breaks
-    text = text.replace("\n", "<br/>")
+        # Handle headings
+        if element.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+            level = int(element.name[1])
+            style = (
+                heading1_style
+                if level == 1
+                else heading2_style if level == 2 else heading3_style
+            )
+            elements.append(Paragraph(element.text, style))
 
-    return text
+        # Handle paragraphs
+        elif element.name == "p":
+            # Convert all internal HTML to ReportLab-compatible format
+            paragraph_text = str(element)
+            # Replace <strong> with <b> and <em> with <i>
+            paragraph_text = paragraph_text.replace("<strong>", "<b>").replace(
+                "</strong>", "</b>"
+            )
+            paragraph_text = paragraph_text.replace("<em>", "<i>").replace(
+                "</em>", "</i>"
+            )
+            # Strip <p> tags
+            paragraph_text = paragraph_text.replace("<p>", "").replace("</p>", "")
+            elements.append(Paragraph(paragraph_text, normal_style))
+
+        # Handle lists
+        elif element.name in ["ul", "ol"]:
+            list_items = []
+            for li in element.find_all("li", recursive=False):
+                list_items.append(ListItem(Paragraph(li.text, bullet_style)))
+
+            # Use the appropriate list style
+            list_style = (
+                bullet_list_style if element.name == "ul" else numbered_list_style
+            )
+            elements.append(ListFlowable(list_items, style=list_style))
+
+        # Handle blockquotes
+        elif element.name == "blockquote":
+            quote_style = ParagraphStyle(
+                "Quote",
+                parent=normal_style,
+                leftIndent=30,
+                fontName="Helvetica-Oblique",
+            )
+            for p in element.find_all("p"):
+                elements.append(Paragraph(f'"{p.text}"', quote_style))
+
+    return elements
 
 
 def create_pdf_report(
@@ -95,7 +168,7 @@ def create_pdf_report(
     Args:
         experiments_data: List of experiment data dictionaries
         experiment_configs: Configuration information for each experiment
-        description: Text description to include in the PDF
+        description: Text description to include in the PDF (in Markdown format)
         include_tables: Whether to include tables in the PDF
         custom_title: Custom title for the report
         author: Report author name
@@ -122,13 +195,6 @@ def create_pdf_report(
     heading_style = styles["Heading1"]
     subheading_style = styles["Heading2"]
     normal_style = styles["Normal"]
-
-    # Add a custom style for the description that supports HTML formatting
-    description_style = ParagraphStyle(
-        "Description", parent=styles["Normal"], fontSize=10, leading=14, spaceAfter=10
-    )
-
-    # Add a style for notes and captions
     caption_style = ParagraphStyle(
         "Caption",
         parent=styles["Normal"],
@@ -156,32 +222,18 @@ def create_pdf_report(
 
     content.append(Spacer(1, 0.25 * inch))
 
-    # Add description with proper formatting
+    # Add description with proper Markdown formatting
     if description:
         content.append(Paragraph("Description", heading_style))
 
-        # Convert markdown to HTML and split into sections if they exist
-        if "## " in description:
-            # Description has section headers, process each section
-            sections = re.split(r"(?=^##\s+)", description, flags=re.MULTILINE)
-
-            for section in sections:
-                if section.strip():
-                    # If it's a section with a header
-                    if section.strip().startswith("## "):
-                        # Process the section
-                        html_text = convert_markdown_to_html(section)
-                        content.append(Paragraph(html_text, description_style))
-                        content.append(Spacer(1, 0.1 * inch))
-                    else:
-                        # It's an intro text before any section
-                        html_text = convert_markdown_to_html(section)
-                        content.append(Paragraph(html_text, description_style))
-                        content.append(Spacer(1, 0.1 * inch))
-        else:
-            # No section headers, process as a single block
-            html_text = convert_markdown_to_html(description)
-            content.append(Paragraph(html_text, description_style))
+        try:
+            # Convert markdown to ReportLab elements
+            markdown_elements = convert_markdown_to_reportlab(description)
+            content.extend(markdown_elements)
+        except Exception as e:
+            logger.error(f"Error processing markdown: {e}")
+            # Fallback to plain text if markdown processing fails
+            content.append(Paragraph(description, normal_style))
 
         content.append(Spacer(1, 0.15 * inch))
 
@@ -609,7 +661,6 @@ def create_pdf_report(
         else:
             content.append(Paragraph("No timing data available", normal_style))
 
-    # Create a custom page template with page numbers
     def myFirstPage(canvas, doc):
         canvas.saveState()
         # Footer with page number
