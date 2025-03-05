@@ -196,51 +196,7 @@ cuda_visible_devices = 3,2
 
 ## Usage
 
-### Single Model Evaluation (LLM as Judge)
-
-To use a single LLM model as a judge for evaluation:
-
-```bash
-# Basic usage
-python evaluation.py /path/to/data.xlsx
-
-# With all options specified
-python evaluation.py /path/to/data.xlsx \
-    --config-path /path/to/eval_config.cfg \
-    --server-config /path/to/server_config.cfg \
-    --report-output-path /path/to/output.xlsx
-
-# Use a specific model configuration
-export OPENAI_DEFAULT_MODEL_NAME="meta-llama/Meta-Llama-3-8B-Instruct"
-python evaluation.py /path/to/rag_responses.xlsx \
-    --config-path ./configs/llama_config.cfg \
-    --server-config ./configs/server_config.cfg \
-    --report-output-path ./results/llama_evaluation.xlsx
-```
-
-This mode is useful when you want to:
-- Quickly evaluate your RAG system with a single model
-- Test different evaluation prompts
-- Debug the evaluation process
-- Generate preliminary results
-
-The environment variables need to be set according to your model:
-
-```bash
-# For local models (Meta-Llama, Prometheus)
-export OPENAI_ENDPOINT="http://localhost:8888/v1"
-export OPENAI_API_KEY="EMPTY"
-export OPENAI_DEFAULT_MODEL_NAME="meta-llama/Meta-Llama-3-8B-Instruct"
-
-# For cloud models
-export OPENAI_ENDPOINT="your-cloud-endpoint"
-export OPENAI_API_KEY="your-api-key"
-export OPENAI_DEFAULT_MODEL_NAME="your-model-name"
-```
-
-Make sure your vLLM server is running with the appropriate model before starting the evaluation.
-
-### Running the Full Evaluation Pipeline (LLM as Jury)
+### Running the Full Evaluation Pipeline (LLM as Judge/Jury)
 
 ```bash
 # Basic usage
@@ -350,22 +306,9 @@ The evaluation pipeline consists of several key components:
    - Stores evaluation prompts
    - Manages prompt templates
 
-## Error Handling
 
-The pipeline includes robust error handling:
-- Automatic cleanup of stalled processes
-- Port management for model servers
-- Graceful handling of evaluation failures
-- Detailed logging for debugging
+## Subdirectories
 
-## Logging
-
-
-## Contributing
-
-
-## License
-
-
-## Acknowledgments
-
+- `config/` - Configuration management for evaluation and server settings
+- `prompts/` - Prompt templates for different evaluation metrics and models
+- `utils/` - Utility functions and helper classes
