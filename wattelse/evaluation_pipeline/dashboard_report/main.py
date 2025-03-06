@@ -10,6 +10,7 @@ from utils import (
     calculate_good_score_percentage,
     create_timing_plot,
     create_radar_plot,
+    create_average_radar_plot,
     create_metrics_summary,
     create_pdf_report,
     get_pdf_download_link,
@@ -579,63 +580,70 @@ def main():
                 key=f"overall_summary_chart_{str(uuid.uuid4())}",
             )
 
-            st.subheader("Summary Table")
-            formatted_df = overall_df.copy()
+            # Display summary table and radar plot side-by-side
+            st.subheader("Performance Summary")
+            col1, col2 = st.columns([1, 1])
 
-            # Format each column with highest value in bold and add stars for judge agreement
-            for col in formatted_df.columns:
-                if (
-                    col != "Experiment"
+            with col1:
+                st.markdown("##### Metric Averages Table")
+                formatted_df = overall_df.copy()
+
+                # Get all metric columns (excluding special columns)
+                metric_columns = [
+                    col
+                    for col in formatted_df.columns
+                    if col != "Experiment"
                     and col != "Number of Judges"
                     and not col.endswith("_best_count")
-                ):
+                ]
+
+                # Format each column with highest value in bold and add stars for judge agreement
+                for col in metric_columns:
                     # Find max value in this column
                     max_val = formatted_df[col].max()
 
-                    # Create display column with bold formatting for maximum values and stars
-                    if col == "Overall Average":
-                        formatted_df[f"{col}_display"] = formatted_df[col].apply(
-                            lambda x: f"**{x:.1f}%**" if x == max_val else f"{x:.1f}%"
-                        )
-                    else:
-                        # Add stars based on how many judges agree this experiment is best
-                        best_count_col = f"{col}_best_count"
-                        formatted_df[f"{col}_display"] = formatted_df.apply(
-                            lambda row: (
-                                f"**{row[col]:.1f}%** {'*' * row[best_count_col]}"
-                                if row[col] == max_val
-                                else (
-                                    f"{row[col]:.1f}% {'*' * row[best_count_col]}"
-                                    if row[best_count_col] > 0
-                                    else f"{row[col]:.1f}%"
-                                )
-                            ),
-                            axis=1,
-                        )
+                    # Add stars based on how many judges agree this experiment is best
+                    best_count_col = f"{col}_best_count"
+                    formatted_df[f"{col}_display"] = formatted_df.apply(
+                        lambda row: (
+                            f"**{row[col]:.1f}%** {'*' * row[best_count_col]}"
+                            if row[col] == max_val
+                            else (
+                                f"{row[col]:.1f}% {'*' * row[best_count_col]}"
+                                if row[best_count_col] > 0
+                                else f"{row[col]:.1f}%"
+                            )
+                        ),
+                        axis=1,
+                    )
 
-            # Create a new DataFrame with just the display columns
-            display_df = pd.DataFrame()
-            display_df["Experiment"] = formatted_df["Experiment"]
+                # Create a new DataFrame with just the display columns
+                display_df = pd.DataFrame()
+                display_df["Experiment"] = formatted_df["Experiment"]
 
-            # Add formatted display columns in the right order
-            for col in overall_df.columns:
-                if (
-                    col != "Experiment"
-                    and col != "Number of Judges"
-                    and not col.endswith("_best_count")
-                ):
+                # Add formatted display columns in the right order
+                for col in sorted(metric_columns):
                     display_df[col] = formatted_df[f"{col}_display"]
 
-            # Add Number of Judges column
-            display_df["Number of Judges"] = formatted_df["Number of Judges"]
+                # Add Number of Judges column
+                display_df["Number of Judges"] = formatted_df["Number of Judges"]
 
-            # Use st.markdown to render the bold formatting
-            st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
+                # Use st.markdown to render the bold formatting
+                st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
 
-            # Add a note explaining the stars
-            st.caption(
-                "Note: Stars (*) indicate how many judges rated this experiment as the best for that metric."
-            )
+                # Add a note explaining the stars
+                st.caption(
+                    "Note: Stars (*) indicate how many judges rated this experiment as the best for that metric."
+                )
+
+            with col2:
+                # Create and display the radar plot
+                avg_radar_fig = create_average_radar_plot(experiments_data)
+                st.plotly_chart(
+                    avg_radar_fig,
+                    use_container_width=True,
+                    key=f"avg_radar_chart_{str(uuid.uuid4())}",
+                )
 
             # Display individual metric summaries in expandable sections
             st.subheader("Individual Metric Summaries")

@@ -20,6 +20,7 @@ from .data_loader import load_evaluation_files, calculate_good_score_percentage
 from .visualization import (
     create_timing_plot,
     create_radar_plot,
+    create_average_radar_plot,
 )
 
 # Import the new metrics summary function

@@ -356,9 +356,7 @@ def create_pdf_report(
         content.append(Paragraph("Summary of Performances (%)", subheading_style))
 
         # Build overall summary data
-        table_data = [
-            ["Experiment", "Overall"] + sorted(all_metrics) + ["Number of Judges"]
-        ]
+        table_data = [["Experiment"] + sorted(all_metrics) + ["Number of Judges"]]
 
         for exp in experiments_data:
             exp_name = exp["name"]
@@ -381,8 +379,7 @@ def create_pdf_report(
                     metrics_values[metric] = sum(metric_values) / len(metric_values)
 
             if metrics_values:
-                overall_avg = sum(metrics_values.values()) / len(metrics_values)
-                row_data = [exp_name, f"{overall_avg:.1f}%"]
+                row_data = [exp_name]  # Start with just the experiment name
 
                 for metric in sorted(all_metrics):
                     if metric in metrics_values:

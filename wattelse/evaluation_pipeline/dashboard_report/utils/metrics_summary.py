@@ -133,7 +133,7 @@ def create_metrics_summary(experiments_data):
 
             summary_figs[metric] = fig
 
-    # Create overall average figure
+    # Create overall metrics data
     overall_data = []
 
     for exp in experiments_data:
@@ -157,11 +157,9 @@ def create_metrics_summary(experiments_data):
                 metrics_values[metric] = sum(metric_values) / len(metric_values)
 
         if metrics_values:
-            overall_avg = sum(metrics_values.values()) / len(metrics_values)
             overall_data.append(
                 {
                     "Experiment": exp_name,
-                    "Overall Average": overall_avg,
                     "Number of Judges": judge_counts[exp_name],
                     **metrics_values,
                     **{
@@ -185,7 +183,7 @@ def create_metrics_summary(experiments_data):
     # Create overall summary figure
     overall_fig = go.Figure()
 
-    # Add a trace for each metric and the overall average
+    # Add a trace for each metric
     colors = [
         "rgb(55, 83, 139)",
         "rgb(26, 118, 255)",
@@ -193,7 +191,7 @@ def create_metrics_summary(experiments_data):
         "rgb(225, 87, 89)",
     ]
 
-    for i, metric in enumerate(["Overall Average"] + sorted(all_metrics)):
+    for i, metric in enumerate(sorted(all_metrics)):
         if metric in overall_df.columns:
             overall_fig.add_trace(
                 go.Bar(
@@ -210,7 +208,7 @@ def create_metrics_summary(experiments_data):
             )
 
     overall_fig.update_layout(
-        title="Overall Performance Summary",
+        title="Performance Summary by Metric",
         xaxis_title="Experiment",
         yaxis_title="Performance %",
         yaxis=dict(ticksuffix="%", range=[0, 100]),

@@ -2,8 +2,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import configparser
 from typing import Dict, Any, Set
-from wattelse.evaluation_pipeline.prompts.regex_patterns import RegexPatterns
-from wattelse.evaluation_pipeline.prompts.prompt_eval import PROMPTS
+from wattelse.evaluation_pipeline.prompts import RegexPatterns, PROMPTS
 
 
 @dataclass
