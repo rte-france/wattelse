@@ -38,7 +38,10 @@ class RAGOrchestratorClient:
     def __init__(self, url: str | None = None):
         self.port = CONFIG.port
         self.host = CONFIG.host
+        if self.host == "0.0.0.0":
+            self.host = "localhost"
         self.url = f"http://{self.host}:{self.port}" if url is None else url
+        logger.debug(self.url)
         if self.check_service():
             logger.debug("RAG Orchestrator is running")
         else:
