@@ -6,7 +6,6 @@
 from fastapi import FastAPI
 from wattelse.api.embedding.routers import info, embeddings
 
-
 app = FastAPI()
 
 app.include_router(info.router, tags=["Info"])

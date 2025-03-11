@@ -2,8 +2,11 @@ from fastapi import APIRouter
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
-from wattelse.api.embedding.config.settings import CONFIG
+from wattelse.api.embedding.config.settings import get_config
 from wattelse.api.embedding.models import InputText
+
+# Load the configuration
+CONFIG = get_config()
 
 # Load embedding model
 logger.debug(f"Loading embedding model : {CONFIG.model_name}")

@@ -1,6 +1,9 @@
 from fastapi import APIRouter
 
-from wattelse.api.embedding.config.settings import CONFIG
+from wattelse.api.embedding.config.settings import get_config
+
+# Load the configuration
+CONFIG = get_config()
 
 
 router = APIRouter()

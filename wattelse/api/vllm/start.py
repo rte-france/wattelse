@@ -1,11 +1,14 @@
 import os
 import subprocess
-from wattelse.api.vllm.config.settings import CONFIG
+from wattelse.api.vllm.config.settings import get_config
+
+# Load the configuration
+CONFIG = get_config()
 
 # Set the CUDA_VISIBLE_DEVICES environment variable
 os.environ["CUDA_VISIBLE_DEVICES"] = CONFIG.cuda_visible_devices
 
-# Start the FastAPI application
+# Start the vLLM OpenAI API server
 command = [
     "python",
     "-m",
@@ -20,7 +23,7 @@ command = [
     "auto",
     "--worker-use-ray",
     "--tensor-parallel-size",
-    "2",
+    len(CONFIG.cuda_visible_devices.split(",")),
     "--enforce-eager",
     "--dtype",
     "half",
