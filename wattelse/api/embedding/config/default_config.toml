@@ -4,4 +4,4 @@ model_name = "OrdalieTech/Solon-embeddings-large-0.1"
 #model_name=dangvantuan/sentence-camembert-large
 #model_name=antoinelouis/biencoder-camembert-base-mmarcoFR
 number_workers = 2
-cuda_visible_devices = "0"
+cuda_visible_devices = "1"
