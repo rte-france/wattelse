@@ -9,6 +9,11 @@ CONFIG = get_config()
 router = APIRouter()
 
 
+@router.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @router.get("/model_name")
 def get_model_name():
     return CONFIG.model_name

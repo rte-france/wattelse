@@ -12,7 +12,7 @@ from pathlib import Path
 from loguru import logger
 
 from wattelse.api.rag_orchestrator import (
-    ENDPOINT_CHECK_SERVICE,
+    ENDPOINT_HEALTH_SERVICE,
     ENDPOINT_CREATE_SESSION,
     ENDPOINT_QUERY_RAG,
     ENDPOINT_UPLOAD_DOCS,
@@ -48,8 +48,8 @@ class RAGOrchestratorClient:
 
     def check_service(self) -> bool:
         """Check if RAG Orchestrator is running"""
-        resp = requests.get(url=self.url + ENDPOINT_CHECK_SERVICE)
-        return resp.json() == {"Status": "OK"}
+        resp = requests.get(url=self.url + ENDPOINT_HEALTH_SERVICE)
+        return resp.json() == {"status": "ok"}
 
     def get_rag_llm_model(self, group_id: str) -> str:
         """Returns the name of the LLM used by the RAG"""
