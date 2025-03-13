@@ -595,6 +595,8 @@ def main():
                     if col != "Experiment"
                     and col != "Number of Judges"
                     and not col.endswith("_best_count")
+                    and not col.endswith("_ci_lower")
+                    and not col.endswith("_ci_upper")
                 ]
 
                 # Format each column with highest value in bold and add stars for judge agreement
@@ -602,7 +604,7 @@ def main():
                     # Find max value in this column
                     max_val = formatted_df[col].max()
 
-                    # Add stars based on how many judges agree this experiment is best
+                    # Add stars based on how many judges rated this experiment as best for this metric
                     best_count_col = f"{col}_best_count"
                     formatted_df[f"{col}_display"] = formatted_df.apply(
                         lambda row: (
@@ -624,6 +626,14 @@ def main():
                 # Add formatted display columns in the right order
                 for col in sorted(metric_columns):
                     display_df[col] = formatted_df[f"{col}_display"]
+                    
+                    # Add confidence interval column for correctness
+                    if col == "correctness" and f"{col}_ci_lower" in formatted_df.columns:
+                        # Create CI column with formatted values
+                        display_df[f"{col} (95% CI)"] = formatted_df.apply(
+                            lambda row: f"({row[f'{col}_ci_lower']:.1f}% - {row[f'{col}_ci_upper']:.1f}%)",
+                            axis=1
+                        )
 
                 # Add Number of Judges column
                 display_df["Number of Judges"] = formatted_df["Number of Judges"]
@@ -631,9 +641,10 @@ def main():
                 # Use st.markdown to render the bold formatting
                 st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
 
-                # Add a note explaining the stars
+                # Add a note explaining the stars and CI
                 st.caption(
-                    "Note: Stars (*) indicate how many judges rated this experiment as the best for that metric."
+                    "Note: Stars (*) indicate how many judges rated this experiment as the best for that metric. "
+                    "95% CI shows the confidence interval for correctness scores."
                 )
 
             with col2:

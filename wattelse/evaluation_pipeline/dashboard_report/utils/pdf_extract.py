@@ -1,7 +1,6 @@
 """PDF generation utilities for the RAG Evaluation Dashboard with proper Markdown support."""
 
 import io
-import re
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -21,6 +20,8 @@ from .constants import METRIC_DESCRIPTIONS
 import base64
 from datetime import datetime
 import markdown
+from scipy import stats
+import numpy as np
 from bs4 import BeautifulSoup
 import logging
 
@@ -355,15 +356,36 @@ def create_pdf_report(
         # Create overall summary table
         content.append(Paragraph("Summary of Performances (%)", subheading_style))
 
-        # Build overall summary data
-        table_data = [["Experiment"] + sorted(all_metrics) + ["Number of Judges"]]
+        table_data = [["Experiment"] + sorted(all_metrics)]
+
+        filtered_metrics = [metric for metric in sorted(all_metrics) if metric != "correctness"]
+
+        # Start with Experiment column
+        header_row = ["Experiment"]
+
+        # Add correctness first (if it exists), then its CI, then other metrics
+        if "correctness" in all_metrics:
+            header_row.append("correctness")
+            header_row.append("Correctness (95% CI)")
+            
+        # Add all other metrics
+        header_row.extend(filtered_metrics)
+
+        # Add Number of Judges at the end
+        header_row.append("Number of Judges")
+
+        # Set the first row of the table
+        table_data = [header_row]
 
         for exp in experiments_data:
             exp_name = exp["name"]
             metrics_values = {}
+            ci_value = "N/A"  # Default value for CI
 
-            for metric in sorted(all_metrics):
+            # Calculate metrics values and CI
+            for metric in all_metrics:
                 metric_values = []
+                all_scores = []  # For CI calculation
 
                 for judge, df in exp["dfs"].items():
                     score_col = f"{metric}_score"
@@ -374,28 +396,60 @@ def create_pdf_report(
                             * 100
                         )
                         metric_values.append(good_score_pct)
+                        
+                        # For correctness, collect individual scores for CI calculation
+                        if metric == "correctness":
+                            binary_scores = [1 if score in [4, 5] else 0 for score in df[score_col].dropna()]
+                            all_scores.extend(binary_scores)
 
                 if metric_values:
                     metrics_values[metric] = sum(metric_values) / len(metric_values)
+                    
+                    # Calculate CI for correctness
+                    if metric == "correctness" and all_scores:
+                        
+                        scores_array = np.array([s * 100 for s in all_scores])  # Convert to percentages
+                        mean = np.mean(scores_array)
+                        se = stats.sem(scores_array) if len(scores_array) > 1 else 0
+                        
+                        if len(scores_array) > 1:
+                            h = se * stats.t.ppf((1 + 0.95) / 2, len(scores_array) - 1)
+                            ci_lower = max(0, mean - h)
+                            ci_upper = min(100, mean + h)
+                        else:
+                            ci_lower = mean
+                            ci_upper = mean
+                        
+                        ci_value = f"({ci_lower:.1f}% - {ci_upper:.1f}%)"
 
             if metrics_values:
-                row_data = [exp_name]  # Start with just the experiment name
-
-                for metric in sorted(all_metrics):
+                # Start row with experiment name
+                row_data = [exp_name]
+                
+                # Add correctness and CI columns first (if they exist)
+                if "correctness" in all_metrics:
+                    # Add correctness with stars
+                    if "correctness" in metrics_values:
+                        stars = "*" * best_counts["correctness"][exp_name]
+                        row_data.append(f"{metrics_values['correctness']:.1f}%{' ' + stars if stars else ''}")
+                    else:
+                        row_data.append("N/A")
+                        
+                    # Add CI value
+                    row_data.append(ci_value)
+                
+                # Add all other metrics
+                for metric in filtered_metrics:
                     if metric in metrics_values:
-                        # Add stars based on how many judges rated this experiment as best for this metric
                         stars = "*" * best_counts[metric][exp_name]
-                        row_data.append(
-                            f"{metrics_values[metric]:.1f}%{' ' + stars if stars else ''}"
-                        )
+                        row_data.append(f"{metrics_values[metric]:.1f}%{' ' + stars if stars else ''}")
                     else:
                         row_data.append("N/A")
 
                 # Add judge count
                 row_data.append(str(judge_counts[exp_name]))
-
+                
                 table_data.append(row_data)
-
         # Create and style the table
         if len(table_data) > 1:  # Only create if we have data rows
             table = Table(table_data, repeatRows=1)
@@ -468,7 +522,9 @@ def create_pdf_report(
             content.append(Spacer(1, 0.1 * inch))
             content.append(
                 Paragraph(
-                    "Note: Stars (*) indicate how many judges rated this experiment as the best for that metric. Multiple experiments may be rated as best in case of ties.",
+                    "Note: Stars (*) indicate how many judges rated this experiment as the best for that metric. "
+                    "Multiple experiments may be rated as best in case of ties. "
+                    "For the 'Correctness' metric, the 95% confidence interval is shown.",
                     caption_style,
                 )
             )
