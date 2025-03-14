@@ -42,11 +42,11 @@ class SentenceSplitter(TextSplitter):
 
 
 def split_file(
-    file_extension: str, 
-    docs: List[Document], 
+    file_extension: str,
+    docs: List[Document],
     use_sentence_splitter: bool = True,
     chunk_size: int = 200,
-    chunk_overlap: int = 50
+    chunk_overlap: int = 50,
 ) -> List[Document]:
     """Split a file into smaller chunks - the chunking method depends on file type"""
     if file_extension == ".md":
@@ -90,13 +90,11 @@ def split_file(
     else:
         if use_sentence_splitter:
             text_splitter = SentenceSplitter(
-                chunk_size=chunk_size, 
-                chunk_overlap=chunk_overlap
+                chunk_size=chunk_size, chunk_overlap=chunk_overlap
             )
         else:
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
+                chunk_size=chunk_size, chunk_overlap=chunk_overlap
             )
         splits = text_splitter.split_documents(docs)
         return splits
