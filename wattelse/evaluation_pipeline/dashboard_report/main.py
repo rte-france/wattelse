@@ -606,34 +606,38 @@ def main():
 
                     # Add stars based on how many judges rated this experiment as best for this metric
                     best_count_col = f"{col}_best_count"
-                    formatted_df[f"{col}_display"] = formatted_df.apply(
-                        lambda row: (
-                            f"**{row[col]:.1f}%** {'*' * row[best_count_col]}"
-                            if row[col] == max_val
-                            else (
-                                f"{row[col]:.1f}% {'*' * row[best_count_col]}"
-                                if row[best_count_col] > 0
+                    if best_count_col in formatted_df.columns:
+                        formatted_df[f"{col}_display"] = formatted_df.apply(
+                            lambda row: (
+                                f"**{row[col]:.1f}%** {'*' * row[best_count_col]}"
+                                if row[col] == max_val
+                                else (
+                                    f"{row[col]:.1f}% {'*' * row[best_count_col]}"
+                                    if row[best_count_col] > 0
+                                    else f"{row[col]:.1f}%"
+                                )
+                            ),
+                            axis=1,
+                        )
+                    else:
+                        # If best_count_col doesn't exist, just format without stars
+                        formatted_df[f"{col}_display"] = formatted_df.apply(
+                            lambda row: (
+                                f"**{row[col]:.1f}%**"
+                                if row[col] == max_val
                                 else f"{row[col]:.1f}%"
-                            )
-                        ),
-                        axis=1,
-                    )
+                            ),
+                            axis=1,
+                        )
 
-                # Create a new DataFrame with just the display columns
+                # MAIN TABLE - Create a new DataFrame with just the display columns
                 display_df = pd.DataFrame()
                 display_df["Experiment"] = formatted_df["Experiment"]
 
-                # Add formatted display columns in the right order
-                for col in sorted(metric_columns):
-                    display_df[col] = formatted_df[f"{col}_display"]
-                    
-                    # Add confidence interval column for correctness
-                    if col == "correctness" and f"{col}_ci_lower" in formatted_df.columns:
-                        # Create CI column with formatted values
-                        display_df[f"{col} (95% CI)"] = formatted_df.apply(
-                            lambda row: f"({row[f'{col}_ci_lower']:.1f}% - {row[f'{col}_ci_upper']:.1f}%)",
-                            axis=1
-                        )
+                # Add just the metric columns (no CI)
+                for metric in sorted(metric_columns):
+                    if f"{metric}_display" in formatted_df.columns:
+                        display_df[metric] = formatted_df[f"{metric}_display"]
 
                 # Add Number of Judges column
                 display_df["Number of Judges"] = formatted_df["Number of Judges"]
@@ -641,10 +645,47 @@ def main():
                 # Use st.markdown to render the bold formatting
                 st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
 
-                # Add a note explaining the stars and CI
+                # Add a note explaining the stars
                 st.caption(
                     "Note: Stars (*) indicate how many judges rated this experiment as the best for that metric. "
-                    "95% CI shows the confidence interval for correctness scores."
+                    "Bold values indicate the highest score in each column."
+                )
+
+                # CONFIDENCE INTERVAL TABLE - Create a separate table just for CIs
+                st.markdown("##### 95% Confidence Intervals")
+
+                ci_df = pd.DataFrame()
+                ci_df["Experiment"] = formatted_df["Experiment"]
+
+                # Add CI columns for all metrics
+                for metric in sorted(metric_columns):
+                    # Add CI column if available
+                    ci_lower_col = f"{metric}_ci_lower"
+                    ci_upper_col = f"{metric}_ci_upper"
+                    if (
+                        ci_lower_col in formatted_df.columns
+                        and ci_upper_col in formatted_df.columns
+                    ):
+                        # Find row with highest upper bound for this metric's CI
+                        max_upper_bound = formatted_df[ci_upper_col].max()
+
+                        # Format CI column with highest value in bold
+                        ci_df[f"{metric.title()}"] = formatted_df.apply(
+                            lambda row: (
+                                f"**({row[ci_lower_col]:.1f}% - {row[ci_upper_col]:.1f}%)**"
+                                if row[ci_upper_col] == max_upper_bound
+                                else f"({row[ci_lower_col]:.1f}% - {row[ci_upper_col]:.1f}%)"
+                            ),
+                            axis=1,
+                        )
+
+                # Use st.markdown to render the bold formatting for CI table
+                st.markdown(ci_df.to_markdown(index=False), unsafe_allow_html=True)
+
+                # Add a note explaining the CI table
+                st.caption(
+                    "Note: This table shows the 95% confidence intervals for each metric. "
+                    "Bold values indicate the highest upper bound in each column."
                 )
 
             with col2:

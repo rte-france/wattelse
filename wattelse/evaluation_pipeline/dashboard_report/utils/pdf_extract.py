@@ -356,33 +356,22 @@ def create_pdf_report(
         # Create overall summary table
         content.append(Paragraph("Summary of Performances (%)", subheading_style))
 
-        table_data = [["Experiment"] + sorted(all_metrics)]
+        metrics_header_row = ["Experiment"] + sorted(all_metrics) + ["Number of Judges"]
+        metrics_table_data = [metrics_header_row]
 
-        filtered_metrics = [metric for metric in sorted(all_metrics) if metric != "correctness"]
-
-        # Start with Experiment column
-        header_row = ["Experiment"]
-
-        # Add correctness first (if it exists), then its CI, then other metrics
-        if "correctness" in all_metrics:
-            header_row.append("correctness")
-            header_row.append("Correctness (95% CI)")
-            
-        # Add all other metrics
-        header_row.extend(filtered_metrics)
-
-        # Add Number of Judges at the end
-        header_row.append("Number of Judges")
-
-        # Set the first row of the table
-        table_data = [header_row]
+        # CI TABLE
+        # Build CI table data
+        ci_header_row = ["Experiment"]
+        for metric in sorted(all_metrics):
+            ci_header_row.append(f"{metric.title()} (95% CI)")
+        ci_table_data = [ci_header_row]
 
         for exp in experiments_data:
             exp_name = exp["name"]
             metrics_values = {}
-            ci_value = "N/A"  # Default value for CI
+            ci_values = {}  # To store CI values for all metrics
 
-            # Calculate metrics values and CI
+            # Calculate metrics values and CI for all metrics
             for metric in all_metrics:
                 metric_values = []
                 all_scores = []  # For CI calculation
@@ -396,22 +385,28 @@ def create_pdf_report(
                             * 100
                         )
                         metric_values.append(good_score_pct)
-                        
-                        # For correctness, collect individual scores for CI calculation
-                        if metric == "correctness":
-                            binary_scores = [1 if score in [4, 5] else 0 for score in df[score_col].dropna()]
-                            all_scores.extend(binary_scores)
+
+                        # Collect individual scores for CI calculation for all metrics
+                        binary_scores = [
+                            1 if score in [4, 5] else 0
+                            for score in df[score_col].dropna()
+                        ]
+                        all_scores.extend(binary_scores)
 
                 if metric_values:
                     metrics_values[metric] = sum(metric_values) / len(metric_values)
-                    
-                    # Calculate CI for correctness
-                    if metric == "correctness" and all_scores:
-                        
-                        scores_array = np.array([s * 100 for s in all_scores])  # Convert to percentages
+
+                    # Calculate CI for all metrics
+                    if all_scores:
+                        from scipy import stats
+                        import numpy as np
+
+                        scores_array = np.array(
+                            [s * 100 for s in all_scores]
+                        )  # Convert to percentages
                         mean = np.mean(scores_array)
                         se = stats.sem(scores_array) if len(scores_array) > 1 else 0
-                        
+
                         if len(scores_array) > 1:
                             h = se * stats.t.ppf((1 + 0.95) / 2, len(scores_array) - 1)
                             ci_lower = max(0, mean - h)
@@ -419,69 +414,80 @@ def create_pdf_report(
                         else:
                             ci_lower = mean
                             ci_upper = mean
-                        
-                        ci_value = f"({ci_lower:.1f}% - {ci_upper:.1f}%)"
 
-            if metrics_values:
-                # Start row with experiment name
-                row_data = [exp_name]
-                
-                # Add correctness and CI columns first (if they exist)
-                if "correctness" in all_metrics:
-                    # Add correctness with stars
-                    if "correctness" in metrics_values:
-                        stars = "*" * best_counts["correctness"][exp_name]
-                        row_data.append(f"{metrics_values['correctness']:.1f}%{' ' + stars if stars else ''}")
+                        ci_values[f"{metric}_ci"] = (
+                            f"({ci_lower:.1f}% - {ci_upper:.1f}%)"
+                        )
                     else:
-                        row_data.append("N/A")
-                        
-                    # Add CI value
-                    row_data.append(ci_value)
-                
-                # Add all other metrics
-                for metric in filtered_metrics:
-                    if metric in metrics_values:
-                        stars = "*" * best_counts[metric][exp_name]
-                        row_data.append(f"{metrics_values[metric]:.1f}%{' ' + stars if stars else ''}")
-                    else:
-                        row_data.append("N/A")
+                        ci_values[f"{metric}_ci"] = "N/A"
+                else:
+                    metrics_values[metric] = "N/A"
+                    ci_values[f"{metric}_ci"] = "N/A"
 
-                # Add judge count
-                row_data.append(str(judge_counts[exp_name]))
-                
-                table_data.append(row_data)
-        # Create and style the table
-        if len(table_data) > 1:  # Only create if we have data rows
-            table = Table(table_data, repeatRows=1)
+            # METRICS TABLE ROW
+            metrics_row = [exp_name]
 
-            # Find all cells with maximum values in each column to highlight
-            max_value_cells = (
+            # Add metric values with stars
+            for metric in sorted(all_metrics):
+                if metric in metrics_values and metrics_values[metric] != "N/A":
+                    stars = "*" * best_counts[metric][exp_name]
+                    metrics_row.append(
+                        f"{metrics_values[metric]:.1f}%{' ' + stars if stars else ''}"
+                    )
+                else:
+                    metrics_row.append("N/A")
+
+            # Add judge count
+            metrics_row.append(str(judge_counts[exp_name]))
+            metrics_table_data.append(metrics_row)
+
+            # CI TABLE ROW
+            ci_row = [exp_name]
+
+            # Add CI values
+            for metric in sorted(all_metrics):
+                if f"{metric}_ci" in ci_values:
+                    ci_row.append(ci_values[f"{metric}_ci"])
+                else:
+                    ci_row.append("N/A")
+
+            ci_table_data.append(ci_row)
+
+        # METRICS TABLE - Create and style the table
+        if len(metrics_table_data) > 1:  # Only create if we have data rows
+            metrics_table = Table(metrics_table_data, repeatRows=1)
+
+            # Find all cells with maximum values in metrics table
+            max_metric_cells = (
                 {}
             )  # Dictionary to store column_idx -> list of row indices with max value
+
+            # Process each metric column to find highest values
             for col_idx in range(
-                1, len(table_data[0]) - 1
-            ):  # Skip last column (Number of Judges)
+                1, len(metrics_table_data[0]) - 1
+            ):  # Skip first (Experiment) and last (Number of Judges) columns
                 col_values = []
-                for row_idx in range(1, len(table_data)):
-                    value = table_data[row_idx][col_idx]
+
+                for row_idx in range(1, len(metrics_table_data)):
+                    value = metrics_table_data[row_idx][col_idx]
                     if value != "N/A":
                         try:
-                            # Extract numeric value from the formatted string (ignoring stars)
+                            # Extract numeric value from metrics format
                             numeric_value = float(value.split("%")[0])
                             col_values.append((row_idx, numeric_value))
-                        except (ValueError, AttributeError):
+                        except (ValueError, IndexError, AttributeError):
                             continue
 
                 if col_values:
                     # Find max value for this column
                     max_value = max(col_values, key=lambda x: x[1])[1]
                     # Find all rows with this max value (handling ties)
-                    max_value_cells[col_idx] = [
+                    max_metric_cells[col_idx] = [
                         row_idx for row_idx, value in col_values if value == max_value
                     ]
 
-            # Create base style
-            style = [
+            # Create base style for metrics table
+            metrics_style = [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
                 ("ALIGN", (0, 0), (-1, 0), "CENTER"),
@@ -495,10 +501,10 @@ def create_pdf_report(
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ]
 
-            # Add bold formatting and background color for ALL cells with highest values in each column
-            for col_idx, row_indices in max_value_cells.items():
+            # Add bold formatting and background color for cells with highest values
+            for col_idx, row_indices in max_metric_cells.items():
                 for row_idx in row_indices:
-                    style.append(
+                    metrics_style.append(
                         (
                             "FONTNAME",
                             (col_idx, row_idx),
@@ -506,7 +512,7 @@ def create_pdf_report(
                             "Helvetica-Bold",
                         )
                     )
-                    style.append(
+                    metrics_style.append(
                         (
                             "BACKGROUND",
                             (col_idx, row_idx),
@@ -515,16 +521,100 @@ def create_pdf_report(
                         )
                     )
 
-            table.setStyle(TableStyle(style))
-            content.append(table)
+            metrics_table.setStyle(TableStyle(metrics_style))
+            content.append(metrics_table)
 
             # Add a note explaining what the stars mean
             content.append(Spacer(1, 0.1 * inch))
             content.append(
                 Paragraph(
                     "Note: Stars (*) indicate how many judges rated this experiment as the best for that metric. "
-                    "Multiple experiments may be rated as best in case of ties. "
-                    "For the 'Correctness' metric, the 95% confidence interval is shown.",
+                    "Multiple experiments may be rated as best in case of ties.",
+                    caption_style,
+                )
+            )
+
+            # Add some space between tables
+            content.append(Spacer(1, 0.3 * inch))
+            content.append(Paragraph("95% Confidence Intervals", subheading_style))
+            content.append(Spacer(1, 0.1 * inch))
+
+            # CI TABLE - Create and style the table
+            ci_table = Table(ci_table_data, repeatRows=1)
+
+            # Find all cells with maximum values in CI table
+            max_ci_cells = (
+                {}
+            )  # Dictionary to store column_idx -> list of row indices with max value
+
+            # Process each CI column to find highest upper bounds
+            for col_idx in range(
+                1, len(ci_table_data[0])
+            ):  # Skip first (Experiment) column
+                col_values = []
+
+                for row_idx in range(1, len(ci_table_data)):
+                    value = ci_table_data[row_idx][col_idx]
+                    if value != "N/A":
+                        try:
+                            # Extract upper bound from CI format "(X.X% - Y.Y%)"
+                            upper_bound = float(value.split(" - ")[1].rstrip("%)"))
+                            col_values.append((row_idx, upper_bound))
+                        except (ValueError, IndexError, AttributeError):
+                            continue
+
+                if col_values:
+                    # Find max value for this column
+                    max_value = max(col_values, key=lambda x: x[1])[1]
+                    # Find all rows with this max value (handling ties)
+                    max_ci_cells[col_idx] = [
+                        row_idx for row_idx, value in col_values if value == max_value
+                    ]
+
+            # Create base style for CI table
+            ci_style = [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 12),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+
+            # Add bold formatting and background color for cells with highest CI values
+            for col_idx, row_indices in max_ci_cells.items():
+                for row_idx in row_indices:
+                    ci_style.append(
+                        (
+                            "FONTNAME",
+                            (col_idx, row_idx),
+                            (col_idx, row_idx),
+                            "Helvetica-Bold",
+                        )
+                    )
+                    ci_style.append(
+                        (
+                            "BACKGROUND",
+                            (col_idx, row_idx),
+                            (col_idx, row_idx),
+                            colors.lightblue,
+                        )
+                    )
+
+            ci_table.setStyle(TableStyle(ci_style))
+            content.append(ci_table)
+
+            # Add a note explaining the CI table
+            content.append(Spacer(1, 0.1 * inch))
+            content.append(
+                Paragraph(
+                    "Note: This table shows the 95% confidence intervals for each metric. "
+                    "The confidence interval indicates the range where we can be 95% confident the true performance percentage lies.",
                     caption_style,
                 )
             )
