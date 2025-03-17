@@ -11,7 +11,7 @@ if CONFIG.host == "0.0.0.0":
 
 # Try to check health endpoint and handle any connection errors
 try:
-    response = requests.get(f"http://{CONFIG.host}:{CONFIG.port}/health", timeout=5)
+    response = requests.get(f"https://{CONFIG.host}:{CONFIG.port}/health", timeout=5)
     if response.status_code == 200:
         sys.exit(0)
     else:

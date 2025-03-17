@@ -15,4 +15,6 @@ if __name__ == "__main__":
         host=CONFIG.host,
         port=CONFIG.port,
         workers=CONFIG.number_workers,
+        ssl_keyfile="../key.pem",
+        ssl_certfile="../cert.pem",
     )

@@ -39,30 +39,30 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
 # Client registry - in production, store somewhere else - database, file...
 CLIENT_REGISTRY_FILE = os.getenv(
-    "CLIENT_REGISTRY_FILE", "wattelse_client_registry.json"
+    "CLIENT_REGISTRY_FILE", f"{os.path.expanduser('~')}/wattelse_client_registry.json"
 )
 
 DEFAULT_CLIENT_REGISTRY = {
     "admin": {
         "client_secret": generate_hex_token(),
-        "scopes": ["admin", "full_access"],
+        "scopes": ["admin", "full_access", "restricted"],
     },
-    "wattelse_django": {
+    "wattelse": {
         "client_secret": generate_hex_token(),
-        "scopes": ["full_access"],
-    },
-    "rag_orchestrator": {
-        "client_secret": generate_hex_token(),
-        "scopes": ["full_access"],
+        "scopes": ["full_access", "restricted"],
     },
     "opfab": {"client_secret": generate_hex_token(), "scopes": ["restricted"]},
 }
 
+RESTRICTED = "restricted"
+FULL_ACCESS = "full_access"
+ADMIN = "admin"
+
 # Define available scopes with descriptions
 SCOPES = {
-    "restricted": "Access limited to some endpoints",
-    "full_access": "Full access to endpoints except admin endpoints",
-    "admin": "Admin access",
+    RESTRICTED: "Access limited to some endpoints",
+    FULL_ACCESS: "Full access to endpoints except admin endpoints",
+    ADMIN: "Admin access",
 }
 
 # Configure OAuth2
@@ -154,6 +154,7 @@ async def get_current_client(
     # Check if client has necessary scopes
     for scope in security_scopes.scopes:
         if scope not in token_data.scopes:
+            logger.error(f"{scope} not in {token_data.scopes}, not enough permissions")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Not enough permissions. Required scope: {scope}",
