@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, Security
 from fastapi.security import (
     OAuth2PasswordRequestForm,
 )
+from loguru import logger
 
 from wattelse.api.security import (
     Token,
@@ -19,6 +20,8 @@ from wattelse.api.security import (
     list_registered_clients,
     RESTRICTED_ACCESS,
     FULL_ACCESS,
+    ADMIN,
+    is_authorized_for_group,
 )
 
 app = FastAPI()
@@ -39,9 +42,7 @@ async def list_clients():
 # Protected endpoints with different scopes
 @app.get("/api/data", summary="Read data (requires restricted or full_access scope)")
 async def read_data(
-    current_client: TokenData = Security(
-        get_current_client, scopes=[RESTRICTED_ACCESS, FULL_ACCESS]
-    )
+    current_client: TokenData = Security(get_current_client, scopes=[RESTRICTED_ACCESS])
 ):
     return {
         "data": "This is protected data",
@@ -54,6 +55,7 @@ async def read_data(
 async def write_data(
     current_client: TokenData = Security(get_current_client, scopes=[FULL_ACCESS])
 ):
+    logger.info(f"Group check: {is_authorized_for_group(current_client, 'wattelse')}")
     return {
         "status": "Data successfully written",
         "client": current_client.client_id,
@@ -63,7 +65,7 @@ async def write_data(
 
 @app.get("/api/admin", summary="Admin endpoint (requires admin scope)")
 async def admin_endpoint(
-    current_client: TokenData = Security(get_current_client, scopes=["admin"])
+    current_client: TokenData = Security(get_current_client, scopes=[ADMIN])
 ):
     return {
         "status": "Access to admin functionality",

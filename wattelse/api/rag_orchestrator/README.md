@@ -10,8 +10,10 @@ Ensure the API is launched.
 from pathlib import Path
 from wattelse.api.rag_orchestrator.client import RAGOrchestratorClient
 
+rag_api_endpoint = "https://localhost:1978"
+
 # Initialize the API
-api = RAGOrchestratorClient()
+api = RAGOrchestratorClient(url=rag_api_endpoint)
 
 # Create a session for your group
 api.create_session("TEST_SESSION")

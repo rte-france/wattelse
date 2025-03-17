@@ -5,6 +5,7 @@
 
 from fastapi import APIRouter, HTTPException, Security
 from loguru import logger
+from starlette import status
 
 from wattelse.api.rag_orchestrator import (
     ENDPOINT_CLEAN_SESSIONS,
@@ -19,6 +20,7 @@ from wattelse.api.security import (
     FULL_ACCESS,
     get_current_client,
     TokenData,
+    is_authorized_for_group,
 )
 from wattelse.chatbot.backend.rag_backend import RAGBackend
 
@@ -47,6 +49,12 @@ def create_session(
     logger.debug(
         f"Request to {ENDPOINT_CREATE_SESSION} from: {current_client.client_id}"
     )
+    if not is_authorized_for_group(current_client, group_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Client does not authorized for group {group_id}",
+        )
+
     if group_id not in RAG_SESSIONS.keys():
         try:
             RAG_SESSIONS[group_id] = RAGBackend(
@@ -56,7 +64,9 @@ def create_session(
             logger.info(f"[Group: {group_id}] RAGBackend created")
             return {"message": f"Session for group '{group_id}' created"}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            )
     else:
         logger.warning(f"[Group: {group_id}] RAGBackend already created")
         return {"message": f"Session for group '{group_id}' already exists"}
@@ -83,7 +93,8 @@ def clean_sessions(
             del RAG_SESSIONS[group_id]
         else:
             raise HTTPException(
-                status_code=404, detail=f"Group id : {group_id} not found in sessions."
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Group id : {group_id} not found in sessions.",
             )
     else:
         RAG_SESSIONS.clear()

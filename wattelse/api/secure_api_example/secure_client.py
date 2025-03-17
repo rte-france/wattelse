@@ -2,6 +2,7 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
+import os
 
 import requests
 from loguru import logger
@@ -10,25 +11,29 @@ from wattelse.api.security import FULL_ACCESS, RESTRICTED_ACCESS
 from wattelse.api.security_client_utils import get_access_token
 
 # Client credentials
-CLIENT_ID = "admin"
-CLIENT_SECRET = "57efb5729fed0f29185245e3cc282370397838ccebe29e4645e9fe9da1de0bab"
-SCOPE = f"{FULL_ACCESS} {RESTRICTED_ACCESS}"
+CLIENT_ID = "wattelse"
+CLIENT_SECRET = os.getenv("WATTELSE_CLIENT_SECRET", None)
+SCOPE = None  # use default for clients
 
 # API base URL
 API_BASE_URL = "https://localhost:1234"
 
 
-def call_protected_api():
-    """Call a protected API endpoint using the access token"""
+def _get_headers(url, client_id, client_secret):
+    """Helper function to get headers with authentification token"""
     token = get_access_token(
-        api_base_url=API_BASE_URL,
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        scope=SCOPE,
+        api_base_url=url,
+        client_id=client_id,
+        client_secret=client_secret,
     )
-
     # Use the token to call a protected endpoint
     headers = {"Authorization": f"Bearer {token}"}
+    return headers
+
+
+def call_protected_api():
+    """Call a protected API endpoint using the access token"""
+    headers = _get_headers(API_BASE_URL, CLIENT_ID, CLIENT_SECRET)
 
     # Read data (requires read:data scope)
     read_response = requests.get(

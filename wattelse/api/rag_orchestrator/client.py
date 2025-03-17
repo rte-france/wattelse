@@ -25,7 +25,6 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_GENERATION_MODEL_NAME,
 )
 from wattelse.api.rag_orchestrator.models import RAGConfig
-from wattelse.api.rag_orchestrator.config.settings import CONFIG
 from wattelse.api.security_client_utils import get_access_token
 
 
@@ -38,14 +37,10 @@ class RAGOrchestratorClient:
 
     def __init__(
         self,
-        url: str | None = None,
+        url: str | None = "https://localhost:1978",
         client_id: str = "wattelse",
         client_secret: str = os.getenv("WATTELSE_CLIENT_SECRET", None),
     ):
-        self.port = CONFIG.port
-        self.host = CONFIG.host
-        if self.host == "0.0.0.0":
-            self.host = "localhost"
         self.url = f"https://{self.host}:{self.port}" if url is None else url
         if self.check_service():
             logger.debug("RAG Orchestrator is running")

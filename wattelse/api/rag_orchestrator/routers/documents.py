@@ -6,6 +6,7 @@
 import json
 from loguru import logger
 from fastapi import APIRouter, File, HTTPException, UploadFile, Security
+from starlette import status
 
 from wattelse.api.rag_orchestrator import (
     ENDPOINT_CLEAR_COLLECTION,
@@ -19,7 +20,12 @@ from starlette.responses import FileResponse
 
 from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session
-from wattelse.api.security import TokenData, get_current_client, RESTRICTED_ACCESS
+from wattelse.api.security import (
+    TokenData,
+    get_current_client,
+    RESTRICTED_ACCESS,
+    is_authorized_for_group,
+)
 
 router = APIRouter()
 
@@ -35,6 +41,11 @@ def upload(
 ):
     """Upload a list of documents into a document collection"""
     logger.debug(f"Request to {ENDPOINT_UPLOAD_DOCS} from: {current_client.client_id}")
+    if not is_authorized_for_group(current_client, group_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Client does not authorized for group {group_id}",
+        )
     # Get current document collection
     collection = RAG_SESSIONS[group_id].document_collection
     collection_name = collection.collection_name
@@ -67,6 +78,11 @@ def remove_docs(
 ) -> dict[str, str]:
     """Remove the documents from raw storage and vector database"""
     logger.debug(f"Request to {ENDPOINT_REMOVE_DOCS} from: {current_client.client_id}")
+    if not is_authorized_for_group(current_client, group_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Client does not authorized for group {group_id}",
+        )
     RAG_SESSIONS[group_id].remove_docs(doc_file_names)
     return {
         "message": f"[Group: {group_id}] Successfully removed files {doc_file_names}"
@@ -88,6 +104,12 @@ def clear_collection(
     logger.debug(
         f"Request to {ENDPOINT_CLEAR_COLLECTION} from: {current_client.client_id}"
     )
+    if not is_authorized_for_group(current_client, group_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Client does not authorized for group {group_id}",
+        )
+
     RAG_SESSIONS[group_id].clear_collection()
     del RAG_SESSIONS[group_id]
     return {
@@ -109,6 +131,12 @@ def list_available_docs(
     logger.debug(
         f"Request to {ENDPOINT_LIST_AVAILABLE_DOCS} from: {current_client.client_id}"
     )
+    if not is_authorized_for_group(current_client, group_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Client does not authorized for group {group_id}",
+        )
+
     file_names = RAG_SESSIONS[group_id].get_available_docs()
     return json.dumps(file_names)
 
@@ -125,10 +153,18 @@ def download_file(
     ),
 ):
     logger.debug(f"Request to {ENDPOINT_DOWNLOAD} from: {current_client.client_id}")
+    if not is_authorized_for_group(current_client, group_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Client does not authorized for group {group_id}",
+        )
+
     if file_name in RAG_SESSIONS[group_id].get_available_docs():
         file_path = RAG_SESSIONS[group_id].get_file_path(file_name)
         if file_path:
             return FileResponse(
                 file_path, media_type="application/octet-stream", filename=file_name
             )
-    raise HTTPException(status_code=404, detail=f"File: {file_name} not found.")
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail=f"File: {file_name} not found."
+    )

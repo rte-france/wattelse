@@ -4,6 +4,7 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import json
+import os
 import uuid
 import tempfile
 import datetime
@@ -25,7 +26,10 @@ from .models import Chat, GPTChat, GroupProfile, UserProfile
 from wattelse.api.rag_orchestrator.client import RAGOrchestratorClient, RAGAPIError
 
 # RAG API
-RAG_API = RAGOrchestratorClient()
+RAG_API = RAGOrchestratorClient(
+    client_id="wattelse",
+    client_secret=os.getenv("WATTELSE_CLIENT_SECRET", None),
+)
 
 # Feedback identifiers in the database
 GREAT = "great"

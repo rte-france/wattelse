@@ -4,8 +4,9 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import json
-from fastapi import APIRouter, Security
+from fastapi import APIRouter, Security, HTTPException
 from loguru import logger
+from starlette import status
 
 from wattelse.api.rag_orchestrator import ENDPOINT_QUERY_RAG
 from wattelse.api.rag_orchestrator.models import RAGQuery
@@ -14,7 +15,12 @@ from starlette.responses import StreamingResponse
 
 from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session, data_streamer
-from wattelse.api.security import get_current_client, TokenData, RESTRICTED_ACCESS
+from wattelse.api.security import (
+    get_current_client,
+    TokenData,
+    RESTRICTED_ACCESS,
+    is_authorized_for_group,
+)
 
 router = APIRouter()
 
@@ -33,6 +39,12 @@ async def query_rag(
 ) -> StreamingResponse:
     """Query the RAG and returns the answer and associated sources"""
     logger.debug(f"Request to {ENDPOINT_QUERY_RAG} from: {current_client.client_id}")
+    if not is_authorized_for_group(current_client, group_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Client does not authorized for group {group_id}",
+        )
+
     logger.debug(f"[Group: {group_id}] Received query: {rag_query.message}")
     response = RAG_SESSIONS[group_id].query_rag(
         rag_query.message,

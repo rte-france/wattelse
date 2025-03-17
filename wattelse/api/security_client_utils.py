@@ -27,4 +27,6 @@ def get_access_token(
         token_data = response.json()
         return token_data["access_token"]
     else:
-        raise Exception(f"Failed to obtain token: {response.text}")
+        raise Exception(
+            f"Failed to obtain token: {response.status_code} {response.text}"
+        )
