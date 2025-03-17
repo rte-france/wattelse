@@ -17,6 +17,8 @@ from wattelse.api.security import (
     get_token,
     TokenData,
     list_registered_clients,
+    RESTRICTED_ACCESS,
+    FULL_ACCESS,
 )
 
 app = FastAPI()
@@ -38,7 +40,7 @@ async def list_clients():
 @app.get("/api/data", summary="Read data (requires restricted or full_access scope)")
 async def read_data(
     current_client: TokenData = Security(
-        get_current_client, scopes=["restricted", "full_access"]
+        get_current_client, scopes=[RESTRICTED_ACCESS, FULL_ACCESS]
     )
 ):
     return {
@@ -50,7 +52,7 @@ async def read_data(
 
 @app.post("/api/data", summary="Write data (requires full_access scope)")
 async def write_data(
-    current_client: TokenData = Security(get_current_client, scopes=["full_access"])
+    current_client: TokenData = Security(get_current_client, scopes=[FULL_ACCESS])
 ):
     return {
         "status": "Data successfully written",

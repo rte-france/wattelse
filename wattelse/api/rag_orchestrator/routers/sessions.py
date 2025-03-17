@@ -1,4 +1,9 @@
-from fastapi import APIRouter, HTTPException
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
+from fastapi import APIRouter, HTTPException, Security
 from loguru import logger
 
 from wattelse.api.rag_orchestrator import (
@@ -9,6 +14,12 @@ from wattelse.api.rag_orchestrator import (
 from wattelse.api.rag_orchestrator.models import RAGConfig
 from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session
+from wattelse.api.security import (
+    RESTRICTED_ACCESS,
+    FULL_ACCESS,
+    get_current_client,
+    TokenData,
+)
 from wattelse.chatbot.backend.rag_backend import RAGBackend
 
 
@@ -21,9 +32,21 @@ def current_sessions() -> list[str]:
     return list(RAG_SESSIONS.keys())
 
 
-@router.post(ENDPOINT_CREATE_SESSION + "/{group_id}")
-def create_session(group_id: str, config: RAGConfig) -> dict:
+@router.post(
+    ENDPOINT_CREATE_SESSION + "/{group_id}",
+    summary="Instantiate a RAG backend for the specified group (requires restricted_access scope)",
+)
+def create_session(
+    group_id: str,
+    config: RAGConfig,
+    current_client: TokenData = Security(
+        get_current_client, scopes=[RESTRICTED_ACCESS]
+    ),
+) -> dict:
     """When this is called, instantiates a RAG backend for a group."""
+    logger.debug(
+        f"Request to {ENDPOINT_CREATE_SESSION} from: {current_client.client_id}"
+    )
     if group_id not in RAG_SESSIONS.keys():
         try:
             RAG_SESSIONS[group_id] = RAGBackend(
@@ -39,13 +62,22 @@ def create_session(group_id: str, config: RAGConfig) -> dict:
         return {"message": f"Session for group '{group_id}' already exists"}
 
 
-@router.post(ENDPOINT_CLEAN_SESSIONS + "/{group_id}")
+@router.post(
+    ENDPOINT_CLEAN_SESSIONS + "/{group_id}",
+    summary="Remove the specific `group_id` backend from RAG_SESSIONS. If no `group_id` is provided, remove all sessions backend (requires full_access scope)",
+)
 @require_session
-def clean_sessions(group_id: str | None = None):
+def clean_sessions(
+    group_id: str | None = None,
+    current_client: TokenData = Security(get_current_client, scopes=[FULL_ACCESS]),
+):
     """
     Remove the specific `group_id` backend from RAG_SESSIONS.
     If no `group_id` is provided, remove all sessions backend.
     """
+    logger.debug(
+        f"Request to {ENDPOINT_CLEAN_SESSIONS} from: {current_client.client_id}"
+    )
     if group_id:
         if group_id in RAG_SESSIONS.keys():
             del RAG_SESSIONS[group_id]

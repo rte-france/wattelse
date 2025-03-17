@@ -6,13 +6,13 @@
 import requests
 from loguru import logger
 
-from wattelse.api.security import FULL_ACCESS, RESTRICTED
+from wattelse.api.security import FULL_ACCESS, RESTRICTED_ACCESS
 from wattelse.api.security_client_utils import get_access_token
 
 # Client credentials
 CLIENT_ID = "admin"
 CLIENT_SECRET = "57efb5729fed0f29185245e3cc282370397838ccebe29e4645e9fe9da1de0bab"
-SCOPE = f"{FULL_ACCESS} {RESTRICTED}"
+SCOPE = f"{FULL_ACCESS} {RESTRICTED_ACCESS}"
 
 # API base URL
 API_BASE_URL = "https://localhost:1234"

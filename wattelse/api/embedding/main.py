@@ -4,9 +4,10 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 from fastapi import FastAPI
-from wattelse.api.embedding.routers import info, embeddings
+from wattelse.api.embedding.routers import info, embeddings, authentication
 
 app = FastAPI()
 
 app.include_router(info.router, tags=["Info"])
 app.include_router(embeddings.router, tags=["Embedding"])
+app.include_router(authentication.router, tags=["Authentication"])

@@ -33,7 +33,7 @@ def generate_hex_token(length: int = 32):
 # Configuration (should be in environment variables)
 # to get a string like this run:
 # openssl rand -hex 32
-SECRET_KEY = os.getenv("SECRET_KEY", generate_hex_token())
+SECRET_KEY = os.getenv("WATTELSE_SECRET_KEY", generate_hex_token())
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
@@ -54,13 +54,13 @@ DEFAULT_CLIENT_REGISTRY = {
     "opfab": {"client_secret": generate_hex_token(), "scopes": ["restricted"]},
 }
 
-RESTRICTED = "restricted"
+RESTRICTED_ACCESS = "restricted_access"
 FULL_ACCESS = "full_access"
 ADMIN = "admin"
 
 # Define available scopes with descriptions
 SCOPES = {
-    RESTRICTED: "Access limited to some endpoints",
+    RESTRICTED_ACCESS: "Access limited to some endpoints",
     FULL_ACCESS: "Full access to endpoints except admin endpoints",
     ADMIN: "Admin access",
 }
