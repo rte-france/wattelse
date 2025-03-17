@@ -3,7 +3,8 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-ENDPOINT_CHECK_SERVICE = "/"
+# Endpoints
+ENDPOINT_HEALTH_SERVICE = "/health"
 ENDPOINT_CREATE_SESSION = "/create-session"
 ENDPOINT_SELECT_BY_KEYWORDS = "/select-by-keywords"
 ENDPOINT_QUERY_RAG = "/query-rag"

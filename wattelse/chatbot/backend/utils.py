@@ -1,43 +1,41 @@
 import json
-from pathlib import Path
 from typing import Iterable, Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
 from wattelse.api.openai.client_openai_api import GPT_FAMILY
+from wattelse.chatbot.backend.configs.settings import GeneratorConfig
 
 
 class RAGError(Exception):
     pass
 
 
-def get_chat_model(generator_config: dict) -> BaseChatModel:
-    endpoint = generator_config["openai_endpoint"]
+def get_chat_model(generator_config: GeneratorConfig) -> BaseChatModel:
+    endpoint = generator_config.openai_endpoint
     if "azure.com" not in endpoint:
         llm_config = {
-            "openai_api_key": generator_config["openai_api_key"],
-            "openai_api_base": generator_config["openai_endpoint"],
-            "model_name": generator_config["openai_default_model"],
-            "temperature": generator_config["temperature"],
+            "openai_api_key": generator_config.openai_api_key,
+            "openai_api_base": generator_config.openai_endpoint,
+            "model_name": generator_config.openai_default_model,
+            "temperature": generator_config.temperature,
         }
         return ChatOpenAI(**llm_config)
     else:
         llm_config = {
-            "openai_api_key": generator_config["openai_api_key"],
-            "azure_endpoint": generator_config["openai_endpoint"],
-            "azure_deployment": generator_config["openai_default_model"],
-            "api_version": generator_config["azure_api_version"],
-            "temperature": generator_config["temperature"],
+            "openai_api_key": generator_config.openai_api_key,
+            "azure_endpoint": generator_config.openai_endpoint,
+            "azure_deployment": generator_config.openai_default_model,
+            "api_version": generator_config.azure_api_version,
+            "temperature": generator_config.temperature,
         }
         llm = AzureChatOpenAI(**llm_config)
-        llm.model_name = generator_config[
-            "openai_default_model"
-        ]  # with Azure, set to gpt3.5-turbo by default
+        llm.model_name = generator_config.openai_default_model
         # Workaround to make it work with non OpenAI model on Azure
         if GPT_FAMILY not in llm.model_name:
             llm.model_name = None
-            llm.root_client.base_url = generator_config["openai_endpoint"]
+            llm.root_client.base_url = generator_config.openai_endpoint
         return llm
 
 

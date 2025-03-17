@@ -5,7 +5,7 @@
 
 from pathlib import Path
 
-from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
+from wattelse.api.rag_orchestrator.client import RAGOrchestratorClient
 
 TEST_GROUP_NAME = "pytest_group"
 

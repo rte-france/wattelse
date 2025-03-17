@@ -9,23 +9,45 @@ Available APIs:
 - [embedding](embedding): uses a SentenceTransformer model to transform text into embeddings
 - [vllm](vllm): uses a LLM for text generation by starting an OpenAI API like endpoint
 - [rag_orchestrator](rag_orchestrator): used for multi-user RAG, redirects queries to the appropriate RAG instance
-- [openai](openai): provides a simple interface to interact with the OpenAI API
+- [openai](openai): client only provides a simple interface to interact with the OpenAI API
 - [fastchat](fastchat): deprecated
 - [ollama](ollama): deprecated
 
-## How to launch
+## Start an API
 
-To launch an API, go to the specific API folder and run the `start.sh` script. For example:
+To launch an API, go to the specific API folder and run the `start.py` script. For example:
 
 ```bash
 cd wattelse/api/embedding
-./start.sh
+python start.py
 ```
 
-To stop an API, run the `stop.sh` script:
+The API will be launched with the default configuration file `config/default_config.toml`.
+
+It is possible to launch multiple `embedding` or `vllm` APIs in parallel with different configurations. To do so, create a new configuration file in the `config` folder and run the `start.py` script with the correct environment variable set:
+
+- `EMBEDDING_API_CONFIG_FILE`: path to the configuration file to use for the `embedding` API
+- `VLLM_API_CONFIG_FILE`: path to the configuration file to use for the `vllm` API
+
+For example:
 
 ```bash
-./stop.sh
+# Terminal 1: embedding API with default config
+cd wattelse/api/embedding
+python start.py
+
+# Terminal 2: embedding API with custom config
+cd wattelse/api/embedding
+EMBEDDING_API_CONFIG_FILE=config/custom_config.toml python start.py
 ```
 
-All parameters used to manage the API are in the config file: `wattelse/api/{nom_api}/{nom_api}_api.cfg`
+
+## Stop an API
+
+If the API is running in your current terminal, you can stop it by pressing `Ctrl+C`.
+
+To stop an API that is running in the background, run the `stop.py` script:
+
+```bash
+python stop.py
+```

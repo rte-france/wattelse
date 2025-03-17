@@ -3,7 +3,7 @@
 Ensure the API is launched.
 
 ```python
-from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
+from wattelse.api.embedding.client import EmbeddingAPI
 
 # Initialize the API
 api = EmbeddingAPI()

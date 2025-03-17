@@ -8,7 +8,7 @@ Ensure the API is launched.
 
 ```python
 from pathlib import Path
-from wattelse.api.rag_orchestrator.rag_client import RAGOrchestratorClient
+from wattelse.api.rag_orchestrator.client import RAGOrchestratorClient
 
 # Initialize the API
 api = RAGOrchestratorClient()

@@ -24,17 +24,13 @@ from loguru import logger
 from starlette.responses import StreamingResponse
 
 from wattelse.chatbot.backend import DATA_DIR
+from wattelse.api.embedding.client import EmbeddingAPI
 from wattelse.chatbot.backend.vector_database import (
+    DocumentCollection,
     format_docs,
-    load_document_collection,
 )
 
-from wattelse.api.prompts import (
-    FR_SYSTEM_RAG,
-    FR_USER_RAG,
-    FR_SYSTEM_QUERY_CONTEXTUALIZATION,
-    FR_USER_QUERY_CONTEXTUALIZATION,
-)
+from wattelse.chatbot.backend.configs.settings import RAGBackendConfig
 from wattelse.chatbot.backend import (
     BM25,
     ENSEMBLE,
@@ -64,7 +60,7 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 default_config = next(iter(CONFIG_NAME_TO_CONFIG_PATH))
 
 
-class RAGBackEnd:
+class RAGBackend:
     def __init__(self, group_id: str, config: str | dict | Path = default_config):
         """
         Creates a RAGBackend for a given `group_id`.
@@ -75,9 +71,14 @@ class RAGBackEnd:
         """
         self.group_id = group_id
         self.config = self._load_config(config)
-        self._apply_config()
+        self.llm = get_chat_model(self.config.generator)
+        self.embedding_function = EmbeddingAPI(self.config.retriever.embedding_api_url)
+        self.document_collection = DocumentCollection(
+            self.group_id,
+            self.embedding_function,
+        )
 
-    def _load_config(self, config: str | dict | Path) -> dict:
+    def _load_config(self, config: str | dict | Path) -> RAGBackendConfig:
         """
         Function that implements RAGBackend configuration logic.
         """
@@ -88,15 +89,17 @@ class RAGBackEnd:
                     f"config_name '{config}' not found. Please use one of the following: {list(CONFIG_NAME_TO_CONFIG_PATH.keys())}"
                 )
             config_file_path = CONFIG_NAME_TO_CONFIG_PATH[config]
-            return load_toml_config(config_file_path)
+            config = load_toml_config(config_file_path)
+            return RAGBackendConfig(**config)
 
         # If `config` is dict, return it directly
         elif isinstance(config, dict):
-            return config
+            return RAGBackendConfig(config)
 
         # If `config` is Path, load config from toml file
         elif isinstance(config, Path):
-            return load_toml_config(self.config_file_path)
+            config = load_toml_config(config)
+            return RAGBackendConfig(**config)
 
         # Else raise TypeError
         else:
@@ -105,40 +108,8 @@ class RAGBackEnd:
                 "Expected one of: str, dict, or pathlib.Path."
             )
 
-    def _apply_config(self) -> None:
-        """
-        Set Class attributes based on the configuration file.
-        This method is called when the class is instantiated.
-        """
-        try:
-            # Retriever parameters
-            retriever_config = self.config["retriever"]
-            self.top_n_extracts = retriever_config["top_n_extracts"]
-            self.retrieval_method = retriever_config["retrieval_method"]
-            self.similarity_threshold = retriever_config["similarity_threshold"]
-            self.multi_query_mode = retriever_config["multi_query_mode"]
-
-            # Generator parameters
-            generator_config = self.config["generator"]
-            self.llm = get_chat_model(generator_config)
-            self.remember_recent_messages = generator_config["remember_recent_messages"]
-            self.temperature = generator_config["temperature"]
-
-            # Document collection
-            self.document_collection = load_document_collection(self.group_id)
-
-            # Prompts
-            self.system_prompt = FR_SYSTEM_RAG
-            self.user_prompt = FR_USER_RAG
-            self.system_prompt_query_contextualization = (
-                FR_SYSTEM_QUERY_CONTEXTUALIZATION
-            )
-            self.user_prompt_query_contextualization = FR_USER_QUERY_CONTEXTUALIZATION
-        except Exception as e:
-            raise Exception(f"Error while loading RAGBackend configuration: {e}")
-
     def get_llm_model_name(self):
-        return self.config["generator"]["openai_default_model"]
+        return self.config.generator.openai_default_model
 
     def add_file_to_collection(self, file_name: str, file: BinaryIO):
         """Add a file to the document collection"""
@@ -285,24 +256,31 @@ class RAGBackEnd:
 
         # Configure retriever
         search_kwargs = {
-            "k": self.top_n_extracts,  # number of retrieved docs
+            "k": self.config.retriever.top_n_extracts,  # number of retrieved docs
             "filter": {} if not document_filter else document_filter,
         }
-        if self.retrieval_method == SIMILARITY_SCORE_THRESHOLD:
-            search_kwargs["score_threshold"] = self.similarity_threshold
+        if self.config.retriever.retrieval_method == SIMILARITY_SCORE_THRESHOLD:
+            search_kwargs["score_threshold"] = (
+                self.config.retriever.similarity_threshold
+            )
 
-        if self.retrieval_method in [MMR, SIMILARITY, SIMILARITY_SCORE_THRESHOLD]:
+        if self.config.retriever.retrieval_method in [
+            MMR,
+            SIMILARITY,
+            SIMILARITY_SCORE_THRESHOLD,
+        ]:
             dense_retriever = self.document_collection.collection.as_retriever(
-                search_type=self.retrieval_method, search_kwargs=search_kwargs
+                search_type=self.config.retriever.retrieval_method,
+                search_kwargs=search_kwargs,
             )
             retriever = dense_retriever
 
-        elif self.retrieval_method in [BM25, ENSEMBLE]:
+        elif self.config.retriever.retrieval_method in [BM25, ENSEMBLE]:
             bm25_retriever = BM25Retriever.from_documents(
                 self.get_doc_list(document_filter)
             )
-            bm25_retriever.k = self.top_n_extracts
-            if self.retrieval_method == BM25:
+            bm25_retriever.k = self.config.retriever.top_n_extracts
+            if self.config.retriever.retrieval_method == BM25:
                 retriever = bm25_retriever
             else:  # ENSEMBLE
                 dense_retriever = self.document_collection.collection.as_retriever(
@@ -312,7 +290,7 @@ class RAGBackEnd:
                     retrievers=[bm25_retriever, dense_retriever]
                 )
 
-        if self.multi_query_mode:
+        if self.config.retriever.multi_query_mode:
             multi_query_retriever = MultiQueryRetriever.from_llm(
                 retriever=retriever, llm=self.llm
             )
@@ -325,13 +303,13 @@ class RAGBackEnd:
                 SystemMessagePromptTemplate(
                     prompt=PromptTemplate(
                         input_variables=["group_system_prompt"],
-                        template=self.system_prompt,
+                        template=self.config.generator.system_prompt,
                     )
                 ),
                 HumanMessagePromptTemplate(
                     prompt=PromptTemplate(
                         input_variables=["context", "history", "query"],
-                        template=self.user_prompt,
+                        template=self.config.generator.user_prompt,
                     )
                 ),
             ],
@@ -348,7 +326,9 @@ class RAGBackEnd:
         rag_chain = RunnableParallel(
             {
                 "context": (
-                    retriever if not self.multi_query_mode else multi_query_retriever
+                    retriever
+                    if not self.config.retriever.multi_query_mode
+                    else multi_query_retriever
                 ),
                 "history": (lambda _: get_history_as_text(history)),
                 "query": (lambda _: message),
@@ -392,7 +372,7 @@ class RAGBackEnd:
         Else :
             Use recent interaction context to enrich the user query
         """
-        if not self.remember_recent_messages or history is None:
+        if not self.config.generator.remember_recent_messages or history is None:
             return message
         else:
             history = filter_history(history, interaction_window)
@@ -404,13 +384,13 @@ class RAGBackEnd:
                     SystemMessagePromptTemplate(
                         prompt=PromptTemplate(
                             input_variables=[],
-                            template=self.system_prompt_query_contextualization,
+                            template=self.config.generator.system_prompt_query_contextualization,
                         )
                     ),
                     HumanMessagePromptTemplate(
                         prompt=PromptTemplate(
                             input_variables=["history", "query"],
-                            template=self.user_prompt_query_contextualization,
+                            template=self.config.generator.user_prompt_query_contextualization,
                         )
                     ),
                 ],
