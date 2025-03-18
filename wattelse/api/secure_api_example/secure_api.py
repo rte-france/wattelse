@@ -34,7 +34,7 @@ async def login_for_access_token(
     return get_token(form_data)
 
 
-@app.get("/list_clients")
+@app.get("/list_registered_clients")
 async def list_clients():
     return list_registered_clients()
 

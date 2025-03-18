@@ -1,11 +1,9 @@
-#  Copyright (c) 2024, RTE (https://www.rte-france.com)
-#  See AUTHORS.txt
-#  SPDX-License-Identifier: MPL-2.0
-#  This file is part of Wattelse, a NLP application suite.
 import json
 import secrets
+import time
+from collections import defaultdict, deque
 
-from fastapi import Depends, HTTPException, status, Security
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import (
     OAuth2PasswordRequestForm,
     SecurityScopes,
@@ -13,7 +11,7 @@ from fastapi.security import (
 from fastapi.security.oauth2 import OAuth2PasswordBearer
 import jwt  # PyJWT
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, List, Optional
+from typing import Annotated, Deque
 
 from jwt import InvalidTokenError
 from loguru import logger
@@ -37,6 +35,15 @@ SECRET_KEY = os.getenv("WATTELSE_SECRET_KEY", generate_hex_token())
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
+# Rate limiting configuration
+DEFAULT_RATE_LIMIT = int(os.getenv("DEFAULT_RATE_LIMIT", "100"))  # Requests per minute
+DEFAULT_RATE_WINDOW = int(os.getenv("DEFAULT_RATE_WINDOW", "60"))  # Window in seconds
+
+# Client registry - in production, store somewhere else - database, file...
+CLIENT_REGISTRY_FILE = os.getenv(
+    "CLIENT_REGISTRY_FILE", f"{os.path.expanduser('~')}/wattelse_client_registry.json"
+)
+
 RESTRICTED_ACCESS = "restricted_access"
 FULL_ACCESS = "full_access"
 ADMIN = "admin"
@@ -48,35 +55,40 @@ SCOPES = {
     ADMIN: "Admin access",
 }
 
-# Client registry - in production, store somewhere else - database, file...
-CLIENT_REGISTRY_FILE = os.getenv(
-    "CLIENT_REGISTRY_FILE", f"{os.path.expanduser('~')}/wattelse_client_registry.json"
-)
 
 DEFAULT_CLIENT_REGISTRY = {
     "admin": {
         "client_secret": generate_hex_token(),
         "scopes": [ADMIN, FULL_ACCESS, RESTRICTED_ACCESS],
-        "authorized_groups": [],  # empty means all
+        "authorized_groups": [],  # Empty list means access to all groups
+        "rate_limit": DEFAULT_RATE_LIMIT * 2,  # Higher limit for admin
+        "rate_window": DEFAULT_RATE_WINDOW,
     },
     "wattelse": {
         "client_secret": generate_hex_token(),
         "scopes": [FULL_ACCESS, RESTRICTED_ACCESS],
-        "authorized_groups": [],
+        "authorized_groups": [],  # Empty list means access to all groups
+        "rate_limit": DEFAULT_RATE_LIMIT,
+        "rate_window": DEFAULT_RATE_WINDOW,
     },
     "opfab": {
         "client_secret": generate_hex_token(),
         "scopes": [RESTRICTED_ACCESS],
-        "authorized_groups": ["opfab"],
+        "authorized_groups": ["OPFAB"],
+        "rate_limit": DEFAULT_RATE_LIMIT // 2,  # Lower limit for this client
+        "rate_window": DEFAULT_RATE_WINDOW,
     },
 }
-
 
 # Configure OAuth2
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="token",
     scopes=SCOPES,
 )
+
+# Store for rate limiting (in memory - for production use Redis or similar)
+# Maps client_id -> deque of request timestamps
+rate_limit_store: dict[str, Deque[float]] = defaultdict(lambda: deque(maxlen=1000))
 
 
 def load_client_registry():
@@ -105,9 +117,35 @@ def list_registered_clients():
     for client_id, client_data in client_registry.items():
         clients_info[client_id] = {
             "scopes": client_data["scopes"],
-            "authorized_groups": client_data.get("authorized_groups"),
+            "authorized_groups": client_data.get("authorized_groups", []),
+            "rate_limit": client_data.get("rate_limit", DEFAULT_RATE_LIMIT),
+            "rate_window": client_data.get("rate_window", DEFAULT_RATE_WINDOW),
         }
     return clients_info
+
+
+def view_rate_limits():
+    """Return the current usage of the API per client"""
+    current_time = time.time()
+    usage = {}
+
+    for client_id, requests in rate_limit_store.items():
+        # Count only requests within the window
+        client_registry = load_client_registry()
+        if client_id in client_registry:
+            window = client_registry[client_id].get("rate_window", DEFAULT_RATE_WINDOW)
+            cutoff_time = current_time - window
+            active_requests = sum(1 for t in requests if t >= cutoff_time)
+
+            usage[client_id] = {
+                "usage": active_requests,
+                "limit": client_registry[client_id].get(
+                    "rate_limit", DEFAULT_RATE_LIMIT
+                ),
+                "window": window,
+            }
+
+    return usage
 
 
 class Token(BaseModel):
@@ -119,6 +157,8 @@ class TokenData(BaseModel):
     client_id: str | None = None
     scopes: list[str] = []
     authorized_groups: list[str] = []
+    rate_limit: int = DEFAULT_RATE_LIMIT
+    rate_window: int = DEFAULT_RATE_WINDOW
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -132,9 +172,49 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
+async def check_rate_limit(request: Request, token_data: TokenData):
+    """
+    Check if the client has exceeded their rate limit
+
+    Args:
+        request: The FastAPI request object
+        token_data: The TokenData object containing client rate limit info
+
+    Raises:
+        HTTPException: If rate limit is exceeded
+    """
+    if token_data.client_id is None:
+        return
+
+    client_id = token_data.client_id
+    rate_limit = token_data.rate_limit
+    rate_window = token_data.rate_window
+
+    # Record this request
+    current_time = time.time()
+    client_requests = rate_limit_store[client_id]
+    client_requests.append(current_time)
+
+    # Clean up old requests outside the window
+    cutoff_time = current_time - rate_window
+    while client_requests and client_requests[0] < cutoff_time:
+        client_requests.popleft()
+
+    # Check if rate limit exceeded
+    if len(client_requests) > rate_limit:
+        # Calculate reset time
+        reset_time = int(client_requests[0] + rate_window - current_time)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Try again in {reset_time} seconds.",
+            headers={"Retry-After": str(reset_time), "X-Rate-Limit": str(rate_limit)},
+        )
+
+
 async def get_current_client(
     security_scopes: SecurityScopes,
     token: Annotated[str, Depends(oauth2_scheme)],
+    request: Request,
 ):
     """Function to verify token and extract client data"""
     if security_scopes.scopes:
@@ -153,14 +233,21 @@ async def get_current_client(
             raise credentials_exception
         token_scopes = payload.get("scopes", [])
         token_groups = payload.get("authorized_groups", [])
+        rate_limit = payload.get("rate_limit", DEFAULT_RATE_LIMIT)
+        rate_window = payload.get("rate_window", DEFAULT_RATE_WINDOW)
+
         token_data = TokenData(
-            client_id=client_id, scopes=token_scopes, authorized_groups=token_groups
+            client_id=client_id,
+            scopes=token_scopes,
+            authorized_groups=token_groups,
+            rate_limit=rate_limit,
+            rate_window=rate_window,
         )
     except (InvalidTokenError, ValidationError):
         raise credentials_exception
+
     # Check if client still exists
-    client_registry = load_client_registry()
-    if client_id not in client_registry:
+    if client_id not in load_client_registry():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Client no longer exists",
@@ -176,6 +263,10 @@ async def get_current_client(
                 detail=f"Not enough permissions. Required scope: {scope}",
                 headers={"WWW-Authenticate": authenticate_value},
             )
+
+    # Check rate limit
+    await check_rate_limit(request, token_data)
+
     return token_data
 
 
@@ -209,7 +300,6 @@ def get_token(
 
     # Validate scopes
     client_scopes = client["scopes"]
-
     requested_scopes = form_data.scopes
 
     # If no scopes requested, grant all available to client
@@ -226,8 +316,10 @@ def get_token(
                 )
         scopes = requested_scopes
 
-    # Get authorized groups
+    # Get authorized groups and rate limit
     authorized_groups = client.get("authorized_groups", [])
+    rate_limit = client.get("rate_limit", DEFAULT_RATE_LIMIT)
+    rate_window = client.get("rate_window", DEFAULT_RATE_WINDOW)
 
     # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -236,6 +328,8 @@ def get_token(
             "sub": client_id,
             "scopes": scopes,
             "authorized_groups": authorized_groups,
+            "rate_limit": rate_limit,
+            "rate_window": rate_window,
         },
         expires_delta=access_token_expires,
     )
