@@ -10,7 +10,7 @@ CONFIG = get_config()
 
 # Load embedding model
 logger.debug(f"Loading embedding model : {CONFIG.model_name}")
-EMBEDDING_MODEL = SentenceTransformer(CONFIG.model_name)
+EMBEDDING_MODEL = SentenceTransformer(CONFIG.model_name, trust_remote_code=True)
 
 # Fix max model length error
 if EMBEDDING_MODEL.max_seq_length == 514:
