@@ -11,7 +11,7 @@ from pathlib import Path
 from wattelse.chatbot.backend.rag_backend import RAGBackend
 
 # Initialize the RAGBackend
-rag = RAGBackEnd("test_backend", config="local_20240628")
+rag = RAGBackend("test_backend", config="local_20240628")
 
 # Add a document
 path_to_doc = Path("test_document.pdf")
