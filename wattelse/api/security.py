@@ -3,6 +3,7 @@ import secrets
 import time
 from collections import defaultdict, deque
 
+import urllib3
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import (
     OAuth2PasswordRequestForm,
@@ -22,6 +23,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Disable warnings related to https certificates
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 def generate_hex_token(length: int = 32):
     """Generates a random hexadecimal string of the specified length."""
@@ -36,7 +40,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
 # Rate limiting configuration
-DEFAULT_RATE_LIMIT = int(os.getenv("DEFAULT_RATE_LIMIT", "100"))  # Requests per minute
+DEFAULT_RATE_LIMIT = int(os.getenv("DEFAULT_RATE_LIMIT", "50"))  # Requests per minute
 DEFAULT_RATE_WINDOW = int(os.getenv("DEFAULT_RATE_WINDOW", "60"))  # Window in seconds
 
 # Client registry - in production, store somewhere else - database, file...

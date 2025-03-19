@@ -4,6 +4,10 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 import requests
+import urllib3
+
+# Disable warnings related to https certificates
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def get_access_token(
