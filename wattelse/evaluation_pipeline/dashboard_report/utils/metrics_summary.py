@@ -24,7 +24,8 @@ def calculate_confidence_interval(scores, confidence=0.95):
 
     # Calculate confidence interval
     if len(scores_array) > 1:
-        h = se * stats.t.ppf((1 + confidence) / 2, len(scores_array) - 1)
+        # Using normal distribution instead of t-distribution
+        h = se * stats.norm.ppf((1 + confidence) / 2)
         lower_bound = max(0, mean - h)  # Ensure lower bound isn't negative
         upper_bound = min(100, mean + h)  # Ensure upper bound doesn't exceed 100%
         return (lower_bound, upper_bound)
