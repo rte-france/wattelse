@@ -11,6 +11,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from wattelse.api.common.client import APIClient
 from wattelse.api.rag_orchestrator import (
     ENDPOINT_HEALTH_SERVICE,
     ENDPOINT_CREATE_SESSION,
@@ -25,14 +26,13 @@ from wattelse.api.rag_orchestrator import (
     ENDPOINT_GENERATION_MODEL_NAME,
 )
 from wattelse.api.rag_orchestrator.models import RAGConfig
-from wattelse.api.security_client_utils import get_access_token
 
 
 class RAGAPIError(Exception):
     pass
 
 
-class RAGOrchestratorClient:
+class RAGOrchestratorClient(APIClient):
     """Class in charge of routing requests to right backend depending on user group"""
 
     def __init__(
@@ -41,27 +41,11 @@ class RAGOrchestratorClient:
         client_id: str = "wattelse",
         client_secret: str = os.getenv("WATTELSE_CLIENT_SECRET", None),
     ):
-        self.url = f"https://{self.host}:{self.port}" if url is None else url
+        super().__init__(url, client_id, client_secret)
         if self.check_service():
             logger.debug("RAG Orchestrator is running")
         else:
             logger.error("Check RAG Orchestrator, does not seem to be running")
-        # for authentification
-        self.client_id = client_id
-        self.client_secret = client_secret
-        if self.client_secret is None:
-            raise ValueError("client_secret must be set")
-
-    def _get_headers(self):
-        """Helper function to get headers with authentification token"""
-        token = get_access_token(
-            api_base_url=self.url,
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-        )
-        # Use the token to call a protected endpoint
-        headers = {"Authorization": f"Bearer {token}"}
-        return headers
 
     def check_service(self) -> bool:
         """Check if RAG Orchestrator is running"""

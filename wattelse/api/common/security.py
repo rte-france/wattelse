@@ -37,7 +37,7 @@ def generate_hex_token(length: int = 32):
 # openssl rand -hex 32
 SECRET_KEY = os.getenv("WATTELSE_SECRET_KEY", generate_hex_token())
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 120
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 48  # 48h
 
 # Rate limiting configuration
 DEFAULT_RATE_LIMIT = int(os.getenv("DEFAULT_RATE_LIMIT", "50"))  # Requests per minute
@@ -155,6 +155,7 @@ def view_rate_limits():
 class Token(BaseModel):
     access_token: str
     token_type: str
+    expires_in: float  # This represents the token expiration time in seconds
 
 
 class TokenData(BaseModel):
@@ -171,7 +172,16 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     expire = datetime.now(timezone.utc) + expires_delta or timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
-    to_encode.update({"exp": expire})
+    to_encode.update(
+        {
+            "exp": expire,
+            "expires_in": (
+                expires_delta.total_seconds()
+                if expires_delta
+                else ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            ),
+        }
+    )
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -338,8 +348,12 @@ def get_token(
         expires_delta=access_token_expires,
     )
 
+    expires_in = (
+        access_token_expires.total_seconds()
+    )  # Calculate the expiration time in seconds
+
     logger.debug(f"Token created for client '{client_id}'")
-    return Token(access_token=access_token, token_type="bearer")
+    return Token(access_token=access_token, token_type="bearer", expires_in=expires_in)
 
 
 def is_authorized_for_group(token_data: TokenData, group: str) -> bool:

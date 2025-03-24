@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import Depends, APIRouter, Security
 from fastapi.security import OAuth2PasswordRequestForm
 
-from wattelse.api.security import (
+from wattelse.api.common.security import (
     ADMIN,
     Token,
     TokenData,

@@ -15,7 +15,7 @@ from starlette.responses import StreamingResponse
 
 from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session, data_streamer
-from wattelse.api.security import (
+from wattelse.api.common.security import (
     get_current_client,
     TokenData,
     RESTRICTED_ACCESS,

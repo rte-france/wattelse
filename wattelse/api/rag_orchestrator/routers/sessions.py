@@ -15,7 +15,7 @@ from wattelse.api.rag_orchestrator import (
 from wattelse.api.rag_orchestrator.models import RAGConfig
 from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session
-from wattelse.api.security import (
+from wattelse.api.common.security import (
     RESTRICTED_ACCESS,
     FULL_ACCESS,
     get_current_client,

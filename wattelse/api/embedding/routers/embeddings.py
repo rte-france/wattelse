@@ -3,16 +3,13 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-from typing import Annotated
-
-from fastapi import APIRouter, Security, Depends
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Security
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
 from wattelse.api.embedding.config.settings import get_config
 from wattelse.api.embedding.models import InputText
-from wattelse.api.security import (
+from wattelse.api.common.security import (
     TokenData,
     get_current_client,
     FULL_ACCESS,
