@@ -32,6 +32,7 @@ from wattelse.chatbot.frontend.dashboard.dashboard_display import (
     display_feedback_charts_over_time,
     display_feedback_rates,
     display_indicators,
+    display_unique_visitors,
     display_user_graph,
     display_user_hist_over_eval,
     display_users_satisfaction_over_nb_eval,
@@ -157,6 +158,8 @@ def main():
                 number_of_files=number_of_files,
                 number_of_chunks=number_of_chunks,
             )
+        with st.expander("Weekly unique users", expanded=True):
+            st.plotly_chart(display_unique_visitors(filtered_df))
 
         with st.expander("Feedback rates", expanded=True):
             display_feedback_rates(filtered_df=filtered_df)
