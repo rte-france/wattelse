@@ -75,6 +75,13 @@ DEFAULT_CLIENT_REGISTRY = {
         "rate_limit": DEFAULT_RATE_LIMIT,
         "rate_window": DEFAULT_RATE_WINDOW,
     },
+    "bertrend": {
+        "client_secret": generate_hex_token(),
+        "scopes": [RESTRICTED_ACCESS],
+        "authorized_groups": [],  # Empty list means access to all groups
+        "rate_limit": DEFAULT_RATE_LIMIT,
+        "rate_window": DEFAULT_RATE_WINDOW,
+    },
     "opfab": {
         "client_secret": generate_hex_token(),
         "scopes": [RESTRICTED_ACCESS],
