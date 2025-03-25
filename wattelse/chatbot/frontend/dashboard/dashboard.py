@@ -158,7 +158,7 @@ def main():
                 number_of_files=number_of_files,
                 number_of_chunks=number_of_chunks,
             )
-        with st.expander("Weekly unique users"):
+        with st.expander("Weekly unique users", expanded=True):
             st.plotly_chart(display_unique_visitors(filtered_df))
 
         with st.expander("Feedback rates", expanded=True):
