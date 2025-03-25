@@ -6,7 +6,7 @@
 import pandas as pd
 import streamlit as st
 
-
+import plotly.express as px
 from plotly.express import bar
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -571,6 +571,38 @@ def display_extracts_graph(extracts_pivot: pd.DataFrame) -> go.Figure:
         yaxis2_title="Pourcentage",
         barmode="stack",
         hovermode="x",
+    )
+
+    return fig
+
+
+def display_unique_visitors(df: pd.DataFrame) -> go.Figure:
+    # Convert the 'answer_timestamp' column to datetime
+    df["date"] = pd.to_datetime(df["answer_timestamp"])
+
+    # Add week start date column
+    df["week"] = df["date"].dt.to_period("W").dt.start_time
+
+    # Remove current week from the dataframe
+    current_week = pd.to_datetime("today").to_period("W").start_time
+    df = df[df["week"] < current_week]
+
+    # Count unique users per week
+    weekly_users = df.groupby("week")["username"].nunique().reset_index()
+
+    # Create the plot
+    fig = px.line(
+        weekly_users,
+        x="week",
+        y="username",
+        title="Unique Users per Week",
+        markers=True,
+    )
+
+    # Customize the plot
+    fig.update_traces(marker=dict(size=8, color="cornflowerblue"))
+    fig.update_layout(
+        xaxis_title="Date", yaxis_title="Number of Users", template="plotly_white"
     )
 
     return fig
