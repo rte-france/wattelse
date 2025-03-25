@@ -590,9 +590,19 @@ def display_unique_visitors(df: pd.DataFrame) -> go.Figure:
     # Count unique users per week
     weekly_users = df.groupby("week")["username"].nunique().reset_index()
 
+    # Create a complete date range for the weeks
+    date_range = pd.date_range(
+        start=weekly_users["week"].min(), end=weekly_users["week"].max(), freq="W"
+    )
+    complete_weeks = pd.DataFrame(date_range, columns=["week"])
+
+    # Merge the complete weeks with the weekly users data
+    complete_weeks["week"] = complete_weeks["week"].dt.to_period("W").dt.start_time
+    complete_weeks = complete_weeks.merge(weekly_users, on="week", how="left").fillna(0)
+
     # Create the plot
     fig = px.line(
-        weekly_users,
+        complete_weeks,
         x="week",
         y="username",
         title="Unique Users per Week",
