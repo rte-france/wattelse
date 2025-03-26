@@ -1,9 +1,19 @@
-from fastapi import APIRouter
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
+from fastapi import APIRouter, Security
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
 from wattelse.api.embedding.config.settings import get_config
 from wattelse.api.embedding.models import InputText
+from wattelse.api.common.security import (
+    TokenData,
+    get_current_client,
+    FULL_ACCESS,
+)
 
 # Load the configuration
 CONFIG = get_config()
@@ -18,7 +28,11 @@ if EMBEDDING_MODEL.max_seq_length == 514:
 router = APIRouter()
 
 
-@router.post("/encode")
-def embed(input: InputText):
+@router.post("/encode", summary="Embed data (requires full_access scope)")
+def embed(
+    input: InputText,
+    current_client: TokenData = Security(get_current_client, scopes=[FULL_ACCESS]),
+):
+    logger.debug(f"Request by: {current_client.client_id}")
     emb = EMBEDDING_MODEL.encode(input.text, show_progress_bar=input.show_progress_bar)
     return {"embeddings": emb.tolist()}

@@ -10,6 +10,7 @@ from wattelse.api.rag_orchestrator.client import RAGOrchestratorClient
 TEST_GROUP_NAME = "pytest_group"
 
 
+# FIXME: test à revoir
 def test_rag_client():
     docs = [
         "NMT - Avenant n°4 de révision à l'accord sur le temps de travail.pdf",

@@ -3,10 +3,12 @@
 Ensure the API is launched.
 
 ```python
-from wattelse.api.embedding.client import EmbeddingAPI
+from wattelse.api.embedding.client import EmbeddingAPIClient
+
+embedding_service_endpoint = "https://yourservice:1234"
 
 # Initialize the API
-api = EmbeddingAPI()
+api = EmbeddingAPIClient(embedding_service_endpoint)
 
 # Get embedding model name
 print(api.get_api_model_name())

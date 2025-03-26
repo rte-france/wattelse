@@ -2,6 +2,7 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
+import os
 
 import requests
 import json
@@ -12,18 +13,25 @@ from loguru import logger
 
 import numpy as np
 
+from wattelse.api.common.client import APIClient
+
 MAX_N_JOBS = 4
 BATCH_DOCUMENT_SIZE = 1000
 MAX_DOCS_PER_REQUEST_PER_WORKER = 10000
 
 
-class EmbeddingAPI(Embeddings):
+class EmbeddingAPIClient(APIClient, Embeddings):
     """
     Custom Embedding API client, can integrate seamlessly with langchain
     """
 
-    def __init__(self, url: str):
-        self.url = url
+    def __init__(
+        self,
+        url: str,
+        client_id: str = "wattelse",
+        client_secret: str = os.getenv("WATTELSE_CLIENT_SECRET", None),
+    ):
+        super().__init__(url, client_id, client_secret)
         self.model_name = self.get_api_model_name()
         self.num_workers = self.get_num_workers()
 
@@ -33,6 +41,7 @@ class EmbeddingAPI(Embeddings):
         """
         response = requests.get(
             self.url + "/model_name",
+            verify=False,
         )
         if response.status_code == 200:
             model_name = response.json()
@@ -48,6 +57,7 @@ class EmbeddingAPI(Embeddings):
         """
         response = requests.get(
             self.url + "/num_workers",
+            verify=False,
         )
         if response.status_code == 200:
             num_workers = response.json()
@@ -67,6 +77,8 @@ class EmbeddingAPI(Embeddings):
         response = requests.post(
             self.url + "/encode",
             data=json.dumps({"text": text, "show_progress_bar": show_progress_bar}),
+            verify=False,
+            headers=self._get_headers(),
         )
         if response.status_code == 200:
             embeddings = np.array(response.json()["embeddings"])
@@ -82,6 +94,8 @@ class EmbeddingAPI(Embeddings):
         response = requests.post(
             self.url + "/encode",
             data=json.dumps({"text": texts, "show_progress_bar": show_progress_bar}),
+            verify=False,
+            headers=self._get_headers(),
         )
         if response.status_code == 200:
             embeddings = np.array(response.json()["embeddings"])

@@ -1,6 +1,6 @@
 [retriever]
 # Embedding model
-embedding_api_url = "http://localhost:6464"
+embedding_api_url = "https://localhost:6464"
 embedding_model_name = "OrdalieTech/Solon-embeddings-large-0.1"
 
 # Maximum number of extracts to return

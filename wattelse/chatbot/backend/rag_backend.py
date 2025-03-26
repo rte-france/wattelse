@@ -24,7 +24,7 @@ from loguru import logger
 from starlette.responses import StreamingResponse
 
 from wattelse.chatbot.backend import DATA_DIR
-from wattelse.api.embedding.client import EmbeddingAPI
+from wattelse.api.embedding.client import EmbeddingAPIClient
 from wattelse.chatbot.backend.vector_database import (
     DocumentCollection,
     format_docs,
@@ -72,7 +72,9 @@ class RAGBackend:
         self.group_id = group_id
         self.config = self._load_config(config)
         self.llm = get_chat_model(self.config.generator)
-        self.embedding_function = EmbeddingAPI(self.config.retriever.embedding_api_url)
+        self.embedding_function = EmbeddingAPIClient(
+            self.config.retriever.embedding_api_url
+        )
         self.document_collection = DocumentCollection(
             self.group_id,
             self.embedding_function,

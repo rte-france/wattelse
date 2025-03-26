@@ -1,3 +1,8 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import os
 import uvicorn
 from wattelse.api.embedding.config.settings import get_config
@@ -15,4 +20,6 @@ if __name__ == "__main__":
         host=CONFIG.host,
         port=CONFIG.port,
         workers=CONFIG.number_workers,
+        ssl_keyfile="../key.pem",
+        ssl_certfile="../cert.pem",
     )
