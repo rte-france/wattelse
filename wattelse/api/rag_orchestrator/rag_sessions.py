@@ -3,7 +3,7 @@
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
 
-from wattelse.chatbot.backend.rag_backend import RAGBackend
+from wattelse.rag_backend.rag_backend import RAGBackend
 
 # Global session storage
 RAG_SESSIONS: dict[str, RAGBackend] = {}

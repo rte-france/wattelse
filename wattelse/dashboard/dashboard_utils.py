@@ -12,7 +12,7 @@ import yaml
 import streamlit as st
 import pandas as pd
 
-from wattelse.chatbot.frontend.django_chatbot.settings import DB_DIR
+from wattelse.django.main.settings import DB_DIR
 
 DB_PATH = DB_DIR / "db.sqlite3"
 

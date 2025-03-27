@@ -23,15 +23,15 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from loguru import logger
 from starlette.responses import StreamingResponse
 
-from wattelse.chatbot.backend import DATA_DIR
+from wattelse.rag_backend import DATA_DIR
 from wattelse.api.embedding.client import EmbeddingAPIClient
-from wattelse.chatbot.backend.vector_database import (
+from wattelse.rag_backend.vector_database import (
     DocumentCollection,
     format_docs,
 )
 
-from wattelse.chatbot.backend.configs.settings import RAGBackendConfig
-from wattelse.chatbot.backend import (
+from wattelse.rag_backend.configs.settings import RAGBackendConfig
+from wattelse.rag_backend import (
     BM25,
     ENSEMBLE,
     MMR,
@@ -41,7 +41,7 @@ from wattelse.chatbot.backend import (
 from wattelse.indexer.document_splitter import split_file
 from wattelse.indexer.document_parser import parse_file
 
-from wattelse.chatbot.backend.utils import (
+from wattelse.rag_backend.utils import (
     RAGError,
     get_chat_model,
     preprocess_streaming_data,
@@ -49,7 +49,7 @@ from wattelse.chatbot.backend.utils import (
     get_history_as_text,
 )
 
-from wattelse.chatbot.backend.configs import CONFIG_NAME_TO_CONFIG_PATH
+from wattelse.rag_backend.configs import CONFIG_NAME_TO_CONFIG_PATH
 
 from wattelse.common.config_utils import load_toml_config
 
