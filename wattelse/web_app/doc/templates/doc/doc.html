@@ -1,0 +1,280 @@
+{% extends 'global.html' %} {% load static %} {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/gpt_doc_common.css' %}" />
+<link rel="stylesheet" href="{% static 'doc/doc.css' %}" />
+{% endblock %} {% block content %}
+
+<!--
+  ~ Copyright (c) 2024, RTE (https://www.rte-france.com)
+  ~ See AUTHORS.txt
+  ~ SPDX-License-Identifier: MPL-2.0
+  ~ This file is part of Wattelse, a NLP application suite.
+  -->
+
+{{ user.username|json_script:'user_name' }}
+
+<!-- Ok -->
+{{ available_docs|json_script:'available_docs' }}
+
+<!-- Main container for the page -->
+<div class="main-container">
+  <!-- Chat container -->
+  <div class="chat-container">
+    <!-- Top bar div -->
+    {% include 'top_bar.html' %}
+    <!-- Chat history div -->
+    <div class="chat-conversation" id="{{ conversation_id }}">
+      <!-- Messages will be displayed here -->
+    </div>
+
+    <!-- Message input field (everything in this div will be fixed at the bottom) -->
+    <div class="chat-input">
+      <textarea
+        type="text"
+        class="input-field"
+        placeholder="Demander à WattElse"
+      ></textarea>
+      <div class="chat-button-container">
+        <button class="send-button" title="Envoyer">
+          <img src="{% static 'icons/arrow-up.svg' %}" class="icon" />
+        </button>
+        <button class="new-conversation-button" title="Nouvelle conversation">
+          <img src="{% static 'icons/plus.svg' %}" class="icon" />
+        </button>
+      </div>
+    </div>
+    <div class="disclaimer">
+      Ce modèle peut générer des informations inexactes. Vérifiez ses réponses.
+    </div>
+  </div>
+
+  <!-- Sidebar container -->
+  <div class="side-bar">
+    <!-- All users have access to these tabs -->
+    <div class="top-tab-list">
+      <div class="tab" data-content="extracts">Extraits</div>
+      <div class="tab active" data-content="documents">Documents</div>
+      <div class="tab" data-content="history-container">Historique</div>
+
+      <!-- These tabs need specific rights to be displayed -->
+      {% if group_can_edit_system_prompt %}
+      <div class="tab" data-content="system-prompt">System prompt</div>
+      {% endif %} {% if can_upload_documents %}
+      <div class="tab superuser-tab" data-content="upload">Ajouter</div>
+      {% endif %} {% if can_remove_documents %}
+      <div class="tab superuser-tab" data-content="remove">Supprimer</div>
+      {% endif %} {% if can_manage_users %}
+      <div class="tab superuser-tab" data-content="users-management">
+        Utilisateurs
+      </div>
+      {% endif %}
+    </div>
+
+    <hr />
+
+    <!-- Extracts tab content -->
+    <div class="tab-content extracts">
+      <div class="extracts-section">
+        <ul id="extract-list"></ul>
+      </div>
+    </div>
+
+    <!-- Available documents tab content -->
+    <div class="tab-content documents">
+      <h3>
+        Documents pour le groupe :
+        <span class="groupname">{{ user_group }}</span>
+      </h3>
+      <div class="available-section">
+        <span class="tab-small-title select-all" id="select-all">
+          Tout sélectionner / désélectionner :
+          <i class="fa-regular fa-square-check fa-xl"></i>
+        </span>
+
+        <ul class="document-list available-list"></ul>
+      </div>
+    </div>
+
+    {% if group_can_edit_system_prompt %}
+    <!-- System prompt tab content -->
+    <div class="tab-content system-prompt">
+      {% if user_can_edit_system_prompt %}
+      <textarea class="system-prompt-text-area" id="group-system-prompt">
+{{ group_system_prompt }}</textarea
+      >
+      <button
+        class="system-prompt-save-button"
+        id="group-system-prompt-button"
+        onclick="updateGroupSystemPrompt()"
+      >
+        Enregistrer
+      </button>
+      <div class="disclaimer" style="color: red">
+        <b>ATTENTION :</b> le system prompt est commun à tout votre groupe. Le
+        modifier aura un impact sur les autres utilisateurs de votre groupe.
+      </div>
+      {% else %}
+      <h2>System prompt :</h2>
+      <p>{{ group_system_prompt }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- History tab content -->
+    <div class="tab-content history-container">
+      <details open>
+        <summary>Aujourd'hui</summary>
+        <ul id="today-history">
+          {% for conversation in conversations.today %}
+          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
+          </li>
+          {% endfor %}
+        </ul>
+      </details>
+
+      <details open>
+        <summary>7 derniers jours</summary>
+        <ul id="last-week-history">
+          {% for conversation in conversations.last_week %}
+          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
+          </li>
+          {% endfor %}
+        </ul>
+      </details>
+
+      <details open>
+        <summary>Archives</summary>
+        <ul id="archives-history">
+          {% for conversation in conversations.others %}
+          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+    </div>
+
+    <!-- Upload document tab content -->
+    {% if can_upload_documents %}
+    <div class="tab-content upload">
+      <div class="header-section">
+        <p>Téléchargez les fichiers à partager dans votre groupe</p>
+        <p>Formats supportés: PDF, DOCX, PPTX, XLSX, CSV, HTML, MD, TXT</p>
+        <p>et formats de code usuels (Python, Java, C++, ...)</p>
+      </div>
+      <div class="drop-section">
+        <div class="col">
+          <div class="cloud-icon">
+            <i class="fa-solid fa-cloud-arrow-up fa-2xl"></i>
+          </div>
+          <span>Glisser-déposer vos fichiers</span>
+          <span>OU</span>
+          <button class="file-selector">Sélectionner les fichiers</button>
+          <input type="file" class="file-selector-input" multiple />
+        </div>
+        <div class="col">
+          <div class="drop-here">Drop Here</div>
+        </div>
+      </div>
+      <div class="uploaded-section">
+        <ul class="document-list uploaded-list"></ul>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Remove document tab content -->
+    {% if can_remove_documents %}
+    <div class="tab-content remove">
+      <div class="removal-section">
+        <span class="tab-small-title">Fichiers à supprimer</span>
+        <ul class="document-list removal-list"></ul>
+        <div class="trash-button-div">
+          <button class="trash-button">
+            <img src="{% static 'icons/trash.svg' %}" class="icon" />
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Users management tab content -->
+    {% if can_manage_users %}
+    <div class="tab-content users-management">
+      <h3>
+        Groupe de travail : <span class="groupname">{{ user_group }}</span>
+      </h3>
+      <div class="users-management-section">
+        <ul class="user-list" id="group-usernames-list">
+          {% for username, is_superuser in group_usernames_dict.items %}
+          <li id="group_user_{{ username }}">
+            <div class="col">
+              {% if is_superuser %}
+              <button
+                class="superuser-icon"
+                title="Diminuer les permissions de l'utilisateur"
+                onclick="manageUserPermissions('{{ username }}', false)"
+              >
+                <i class="fa-solid fa-user-secret"></i>
+              </button>
+              {% else %}
+              <button
+                class="user-icon"
+                title="Augmenter les permissions de l'utilisateur"
+                onclick="manageUserPermissions('{{ username }}', true)"
+              >
+                <i class="fa-solid fa-user-plus"></i>
+              </button>
+              {% endif %}
+            </div>
+            <div class="col">{{ username }}</div>
+            <div class="col">
+              <button
+                class="remove-user-button"
+                onclick="removeUserFromGroup('{{ username }}')"
+                title="Supprimer l'utilisateur du groupe"
+              >
+                <i class="fa-solid fa-xmark fa-xl"></i>
+              </button>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="div-add-users-input-field">
+        <div class="tab-small-title">
+          Ajouter un utilisateur à votre groupe<br />(touche "Entrer" pour
+          valider) :
+        </div>
+        <input
+          class="add-users-input-field"
+          type="text"
+          id="add-users-input-field"
+          placeholder="Pseudo utilisateur"
+        />
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Load script for chatbot page -->
+{% load static %}
+
+<script
+  type="module"
+  src="{% static 'js/gpt_doc_common.js' %}?v={{ STATIC_VERSION }}"
+></script>
+<script
+  type="module"
+  src="{% static 'doc/doc.js' %}?v={{ STATIC_VERSION }}"
+></script>
+
+<!-- Use Markdwon-it and Highlight.js for better rendering -->
+<script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-dark.min.css"
+/>
+
+<!-- Use Font Awsome icons -->
+<script src="https://kit.fontawesome.com/63730a0977.js" crossorigin="anonymous"></script>
+
+{% endblock %}

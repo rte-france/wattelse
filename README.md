@@ -1,12 +1,11 @@
 # WattElse project
 
-## Short description
-
 WattElse is a NLP suite developed for the needs of RTE (Réseau de Transport d'Electricité).
 
 It is composed of two main modules:
-- a Retrieval Augmented Generation (RAG) application -> **WattElse Doc**
-- a simple chatbot interface to deploy and interact with any LLM -> **WattElse GPT**
+
+- a simple chatbot interface to interact with any LLM -> **WattElse GPT**
+- a Retrieval Augmented Generation (RAG) application -> **WattElse DOC**
 
 Some services are used by several applications/users at the same time. To optimize resource use, these services are implemented in the form of APIs. A description of these services is available in [wattelse/api](wattelse/api).
 
@@ -15,30 +14,106 @@ WattElse also includes helper modules that provide additional functionalities su
 ## Installation
 
 Before trying to install WattElse, you first need to ensure you have:
-- python >= 3.10
-- sqlite3 >= 3.35
 
-Then, create a virtual environnement:
+- `python >= 3.10`
+- `sqlite3 >= 3.35`
+
+Clone this project:
 
 ```bash
-python3 -m venv ~/.venv/wattelse-venv
-source ~/.venv/wattelse-venv/bin/activate
+git clone https://github.com/rte-france/wattelse.git
 ```
 
-You can then install the project dependencies with the following command:
+Create a virtual environment:
+
+```bash
+cd wattelse
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Install WattElse and its dependencies:
 
 ```bash
 ./install.sh
 ```
 
+## Environnement variables
+
+To run WattElse, you need to set the following environment variables:
+
+- `WATTELSE_BASE_DIR`: path where WattElse data will be stored
+- `DJANGO_SECRET_KEY`: Django secret key (see [Django documentation](https://docs.djangoproject.com/en/4.2/ref/settings/#std-setting-SECRET_KEY))
+
+To create a Django `SECRET_KEY`, run the following code in a python shell:
+
+```python
+from django.core.management.utils import get_random_secret_key
+print(get_random_secret_key())
+```
+
+## Django initialization
+
+To initialize the Django database, follow these steps:
+
+- Go to the django `web_app` folder:
+
+```bash
+cd wattelse/web_app
+```
+
+- Create Django tables:
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+- Create Django superuser:
+
+```bash
+python manage.py createsuperuser
+```
+
+- Start Django server:
+
+```bash
+python start.py
+```
+
+Django web app should be running at: http://localhost:8000
+
+## Launch WattElse
+
+To launch WattElse with all services, go to WattElse root folder and run:
+
+```bash
+./start_all_services.sh
+```
+
+This script starts all services in separated `screens`:
+
+- Embedding API
+- RAGOrchestrator API
+- Django
+
+To stop all services, run:
+
+```bash
+./stop_all_services.sh
+```
+
 ## Hardware requirements
 
-WattElse uses embedding models for *RAG*. It also uses larger generative models for responses. By default, all models are loaded on GPU. For *RAG*, you will for example need:
-- 1 GPU with > 20Go (or several smaller GPUs)
+By default, WattElse only loads an embedding model on start. It requires around 2GB of VRAM if loaded on GPU. To change the embedding model, see [wattelse/api](wattelse/api) and [wattelse/api/embedding](wattelse/api/embedding).
+
+The LLM used depends on the RAG config. By default, no local LLM is loaded so you need to link RAG config to a remote LLM (OpenAI, Azure...). For RAG config management, see [wattelse/rag_backend](wattelse/rag_backend).
+
+If you want to load a local LLM using `vLLM`, you need to have enough VRAM to load the model. For example, the `llama-3.1-8B-instruct` model requires around 16GB of VRAM.
 
 # RAG service
 
-## Overview of main steps 
+## Overview of main steps
 
 ```mermaid
 flowchart TB
@@ -47,7 +122,7 @@ flowchart TB
         RawDocs["Raw Documents"]
         TextChunks["Text Chunks"]
         VectorDB[(Vector Database)]
-        
+
         RawDocs --> |"Text Splitting"| TextChunks
         TextChunks --> |"Embedding Generation"| VectorDB
     end
@@ -58,7 +133,7 @@ flowchart TB
         QueryEmbed["Query Embedding"]
         SimilaritySearch["Similarity Search"]
         ContextRetrieval["Context Retrieval"]
-        
+
         UserQuery --> QueryEmbed
         QueryEmbed --> SimilaritySearch
         SimilaritySearch --> ContextRetrieval
@@ -68,7 +143,7 @@ flowchart TB
         direction TB
         LLM["Large Language Model"]
         Response["Generated Response"]
-        
+
         ContextRetrieval --> LLM
         UserQuery --> LLM
         LLM --> Response
@@ -77,7 +152,7 @@ flowchart TB
     VectorDB --> SimilaritySearch
 
 ```
- 
+
 ## Description of components
 
 ```mermaid
@@ -123,6 +198,7 @@ flowchart TB
 ```
 
 ## Simplified sequence diagram for RAG
+
 ```mermaid
 
 
@@ -139,9 +215,9 @@ sequenceDiagram
 
     User->>UI: Authenticate
     UI-->>User: Authentication OK
-    
+
     UI->>UI: Create Session
-    
+
     User->>UI: Upload files
     UI->>RAG: New files
     RAG->>VectorDB: Check cache
@@ -157,7 +233,7 @@ sequenceDiagram
     Embedding-->>VectorDB: computed embeddings
     VectorDB->>VectorDB: store
     VectorDB-->>RAG: storage ok
-    
+
     User->>UI: <br><br><br><br>Enter Query
     UI->>RAG: Submit Query
     RAG->>Embedding: Generate Query Embedding
@@ -171,12 +247,12 @@ sequenceDiagram
     LLM-->>RAG: Generated Response
     RAG-->>UI: Final Answer
     UI-->>User: Displayed answer
-    
+
     User-->>UI: <br>Provide feedback
     UI-->>UI: Store feedback
-    
-    
-    
+
+
+
     User->>UI: <br><br><br>Logout / Timeout
     UI->>UI: Kill Session
 
@@ -186,60 +262,60 @@ sequenceDiagram
 ```
 
 ## Main code dependencies
- ```mermaid
-flowchart TB
-    wattelse["wattelse"]
-    
-    subgraph ML["Machine Learning"]
-        torch["torch"]
-        sklearn["scikit-learn"]
-        accelerate["accelerate"]
-        scipy["scipy"]
-        numpy["numpy"]
-    end
-    
-    subgraph LLM["LLM & RAG"]
-        langchain["langchain"]
-        langchain_comm["langchain-community"]
-        langchain_chroma["langchain-chroma"]
-        langchain_openai["langchain-openai"]
-        llama_index["llama-index-core"]
-        openai["openai"]
-        chromadb["chromadb"]
-        sent_trans["sentence-transformers"]
-        vllm["vllm"]
-        fschat["fschat"]
-        tiktoken["tiktoken"]
-    end
-    
-    subgraph Web["Web Framework"]
-        django["django"]
-        fastapi["fastapi"]
-        streamlit["streamlit"]
-        uvicorn["uvicorn"]
-    end
-    
-    subgraph Doc["Document Processing"]
-        docxtpl["docxtpl"]
-        python_docx["python-docx"]
-        python_pptx["python-pptx"]
-        pymupdf["pymupdf"]
-        unstructured["unstructured"]
-        mammoth["mammoth"]
-        xlsx2html["xlsx2html"]
-    end
-    
-    subgraph Data["Data Processing"]
-        pandas["pandas"]
-        plotly["plotly"]
-        seaborn["seaborn"]
-        bs4["bs4"]
-    end
-    
-    wattelse --> ML
-    wattelse --> LLM
-    wattelse --> Web
-    wattelse --> Doc
-    wattelse --> Data
-```
 
+```mermaid
+flowchart TB
+   wattelse["wattelse"]
+
+   subgraph ML["Machine Learning"]
+       torch["torch"]
+       sklearn["scikit-learn"]
+       accelerate["accelerate"]
+       scipy["scipy"]
+       numpy["numpy"]
+   end
+
+   subgraph LLM["LLM & RAG"]
+       langchain["langchain"]
+       langchain_comm["langchain-community"]
+       langchain_chroma["langchain-chroma"]
+       langchain_openai["langchain-openai"]
+       llama_index["llama-index-core"]
+       openai["openai"]
+       chromadb["chromadb"]
+       sent_trans["sentence-transformers"]
+       vllm["vllm"]
+       fschat["fschat"]
+       tiktoken["tiktoken"]
+   end
+
+   subgraph Web["Web Framework"]
+       django["django"]
+       fastapi["fastapi"]
+       streamlit["streamlit"]
+       uvicorn["uvicorn"]
+   end
+
+   subgraph Doc["Document Processing"]
+       docxtpl["docxtpl"]
+       python_docx["python-docx"]
+       python_pptx["python-pptx"]
+       pymupdf["pymupdf"]
+       unstructured["unstructured"]
+       mammoth["mammoth"]
+       xlsx2html["xlsx2html"]
+   end
+
+   subgraph Data["Data Processing"]
+       pandas["pandas"]
+       plotly["plotly"]
+       seaborn["seaborn"]
+       bs4["bs4"]
+   end
+
+   wattelse --> ML
+   wattelse --> LLM
+   wattelse --> Web
+   wattelse --> Doc
+   wattelse --> Data
+```

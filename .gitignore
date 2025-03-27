@@ -1,3 +1,4 @@
+.prettierignore
 .vscode
 .DS_Store
 **/*/.Rhistory

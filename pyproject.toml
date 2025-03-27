@@ -57,6 +57,7 @@ sparqlwrapper = "^2.0.0"
 unstructured = "^0.15.13"
 uvicorn = "^0.31.0"
 vllm = "^0.6.1"
+whitenoise = "^6.9.0"
 xlsx2html = "^0.6.1"
 
 

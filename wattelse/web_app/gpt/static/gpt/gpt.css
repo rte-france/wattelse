@@ -1,0 +1,16 @@
+/* Main variables */
+:root {
+  --side-bar-width: 18%;
+}
+
+/* Sidebar containers */
+.side-bar {
+  width: var(--side-bar-width);
+  background-color: var(--softer-grey);
+  overflow-y: auto;
+}
+
+/* User message color for GPT */
+.user-message {
+  background-color: var(--soft-green);
+}
