@@ -8,7 +8,7 @@ Before using the `RAGBackend` class, ensure embedding and LLM API are launched.
 
 ```python
 from pathlib import Path
-from wattelse.chatbot.backend.rag_backend import RAGBackend
+from wattelse.backend.rag_backend import RAGBackend
 
 # Initialize the RAGBackend
 rag = RAGBackend("test_backend", config="local_20240628")

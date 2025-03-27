@@ -9,9 +9,9 @@ import json
 import numpy as np
 import pandas as pd
 
-from wattelse.chatbot.backend.rag_backend import RAGBackend
+from wattelse.rag_backend.rag_backend import RAGBackend
 
-from wattelse.chatbot.frontend.dashboard.dashboard_utils import (
+from wattelse.dashboard.dashboard_utils import (
     METIERS_GROUP_NAME,
 )
 

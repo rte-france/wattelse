@@ -22,7 +22,7 @@ from wattelse.api.common.security import (
     TokenData,
     is_authorized_for_group,
 )
-from wattelse.chatbot.backend.rag_backend import RAGBackend
+from wattelse.rag_backend.rag_backend import RAGBackend
 
 
 router = APIRouter()

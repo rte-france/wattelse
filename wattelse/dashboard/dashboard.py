@@ -9,7 +9,7 @@ import streamlit as st
 
 from pathlib import Path
 
-from wattelse.chatbot.frontend.dashboard.indicators import (
+from wattelse.dashboard.indicators import (
     _compute_file_indicators,
     build_msg_df_over_time,
     build_users_df,
@@ -18,7 +18,7 @@ from wattelse.chatbot.frontend.dashboard.indicators import (
     build_extracts_pivot,
 )
 
-from wattelse.chatbot.frontend.dashboard.dashboard_utils import (
+from wattelse.dashboard.dashboard_utils import (
     DRH_GROUP_NAME,
     METIERS_GROUP_NAME,
     DATA_TABLES,
@@ -27,7 +27,7 @@ from wattelse.chatbot.frontend.dashboard.dashboard_utils import (
     check_password,
 )
 
-from wattelse.chatbot.frontend.dashboard.dashboard_display import (
+from wattelse.dashboard.dashboard_display import (
     display_feedback_charts,
     display_feedback_charts_over_time,
     display_feedback_rates,

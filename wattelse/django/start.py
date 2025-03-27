@@ -1,5 +1,5 @@
 import subprocess
-from wattelse.chatbot.frontend.config.settings import CONFIG
+from wattelse.django.config.settings import CONFIG
 
 # Start Django application
 command = [

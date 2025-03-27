@@ -1,6 +1,6 @@
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
-import wattelse.chatbot.backend.prompts as prompts
+import wattelse.rag_backend.prompts as prompts
 
 
 class RetrieverConfig(BaseSettings):

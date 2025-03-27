@@ -5,7 +5,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
 from wattelse.api.openai.client_openai_api import GPT_FAMILY
-from wattelse.chatbot.backend.configs.settings import GeneratorConfig
+from wattelse.rag_backend.configs.settings import GeneratorConfig
 
 
 class RAGError(Exception):
