@@ -28,7 +28,7 @@ command = [
     "auto",
     "--worker-use-ray",
     "--tensor-parallel-size",
-    len(CONFIG.cuda_visible_devices.split(",")),
+    str(len(CONFIG.cuda_visible_devices.split(","))),
     "--enforce-eager",
     "--dtype",
     "half",
