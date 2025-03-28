@@ -13,7 +13,7 @@ from django.http import JsonResponse, StreamingHttpResponse, Http404
 from django.shortcuts import render, redirect
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.config.config_utils import parse_literal, EnvInterpolation
+from wattelse.config_utils import parse_literal, EnvInterpolation
 from .models import GPTChat
 from .utils import (
     streaming_generator_llm,
