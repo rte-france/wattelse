@@ -1,5 +1,5 @@
 import subprocess
-from wattelse.django.config.settings import CONFIG
+from wattelse.web_app.config.settings import CONFIG
 
 # Start Django application
 command = [
