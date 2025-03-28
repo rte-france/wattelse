@@ -9,7 +9,7 @@ import pandas as pd
 import typer
 from loguru import logger
 
-from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_PATH
+from wattelse import TEXT_COLUMN, FILENAME_COLUMN, BASE_DATA_PATH
 
 try:
     from origami_indexers.indexers import (
