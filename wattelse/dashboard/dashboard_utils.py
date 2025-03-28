@@ -12,7 +12,7 @@ import yaml
 import streamlit as st
 import pandas as pd
 
-from wattelse.django.django_main.settings import DB_DIR
+from wattelse.web_app.web_app.settings import DB_DIR
 
 DB_PATH = DB_DIR / "db.sqlite3"
 
