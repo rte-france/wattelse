@@ -51,7 +51,7 @@ from wattelse.rag_backend.utils import (
 
 from wattelse.rag_backend.configs import CONFIG_NAME_TO_CONFIG_PATH
 
-from wattelse.config.config_utils import load_toml_config
+from wattelse.config_utils import load_toml_config
 
 logging.basicConfig()
 logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
