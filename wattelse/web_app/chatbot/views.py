@@ -52,7 +52,7 @@ def default_page(request):
     if request.user.is_authenticated:
         return redirect("/doc")
     else:
-        return redirect("/login")
+        return redirect("/accounts/login")
 
 
 def rag_page(request):
@@ -64,8 +64,15 @@ def rag_page(request):
     if not request.user.is_authenticated:
         return redirect("/login")
 
-    # Get user active group_id
+    # If user doesn't belong to a group, return error
     user_group_id = get_user_active_group_id(request.user)
+    if user_group_id is None:
+        error_message = "Vous n'appartenez à aucun groupe."
+        return render(request, "accounts/login.html", {"error_message": error_message})
+
+    # Create RAG session for group
+    rag_config_name = get_group_rag_config_name(user_group_id)
+    RAG_API.create_session(user_group_id, config=rag_config_name)
 
     # Get user group list for group change
     user_group_list = get_user_groups(request.user)

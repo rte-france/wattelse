@@ -12,14 +12,6 @@ from django.contrib.auth.models import User
 from loguru import logger
 
 
-# from wattelse.web_app.utils import (
-#     get_user_active_group_id,
-#     get_group_rag_config_name,
-#     new_user_created,
-#     RAG_API,
-# )
-
-
 def login(request):
     """Main function for login page.
     If request method is GET : render login.html
@@ -31,21 +23,9 @@ def login(request):
         user = auth.authenticate(request, username=username, password=password)
         # If user exists: check group, login and redirect to chatbot
         if user is not None:
-            # If user doesn't belong to a group, return error
-            user_group_id = "test"  # get_user_active_group_id(user)
-            if user_group_id is None:
-                error_message = "Vous n'appartenez à aucun groupe."
-                return render(
-                    request, "accounts/login.html", {"error_message": error_message}
-                )
-            else:
-                auth.login(request, user)
-                logger.info(f"[User: {request.user.username}] logged in")
-                rag_config_name = (
-                    "test_config"  # get_group_rag_config_name(user_group_id)
-                )
-                # RAG_API.create_session(user_group_id, config=rag_config_name)
-                return redirect("/")
+            auth.login(request, user)
+            logger.info(f"[User: {request.user.username}] logged in")
+            return redirect("/")
         # Else return error
         else:
             error_message = "Nom d'utilisateur ou mot de passe invalides"
@@ -127,7 +107,7 @@ def change_password(request):
         if request.user.is_authenticated:
             return render(request, "accounts/change_password.html")
         else:
-            return redirect("/login")
+            return redirect("accounts/login")
 
 
 def logout(request):
@@ -135,3 +115,14 @@ def logout(request):
     logger.info(f"[User: {request.user.username}] logged out")
     auth.logout(request)
     return redirect("/login")
+
+
+def new_user_created(request, username=None):
+    """
+    Webpage rendered when a new user is created.
+    It warns the user that no group is associated yet and need to contact an administrator.
+    """
+    if username is None:
+        return redirect("/login")
+    else:
+        return render(request, "accounts/new_user_created.html", {"username": username})
