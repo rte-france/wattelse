@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "wattelse.web_app.chatbot",
     "wattelse.web_app.accounts",
+    "wattelse.web_app.home",
 ]
 
 MIDDLEWARE = [

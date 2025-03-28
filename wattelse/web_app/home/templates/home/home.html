@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!--
+  ~ Copyright (c) 2024, RTE (https://www.rte-france.com)
+  ~ See AUTHORS.txt
+  ~ SPDX-License-Identifier: MPL-2.0
+  ~ This file is part of Wattelse, a NLP application suite.
+  -->
+
+  <button class="login-button" data-url="{% url 'chatbot:gpt_chat' %}" onclick="redirectToUrl(this)">GPT</i></button>
+
+  <button class="login-button" data-url="{% url 'chatbot:main_page' %}" onclick="redirectToUrl(this)">DOC</i></button>
+
+{% endblock %}
