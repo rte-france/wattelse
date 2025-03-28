@@ -11,10 +11,6 @@ urlpatterns = [
     # Web pages
     path("", views.default_page, name="default_page"),
     path("doc/", views.rag_page, name="main_page"),
-    path("login/", views.login, name="login"),
-    path("register/", views.register, name="register"),
-    path("change_password/", views.change_password, name="register"),
-    path("logout/", views.logout, name="logout"),
     # Chatbot
     path("query_rag/", views.query_rag, name="query_rag"),
     path("save_interaction/", views.save_interaction, name="save_interaction"),

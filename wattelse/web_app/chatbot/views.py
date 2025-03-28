@@ -15,8 +15,6 @@ from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
 
-from django.contrib import auth
-from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from loguru import logger
@@ -34,7 +32,6 @@ from .utils import (
     get_group_usernames_list,
     get_group_system_prompt,
     get_group_rag_config_name,
-    new_user_created,
     get_conversation_history,
     streaming_generator,
     insert_feedback,
@@ -130,121 +127,6 @@ def rag_page(request):
             "llm_name": LLM_MAPPING[RAG_API.get_rag_llm_model(user_group_id)],
         },
     )
-
-
-def login(request):
-    """Main function for login page.
-    If request method is GET : render login.html
-    If request method is POST : log the user in and redirect to chatbot.html
-    """
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        user = auth.authenticate(request, username=username, password=password)
-        # If user exists: check group, login and redirect to chatbot
-        if user is not None:
-            # If user doesn't belong to a group, return error
-            user_group_id = get_user_active_group_id(user)
-            if user_group_id is None:
-                error_message = "Vous n'appartenez à aucun groupe."
-                return render(
-                    request, "chatbot/login.html", {"error_message": error_message}
-                )
-            else:
-                auth.login(request, user)
-                logger.info(f"[User: {request.user.username}] logged in")
-                rag_config_name = get_group_rag_config_name(user_group_id)
-                RAG_API.create_session(user_group_id, config=rag_config_name)
-                return redirect("/")
-        # Else return error
-        else:
-            error_message = "Nom d'utilisateur ou mot de passe invalides"
-            return render(
-                request, "chatbot/login.html", {"error_message": error_message}
-            )
-    else:
-        return render(request, "chatbot/login.html")
-
-
-def register(request):
-    """Main function for register page.
-    If request method is GET : render register.html
-    If request method is POST : create a new user and print an new_user_created webpage
-    """
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password1 = request.POST.get("password1")
-        password2 = request.POST.get("password2")
-
-        # Check username is not already taken
-        if User.objects.filter(username=username).exists():
-            error_message = "Nom d'utilisateur indisponible"
-            return render(
-                request, "chatbot/register.html", {"error_message": error_message}
-            )
-
-        # Check both password are the same
-        if password1 == password2:
-            try:
-                user = User.objects.create_user(username, password=password1)
-                user.save()
-                return new_user_created(request, username=user.username)
-            except:
-                error_message = "Erreur lors de la  création du compte"
-                return render(
-                    request, "chatbot/register.html", {"error_message": error_message}
-                )
-        else:
-            error_message = "Mots de passe non identiques"
-            return render(
-                request, "chatbot/register.html", {"error_message": error_message}
-            )
-    return render(request, "chatbot/register.html")
-
-
-def change_password(request):
-    """Main function for change password page.
-    If request method is GET : render change_password.html
-    If request method is POST : change user password and print an password_changed webpage
-    """
-    if request.method == "POST":
-        user = request.user
-        password1 = request.POST.get("new_password1")
-        password2 = request.POST.get("new_password2")
-
-        # Check both password are the same
-        if password1 == password2 and password1 != "":
-            try:
-                user.set_password(password1)
-                user.save()
-                update_session_auth_hash(request, user)
-                return render(request, "chatbot/password_changed.html")
-            except:
-                error_message = "Erreur lors du changement du mot de passe"
-                return render(
-                    request,
-                    "chatbot/change_password.html",
-                    {"error_message": error_message},
-                )
-        else:
-            error_message = "Mots de passe non identiques"
-            return render(
-                request,
-                "chatbot/change_password.html",
-                {"error_message": error_message},
-            )
-    else:
-        if request.user.is_authenticated:
-            return render(request, "chatbot/change_password.html")
-        else:
-            return redirect("/login")
-
-
-def logout(request):
-    """Log a user out and redirect to login page"""
-    logger.info(f"[User: {request.user.username}] logged out")
-    auth.logout(request)
-    return redirect("/login")
 
 
 def query_rag(request):
