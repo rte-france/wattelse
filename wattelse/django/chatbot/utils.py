@@ -20,7 +20,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.models import User, Group
 from django.http import Http404, JsonResponse
 
-from wattelse.common.config_utils import parse_literal
+from wattelse.config.config_utils import parse_literal
 from .models import Chat, GPTChat, GroupProfile, UserProfile
 
 from wattelse.api.rag_orchestrator.client import RAGOrchestratorClient, RAGAPIError

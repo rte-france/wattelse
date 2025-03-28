@@ -8,7 +8,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from loguru import logger
 
-# from wattelse.common import MODEL_BASE_PATH
+# from wattelse.config import MODEL_BASE_PATH
 
 # Parameters
 
