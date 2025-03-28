@@ -1,5 +1,5 @@
 """
-ASGI config for django_chatbot project.
+ASGI config for django_main project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -16,6 +16,6 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_chatbot.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_main.settings")
 
 application = get_asgi_application()

@@ -1,5 +1,5 @@
 """
-WSGI config for django_chatbot project.
+WSGI config for django_main project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -16,6 +16,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_chatbot.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_main.settings")
 
 application = get_wsgi_application()
