@@ -20,9 +20,7 @@
   <p>Contactez votre administrateur pour qu'il vous associe à son groupe puis connectez-vous.</p>
 
   <!-- Go back to login page -->
-  <form action="{% url 'accounts:login' %}" method="GET">
-    <button class="login-button" type="submit"><i class="fa-solid fa-check"></i></button>
-  </form>
+  <button class="login-button" data-url="{% url 'accounts:login' %}" onclick="redirectToUrl(this)">GPT</i></button>
   
 </div>
 
