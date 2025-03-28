@@ -5,6 +5,7 @@
 
 
 from django.shortcuts import render, redirect
+from django.urls import reverse
 
 from django.contrib import auth
 from django.contrib.auth import update_session_auth_hash
@@ -107,14 +108,14 @@ def change_password(request):
         if request.user.is_authenticated:
             return render(request, "accounts/change_password.html")
         else:
-            return redirect("accounts/login")
+            return redirect(reverse("accounts:login"))
 
 
 def logout(request):
     """Log a user out and redirect to login page"""
     logger.info(f"[User: {request.user.username}] logged out")
     auth.logout(request)
-    return redirect("/login")
+    return redirect(reverse("accounts:login"))
 
 
 def new_user_created(request, username=None):
@@ -123,6 +124,6 @@ def new_user_created(request, username=None):
     It warns the user that no group is associated yet and need to contact an administrator.
     """
     if username is None:
-        return redirect("/login")
+        return redirect(reverse("accounts:login"))
     else:
         return render(request, "accounts/new_user_created.html", {"username": username})
