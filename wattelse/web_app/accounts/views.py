@@ -26,7 +26,11 @@ def login(request):
         if user is not None:
             auth.login(request, user)
             logger.info(f"[User: {request.user.username}] logged in")
-            return redirect("/")
+            next_page = request.GET.get("next")
+            if next_page:
+                return redirect(next_page)
+            else:
+                return redirect(reverse("home:home"))
         # Else return error
         else:
             error_message = "Nom d'utilisateur ou mot de passe invalides"

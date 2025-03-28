@@ -160,3 +160,7 @@ SESSION_COOKIE_AGE = 24 * 60 * 60  # 24 hours
 # Static files versioning to avoid browser cache (Javascript, CSS)
 
 STATIC_VERSION = "1.12"
+
+# Login URL for the login_required decorator
+
+LOGIN_URL = "/accounts/login"
