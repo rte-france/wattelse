@@ -5,7 +5,7 @@
 
 import os
 
-from wattelse.common import BASE_DATA_PATH
+from wattelse import BASE_DATA_PATH
 
 # Ensures to write with +rw for both user and groups
 os.umask(0o002)

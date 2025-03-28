@@ -14,8 +14,8 @@ from langchain_text_splitters import (
 )
 from llama_index.core import node_parser
 
-from wattelse.indexer import CODE_EXTENSIONS, CFG_EXTENSIONS
-from wattelse.indexer.structured_document_header_hierarchy import (
+from wattelse.rag_backend.indexer import CODE_EXTENSIONS, CFG_EXTENSIONS
+from wattelse.rag_backend.indexer.structured_document_header_hierarchy import (
     get_html_hierarchy,
     get_markdown_hierarchy,
 )

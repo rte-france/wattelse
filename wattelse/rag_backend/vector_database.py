@@ -17,7 +17,7 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from loguru import logger
 
-from wattelse.common import BASE_DATA_PATH
+from wattelse import BASE_DATA_PATH
 
 DATABASE_PERSISTENCE_PATH = BASE_DATA_PATH / "rag_database"
 

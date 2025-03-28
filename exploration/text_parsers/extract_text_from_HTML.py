@@ -12,7 +12,7 @@ from loguru import logger
 from bs4 import BeautifulSoup, NavigableString, Tag
 from typing import List, Dict
 
-from wattelse.common import TEXT_COLUMN, FILENAME_COLUMN
+from wattelse import TEXT_COLUMN, FILENAME_COLUMN
 from wattelse.common.text_parsers.extract_text_from_MD import (
     extract_paragraphs_with_levels,
 )

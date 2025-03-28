@@ -23,7 +23,7 @@ from langchain_core.document_loaders import BaseLoader
 from langchain_core.documents import Document
 from langchain_core.documents.base import Blob
 
-from wattelse.indexer import CODE_EXTENSIONS, CFG_EXTENSIONS
+from wattelse.rag_backend.indexer import CODE_EXTENSIONS, CFG_EXTENSIONS
 
 
 class ParsingException(Exception):

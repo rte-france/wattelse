@@ -38,8 +38,8 @@ from wattelse.rag_backend import (
     SIMILARITY,
     SIMILARITY_SCORE_THRESHOLD,
 )
-from wattelse.indexer.document_splitter import split_file
-from wattelse.indexer.document_parser import parse_file
+from wattelse.rag_backend.indexer.document_splitter import split_file
+from wattelse.rag_backend.indexer.document_parser import parse_file
 
 from wattelse.rag_backend.utils import (
     RAGError,
