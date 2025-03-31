@@ -10,6 +10,8 @@ from django.urls import reverse
 from django.contrib import auth
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
+
 from loguru import logger
 
 
@@ -77,6 +79,7 @@ def register(request):
     return render(request, "accounts/register.html")
 
 
+@login_required
 def change_password(request):
     """Main function for change password page.
     If request method is GET : render change_password.html
@@ -109,10 +112,7 @@ def change_password(request):
                 {"error_message": error_message},
             )
     else:
-        if request.user.is_authenticated:
-            return render(request, "accounts/change_password.html")
-        else:
-            return redirect(reverse("accounts:login"))
+        return render(request, "accounts/change_password.html")
 
 
 def logout(request):

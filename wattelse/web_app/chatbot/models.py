@@ -32,27 +32,6 @@ class Chat(models.Model):
         return f"{self.user.username}: {self.message}"
 
 
-class GPTChat(models.Model):
-    """
-    Class used to represent an interaction with the chatbot for pure generation without RAG
-    """
-
-    # NB. So far, we log the exact same information as for RAG
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    group_id = models.TextField()
-    conversation_id = models.UUIDField()
-    message = models.TextField()
-    response = models.TextField()
-    question_timestamp = models.DateTimeField()
-    answer_timestamp = models.DateTimeField(auto_now_add=True)
-    short_feedback = models.TextField(default="")
-    long_feedback = models.TextField(default="")
-    answer_delay = models.DurationField(null=True, blank=True)  # Optional fields
-
-    def __str__(self):
-        return f"{self.user.username}: {self.message}"
-
-
 class GroupProfile(models.Model):
     group = models.OneToOneField(Group, on_delete=models.CASCADE, primary_key=True)
     rag_config = models.CharField(

@@ -58,9 +58,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "wattelse.web_app.chatbot",
-    "wattelse.web_app.accounts",
-    "wattelse.web_app.home",
+    "chatbot",
+    "accounts",
+    "home",
+    "gpt",
 ]
 
 MIDDLEWARE = [
@@ -142,6 +143,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = "/static/"
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 STATIC_ROOT = BASE_DATA_PATH / "staticfiles"
 STORAGES = {
     "staticfiles": {

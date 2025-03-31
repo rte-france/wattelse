@@ -1,0 +1,76 @@
+/*
+ * Copyright (c) 2024, RTE (https://www.rte-france.com)
+ * See AUTHORS.txt
+ * SPDX-License-Identifier: MPL-2.0
+ * This file is part of Wattelse, a NLP application suite.
+ */
+
+/* ******************** */
+/* LOGIN/REGISTER PAGES */
+/* ******************** */
+
+.accounts-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+}
+
+.form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    width: 50%;
+    max-width: 300px;
+    text-align: center;
+    border: solid 1px black;
+    border-radius: 20px;
+    padding: 40px;
+  }
+
+.form-container-title {
+    font-size: 2em;
+    font-weight: bold;
+    text-align: center;
+}
+
+.form-label {
+    color: grey;
+    display: block;
+    text-align: left;
+    margin-bottom: 5px;
+}
+
+.form-input[type="text"],
+.form-input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.form-button {
+    font-size: 1.2em;
+    font-weight: bold;
+    background-color: var(--wattelse-lightning-color);
+    color: white;
+    padding: 10px 20px;
+    border:  1px solid;
+    border-radius: 20px;
+}
+
+.form-button:hover {
+background-image: linear-gradient(rgb(0 0 0/10%) 0 0);
+}
+
+.form-error {
+    color: red;
+}
+
+.form-footnote {
+color: grey;
+font-size: 0.8rem;
+}

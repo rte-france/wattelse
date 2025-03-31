@@ -1,16 +1,27 @@
-{% extends 'base.html' %}
+{% extends 'new_base.html' %}
+
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'home/home.css' %}">
+{% endblock %}
 
 {% block content %}
+<div class="home-container">
+  <div class="home-title">Bienvenue sur WattElse</div>
+  <div class="app-container">
+    <button id="gpt-button" class="app-button gpt" data-url="{% url 'gpt:main_page' %}">
+      <div class="app-button-title">GPT</div>
+      <div class="app-button-description">IA générative sécurisée pour vous aider dans vos tâches quotidiennes</div>
+    </button>
+    <button id="doc-button" class="app-button doc" data-url="{% url 'chatbot:main_page' %}">
+      <div class="app-button-title">DOC</div>
+      <div class="app-button-description">Moteur de recherche augmenté par IA connecté à vos documents</div>
+    </button>
+  </div>
+</div>
+{% endblock %}
 
-<!--
-  ~ Copyright (c) 2024, RTE (https://www.rte-france.com)
-  ~ See AUTHORS.txt
-  ~ SPDX-License-Identifier: MPL-2.0
-  ~ This file is part of Wattelse, a NLP application suite.
-  -->
-
-  <button class="login-button" data-url="{% url 'chatbot:gpt_chat' %}" onclick="redirectToUrl(this)">GPT</i></button>
-
-  <button class="login-button" data-url="{% url 'chatbot:main_page' %}" onclick="redirectToUrl(this)">DOC</i></button>
-
+{% block extra_js %}
+<script type="module" src="{% static 'home/home.js' %}"></script>
 {% endblock %}

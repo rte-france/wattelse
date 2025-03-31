@@ -4,7 +4,7 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 from django.urls import path
-from . import secureGPT_views, views
+from . import views
 
 app_name = "chatbot"
 urlpatterns = [
@@ -54,9 +54,6 @@ urlpatterns = [
     ),
     # Dashboard
     path("dashboard/", views.dashboard, name="dashboard"),
-    # GPT chat
-    path("gpt/", secureGPT_views.gpt_page, name="gpt_chat"),
-    path("query_gpt/", secureGPT_views.query_gpt, name="query_gpt"),
     # Conversations history management
     path(
         "get_conversation_messages/",

@@ -21,7 +21,7 @@ from django.contrib.auth.models import User, Group
 from django.http import Http404, JsonResponse
 
 from wattelse.config_utils import parse_literal
-from .models import Chat, GPTChat, GroupProfile, UserProfile
+from .models import Chat, GroupProfile, UserProfile
 
 from wattelse.api.rag_orchestrator.client import RAGOrchestratorClient, RAGAPIError
 
@@ -54,11 +54,10 @@ LLM_MAPPING = {
 
 ChatModels = {
     "/doc/": Chat,
-    "/gpt/": GPTChat,
 }
 
 
-def get_chat_model(source_path: str) -> Type[GPTChat | Chat]:
+def get_chat_model(source_path: str) -> Chat:
     """Return the database class associated to the current page (RAG vs secureGPT)
     allowed source_path : "/doc/" and "/gpt/"
     """
