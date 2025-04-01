@@ -300,7 +300,7 @@ def handle_experiment_setup():
 
 
 def handle_raw_data_page(experiments_data):
-    """Enhanced Raw Data page with row-by-row comparison functionality and metric filtering."""
+    """Enhanced Raw Data page with row-by-row comparison functionality, metric filtering, and judge justifications."""
     st.header("Raw Data")
 
     # Create tabs for different data views
@@ -402,9 +402,12 @@ def handle_raw_data_page(experiments_data):
                         if col.endswith("_score")
                     ]
 
-                    # Create metrics list with friendly names
+                    # Create metrics list with friendly names and get justification columns
                     metrics = ["All Metrics"] + [
                         col.replace("_score", "").title() for col in score_columns
+                    ]
+                    justification_columns = [
+                        col.replace("_score", "") for col in score_columns
                     ]
 
                     # Add metric filter
@@ -703,7 +706,7 @@ def handle_raw_data_page(experiments_data):
                                     df["question"] == selected_question
                                 ].iloc[0]
 
-                                # Display scores with colored backgrounds based on value
+                                # Display scores with colored backgrounds based on value and add justifications
                                 # Use filtered metrics if a specific metric is selected
                                 display_score_cols = (
                                     filtered_score_columns
@@ -719,6 +722,9 @@ def handle_raw_data_page(experiments_data):
                                         metric_name = score_col.replace(
                                             "_score", ""
                                         ).title()
+                                        justification_col = score_col.replace(
+                                            "_score", ""
+                                        )
 
                                         # Determine color based on score (1-5 scale)
                                         if score is not None:
@@ -729,6 +735,7 @@ def handle_raw_data_page(experiments_data):
                                                 color = "#ffc7ce"  # Light red
                                                 performance = "❌ Bad"
 
+                                            # Display the score with performance indicator
                                             st.markdown(
                                                 f"<div style='background-color: {color}; padding: 5px; border-radius: 5px; margin-bottom: 5px;'>"
                                                 f"<b>{metric_name}:</b> {question_row[score_col]} ({performance})"
@@ -736,35 +743,67 @@ def handle_raw_data_page(experiments_data):
                                                 unsafe_allow_html=True,
                                             )
 
-                                # Show answers, contexts, and relevant extracts if available
+                                            # Add justification if available
+                                            if (
+                                                justification_col in question_row
+                                                and pd.notna(
+                                                    question_row[justification_col]
+                                                )
+                                            ):
+                                                with st.expander(
+                                                    f"{metric_name} Justification",
+                                                    expanded=True,
+                                                ):
+                                                    st.markdown(
+                                                        f"_{str(question_row[justification_col])}_"
+                                                    )
+
+                                # Add expandable sections for answer, context, extracts and source docs
+                                st.markdown("---")
+
+                                # Show answers if available
                                 if "answer" in question_row and pd.notna(
                                     question_row["answer"]
                                 ):
-                                    with st.expander("Show Answer", expanded=False):
+                                    with st.expander("📝 Answer", expanded=False):
                                         st.markdown(str(question_row["answer"]))
 
-                                if "context" in question_row and pd.notna(
-                                    question_row["context"]
-                                ):
-                                    with st.expander("Show Context", expanded=False):
-                                        st.markdown(str(question_row["context"]))
-
+                                # Show relevant extracts if available (separate from context)
                                 if (
                                     "rag_relevant_extracts" in question_row
                                     and pd.notna(question_row["rag_relevant_extracts"])
                                 ):
                                     with st.expander(
-                                        "Show Relevant Extracts", expanded=False
+                                        "📑 Relevant Extracts", expanded=False
                                     ):
                                         st.markdown(
                                             str(question_row["rag_relevant_extracts"])
                                         )
 
+                                # Show context if available
+                                if "context" in question_row and pd.notna(
+                                    question_row["context"]
+                                ):
+                                    with st.expander("📄 Context", expanded=False):
+                                        st.markdown(str(question_row["context"]))
+
+                                # Alternative name for relevant extracts
+                                if "relevant_extracts" in question_row and pd.notna(
+                                    question_row["relevant_extracts"]
+                                ):
+                                    with st.expander(
+                                        "📑 Relevant Extracts", expanded=False
+                                    ):
+                                        st.markdown(
+                                            str(question_row["relevant_extracts"])
+                                        )
+
+                                # Show source documents if available
                                 if "source_doc" in question_row and pd.notna(
                                     question_row["source_doc"]
                                 ):
                                     with st.expander(
-                                        "Show Source Documents", expanded=False
+                                        "� Source Documents", expanded=False
                                     ):
                                         st.markdown(str(question_row["source_doc"]))
 
