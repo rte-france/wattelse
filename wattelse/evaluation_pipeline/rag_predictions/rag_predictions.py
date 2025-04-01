@@ -5,8 +5,7 @@ import pandas as pd
 from loguru import logger
 from pathlib import Path
 from tqdm import tqdm
-from wattelse.chatbot.backend.rag_backend import RAGBackEnd
-from wattelse.api.embedding.client_embedding_api import EmbeddingAPI
+from wattelse.chatbot.backend.rag_backend import RAGBackend
 
 CONFIG_RAG = "azure_20241216"
 QUERY_COLUMN = "question"
@@ -110,11 +109,13 @@ def main(
 
     # Initialize RAG backend
     eval_group_id = "rag_eval"
-    RAGBackEnd(eval_group_id, CONFIG_RAG).clear_collection()
-    RAG_EVAL_BACKEND = RAGBackEnd(eval_group_id, CONFIG_RAG)
+    RAGBackend(eval_group_id, CONFIG_RAG).clear_collection()
+    RAG_EVAL_BACKEND = RAGBackend(eval_group_id, CONFIG_RAG)
     logger.info(f"RAG Backend initialized with LLM: {RAG_EVAL_BACKEND.llm.model_name}")
 
-    EMBEDDING_API = EmbeddingAPI()
+    # Get embedding API model name directly from the RAG Backend's config
+    embedding_model_name = RAG_EVAL_BACKEND.config.retriever.embedding_model_name
+
     # Load data
     eval_df = pd.read_excel(qr_df_path)
 
@@ -145,26 +146,26 @@ def main(
 
     # Get Prompts configurations
     prompt_configs = {
-        "System Prompt": RAG_EVAL_BACKEND.system_prompt,
-        "User Prompt": RAG_EVAL_BACKEND.user_prompt,
-        "System Prompt Query Contextualization": RAG_EVAL_BACKEND.system_prompt_query_contextualization,
-        "User Prompt Query Contextualization": RAG_EVAL_BACKEND.user_prompt_query_contextualization,
+        "System Prompt": RAG_EVAL_BACKEND.config.generator.system_prompt,
+        "User Prompt": RAG_EVAL_BACKEND.config.generator.user_prompt,
+        "System Prompt Query Contextualization": RAG_EVAL_BACKEND.config.generator.system_prompt_query_contextualization,
+        "User Prompt Query Contextualization": RAG_EVAL_BACKEND.config.generator.user_prompt_query_contextualization,
     }
 
     # Get detailed retriever configuration
     retriever_configs = {
-        "Embedding Model": EMBEDDING_API.get_api_model_name(),
-        "Retrieval Method": RAG_EVAL_BACKEND.retrieval_method,
-        "Top N Extracts": RAG_EVAL_BACKEND.top_n_extracts,
-        "Similarity Threshold": RAG_EVAL_BACKEND.similarity_threshold,
+        "Embedding Model": embedding_model_name,
+        "Retrieval Method": RAG_EVAL_BACKEND.config.retriever.retrieval_method,
+        "Top N Extracts": RAG_EVAL_BACKEND.config.retriever.top_n_extracts,
+        "Similarity Threshold": RAG_EVAL_BACKEND.config.retriever.similarity_threshold,
     }
 
     # Get LLM/Generator configuration
     generator_configs = {
         "LLM Model": RAG_EVAL_BACKEND.get_llm_model_name(),
-        "Temperature": RAG_EVAL_BACKEND.temperature,
-        "Remember Recent Messages": RAG_EVAL_BACKEND.remember_recent_messages,
-        "Multi Query Mode": RAG_EVAL_BACKEND.multi_query_mode,
+        "Temperature": RAG_EVAL_BACKEND.config.generator.temperature,
+        "Remember Recent Messages": RAG_EVAL_BACKEND.config.generator.remember_recent_messages,
+        "Multi Query Mode": RAG_EVAL_BACKEND.config.retriever.multi_query_mode,
     }
 
     # Get Collection configuration

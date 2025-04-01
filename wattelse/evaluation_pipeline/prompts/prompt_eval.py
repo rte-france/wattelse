@@ -122,7 +122,7 @@ Response:::
 
 #################### Faithfulness evaluation prompts ####################
 FAITHFULNESS_EVAL_PROMPT = {
-    "default": """
+    "vanilla": """
 You are a helpful assistant, please evaluate whether the response is based on the provided context, without introducing unsupported information.
 
 Evaluation: Explain your reasoning by indicating whether the response is faithful to the information in the context, in terms of relevance and sufficiency. Explicitly identify points of alignment or divergence with the context.
@@ -241,7 +241,7 @@ Response:::
 #################### Retrievability evaluation prompts ####################
 
 RETRIEVABILITY_EVAL_PROMPT = {
-    "default": """
+    "vanilla": """
 You are a helpful assistant, please evaluate whether the retrieved context is relevant and sufficient to answer the given question.
 
 Evaluation: Indicate whether the context allows the question to be answered and contains the necessary information. Specify if the proportion of irrelevant excerpts compared to the total impacts the quality of the response, and mention any lack of completeness.
