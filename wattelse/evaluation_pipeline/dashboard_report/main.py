@@ -408,7 +408,7 @@ def handle_raw_data_page(experiments_data):
                     ]
 
                     # Add metric filter
-                    col1, col2 = st.columns([1, 2])
+                    col1, col2, col3 = st.columns([1, 1.5, 1])
                     with col1:
                         selected_metric = st.selectbox(
                             "Filter by Metric", metrics, key="metric_filter_selector"
@@ -418,10 +418,35 @@ def handle_raw_data_page(experiments_data):
                         # Option to filter by score differences or view all rows
                         comparison_mode = st.radio(
                             "View Mode",
-                            ["Show All Questions", "Show Only Differences"],
+                            [
+                                "Show All Questions",
+                                "Show Only Differences",
+                                "Show Performance Changes",
+                            ],
                             key="comparison_mode",
                             horizontal=True,
                         )
+
+                    with col3:
+                        # Add option to show significant differences (performance changes)
+                        if comparison_mode == "Show Performance Changes":
+                            st.info(
+                                "Showing rows where scores cross the performance threshold (3→4 or 4→3)"
+                            )
+
+                    # Function to normalize scores for comparison (handles float vs int equality)
+                    def normalize_score(score):
+                        if pd.isna(score):
+                            return None
+                        return float(
+                            score
+                        )  # Convert both ints and floats to float for comparison
+
+                    # Function to check if a score is good (4-5) or bad (1-3)
+                    def is_good_score(score):
+                        if pd.isna(score):
+                            return None
+                        return float(score) >= 4
 
                     # Get filtered score columns based on selected metric
                     filtered_score_columns = score_columns
@@ -445,22 +470,59 @@ def handle_raw_data_page(experiments_data):
 
                         # Check if there are differences in scores for the selected metric
                         has_differences = False
+                        has_performance_change = False
+
                         for score_col in filtered_score_columns:
                             if score_col in question_rows[selected_exps[0]]:
-                                base_score = question_rows[selected_exps[0]][score_col]
+                                # Get normalized scores for accurate comparison
+                                base_score = normalize_score(
+                                    question_rows[selected_exps[0]][score_col]
+                                )
+                                base_is_good = (
+                                    is_good_score(base_score)
+                                    if base_score is not None
+                                    else None
+                                )
+
                                 for exp_name in selected_exps[1:]:
                                     if score_col in question_rows[exp_name]:
-                                        if (
+                                        comp_score = normalize_score(
                                             question_rows[exp_name][score_col]
-                                            != base_score
-                                        ):
-                                            has_differences = True
-                                            break
+                                        )
+                                        comp_is_good = (
+                                            is_good_score(comp_score)
+                                            if comp_score is not None
+                                            else None
+                                        )
 
-                        # Skip if we're only showing differences and this row has none
+                                        # Check for numeric differences
+                                        if (
+                                            base_score is not None
+                                            and comp_score is not None
+                                        ):
+                                            # Check if scores are different (after normalization)
+                                            if (
+                                                abs(base_score - comp_score) > 0.001
+                                            ):  # Use small epsilon for float comparison
+                                                has_differences = True
+
+                                                # Check if performance category changed (bad<->good)
+                                                if (
+                                                    base_is_good is not None
+                                                    and comp_is_good is not None
+                                                ):
+                                                    if base_is_good != comp_is_good:
+                                                        has_performance_change = True
+
+                        # Skip based on selected filter mode
                         if (
                             comparison_mode == "Show Only Differences"
                             and not has_differences
+                        ):
+                            continue
+                        elif (
+                            comparison_mode == "Show Performance Changes"
+                            and not has_performance_change
                         ):
                             continue
 
@@ -471,69 +533,144 @@ def handle_raw_data_page(experiments_data):
                         for exp_name in selected_exps:
                             for score_col in filtered_score_columns:
                                 if score_col in question_rows[exp_name]:
+                                    # Store original score
                                     row[f"{score_col} ({exp_name})"] = question_rows[
                                         exp_name
                                     ][score_col]
+
+                                    # Add performance classification (store separately for styling)
+                                    score = normalize_score(
+                                        question_rows[exp_name][score_col]
+                                    )
+                                    if score is not None:
+                                        is_good = is_good_score(score)
+                                        # Store performance classification as a separate column that won't be displayed
+                                        row[f"{score_col}_perf_{exp_name}"] = (
+                                            "Good" if is_good else "Bad"
+                                        )
 
                         comparison_data.append(row)
 
                     # Create and display the comparison dataframe
                     if comparison_data:
                         # Add metrics counter and summary
-                        if comparison_mode == "Show Only Differences":
-                            total_questions = len(common_questions)
-                            diff_questions = len(comparison_data)
-                            diff_percent = (
-                                (diff_questions / total_questions) * 100
-                                if total_questions > 0
-                                else 0
-                            )
+                        total_questions = len(common_questions)
+                        diff_questions = len(comparison_data)
+                        diff_percent = (
+                            (diff_questions / total_questions) * 100
+                            if total_questions > 0
+                            else 0
+                        )
 
+                        if comparison_mode == "Show Only Differences":
                             st.info(
                                 f"Showing {diff_questions} questions with differences out of {total_questions} total "
                                 f"({diff_percent:.1f}% have differences in "
                                 f"{'the selected metric' if selected_metric != 'All Metrics' else 'at least one metric'})"
                             )
+                        elif comparison_mode == "Show Performance Changes":
+                            st.info(
+                                f"Showing {diff_questions} questions with performance changes (crossing the good/bad threshold) "
+                                f"out of {total_questions} total ({diff_percent:.1f}%)"
+                            )
 
                         comparison_df = pd.DataFrame(comparison_data)
 
-                        # Add styling to highlight differences
-                        def highlight_differences(s):
-                            styles = [""] * len(s)
+                        # Create a simplified DataFrame for display (excluding the _perf columns)
+                        display_cols = ["question"]
+                        for score_col in filtered_score_columns:
+                            for exp_name in selected_exps:
+                                col_name = f"{score_col} ({exp_name})"
+                                if col_name in comparison_df.columns:
+                                    display_cols.append(col_name)
+
+                        # Create the display DataFrame (ensure all columns exist)
+                        display_df = comparison_df[display_cols].copy()
+
+                        # Define a safer styling function that handles missing columns
+                        def highlight_differences(row):
+                            # Start with default styling
+                            styles = [""] * len(display_df.columns)
+
+                            # Skip styling for the question column
+                            styles[0] = ""  # First column is always 'question'
+
                             # Group columns by metric
                             for score_col in filtered_score_columns:
-                                exp_cols = [
-                                    col
-                                    for col in comparison_df.columns
-                                    if col.startswith(f"{score_col} (")
-                                ]
+                                # Get all columns for this metric
+                                exp_cols = []
+                                for exp_name in selected_exps:
+                                    col_name = f"{score_col} ({exp_name})"
+                                    if col_name in display_df.columns:
+                                        exp_cols.append((col_name, exp_name))
+
                                 if len(exp_cols) > 1:
-                                    # Get values for this row across experiments for this metric
-                                    values = [
-                                        s[col] for col in exp_cols if pd.notna(s[col])
-                                    ]
-                                    # Check if values differ
-                                    if len(set(values)) > 1:
-                                        for col in exp_cols:
-                                            col_idx = comparison_df.columns.get_loc(col)
-                                            styles[col_idx] = (
-                                                "background-color: #ffcccb"  # Light red for differences
+                                    # Get values and performance categories
+                                    norm_values = []
+                                    perf_values = []
+
+                                    for col_name, exp_name in exp_cols:
+                                        val = row[col_name]
+                                        if pd.notna(val):
+                                            norm_values.append(normalize_score(val))
+
+                                            # Get performance classification for this score
+                                            perf_col = f"{score_col}_perf_{exp_name}"
+                                            if perf_col in comparison_df.columns:
+                                                perf_val = comparison_df.loc[
+                                                    row.name, perf_col
+                                                ]
+                                                if pd.notna(perf_val):
+                                                    perf_values.append(perf_val)
+
+                                    # Check if values differ after normalization
+                                    if (
+                                        len(norm_values) > 1
+                                        and len(set(norm_values)) > 1
+                                    ):
+                                        # Apply styling to these columns
+                                        for col_name, _ in exp_cols:
+                                            col_idx = display_df.columns.get_loc(
+                                                col_name
                                             )
+
+                                            # Check if performance categories differ
+                                            if (
+                                                len(perf_values) > 1
+                                                and len(set(perf_values)) > 1
+                                            ):
+                                                # Red for performance category changes
+                                                styles[col_idx] = (
+                                                    "background-color: #ff9999; font-weight: bold;"
+                                                )
+                                            else:
+                                                # Light pink for score differences without category change
+                                                styles[col_idx] = (
+                                                    "background-color: #ffcccb;"
+                                                )
+
                             return styles
 
-                        # Apply highlighting and display
-                        styled_df = comparison_df.style.apply(
-                            highlight_differences, axis=1
-                        )
-                        st.dataframe(styled_df, use_container_width=True)
+                        # Apply styling and display
+                        try:
+                            # Use axis=1 to apply styling row by row
+                            styled_df = display_df.style.apply(
+                                highlight_differences, axis=1
+                            )
+                            st.dataframe(styled_df, use_container_width=True)
+                        except Exception as e:
+                            # Fallback to unstyled display if styling fails
+                            st.error(f"Error applying styling: {str(e)}")
+                            st.dataframe(display_df, use_container_width=True)
 
                         # Add export to CSV option
-                        csv = comparison_df.to_csv(index=False)
+                        csv = display_df.to_csv(index=False)
                         metric_name = selected_metric.replace(" ", "_").lower()
+                        export_mode = comparison_mode.replace(" ", "_").lower()
                         st.download_button(
                             label="Download Comparison as CSV",
                             data=csv,
-                            file_name=f"{selected_judge}_{metric_name}_comparison.csv",
+                            file_name=f"{selected_judge}_{metric_name}_{export_mode}.csv",
                             mime="text/csv",
                         )
                     else:
@@ -575,42 +712,61 @@ def handle_raw_data_page(experiments_data):
                                 )
 
                                 for score_col in display_score_cols:
-                                    if score_col in question_row:
-                                        score = question_row[score_col]
+                                    if score_col in question_row and pd.notna(
+                                        question_row[score_col]
+                                    ):
+                                        score = normalize_score(question_row[score_col])
                                         metric_name = score_col.replace(
                                             "_score", ""
                                         ).title()
 
                                         # Determine color based on score (1-5 scale)
-                                        if pd.notna(score):
+                                        if score is not None:
                                             if score >= 4:  # Good scores (4-5)
                                                 color = "#c6efce"  # Light green
-                                            elif score >= 3:  # Neutral (3)
-                                                color = "#ffeb9c"  # Light yellow
-                                            else:  # Poor scores (1-2)
+                                                performance = "✅ Good"
+                                            else:  # Poor scores (1-3)
                                                 color = "#ffc7ce"  # Light red
+                                                performance = "❌ Bad"
 
                                             st.markdown(
                                                 f"<div style='background-color: {color}; padding: 5px; border-radius: 5px; margin-bottom: 5px;'>"
-                                                f"<b>{metric_name}:</b> {score}"
+                                                f"<b>{metric_name}:</b> {question_row[score_col]} ({performance})"
                                                 f"</div>",
                                                 unsafe_allow_html=True,
                                             )
 
-                                # Show answers and contexts if available
-                                if "answer" in question_row:
+                                # Show answers, contexts, and relevant extracts if available
+                                if "answer" in question_row and pd.notna(
+                                    question_row["answer"]
+                                ):
                                     with st.expander("Show Answer", expanded=False):
-                                        st.markdown(question_row["answer"])
+                                        st.markdown(str(question_row["answer"]))
 
-                                if "context" in question_row:
+                                if "context" in question_row and pd.notna(
+                                    question_row["context"]
+                                ):
                                     with st.expander("Show Context", expanded=False):
-                                        st.markdown(question_row["context"])
+                                        st.markdown(str(question_row["context"]))
 
-                                if "source_doc" in question_row:
+                                if (
+                                    "rag_relevant_extracts" in question_row
+                                    and pd.notna(question_row["rag_relevant_extracts"])
+                                ):
+                                    with st.expander(
+                                        "Show Relevant Extracts", expanded=False
+                                    ):
+                                        st.markdown(
+                                            str(question_row["rag_relevant_extracts"])
+                                        )
+
+                                if "source_doc" in question_row and pd.notna(
+                                    question_row["source_doc"]
+                                ):
                                     with st.expander(
                                         "Show Source Documents", expanded=False
                                     ):
-                                        st.markdown(question_row["source_doc"])
+                                        st.markdown(str(question_row["source_doc"]))
 
     # Tab 3: Timing Data
     with tab3:
