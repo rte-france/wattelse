@@ -299,6 +299,329 @@ def handle_experiment_setup():
         st.rerun()
 
 
+def handle_raw_data_page(experiments_data):
+    """Enhanced Raw Data page with row-by-row comparison functionality and metric filtering."""
+    st.header("Raw Data")
+
+    # Create tabs for different data views
+    tab1, tab2, tab3 = st.tabs(
+        ["📊 Evaluation Data", "🔍 Row Comparison", "⏱️ Timing Data"]
+    )
+
+    # Tab 1: Standard Evaluation Data View
+    with tab1:
+        # Get all judges from all experiments
+        all_judges = set()
+        for exp in experiments_data:
+            all_judges.update(exp["dfs"].keys())
+
+        # Create experiment selection
+        selected_exp = st.selectbox(
+            "Select Experiment",
+            [exp["name"] for exp in experiments_data],
+            key="eval_data_exp_selector",
+        )
+        exp_data = next(exp for exp in experiments_data if exp["name"] == selected_exp)
+
+        # Create tabs for each judge
+        if all_judges:
+            judge_tabs = st.tabs(sorted(all_judges))
+
+            for tab, judge_name in zip(judge_tabs, sorted(all_judges)):
+                with tab:
+                    if judge_name in exp_data["dfs"]:
+                        st.subheader(f"{judge_name} Evaluation Data")
+                        st.dataframe(
+                            exp_data["dfs"][judge_name], use_container_width=True
+                        )
+                    else:
+                        st.warning(
+                            f"No data available for {judge_name} in this experiment"
+                        )
+        else:
+            st.warning("No judge data available")
+
+    # Tab 2: Row Comparison View
+    with tab2:
+        st.subheader("Row-by-Row Experiment Comparison")
+
+        # Get all judges from all experiments
+        all_judges = set()
+        for exp in experiments_data:
+            all_judges.update(exp["dfs"].keys())
+
+        # Select a judge for comparison
+        selected_judge = st.selectbox(
+            "Select Judge for Comparison",
+            sorted(all_judges),
+            key="row_compare_judge_selector",
+        )
+
+        # Get experiments that have data for this judge
+        valid_experiments = [
+            exp["name"] for exp in experiments_data if selected_judge in exp["dfs"]
+        ]
+
+        if not valid_experiments:
+            st.warning(f"No experiments found with data from {selected_judge}")
+        else:
+            # Select experiments for comparison (multi-select)
+            selected_exps = st.multiselect(
+                "Select Experiments to Compare",
+                valid_experiments,
+                default=valid_experiments[: min(2, len(valid_experiments))],
+                key="row_compare_exp_selector",
+            )
+
+            if len(selected_exps) < 2:
+                st.info("Please select at least 2 experiments to compare")
+            else:
+                # Collect dataframes for selected experiments
+                exp_dfs = {}
+                for exp_name in selected_exps:
+                    exp_data = next(
+                        exp for exp in experiments_data if exp["name"] == exp_name
+                    )
+                    if selected_judge in exp_data["dfs"]:
+                        exp_dfs[exp_name] = exp_data["dfs"][selected_judge]
+
+                # Get common questions across all selected experiments
+                common_questions = set(exp_dfs[selected_exps[0]]["question"])
+                for exp_name in selected_exps[1:]:
+                    common_questions &= set(exp_dfs[exp_name]["question"])
+
+                if not common_questions:
+                    st.warning(
+                        "No common questions found across the selected experiments"
+                    )
+                else:
+                    # Get all score columns from first experiment
+                    score_columns = [
+                        col
+                        for col in exp_dfs[selected_exps[0]].columns
+                        if col.endswith("_score")
+                    ]
+
+                    # Create metrics list with friendly names
+                    metrics = ["All Metrics"] + [
+                        col.replace("_score", "").title() for col in score_columns
+                    ]
+
+                    # Add metric filter
+                    col1, col2 = st.columns([1, 2])
+                    with col1:
+                        selected_metric = st.selectbox(
+                            "Filter by Metric", metrics, key="metric_filter_selector"
+                        )
+
+                    with col2:
+                        # Option to filter by score differences or view all rows
+                        comparison_mode = st.radio(
+                            "View Mode",
+                            ["Show All Questions", "Show Only Differences"],
+                            key="comparison_mode",
+                            horizontal=True,
+                        )
+
+                    # Get filtered score columns based on selected metric
+                    filtered_score_columns = score_columns
+                    if selected_metric != "All Metrics":
+                        metric_name = selected_metric.lower()
+                        filtered_score_columns = [
+                            col for col in score_columns if col.startswith(metric_name)
+                        ]
+
+                    # Create comparison dataframe
+                    comparison_data = []
+
+                    for question in sorted(common_questions):
+                        # Get rows for this question from each experiment
+                        question_rows = {}
+                        for exp_name in selected_exps:
+                            df = exp_dfs[exp_name]
+                            question_rows[exp_name] = df[
+                                df["question"] == question
+                            ].iloc[0]
+
+                        # Check if there are differences in scores for the selected metric
+                        has_differences = False
+                        for score_col in filtered_score_columns:
+                            if score_col in question_rows[selected_exps[0]]:
+                                base_score = question_rows[selected_exps[0]][score_col]
+                                for exp_name in selected_exps[1:]:
+                                    if score_col in question_rows[exp_name]:
+                                        if (
+                                            question_rows[exp_name][score_col]
+                                            != base_score
+                                        ):
+                                            has_differences = True
+                                            break
+
+                        # Skip if we're only showing differences and this row has none
+                        if (
+                            comparison_mode == "Show Only Differences"
+                            and not has_differences
+                        ):
+                            continue
+
+                        # Create row for comparison table
+                        row = {"question": question}
+
+                        # Add score columns for each experiment (filtered by metric if selected)
+                        for exp_name in selected_exps:
+                            for score_col in filtered_score_columns:
+                                if score_col in question_rows[exp_name]:
+                                    row[f"{score_col} ({exp_name})"] = question_rows[
+                                        exp_name
+                                    ][score_col]
+
+                        comparison_data.append(row)
+
+                    # Create and display the comparison dataframe
+                    if comparison_data:
+                        # Add metrics counter and summary
+                        if comparison_mode == "Show Only Differences":
+                            total_questions = len(common_questions)
+                            diff_questions = len(comparison_data)
+                            diff_percent = (
+                                (diff_questions / total_questions) * 100
+                                if total_questions > 0
+                                else 0
+                            )
+
+                            st.info(
+                                f"Showing {diff_questions} questions with differences out of {total_questions} total "
+                                f"({diff_percent:.1f}% have differences in "
+                                f"{'the selected metric' if selected_metric != 'All Metrics' else 'at least one metric'})"
+                            )
+
+                        comparison_df = pd.DataFrame(comparison_data)
+
+                        # Add styling to highlight differences
+                        def highlight_differences(s):
+                            styles = [""] * len(s)
+                            # Group columns by metric
+                            for score_col in filtered_score_columns:
+                                exp_cols = [
+                                    col
+                                    for col in comparison_df.columns
+                                    if col.startswith(f"{score_col} (")
+                                ]
+                                if len(exp_cols) > 1:
+                                    # Get values for this row across experiments for this metric
+                                    values = [
+                                        s[col] for col in exp_cols if pd.notna(s[col])
+                                    ]
+                                    # Check if values differ
+                                    if len(set(values)) > 1:
+                                        for col in exp_cols:
+                                            col_idx = comparison_df.columns.get_loc(col)
+                                            styles[col_idx] = (
+                                                "background-color: #ffcccb"  # Light red for differences
+                                            )
+                            return styles
+
+                        # Apply highlighting and display
+                        styled_df = comparison_df.style.apply(
+                            highlight_differences, axis=1
+                        )
+                        st.dataframe(styled_df, use_container_width=True)
+
+                        # Add export to CSV option
+                        csv = comparison_df.to_csv(index=False)
+                        metric_name = selected_metric.replace(" ", "_").lower()
+                        st.download_button(
+                            label="Download Comparison as CSV",
+                            data=csv,
+                            file_name=f"{selected_judge}_{metric_name}_comparison.csv",
+                            mime="text/csv",
+                        )
+                    else:
+                        st.info("No rows match the current filter criteria")
+
+                    # Add option to view detailed comparison for a specific question
+                    st.subheader("Detailed Question Comparison")
+
+                    # Select a question to examine in detail
+                    question_list = sorted(common_questions)
+                    if question_list:
+                        selected_question = st.selectbox(
+                            "Select Question to Examine",
+                            question_list,
+                            key="detailed_question_selector",
+                        )
+
+                        # Show detailed view of the selected question across experiments
+                        st.markdown("##### Question")
+                        st.markdown(f"**{selected_question}**")
+
+                        # Create columns for each experiment
+                        exp_cols = st.columns(len(selected_exps))
+
+                        for i, exp_name in enumerate(selected_exps):
+                            with exp_cols[i]:
+                                st.markdown(f"##### {exp_name}")
+                                df = exp_dfs[exp_name]
+                                question_row = df[
+                                    df["question"] == selected_question
+                                ].iloc[0]
+
+                                # Display scores with colored backgrounds based on value
+                                # Use filtered metrics if a specific metric is selected
+                                display_score_cols = (
+                                    filtered_score_columns
+                                    if selected_metric != "All Metrics"
+                                    else score_columns
+                                )
+
+                                for score_col in display_score_cols:
+                                    if score_col in question_row:
+                                        score = question_row[score_col]
+                                        metric_name = score_col.replace(
+                                            "_score", ""
+                                        ).title()
+
+                                        # Determine color based on score (1-5 scale)
+                                        if pd.notna(score):
+                                            if score >= 4:  # Good scores (4-5)
+                                                color = "#c6efce"  # Light green
+                                            elif score >= 3:  # Neutral (3)
+                                                color = "#ffeb9c"  # Light yellow
+                                            else:  # Poor scores (1-2)
+                                                color = "#ffc7ce"  # Light red
+
+                                            st.markdown(
+                                                f"<div style='background-color: {color}; padding: 5px; border-radius: 5px; margin-bottom: 5px;'>"
+                                                f"<b>{metric_name}:</b> {score}"
+                                                f"</div>",
+                                                unsafe_allow_html=True,
+                                            )
+
+                                # Show answers and contexts if available
+                                if "answer" in question_row:
+                                    with st.expander("Show Answer", expanded=False):
+                                        st.markdown(question_row["answer"])
+
+                                if "context" in question_row:
+                                    with st.expander("Show Context", expanded=False):
+                                        st.markdown(question_row["context"])
+
+                                if "source_doc" in question_row:
+                                    with st.expander(
+                                        "Show Source Documents", expanded=False
+                                    ):
+                                        st.markdown(question_row["source_doc"])
+
+    # Tab 3: Timing Data
+    with tab3:
+        for exp in experiments_data:
+            st.subheader(f"{exp['name']}")
+            if exp["timing"] is not None:
+                st.dataframe(exp["timing"], use_container_width=True)
+            else:
+                st.info(f"No timing data available for {exp['name']}")
+
+
 def display_metric_descriptions():
     """Display metric descriptions in an expandable section."""
     with st.expander("ℹ️ Metric Descriptions", expanded=False):
@@ -954,47 +1277,7 @@ def main():
         handle_pdf_export(experiments_data)
 
     elif page == "Raw Data":
-        st.header("Raw Data")
-
-        tab1, tab2 = st.tabs(["📊 Evaluation Data", "⏱️ Timing Data"])
-
-        with tab1:
-            # Get all judges from all experiments
-            all_judges = set()
-            for exp in experiments_data:
-                all_judges.update(exp["dfs"].keys())
-
-            # Create experiment selection
-            selected_exp = st.selectbox(
-                "Select Experiment", [exp["name"] for exp in experiments_data]
-            )
-            exp_data = next(
-                exp for exp in experiments_data if exp["name"] == selected_exp
-            )
-
-            # Create tabs for each judge
-            if all_judges:
-                judge_tabs = st.tabs(sorted(all_judges))
-
-                for tab, judge_name in zip(judge_tabs, sorted(all_judges)):
-                    with tab:
-                        if judge_name in exp_data["dfs"]:
-                            st.subheader(f"{judge_name} Evaluation Data")
-                            st.dataframe(
-                                exp_data["dfs"][judge_name], use_container_width=True
-                            )
-                        else:
-                            st.warning(
-                                f"No data available for {judge_name} in this experiment"
-                            )
-            else:
-                st.warning("No judge data available")
-
-        with tab2:
-            for exp in experiments_data:
-                st.subheader(f"{exp['name']}")
-                if exp["timing"] is not None:
-                    st.dataframe(exp["timing"], use_container_width=True)
+        handle_raw_data_page(experiments_data)
 
 
 if __name__ == "__main__":

@@ -20,8 +20,6 @@ from .constants import METRIC_DESCRIPTIONS
 import base64
 from datetime import datetime
 import markdown
-from scipy import stats
-import numpy as np
 from bs4 import BeautifulSoup
 import logging
 
