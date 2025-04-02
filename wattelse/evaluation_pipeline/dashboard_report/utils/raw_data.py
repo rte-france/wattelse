@@ -136,6 +136,7 @@ def calculate_metric_improvements(comparison_df, selected_exps, filtered_score_c
                         )
 
                         if exp1_score is not None and exp2_score is not None:
+                            # Record the direction of change for this pair
                             if exp2_score > exp1_score:
                                 pair_improvements[pair_key][metric_name][
                                     "improved"
@@ -545,84 +546,121 @@ def handle_raw_data_page(experiments_data):
 
                         st.markdown(f"**{comparison_basis}**")
 
-                        # Create improvement summary table with best/worst experiment indicators
-                        improvement_data = []
+                        # Create enhanced performance category changes table
+                        st.markdown("##### Performance Category Changes")
+                        performance_data = []
                         for metric, stats in improvements.items():
+                            total_evaluated = (
+                                stats["improved"]
+                                + stats["worsened"]
+                                + stats["unchanged"]
+                            )
+
+                            # Calculate unchanged performance category (those that didn't cross the threshold)
+                            unchanged_performance = (
+                                total_evaluated
+                                - stats["performance_improved"]
+                                - stats["performance_worsened"]
+                            )
+
+                            # Calculate net performance change
+                            net_performance_change = (
+                                stats["performance_improved"]
+                                - stats["performance_worsened"]
+                            )
+
+                            # Calculate percentage of net performance change
+                            perf_change_pct = (
+                                (net_performance_change / total_evaluated * 100)
+                                if total_evaluated > 0
+                                else 0
+                            )
+
                             row_data = {
                                 "Metric": metric,
-                                "Improved": stats["improved"],
-                                "Worsened": stats["worsened"],
-                                "Unchanged": stats["unchanged"],
-                                "Performance Improved": stats["performance_improved"],
-                                "Performance Worsened": stats["performance_worsened"],
-                                "Best Experiment": (
-                                    stats["best_experiment"]
-                                    if stats["best_experiment"]
-                                    else "No clear winner"
-                                ),
-                                "Worst Experiment": (
-                                    stats["worst_experiment"]
-                                    if stats["worst_experiment"]
-                                    else "No clear loser"
-                                ),
+                                "Perf. Improved (Bad→Good)": stats[
+                                    "performance_improved"
+                                ],
+                                "Perf. Worsened (Good→Bad)": stats[
+                                    "performance_worsened"
+                                ],
+                                "Net Change": f"{net_performance_change:+d}",  # Show with sign
+                                "Net Change %": f"{perf_change_pct:+.1f}%",  # Show with sign
+                                "Unchanged Perf.": unchanged_performance,
+                                "Questions Evaluated": total_evaluated,
                             }
-                            improvement_data.append(row_data)
+                            performance_data.append(row_data)
 
-                        # Display improvements table
-                        if improvement_data:
-                            improvement_df = pd.DataFrame(improvement_data)
-                            st.dataframe(improvement_df, use_container_width=True)
+                        # Display enhanced performance changes table
+                        if performance_data:
+                            performance_df = pd.DataFrame(performance_data)
 
-                            # For multiple experiments, show pair-wise comparisons
-                            if len(selected_exps) > 2:
-                                st.subheader("Pair-wise Comparison")
+                            # Apply styling to highlight net changes
+                            def style_net_change(val):
+                                if (
+                                    isinstance(val, str)
+                                    and val.startswith("+")
+                                    and val != "+0"
+                                    and val != "+0.0%"
+                                ):
+                                    return "background-color: #c6efce; color: #006100"  # Green for positive
+                                elif isinstance(val, str) and val.startswith("-"):
+                                    return "background-color: #ffc7ce; color: #9c0006"  # Red for negative
+                                return ""
 
-                                # Create tabs for each pair
-                                pair_tabs = []
-                                for i, exp1 in enumerate(selected_exps):
-                                    for j, exp2 in enumerate(selected_exps):
-                                        if i < j:  # Only process each pair once
-                                            pair_key = f"{exp1} vs {exp2}"
-                                            pair_tabs.append(pair_key)
+                            # Use the newer .map method instead of the deprecated .applymap
+                            styled_performance_df = performance_df.style.map(
+                                style_net_change, subset=["Net Change", "Net Change %"]
+                            )
 
-                                if pair_tabs:
-                                    tabs = st.tabs(pair_tabs)
+                            st.dataframe(
+                                styled_performance_df, use_container_width=True
+                            )
 
-                                    for tab_idx, pair_key in enumerate(pair_tabs):
-                                        with tabs[tab_idx]:
-                                            if pair_key in pair_improvements:
-                                                # Create pair comparison data
-                                                pair_data = []
-                                                for metric, stats in pair_improvements[
-                                                    pair_key
-                                                ].items():
-                                                    pair_data.append(
-                                                        {
-                                                            "Metric": metric,
-                                                            "Improved": stats[
-                                                                "improved"
-                                                            ],
-                                                            "Worsened": stats[
-                                                                "worsened"
-                                                            ],
-                                                            "Unchanged": stats[
-                                                                "unchanged"
-                                                            ],
-                                                            "Performance Improved": stats[
-                                                                "performance_improved"
-                                                            ],
-                                                            "Performance Worsened": stats[
-                                                                "performance_worsened"
-                                                            ],
-                                                        }
-                                                    )
+                        # For multiple experiments, show pair-wise comparisons
+                        if len(selected_exps) > 2:
+                            st.subheader("Pair-wise Comparison")
 
-                                                if pair_data:
-                                                    pair_df = pd.DataFrame(pair_data)
-                                                    st.dataframe(
-                                                        pair_df,
-                                                        use_container_width=True,
-                                                    )
+                            # Create tabs for each pair
+                            pair_tabs = []
+                            for i, exp1 in enumerate(selected_exps):
+                                for j, exp2 in enumerate(selected_exps):
+                                    if i < j:  # Only process each pair once
+                                        pair_key = f"{exp1} vs {exp2}"
+                                        pair_tabs.append(pair_key)
+
+                            if pair_tabs:
+                                tabs = st.tabs(pair_tabs)
+
+                                for tab_idx, pair_key in enumerate(pair_tabs):
+                                    with tabs[tab_idx]:
+                                        if pair_key in pair_improvements:
+                                            # Create pair comparison data
+                                            pair_data = []
+                                            for metric, stats in pair_improvements[
+                                                pair_key
+                                            ].items():
+                                                pair_data.append(
+                                                    {
+                                                        "Metric": metric,
+                                                        "Improved": stats["improved"],
+                                                        "Worsened": stats["worsened"],
+                                                        "Unchanged": stats["unchanged"],
+                                                        "Performance Improved": stats[
+                                                            "performance_improved"
+                                                        ],
+                                                        "Performance Worsened": stats[
+                                                            "performance_worsened"
+                                                        ],
+                                                    }
+                                                )
+
+                                            if pair_data:
+                                                pair_df = pd.DataFrame(pair_data)
+                                                st.dataframe(
+                                                    pair_df,
+                                                    use_container_width=True,
+                                                )
 
                         # Display filter info
                         if comparison_mode == "Show Only Differences":
