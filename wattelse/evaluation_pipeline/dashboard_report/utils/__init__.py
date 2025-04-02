@@ -28,3 +28,6 @@ from .metrics_summary import create_metrics_summary
 
 # Import PDF export functions
 from .pdf_extract import create_pdf_report, get_pdf_download_link
+
+# Import raw data handling functions
+from .raw_data import handle_raw_data_page
