@@ -74,6 +74,21 @@ def highlight_differences(
     return styles
 
 
+def get_metric_order(metric_name):
+    """
+    Returns a sort key for metrics to ensure they appear in the desired order:
+    Correctness first, Faithfulness second, Retrievability last
+    """
+    if metric_name.lower() == "correctness":
+        return 0
+    elif metric_name.lower() == "faithfulness":
+        return 1
+    elif metric_name.lower() == "retrievability":
+        return 3  # Higher number to ensure it's last
+    else:
+        return 2  # Other metrics come in between
+
+
 def calculate_metric_improvements(comparison_df, selected_exps, filtered_score_columns):
     """Calculate improvements between experiments for each metric."""
     improvements = {}
@@ -366,7 +381,14 @@ def handle_raw_data_page(experiments_data):
                         if col.endswith("_score")
                     ]
 
+                    # Sort score columns according to our preferred metric order
+                    score_columns = sorted(
+                        score_columns,
+                        key=lambda x: get_metric_order(x.replace("_score", "")),
+                    )
+
                     # Create metrics list with friendly names and get justification columns
+                    # Ensure metrics are in our desired order
                     metrics = ["All Metrics"] + [
                         col.replace("_score", "").title() for col in score_columns
                     ]
@@ -549,7 +571,15 @@ def handle_raw_data_page(experiments_data):
                         # Create enhanced performance category changes table
                         st.markdown("##### Performance Category Changes")
                         performance_data = []
-                        for metric, stats in improvements.items():
+
+                        # Get all metric names
+                        all_metrics = list(improvements.keys())
+
+                        # Sort metrics by our desired order
+                        sorted_metrics = sorted(all_metrics, key=get_metric_order)
+
+                        for metric in sorted_metrics:
+                            stats = improvements[metric]
                             total_evaluated = (
                                 stats["improved"]
                                 + stats["worsened"]
@@ -637,9 +667,21 @@ def handle_raw_data_page(experiments_data):
                                         if pair_key in pair_improvements:
                                             # Create pair comparison data
                                             pair_data = []
-                                            for metric, stats in pair_improvements[
-                                                pair_key
-                                            ].items():
+
+                                            # Get all metrics for this pair
+                                            pair_metrics = list(
+                                                pair_improvements[pair_key].keys()
+                                            )
+
+                                            # Sort metrics by our desired order
+                                            sorted_pair_metrics = sorted(
+                                                pair_metrics, key=get_metric_order
+                                            )
+
+                                            for metric in sorted_pair_metrics:
+                                                stats = pair_improvements[pair_key][
+                                                    metric
+                                                ]
                                                 pair_data.append(
                                                     {
                                                         "Metric": metric,
@@ -677,7 +719,14 @@ def handle_raw_data_page(experiments_data):
 
                         # Create a simplified DataFrame for display (excluding the _perf columns)
                         display_cols = ["question"]
-                        for score_col in filtered_score_columns:
+
+                        # Use ordered score columns for display
+                        ordered_score_cols = sorted(
+                            filtered_score_columns,
+                            key=lambda x: get_metric_order(x.replace("_score", "")),
+                        )
+
+                        for score_col in ordered_score_cols:
                             for exp_name in selected_exps:
                                 col_name = f"{score_col} ({exp_name})"
                                 if col_name in comparison_df.columns:
@@ -847,12 +896,16 @@ def handle_raw_data_page(experiments_data):
 
                                     # THEN show scores and justifications
                                     # Display scores with colored backgrounds based on value and add justifications
-                                    # Use filtered metrics if a specific metric is selected
-                                    display_score_cols = (
-                                        filtered_score_columns
-                                        if selected_metric != "All Metrics"
-                                        else score_columns
-                                    )
+                                    # Use filtered metrics if a specific metric is selected, and ensure they're ordered
+                                    if selected_metric != "All Metrics":
+                                        display_score_cols = filtered_score_columns
+                                    else:
+                                        display_score_cols = sorted(
+                                            score_columns,
+                                            key=lambda x: get_metric_order(
+                                                x.replace("_score", "")
+                                            ),
+                                        )
 
                                     for score_col in display_score_cols:
                                         if score_col in question_row and pd.notna(
