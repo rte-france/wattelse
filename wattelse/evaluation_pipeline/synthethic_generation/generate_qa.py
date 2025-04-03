@@ -13,7 +13,7 @@ from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.indexer.document_parser import parse_file
 from wattelse.indexer.document_splitter import split_file
 from wattelse.evaluation_pipeline.synthethic_generation.prompt_QA_gen import (
-    QA_GENERATION_PROMPT_POLITIQUE_VOYAGE_SYNDICALE_TEST,
+    QA_GENERATION_PROMPT,
 )
 
 # TODO : The logic of the nuances is not flexible for QA Generation
@@ -185,9 +185,7 @@ def process_single_generation(batch: List[LangchainDocument]) -> Dict:
     try:
         combined_context = "\n\n".join(chunk.page_content for chunk in batch)
         output_QA_couple = llm_client.generate(
-            QA_GENERATION_PROMPT_POLITIQUE_VOYAGE_SYNDICALE_TEST.format(
-                context=combined_context
-            ),
+            QA_GENERATION_PROMPT.format(context=combined_context),
             temperature=0,
         )
 
