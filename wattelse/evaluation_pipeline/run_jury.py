@@ -6,6 +6,8 @@ import os
 from loguru import logger
 import sys
 
+from wattelse.evaluation_pipeline import BASE_OUTPUT_DIR, RESULTS_BASE_DIR
+
 logger.remove()
 logger.add(sys.stderr, level="INFO")  # Only show INFO and above by default
 
@@ -18,11 +20,6 @@ from wattelse.evaluation_pipeline.config import EvalConfig, ServerConfig
 from wattelse.evaluation_pipeline.utils import PortManager
 
 app = typer.Typer()
-
-# Define base paths
-BASE_DIR = Path("/DSIA/nlp/experiments")
-RESULTS_BASE_DIR = Path("/DSIA/nlp/experiments/results")
-DATA_PREDICTIONS_DIR = BASE_DIR / "data_predictions"
 
 # Create a global instance of PortManager
 port_manager = PortManager(logger)
@@ -278,7 +275,7 @@ def main(
 ) -> None:
     """Main function to run evaluation on all models defined in the config."""
     # Convert relative paths to absolute paths based on the base directory
-    qr_df_path = DATA_PREDICTIONS_DIR / qr_df_filename
+    qr_df_path = BASE_OUTPUT_DIR / qr_df_filename
     full_output_dir = RESULTS_BASE_DIR / output_dir
 
     logger.info(

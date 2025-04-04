@@ -19,6 +19,7 @@ from utils import (
     RAG_RETRIEVER_TIME_COLUMN,
     METRIC_DESCRIPTIONS,
 )
+from wattelse.evaluation_pipeline import RESULTS_BASE_DIR
 
 
 def setup_page():
@@ -27,7 +28,7 @@ def setup_page():
     st.title("RAG Evaluation Pipeline Dashboard")
 
 
-def get_available_experiments(base_path="/DSIA/nlp/experiments/results"):
+def get_available_experiments(base_path=RESULTS_BASE_DIR):
     """Get all available experiment directories containing evaluation Excel files."""
     base_path = Path(base_path)
 
@@ -88,7 +89,7 @@ def handle_experiment_setup():
         st.session_state.experiments = []
 
     # Get available experiments
-    base_path = "/DSIA/nlp/experiments/results"
+    base_path = RESULTS_BASE_DIR
     available_experiments, experiment_paths, experiment_categories = (
         get_available_experiments(base_path)
     )

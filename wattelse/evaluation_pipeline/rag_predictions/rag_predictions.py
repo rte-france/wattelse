@@ -6,6 +6,12 @@ from loguru import logger
 from pathlib import Path
 from tqdm import tqdm
 from wattelse.chatbot.backend.rag_backend import RAGBackend
+from wattelse.evaluation_pipeline import (
+    BASE_DIR,
+    BASE_DATA_DIR,
+    BASE_DOCS_DIR,
+    BASE_OUTPUT_DIR,
+)
 
 CONFIG_RAG = "azure_20241216"
 QUERY_COLUMN = "question"
@@ -25,10 +31,6 @@ COLLECTION_CONFIG_SHEET_NAME = "collection_config"
 QUERY_LENGTH_CHARS = "question_length_chars"
 QUERY_LENGTH_WORDS = "question_length_words"
 
-# Base directories
-BASE_DATA_DIR = Path("/DSIA/nlp/experiments/data")
-BASE_DOCS_DIR = Path("/DSIA/nlp/experiments/docs")
-BASE_OUTPUT_DIR = Path("/DSIA/nlp/experiments/data_predictions")
 
 app = typer.Typer()
 
@@ -52,9 +54,9 @@ def resolve_path(path, base_dir):
     # Handle paths starting with 'data/' or 'docs/'
     path_str = str(path)
     if path_str.startswith("data/"):
-        return Path("/DSIA/nlp/experiments") / path_str
+        return BASE_DIR / path_str
     if path_str.startswith("docs/"):
-        return Path("/DSIA/nlp/experiments") / path_str
+        return BASE_DIR / path_str
 
     # Otherwise, join with base directory
     return base_dir / path

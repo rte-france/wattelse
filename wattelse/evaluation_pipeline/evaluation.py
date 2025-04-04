@@ -9,12 +9,8 @@ from tqdm_joblib import tqdm_joblib
 from openai import Timeout
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
+from wattelse.evaluation_pipeline import CONFIG_EVAL, REPORT_PATH
 from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
-
-# Define base paths
-BASE_DIR = Path("/DSIA/nlp/experiments")
-CONFIG_EVAL = BASE_DIR / "eval_config.cfg"
-REPORT_PATH = BASE_DIR / "report_output.xlsx"
 
 # Column definitions
 QUERY_COLUMN = "question"
