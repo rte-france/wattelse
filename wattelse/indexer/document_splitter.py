@@ -42,7 +42,11 @@ class SentenceSplitter(TextSplitter):
 
 
 def split_file(
-    file_extension: str, docs: List[Document], use_sentence_splitter: bool = True
+    file_extension: str,
+    docs: List[Document],
+    use_sentence_splitter: bool = True,
+    chunk_size: int = 200,
+    chunk_overlap: int = 50,
 ) -> List[Document]:
     """Split a file into smaller chunks - the chunking method depends on file type"""
     if file_extension == ".md":
@@ -57,32 +61,26 @@ def split_file(
         splits = []
         for doc in docs:
             new_docs = text_splitter.split_text(doc.page_content)
-            new_docs = get_markdown_hierarchy(
-                new_docs
-            )  # concatenates parent-headers to the beginning of each subsection
+            new_docs = get_markdown_hierarchy(new_docs)
             for d in new_docs:
                 d.metadata = doc.metadata
             splits += new_docs
         return splits
     elif file_extension in [".htm", ".html"]:
         text_splitter = HTMLSectionSplitter(
-            return_each_element=False,
+            return_each_line=False,
             headers_to_split_on=[
                 ("h1", "Header 1"),
                 ("h2", "Header 2"),
                 ("h3", "Header 3"),
             ],
-        )  # NB. HTMLHeaderTextSplitter replaced with HTMLSectionSplitter
+        )
         splits = []
         for doc in docs:
             new_docs = text_splitter.split_text(doc.page_content)
-            new_docs = get_html_hierarchy(
-                new_docs
-            )  # concatenates parent-headers to the beginning of each subsection
+            new_docs = get_html_hierarchy(new_docs)
             for d in new_docs:
-                d.page_content = re.sub(
-                    r"[^\S\n]{2,}", " ", d.page_content
-                )  # removes extra spaces that are not line returns
+                d.page_content = re.sub(r"[^\S\n]{2,}", " ", d.page_content)
                 d.metadata = doc.metadata
             splits += new_docs
         return splits
@@ -91,10 +89,12 @@ def split_file(
         return docs
     else:
         if use_sentence_splitter:
-            text_splitter = SentenceSplitter(chunk_size=200, chunk_overlap=50)
-        else:  # TODO: check split parameters
+            text_splitter = SentenceSplitter(
+                chunk_size=chunk_size, chunk_overlap=chunk_overlap
+            )
+        else:
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=500, chunk_overlap=100
+                chunk_size=chunk_size, chunk_overlap=chunk_overlap
             )
         splits = text_splitter.split_documents(docs)
         return splits
