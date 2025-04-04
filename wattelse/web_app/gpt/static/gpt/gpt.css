@@ -1,0 +1,10 @@
+:root {
+  --side-bar-width: 15%;
+}
+
+/* Main containers */
+
+.side-bar {
+  width: var(--side-bar-width);
+  background-color: #f9f9f9;
+}

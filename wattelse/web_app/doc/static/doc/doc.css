@@ -1,0 +1,402 @@
+:root {
+  --side-bar-width: 33%;
+}
+
+/* Right pannel container */
+.side-bar {
+  width: var(--side-bar-width);
+  padding: 10px;
+  background-color: #f9f9f9;
+  overflow-y: scroll;
+}
+
+/* Panel tabs */
+.top-tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+}
+
+.top-tab-list .tab {
+  font-size: 0.8rem; /* Slightly smaller font for tabs */
+  font-weight: 600;
+  padding: 5px;
+  cursor: pointer;
+  text-align: center; /* Center text within tabs */
+  border-radius: 5px;
+  transition: background-color 0.2s ease-in-out; /* Smooth transition on hover */
+}
+
+.side-bar .superuser-tab {
+  color: var(--complementary-color);
+}
+
+.side-bar .tab:hover {
+  color: var(--wattelse-lightning-color);
+}
+
+.side-bar .superuser-tab:hover {
+  color: rgb(216, 35, 15);
+}
+
+.side-bar .tab.active {
+  background-color: var(
+    --wattelse-lightning-color
+  ); /* Blue background for active tab */
+  color: #fff; /* White text color for active tab */
+  box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
+}
+
+.side-bar .superuser-tab.active {
+  background-color: var(--complementary-color);
+  color: #fff; /* White text color for active tab */
+  box-shadow: inset 0 -1px 0 #ddd; /* Subtle inset shadow */
+}
+
+/* Panel tabs content */
+.side-bar .tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.tab-content .tab-small-title {
+  font-size: 0.95rem;
+  color: #707ea0;
+}
+
+/* Documents list main element */
+.document-list,
+.user-list {
+  padding: 0;
+  list-style-type: none;
+  text-align: left;
+  margin: 0px 35px;
+  padding-bottom: 20px;
+}
+
+.document-list li,
+.user-list li {
+  display: flex;
+  margin: 15px 0px;
+  padding: 4px 0px;
+  border-radius: 8px;
+  align-items: center;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 8px;
+}
+
+.document-list li {
+  transition: all 0.1s ease-in-out;
+  transition-duration: 0.2s;
+}
+
+.document-list li:hover {
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px,
+    rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+  cursor: pointer;
+  transform: scale(1.02);
+}
+
+.document-list li .col,
+.user-list li .col {
+  flex: 0.1;
+}
+
+.document-list li .col:nth-child(1),
+.user-list li .col:nth-child(1) {
+  flex: 0.15;
+  text-align: center;
+}
+
+.document-list li .col:nth-child(2),
+.user-list li .col:nth-child(2) {
+  flex: 0.75;
+  text-align: left;
+  font-size: 0.9rem;
+  color: #3e4046;
+  padding: 8px 10px;
+}
+
+.document-list li .col:nth-child(2) div.name,
+.user-list li .col:nth-child(2) div.name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  display: inline-block;
+}
+
+.document-list li .col .file-name span,
+.user-list li .col .file-name span {
+  color: #707ea0;
+  float: right;
+}
+
+.document-list li .col svg.tick {
+  fill: green;
+  background-color: transparent;
+}
+
+.available-section .document-list li .col svg.tick,
+.removal-section .document-list li .col svg.tick {
+  display: none;
+}
+
+.document-list li.selected .col svg.tick {
+  display: block;
+}
+
+/* Extracts list content */
+.extract-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tab-content.extracts ul {
+  list-style: none; /* Remove default bullet points */
+  padding: 0; /* Reset padding for better spacing */
+}
+
+.tab-content.extracts li {
+  background: var(--main-color);
+  margin-bottom: 1rem; /* Add space between list items */
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 8px;
+  border: 1px solid lightgray;
+}
+
+.tab-content.extracts p {
+  margin-bottom: 0.5rem; /* Space between paragraph and link */
+  font-size: 0.9rem; /* Slightly smaller font for extracts */
+}
+
+.tab-content.extracts .source-link {
+  color: var(--wattelse-lightning-color); /* Blue color for the source link */
+  text-decoration: none; /* Underline the link */
+  font-weight: bold; /* Make the link slightly bolder */
+}
+
+.tab-content.extracts .source-link::before {
+  /* Add content before the message */
+  content: "\f0c1"; /* Font Awesome icon code for user */
+  font-family: FontAwesome; /* Font family for the icon library */
+  font-size: 20px; /* Adjust font size as needed */
+  margin-right: 1rem;
+  color: var(--wattelse-lightning-color); /* Set icon color */
+}
+
+/* Documents list content*/
+.tab-content .available-section .select-all {
+  color: #707ea0;
+}
+
+.tab-content .available-section .select-all:hover {
+  cursor: pointer;
+  color: var(--wattelse-lightning-color);
+}
+
+/* System prompt content */
+.tab-content.system-prompt {
+  align-items: center;
+  gap: 10px;
+}
+
+/* File upload style */
+.drop-section {
+  min-height: 170px;
+  border: 1px dashed darkgrey;
+  margin: 5px 35px 35px 35px;
+  border-radius: 12px;
+  position: relative;
+  text-align: center;
+}
+
+.drop-section div.col:first-child {
+  opacity: 1;
+  visibility: visible;
+  transition-duration: 0.2s;
+  transform: scale(1);
+  width: 200px;
+  margin: auto;
+}
+
+.drop-section div.col:last-child {
+  font-size: 40px;
+  font-weight: 700;
+  color: #c0cae1;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  margin: auto;
+  width: 200px;
+  height: 55px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.6);
+  transition-duration: 0.2s;
+}
+
+/* we will use "drag-over-effect" class in js */
+.drag-over-effect div.col:first-child {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(1.1);
+}
+
+.drag-over-effect div.col:last-child {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+}
+
+.drop-section .cloud-icon {
+  margin-top: 25px;
+  margin-bottom: 20px;
+  color: var(--wattelse-lightning-color);
+}
+
+.drop-section span,
+.drop-section button {
+  display: block;
+  margin: auto;
+  color: #707ea0;
+  margin-bottom: 10px;
+}
+
+.drop-section button {
+  color: white;
+  background-color: var(--wattelse-lightning-color);
+  border: none;
+  outline: none;
+  padding: 7px 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  cursor: pointer;
+}
+
+.drop-section input {
+  display: none;
+}
+
+.uploaded-section li .file-progress {
+  width: 100%;
+  height: 5px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background-color: var(--wattelse-lightning-color);
+}
+
+.uploaded-section li .file-progress span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: 8px;
+  background-image: linear-gradient(120deg, #6b99fd, #9385ff);
+  transition-duration: 0.4s;
+}
+
+.uploaded-section li .col .file-size {
+  font-size: 0.75rem;
+  margin-top: 3px;
+  color: #707ea0;
+}
+
+.uploaded-section li.complete span,
+.uploaded-section li.complete .file-progress,
+.uploaded-section li.complete svg.cross {
+  display: none;
+}
+
+.uploaded-section li.in-prog .file-size,
+.uploaded-section li.in-prog svg.tick {
+  display: none;
+}
+
+/* Removal section */
+
+.removal-section .trash-button-div {
+  text-align: center;
+}
+
+.removal-section .trash-button {
+  color: red;
+  text-align: center;
+  background-color: inherit;
+  border: none;
+  transition: all 0.05s ease-in-out;
+}
+
+.removal-section .trash-button:hover {
+  cursor: pointer;
+}
+
+/* Users management section */
+.remove-user-button {
+  background-color: inherit;
+  border: None;
+  color: red;
+  font-size: 1.3rem;
+}
+
+.superuser-icon,
+.user-icon {
+  background-color: inherit;
+  border: None;
+  font-size: 1.3rem;
+}
+
+.superuser-icon:hover,
+.user-icon:hover {
+  transform: scale(1.1);
+}
+.div-add-users-input-field {
+  text-align: center;
+}
+
+.add-users-input-field {
+  padding: 5px;
+  margin: 10px 0px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  background-color: var(--main-color);
+}
+
+.add-users-button {
+  border: none;
+  background-color: inherit;
+}
+
+/* System prompt area*/
+.system-prompt-text-area {
+  font-family: inherit;
+  width: 90%;
+  height: 300px;
+  line-height: 1.5;
+  border-radius: 5px;
+  border: 1px solid black;
+  box-shadow: 1px 1px 1px grey;
+  resize: none;
+}
+
+.system-prompt-save-button {
+  /* width: ; */
+  color: white;
+  background-color: var(--wattelse-lightning-color);
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid var(--wattelse-lightning-color);
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+  padding: 10px;
+}
+
+.system-prompt-save-button:hover {
+  background-image: linear-gradient(rgb(0 0 0/10%) 0 0);
+}

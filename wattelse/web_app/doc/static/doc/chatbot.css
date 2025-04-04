@@ -1,0 +1,332 @@
+/*
+ * Copyright (c) 2024, RTE (https://www.rte-france.com)
+ * See AUTHORS.txt
+ * SPDX-License-Identifier: MPL-2.0
+ * This file is part of Wattelse, a NLP application suite.
+ */
+
+
+
+/* ************** */
+/* Chat container */
+/* ************** */
+.chat-history {
+    flex: 1;
+    width: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.welcome-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 1.5s;
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.welcome-message {
+    font-size: 2em;
+    font-weight: 800;
+    color: #c4c7c5;
+}
+
+.disclaimer-container {
+    width: 100%;
+    height: 30%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 1.5s;
+    margin: 0 auto; /* Center the container horizontally */
+}
+
+.disclaimer-usage{
+    font-size: 0.8rem;
+    color: black;
+    text-align: justify;
+}
+
+.user-message {
+    width: auto;
+    background-color: var(--main-color);
+    border-radius: 5px;
+    padding: 5px;
+    white-space: pre-wrap;
+    }
+
+.error-message {
+  color: red;
+}
+
+.warning-message {
+  color: var(--complementary-color);
+}
+
+.bot-message {
+  padding: 5px;
+}
+
+.user-message::before { /* Add content before the message */
+    content: "\f007"; /* Font Awesome icon code for user */
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color: black; /* Set icon color */
+}
+
+.bot-message::before { /* Add content before the message */
+    content: "\e0b7"; /* Font Awesome icon code for robot */
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color: var(--wattelse-lightning-color); /* Set icon color */
+    display: inline;
+}
+
+.bot-message p {
+    display: inline;
+}
+
+.bot-message.animate::before { /* Animation while generation in progress */
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+    100% {
+      opacity: 1;
+    }
+}
+
+.error-message::before { /* Add content before the message */
+    content: "\f188"; /* Font Awesome icon code for bug */
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color: red; /* Set icon color */
+}
+
+.warning-message::before { /* Add content before the message */
+    content: "\f071";
+    font-family: FontAwesome; /* Font family for the icon library */
+    font-size: 20px; /* Adjust font size as needed */
+    margin-right: 1rem;
+    color:  var(--complementary-color); /* Set icon color */
+}
+
+
+.chat-input {
+    width: 80%;
+    border-radius: 15px;
+    padding: 5px;
+    background-color: var(--main-color);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.input-field {
+    box-sizing: border-box;
+    padding: 10px;
+    width: 100%;
+    border: none;
+    background-color: inherit;
+    resize: none;
+    font-family: inherit;
+}
+
+.input-field:focus {
+    outline: none;
+}
+
+.chat-button-container {
+    display: flex;
+}
+
+.send-button,
+.new-conversation-button {
+    padding: 0.5rem 0.5rem;
+    border: none;
+    background-color: var(--wattelse-lightning-color);
+    color: white;
+    font-weight: 600;
+    width: 40px;
+}
+
+.send-button {
+  border-radius: 7px 0 0 7px;
+}
+
+.new-conversation-button {
+  border-radius: 0 7px 7px 0;
+  background-color: var(--complementary-color);
+}
+
+.disclaimer{
+    color: darkgrey;
+    text-align: center;
+    font-size: 0.7rem;
+}
+
+/* *************** */
+/* Panel container */
+/* *************** */
+
+
+
+
+/* Feedback section */
+.feedback-section {
+  display: flex; /* Arrange buttons and/or textarea horizontally */
+  align-items: center; /* Align content vertically in the center */
+  margin-top: 1rem; /* Add some space above the feedback section */
+  padding: 1rem; /* Add padding for spacing within the section */
+  border-radius: 5px; /* Add rounded corners for a softer look */
+}
+
+.feedback-section button {
+  margin-right: 1rem; /* Add space between buttons */
+  padding: 0.5rem 1rem; /* Set appropriate padding for buttons */
+  background-color: #fff; /* White background for buttons */
+  border: 1px solid #ccc; /* Add a solid border */
+  border-radius: 4px; /* Add rounded corners for buttons */
+  cursor: pointer; /* Indicate clickable behavior */
+}
+
+.feedback-section button:hover, .feedback-section button.selected {
+    color: white;
+    background-color: var(--wattelse-lightning-color);
+}
+
+.feedback-section textarea {
+  flex: 1; /* Allow textarea to expand and fill remaining space */
+  padding: 0.5rem 1rem; /* Set padding for the textarea */
+  border: 1px solid #ccc; /* Add a light gray border */
+  border-radius: 4px; /* Add rounded corners for the textarea */
+  resize: none; /* Disable resizing of textarea */ /* Optional: Allow resizing if needed */
+}
+
+.feedback-section:last-child { /* Target the last feedback section */
+  margin-bottom: 1rem; /* Add extra space at the bottom of the last section */
+}
+
+.emoji-rating{
+    margin-right: 1.5rem;
+    cursor: pointer;
+    color: black;
+}
+
+.rating-great:hover, .rating-great.selected {
+    color: mediumseagreen;
+}
+.rating-ok:hover, .rating-ok.selected {
+    color: var(--wattelse-lightning-color);
+}
+.rating-missing:hover, .rating-missing.selected {
+    color: var(--complementary-color);
+}
+.rating-wrong:hover, .rating-wrong.selected {
+    color: indianred;
+}
+
+/* System prompt area*/
+.system-prompt-text-area {
+    font-family: inherit;
+    width: 90%;
+    height: 50%;
+    line-height: 1.5;
+    border-radius: 5px;
+    border: 1px solid black;
+    box-shadow: 1px 1px 1px grey;
+    resize: none;
+}
+
+.system-prompt-save-button {
+    /* width: ; */
+    color: white;
+    background-color: var(--wattelse-lightning-color);
+    font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid var(--wattelse-lightning-color);
+    box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+    padding: 10px;
+}
+
+.system-prompt-save-button:hover {
+  background-image: linear-gradient(rgb(0 0 0/10%) 0 0);
+}
+
+/* *********************** */
+/* Conversations container */
+/* *********************** */
+
+.history-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.history-container ul {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.history-container li {
+    display: block;
+    padding: 4px;
+    border-radius: 8px;
+    align-items: center;
+    white-space: nowrap;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.9em;
+}
+
+.history-container li:hover,
+.history-container li.active {
+    box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.history-container li::before {
+    content: "\f27a";
+    font-family: FontAwesome;
+    margin-right: 0.5rem;
+    color: var(--wattelse-lightning-color);
+}
+
+.history-container p {
+    font-weight: 700;
+}
+.history-container details {
+    background-color: var(--main-color);
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.history-container details summary {
+    font-weight: 700;
+    cursor: pointer;
+    user-select: None;
+    transition: margin 150ms ease-out;
+}

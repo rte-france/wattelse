@@ -18,17 +18,17 @@ LLM_MAPPING = {
 }
 
 
-def get_user_conversation_history(user: User) -> dict:
+def get_user_conversations(user: User) -> dict[str, list]:
     """
     Returns a dictionnary containing the user's conversations in the following format :
     {
-        "today": [list of conversations today old],
-        "last_week": [list of conversations one week old],
-        "archive": [all other conversations],
+        "today": [{"id": conversation_id, "title": conversation_title}, ...],
+        "last_week": [{"id": conversation_id, "title": conversation_title}, ...],
+        "archive": [{"id": conversation_id, "title": conversation_title}, ...],
     }
     """
-    # Get conversation ids
-    user_conversations = Conversation.objects.filter(user=user)
+    # Get conversation ids ordered by updated_at
+    user_conversations = Conversation.objects.filter(user=user).order_by("-updated_at")
 
     # Sort conversations into date categories for better user expericence
     sorted_conversations = {"today": [], "last_week": [], "others": []}
@@ -58,32 +58,30 @@ def get_user_conversation_history(user: User) -> dict:
     return sorted_conversations
 
 
-def get_conversation_history(
-    user: User,
-    conversation_id: uuid.UUID,
+def conversation_messages(
+    conversation: Conversation,
     n: int = 0,
 ) -> list[dict[str, str]] | None:
     """
-    Return chat history following OpenAI API format :
+    Return chat history following OpenAI API format + include message_id:
     [
-        {"role": "user", "content": "message1"},
-        {"role": "assistant", "content": "message2"},
-        {"role": "user", "content": "message3"},
+        {"role": "user", "content": "message1", "id": "message_id"},
+        {"role": "assistant", "content": "message2", "id": "message_id"},
+        {"role": "user", "content": "message3", "id": "message_id"},
         {...}
     ]
     If no history is found return None.
     Use `n` parameter to only return the last `n` messages.
     Default `n` value is 0 to return all messages.
     """
-    conversation = Conversation.objects.get(id=conversation_id, user=user)
-
-    messages = conversation.messages.order_by("timestamp")
+    messages = conversation.messages.order_by("created_at")
 
     if n > 0:
         messages = messages[:n]
 
     history = [
-        {"role": message.role, "content": message.content} for message in messages
+        {"role": message.role, "content": message.content, "id": str(message.id)}
+        for message in messages
     ]
 
     return history if history else None

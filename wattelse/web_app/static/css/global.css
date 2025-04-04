@@ -5,36 +5,64 @@
  * This file is part of Wattelse, a NLP application suite.
  */
 
-
- /* Global variables */
- :root {
+/* Global variables */
+:root {
   --background-color: white;
   --complementary-color: #fa8b4f;
-  --wattelse-lightning-color: #6495ED;
+  --wattelse-lightning-color: #6495ed;
+  --user-button-size: 35px;
 }
 
 /* ************ */
 /* COMMON STYLE */
 /* ************ */
 
-body, html {
-    font-family: Open Sans, sans-serif;
-    margin: 0;
-    padding: 0;
-    height: 100vh;
-    width: 100vw;
-    background-color: var(--background-color);
-    display: flex;
-    flex-direction: column;
+body,
+html {
+  font-family: "Open Sans", sans-serif;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--background-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.icon {
+  width: 1em;
+  height: 1em;
+}
+
+.top-bar {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.hljs {
+  overflow-x: scroll !important;
+}
+
+code:not(.hljs code) {
+  background-color: whitesmoke;
+  border-radius: 5px;
+  padding: 0 5px;
+}
+
+.wattelse-top-bar {
+  display: flex;
+  align-items: center;
+  font-size: 1.5em;
+  font-weight: 800;
 }
 
 /* User Menu */
 .user-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 35px;
-  height: 35px;
+  width: var(--user-button-size);
+  height: var(--user-button-size);
   border-radius: 50%;
   background-color: orange;
   font-weight: bold;
@@ -45,9 +73,9 @@ body, html {
 
 .user-menu {
   position: absolute;
-  top: 50px;
-  right: 10px;
+  right: 0;
   display: none;
+  background-color: var(--background-color);
   flex-direction: column;
   gap: 10px;
   padding: 10px;
@@ -68,8 +96,27 @@ body, html {
   height: 1em;
 }
 
+.popup {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  color: white;
+  font-weight: 400;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  z-index: 1000;
+}
 
+.popup.success {
+  background-color: mediumseagreen;
+}
 
+.popup.error {
+  background-color: crimson;
+}
 
 /* Main divs */
 .main-navbar {
@@ -114,13 +161,13 @@ body, html {
 }
 
 .nav-top-right .tabs.gpt {
-  color: #2AAA8A;
+  color: #2aaa8a;
 }
 
 /* Base tag customization */
 /* Change pointer when hover a button */
-button { 
-    cursor: pointer;
+button {
+  cursor: pointer;
 }
 
 a {
@@ -128,7 +175,7 @@ a {
   text-decoration: inherit;
 }
 
-hr  {
+hr {
   border: none;
   border-top: solid 2px lightgray;
   width: 100%; /* Make sure it spans the full width */
@@ -157,13 +204,13 @@ hr  {
 
 /* Info and user button/menu style */
 .user-icon-button {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    background-color: var(--complementary-color);
-    color: white;
-    border: none;
-    text-align: center;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background-color: var(--complementary-color);
+  color: white;
+  border: none;
+  text-align: center;
 }
 
 .info-button {
@@ -172,18 +219,18 @@ hr  {
 
 .user-icon-menu,
 .info-menu {
-    font-size: initial;
-    display: none;
-    flex-direction: column;
-    gap: 10px;
-    background-color: white;
-    padding: 10px;
-    position: absolute;
-    top: calc(var(--navbar-height) + 10px);
-    right: 10px;
-    border: 1px solid lightgray;
-    border-radius: 10px;
-    z-index: 1000;
+  font-size: initial;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  background-color: white;
+  padding: 10px;
+  position: absolute;
+  top: calc(var(--navbar-height) + 10px);
+  right: 10px;
+  border: 1px solid lightgray;
+  border-radius: 10px;
+  z-index: 1000;
 }
 
 /* Change group select tag */

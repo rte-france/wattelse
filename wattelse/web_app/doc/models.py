@@ -1,9 +1,14 @@
+#  Copyright (c) 2024, RTE (https://www.rte-france.com)
+#  See AUTHORS.txt
+#  SPDX-License-Identifier: MPL-2.0
+#  This file is part of Wattelse, a NLP application suite.
+
 import uuid
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 
 
-class Conversation(models.Model):
+class RAGConversation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255, blank=True)
@@ -17,23 +22,20 @@ class Conversation(models.Model):
         ]
 
 
-class Message(models.Model):
+class RAGMessage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
-        Conversation, related_name="messages", on_delete=models.CASCADE
+        RAGConversation, related_name="messages", on_delete=models.CASCADE
     )
     role = models.CharField(
         max_length=10,
         choices=[("user", "User"), ("assistant", "Assistant")],
     )
     content = models.TextField()
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     rating = models.BooleanField(null=True, blank=True)
-
-    # class Meta:
-    #     indexes = [
-    #         models.Index(
-    #             fields=["conversation", "timestamp"]
-    #         ),  # For retrieving messages in a conversation by time
-    #         models.Index(fields=["role"]),  # If you often query by role
-    #     ]
+    faq_answer = models.TextField(default="")
+    group_system_prompt = models.TextField(default="")
+    rag_config = models.CharField(max_length=100, null=False, blank=False)
+    relevant_extracts = models.JSONField(default=list)

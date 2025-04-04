@@ -58,10 +58,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "chatbot",
     "accounts",
     "home",
     "gpt",
+    "doc",
 ]
 
 MIDDLEWARE = [
@@ -88,7 +88,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "chatbot.context_processors.versioning",
+                "doc.context_processors.versioning",
             ],
         },
     },
@@ -168,4 +168,4 @@ STATIC_VERSION = "1.12"
 
 # Login URL for the login_required decorator
 
-LOGIN_URL = "/accounts/login"
+LOGIN_URL = "/login"

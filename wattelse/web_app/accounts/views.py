@@ -12,7 +12,12 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 
+
 from loguru import logger
+
+
+def root_page(request):
+    return redirect(reverse("home:main_page"))
 
 
 def login(request):
@@ -32,7 +37,7 @@ def login(request):
             if next_page:
                 return redirect(next_page)
             else:
-                return redirect(reverse("home:home"))
+                return redirect(reverse("home:main_page"))
         # Else return error
         else:
             error_message = "Nom d'utilisateur ou mot de passe invalides"
@@ -65,7 +70,7 @@ def register(request):
             try:
                 user = User.objects.create_user(username, password=password1)
                 user.save()
-                return new_user_created(request, username=user.username)
+                return redirect(reverse("home:main_page"))
             except:
                 error_message = "Erreur lors de la  création du compte"
                 return render(
@@ -120,14 +125,3 @@ def logout(request):
     logger.info(f"[User: {request.user.username}] logged out")
     auth.logout(request)
     return redirect(reverse("accounts:login"))
-
-
-def new_user_created(request, username=None):
-    """
-    Webpage rendered when a new user is created.
-    It warns the user that no group is associated yet and need to contact an administrator.
-    """
-    if username is None:
-        return redirect(reverse("accounts:login"))
-    else:
-        return render(request, "accounts/new_user_created.html", {"username": username})

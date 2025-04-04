@@ -1,0 +1,31 @@
+{% load static %}
+<div class="top-bar">
+  <a href="{% url 'home:main_page' %}" class="wattelse-top-bar">
+    {% if request.path|slice:":4" == "/gpt" or request.path|slice:":4" == "/doc" %}
+    <img src="{% static 'icons/arrow-left.svg' %}" class="icon" />
+    <img src="{% static 'icons/wattelse.svg' %}" class="icon" />
+    {% endif %}
+  </a>
+  {% if user.is_authenticated %}
+  <div>
+    <button class="user-button">DD</button>
+    <div class="user-menu">
+      <div class="user-menu-item">
+        <img
+          src="{% static 'icons/user.svg' %}"
+          class="user-menu-icon"
+        />Identifiant : {{ user.username }}
+      </div>
+      <a href="{% url 'accounts:change_password' %}" class="user-menu-item">
+        <img src="{% static 'icons/lock.svg' %}" class="user-menu-icon" />
+        Modifier mot de passe
+      </a>
+      <hr />
+      <a href="{% url 'accounts:logout' %}" class="user-menu-item">
+        <img src="{% static 'icons/logout.svg' %}" class="user-menu-icon" />
+        Déconnexion
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>

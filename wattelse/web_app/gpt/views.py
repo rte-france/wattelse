@@ -9,18 +9,18 @@ from pathlib import Path
 
 from loguru import logger
 
-from django.http import HttpResponse, JsonResponse, StreamingHttpResponse, Http404
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET, require_POST
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.config_utils import parse_literal, EnvInterpolation
 from .models import Conversation, Message
 from .utils import (
     streaming_generator_llm,
-    get_conversation_history,
-    get_user_conversation_history,
-    LLM_MAPPING,
+    conversation_messages,
+    get_user_conversations,
 )
 
 # NUMBER MAX OF TOKENS
@@ -47,66 +47,117 @@ LLM_CLIENT = OpenAI_Client(**llm_config)
 
 
 @login_required
+@require_GET
 def main_page(request):
     """Main function for GPT app.
     If request method is GET : render gpt.html
     If request method is POST : make a call to OpenAI client
     """
-    if request.method == "GET":
-        # Get user conversation history
-        conversations = get_user_conversation_history(request.user)
+    # Get user conversation history
+    conversations = get_user_conversations(request.user)
 
-        return render(
-            request,
-            "gpt/secureGPT.html",
-            context={
-                "llm_name": LLM_MAPPING[llm_config["model"]],
-                "conversations": conversations,
-            },
-        )
-    else:
-        raise Http404()
+    return render(
+        request,
+        "gpt/gpt.html",
+        context={
+            "conversations": conversations,
+        },
+    )
 
 
 @login_required
+@require_POST
 def query_gpt(request):
-    if request.method == "POST":
-        # Get request data
-        data = json.loads(request.body)
-        conversation_id = uuid.UUID(data.get("conversation_id"))
-        content = data.get("content")
+    # Get request data
+    data = json.loads(request.body)
+    conversation_id = uuid.UUID(data.get("conversation_id"))
+    message_id = uuid.UUID(data.get("message_id"))
+    content = data.get("content")
 
-        # Add user message to database
-        add_message_to_db(conversation_id, role="user", content=content)
+    # Get or create conversation
+    conversation, _ = Conversation.objects.get_or_create(
+        id=conversation_id,
+        user=request.user,
+        defaults={"title": content},
+    )
 
-        # Get user chat history
-        history = get_conversation_history(
-            request.user, conversation_id, n=MAX_MESSAGES
+    # Add user message to database
+    message = Message(
+        id=message_id, conversation=conversation, role="user", content=content
+    )
+    message.save()
+
+    # Get user chat history
+    history = conversation_messages(conversation, n=MAX_MESSAGES)
+
+    # Query LLM
+    try:
+        response = LLM_CLIENT.generate_from_history(
+            messages=history,
+            stream=True,
+            max_tokens=MAX_TOKENS,
+        )
+        return StreamingHttpResponse(
+            streaming_generator_llm(response),
+            status=200,
+            content_type="text/event-stream",
         )
 
-        # Query LLM
-        try:
-            response = LLM_CLIENT.generate_from_history(
-                messages=history,
-                stream=True,
-                max_tokens=MAX_TOKENS,
-            )
-            return StreamingHttpResponse(
-                streaming_generator_llm(response),
-                status=200,
-                content_type="text/event-stream",
-            )
-
-        except Exception as e:
-            logger.error(e)
-            return JsonResponse(
-                {"detail": f"Erreur lors de l'appel au LLM"}, status=500
-            )
-    else:
-        raise Http404()
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse({"detail": f"Erreur lors de l'appel au LLM"}, status=500)
 
 
-def add_message_to_db(conversation_id: uuid.UUID, role: str, content: str) -> None:
-    """Saves a message to Django database using model Message"""
-    message = Message(conversation=conversation_id, role=role, content=content)
+@login_required
+@require_POST
+def save_assistant_message(request):
+    # Get request data
+    data = json.loads(request.body)
+    conversation_id = uuid.UUID(data.get("conversation_id"))
+    message_id = uuid.UUID(data.get("message_id"))
+    content = data.get("content")
+
+    # Get conversation
+    conversation = Conversation.objects.get(id=conversation_id, user=request.user)
+
+    # Add assistant message to database
+    message = Message(
+        id=message_id,
+        conversation=conversation,
+        role="assistant",
+        content=content,
+    )
     message.save()
+
+    return HttpResponse(status=200)
+
+
+@login_required
+@require_GET
+def get_conversation_messages(request):
+    # Get request data
+    conversation_id = uuid.UUID(request.GET.get("id"))
+
+    # Get conversation
+    conversation = Conversation.objects.get(id=conversation_id, user=request.user)
+
+    # Get conversation history
+    messages = conversation_messages(conversation)
+
+    return JsonResponse({"messages": messages}, status=200)
+
+
+@login_required
+@require_POST
+def handle_vote(request):
+    # Get request data
+    data = json.loads(request.body)
+    message_id = data.get("message_id")
+    rating = data.get("rating")
+
+    # Get associated message and update rating
+    message = Message.objects.get(id=message_id)
+    message.rating = rating
+    message.save()
+
+    return HttpResponse(status=200)

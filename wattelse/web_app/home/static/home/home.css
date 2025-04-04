@@ -1,50 +1,58 @@
+.main-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 80%;
+}
+
 .home-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    width: 100%;
-    gap: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  gap: 100px;
 }
 
 .home-title {
-    font-size: 4em;
-    font-weight: bold;
-    text-align: center;
+  display: flex;
+  align-items: center;
+  font-size: 4em;
+  font-weight: 800;
+  text-align: center;
 }
 
 .app-container {
-    display: flex;
-    gap: 30px;
-    flex-wrap: wrap;
-    justify-content: center;
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .app-button {
-    display: flex;
-    gap: 10px;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
-    border: none;
-    border-radius: 10px;
-    max-width: 300px;
-    box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
-    transition: transform 0.05s ease-in-out;
-    background-color: white;
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  border: none;
+  border-radius: 10px;
+  max-width: 300px;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  transition: transform 0.05s ease-in-out;
+  background-color: white;
 }
 
 .app-button:hover {
-    transform: scale(1.02);
+  transform: scale(1.02);
 }
 
 .app-button-title {
-    font-size: 3em;
-    font-weight: bold;
+  font-size: 3em;
+  font-weight: bold;
 }
 
 .app-button-description {
-    font-size: 2em;
+  font-size: 2em;
 }
-

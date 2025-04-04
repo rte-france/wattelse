@@ -1,0 +1,14 @@
+{% extends 'new_base.html' %} {% load static %} {% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/accounts.css' %}" />
+{% endblock %} {% block content %}
+<div class="accounts-container">
+  <div class="form-container">
+    <div class="form-container-title">Accès refusé</div>
+    <p>
+      Vous n'appartenez à aucun groupe de travail. Contactez l'administrateur de
+      votre groupe d'intérêt pour qu'il vous y ajoute.
+    </p>
+    <p class="form-footnote"><a href="{% url 'home:main_page' %}">Retour à la page d'accueil.</a></u></p>
+  </div>
+  {% endblock %}
+</div>

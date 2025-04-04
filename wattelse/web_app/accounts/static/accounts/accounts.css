@@ -24,10 +24,10 @@
     width: 50%;
     max-width: 300px;
     text-align: center;
-    border: solid 1px black;
     border-radius: 20px;
     padding: 40px;
-  }
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 8px;
+}
 
 .form-container-title {
     font-size: 2em;
