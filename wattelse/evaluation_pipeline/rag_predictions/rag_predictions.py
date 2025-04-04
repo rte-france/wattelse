@@ -111,8 +111,8 @@ def main(
 
     # Initialize RAG backend
     eval_group_id = "rag_eval"
-    RAGBackend(eval_group_id, CONFIG_RAG).clear_collection()
     RAG_EVAL_BACKEND = RAGBackend(eval_group_id, CONFIG_RAG)
+    RAG_EVAL_BACKEND.clear_collection()
     logger.info(f"RAG Backend initialized with LLM: {RAG_EVAL_BACKEND.llm.model_name}")
 
     # Get embedding API model name directly from the RAG Backend's config

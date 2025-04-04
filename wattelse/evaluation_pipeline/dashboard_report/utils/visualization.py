@@ -1,7 +1,6 @@
 """Visualization components for the dashboard."""
 
 import plotly.graph_objects as go
-import plotly.express as px
 import plotly.colors
 
 
