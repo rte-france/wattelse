@@ -54,34 +54,34 @@ print(get_random_secret_key())
 
 ## Django initialization
 
-To initialize the Django database, run the following commands:
+To initialize the Django database, follow these steps:
 
-Go to the django `web_app` folder:
+- Go to the django `web_app` folder:
 
 ```bash
 cd wattelse/web_app
 ```
 
-Create Django tables:
+- Create Django tables:
 
 ```bash
 python manage.py makemigrations
 python manage.py migrate
 ```
 
-Create Django superuser:
+- Create Django superuser:
 
 ```bash
 python manage.py createsuperuser
 ```
 
-Start Django server:
+- Start Django server:
 
 ```bash
 python start.py
 ```
 
-Django web app should be running at: `http://localhost:8000`
+Django web app should be running at: http://localhost:8000
 
 ## Hardware requirements
 
