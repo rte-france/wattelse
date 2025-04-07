@@ -9,6 +9,11 @@ from django.contrib.auth.models import User, Group
 
 
 class RAGConversation(models.Model):
+    """
+    Represents a chat conversation between a user and the assistant.
+    Each conversation contains multiple messages and belongs to a specific user.
+    """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255, blank=True)
@@ -23,6 +28,11 @@ class RAGConversation(models.Model):
 
 
 class RAGMessage(models.Model):
+    """
+    Represents an individual message within a conversation.
+    Messages can be from either the user or the assistant
+    """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         RAGConversation, related_name="messages", on_delete=models.CASCADE

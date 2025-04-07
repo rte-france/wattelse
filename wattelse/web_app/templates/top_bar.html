@@ -8,18 +8,43 @@
   </a>
   {% if user.is_authenticated %}
   <div>
-    <button class="user-button">DD</button>
+    <button class="user-button">{{ user.username|slice:":2"|upper }}</button>
     <div class="user-menu">
       <div class="user-menu-item">
         <img
           src="{% static 'icons/user.svg' %}"
-          class="user-menu-icon"
-        />Identifiant : {{ user.username }}
+          class="icon"
+        />&nbspIdentifiant : {{ user.username }}
       </div>
       <a href="{% url 'accounts:change_password' %}" class="user-menu-item">
-        <img src="{% static 'icons/lock.svg' %}" class="user-menu-icon" />
-        Modifier mot de passe
+        <img src="{% static 'icons/lock.svg' %}" class="icon" />
+        &nbspModifier mot de passe
       </a>
+      {% if request.path|slice:":4" == "/doc" %}
+      <div class="user-menu-item">
+        <img
+          src="{% static 'icons/folder.svg' %}"
+          class="icon"
+        />&nbspGroupe : <span class="username"> {{ user_group }}</span>
+    </div>
+    <div class="user-menu-item">
+        Changer de groupe :
+    </div>
+    <div>
+        <form method="post" action="change_active_group/">
+            {% csrf_token %}
+            <select class="change-group-select" name="new_group" onchange="this.form.submit()">
+                {% for group in user_group_list %}
+                    {% if group == user_group %}
+                        <option selected="selected">{{ group }}</option>
+                    {% else %}
+                        <option>{{ group }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </form>
+      </div>
+      {% endif %}
       <hr />
       <a href="{% url 'accounts:logout' %}" class="user-menu-item">
         <img src="{% static 'icons/logout.svg' %}" class="user-menu-icon" />

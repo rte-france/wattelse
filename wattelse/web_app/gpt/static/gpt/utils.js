@@ -1,8 +1,4 @@
-import {
-  showPopup,
-  uuid4,
-  unsecuredCopyToClipboard,
-} from "../../../static/js/utils.js";
+import { showPopup } from "../../../static/js/utils.js";
 import {
   chatInput,
   chatConversation,
@@ -15,7 +11,9 @@ import {
   addNewConversationToHistory,
 } from "../../../static/js/gpt_doc_common.js";
 
-// Functions
+/// Functions ///
+
+// Logic to handle user message
 export function handleUserMessage(messageContent) {
   // Remove welcome message
   removeWelcomeMessage();
@@ -32,6 +30,7 @@ export function handleUserMessage(messageContent) {
   chatInput.value = "";
 }
 
+// Post user message to GPT and handle streaming response
 async function postUserMessageToGPT(userMessage, userMessageId) {
   // Get conversation id
   const conversationId = chatConversation.id;
@@ -78,12 +77,11 @@ async function postUserMessageToGPT(userMessage, userMessageId) {
     assistantMessageDiv.innerHTML = md.render(streamResponse);
   }
 
-  // provideFeedback(messageContent, streamResponse);
+  // Save streamed response to database
   saveAssistantMessage(conversationId, assistantMessageId, streamResponse);
-
-  // saveInteraction(conversationId, messageContent, streamResponse, queryStartTimestamp.toISOString(), answerDelay)
 }
 
+//  Save streamed response to database
 function saveAssistantMessage(conversationId, messageId, content) {
   fetch("save_assistant_message/", {
     method: "POST",

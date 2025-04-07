@@ -7,6 +7,7 @@ import {
   handleConversationClick,
 } from "../../../static/js/gpt_doc_common.js";
 import {
+  sendButton,
   handleUserMessage,
   getSelectedFileNames,
   tabs,
@@ -39,7 +40,7 @@ chatInput.addEventListener("input", function () {
   this.style.height = Math.min(this.scrollHeight, 200) + "px";
 });
 
-// Handle user message
+// Handle user message on enter key press
 chatInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
@@ -50,6 +51,18 @@ chatInput.addEventListener("keydown", (event) => {
       } else {
         handleUserMessage(messageContent);
       }
+    }
+  }
+});
+
+// Handle user message on send button click
+sendButton.addEventListener("click", () => {
+  const messageContent = chatInput.value.trim();
+  if (messageContent) {
+    if (getSelectedFileNames("available-list").length === 0) {
+      showPopup("Aucun document sélectionné.", true);
+    } else {
+      handleUserMessage(messageContent);
     }
   }
 });
@@ -85,6 +98,8 @@ tabs.forEach((tab) => {
     targetContent.style.display = "";
   });
 });
+
+// Activate documents tab by default
 activateTab("documents");
 
 // Display available documents

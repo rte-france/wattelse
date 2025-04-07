@@ -27,15 +27,12 @@ urlpatterns = [
         views.handle_FAQ,
         name="handle_faq",
     ),
-    path(
-        "send_long_feedback/", views.manage_long_feedback, name="manage_long_feedback"
-    ),
     # Feedback count
-    path(
-        "get_questions_count_since_last_feedback/",
-        views.get_questions_count_since_last_feedback,
-        name="get_questions_count_since_last_feedback",
-    ),
+    # path(
+    #     "get_questions_count_since_last_feedback/",
+    #     views.get_questions_count_since_last_feedback,
+    #     name="get_questions_count_since_last_feedback",
+    # ),
     # Files
     path("upload/", views.upload, name="upload"),
     path("delete/", views.delete, name="delete"),
@@ -61,7 +58,7 @@ urlpatterns = [
         name="update_group_system_prompt",
     ),
     # Dashboard
-    path("dashboard/", views.dashboard, name="dashboard"),
+    # path("dashboard/", views.dashboard, name="dashboard"),
     # Conversations history management
     path(
         "get_conversation_messages/",

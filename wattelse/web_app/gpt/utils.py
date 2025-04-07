@@ -1,8 +1,7 @@
 import datetime
-import uuid
 from django.contrib.auth.models import User
 
-from .models import Conversation, Message
+from .models import Conversation
 
 
 LLM_MAPPING = {
@@ -88,7 +87,9 @@ def conversation_messages(
 
 
 def streaming_generator_llm(data_stream):
-    """Generator to decode the chunks received from RAGOrchestratorClient"""
+    """
+    Generator to decode the chunks received from LLM streaming response.
+    """
     for chunk in data_stream:
         if len(chunk.choices) > 0:
             delta = chunk.choices[0].delta

@@ -11,10 +11,12 @@ import {
 } from "../../../static/js/gpt_doc_common.js";
 import { showPopup } from "../../../static/js/utils.js";
 
-// Global variables
-export const documentPanel = document.querySelector(".side-bar");
-export const tabs = documentPanel.querySelectorAll(".tab");
-export const contentSections = documentPanel.querySelectorAll(".tab-content");
+/// Global variables ///
+
+export const sideBar = document.querySelector(".side-bar");
+export const tabs = sideBar.querySelectorAll(".tab");
+
+export const contentSections = sideBar.querySelectorAll(".tab-content");
 
 const extractList = document.getElementById("extract-list");
 const availableDocumentList = document.querySelector(".available-list");
@@ -24,7 +26,7 @@ export const selectAll = document.getElementById("select-all");
 
 const groupSystemPromptArea = document.getElementById("group-system-prompt");
 
-// variables related to the upload area
+// Variables related to the upload area
 const dropArea = document.querySelector(".drop-section");
 const uploadedSection = document.querySelector(".uploaded-section");
 const uploadedListContainer = document.querySelector(".uploaded-list");
@@ -48,13 +50,9 @@ let availableDocs = JSON.parse(
   document.getElementById("available_docs").textContent
 );
 
-const noExtractMessage =
-  "Pas d'extraits pertinents dans les documents, le texte généré peut contenir des erreurs.";
+/// Functions ///
 
-// separator used for streaming
-const SPECIAL_SEPARATOR = "¤¤¤¤¤";
-
-// Functions
+// Handle user message
 export function handleUserMessage(messageContent) {
   // Remove welcome message
   removeWelcomeMessage();
@@ -71,6 +69,7 @@ export function handleUserMessage(messageContent) {
   chatInput.value = "";
 }
 
+// Post user message to RAG handle streaming response and display it
 async function postUserMessageToRAG(userMessage, userMessageId) {
   // Handle too long response from backend
   const startTime = Date.now();
@@ -173,6 +172,7 @@ async function postUserMessageToRAG(userMessage, userMessageId) {
   }
 }
 
+// Displays a tab to the user
 export function activateTab(tabName) {
   // Find the tab with the data-content attribute set to "extracts"
   const tabToBeActivated = Array.from(tabs).find(
@@ -181,6 +181,7 @@ export function activateTab(tabName) {
   tabToBeActivated.click();
 }
 
+// Return the list of selected file names
 export function getSelectedFileNames(listName) {
   const selectedItems = document.querySelectorAll(
     "." + listName + " li.selected .col .file-name .name"
@@ -192,9 +193,9 @@ export function getSelectedFileNames(listName) {
   return names;
 }
 
+// Update the visible list of documents, after and before removal
+// gather the list of active documents before the change
 export function updateAvailableDocuments() {
-  // Update the visible list of documents, after and before removal
-  // gather the list of active documents before the change
   let previously_selected = getSelectedFileNames("available-list");
 
   availableDocumentList.innerHTML = "";
@@ -381,6 +382,7 @@ export function removeUserFromGroup(userNameToDelete) {
   }
 }
 
+// Upload area with drag and drop and browse button
 export function initializeUploadArea() {
   // upload files with browse button
   fileSelector.onclick = () => fileSelectorInput.click();
@@ -428,6 +430,7 @@ export function initializeUploadArea() {
   };
 }
 
+// Create list item for the file
 function createDocumentListItem(title) {
   const listItem = document.createElement("li");
   listItem.innerHTML = `
@@ -450,7 +453,7 @@ function createDocumentListItem(title) {
   return listItem;
 }
 
-// find icon for file
+// Find icon for file
 function iconSelector(filename) {
   const pdfIcon =
     '<i class="fa-solid fa-file-pdf fa-xl" style="color: #ff0000;"></i>';

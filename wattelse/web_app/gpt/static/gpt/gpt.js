@@ -1,5 +1,6 @@
 import { handleUserMessage } from "./utils.js";
 import {
+  sendButton,
   chatInput,
   chatConversation,
   newConversation,
@@ -21,7 +22,7 @@ chatInput.addEventListener("input", function () {
   this.style.height = Math.min(this.scrollHeight, 200) + "px";
 });
 
-// Handle user message
+// Handle user message on enter key press
 chatInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
@@ -29,6 +30,14 @@ chatInput.addEventListener("keydown", (event) => {
     if (messageContent) {
       handleUserMessage(messageContent);
     }
+  }
+});
+
+// Handle user message on send button click
+sendButton.addEventListener("click", () => {
+  const messageContent = chatInput.value.trim();
+  if (messageContent) {
+    handleUserMessage(messageContent);
   }
 });
 

@@ -5,6 +5,10 @@ from django.dispatch import receiver
 
 
 class UserProfile(models.Model):
+    """
+    User profile model to store additional information about the user.
+    """
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     active_group = models.ForeignKey(
         Group, on_delete=models.SET_NULL, null=True, blank=True
@@ -12,6 +16,10 @@ class UserProfile(models.Model):
 
 
 class GroupProfile(models.Model):
+    """
+    Group profile model to store additional information about the group.
+    """
+
     group = models.OneToOneField(Group, on_delete=models.CASCADE, primary_key=True)
     rag_config = models.CharField(
         max_length=100, default="azure_20241216", null=False, blank=False
@@ -42,17 +50,20 @@ class SuperUserPermissions(models.Model):
         )
 
 
+# Create user profile when a new user is created
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
 
 
+# Save user profile when a user is saved
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     instance.userprofile.save()
 
 
+# Update user profile active group when a new group is added to the user
 @receiver(m2m_changed, sender=User.groups.through)
 def update_user_profile_active_group(
     sender, instance, action, reverse, model, pk_set, **kwargs

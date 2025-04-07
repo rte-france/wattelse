@@ -4,13 +4,11 @@ import {
   unsecuredCopyToClipboard,
 } from "../../../static/js/utils.js";
 
-// Global variables
-export const chatInput = document.querySelector(".input-field");
-export const chatConversation = document.querySelector(".chat-conversation");
-
+/// Global variables ///
 export const csrfmiddlewaretoken = document.querySelector(
   "[name=csrfmiddlewaretoken]"
 ).value;
+
 export const md = markdownit({
   highlight: function (str, lang) {
     if (lang && hljs.getLanguage(lang)) {
@@ -27,11 +25,16 @@ export const md = markdownit({
   },
 });
 
+export const chatInput = document.querySelector(".input-field");
+export const chatConversation = document.querySelector(".chat-conversation");
 export const newConversationButton = document.querySelector(
   ".new-conversation-button"
 );
+export const sendButton = document.querySelector(".send-button");
 
 const welcomeMessage = "Comment puis-je vous aider ?";
+
+/// Functions ///
 
 // Create a new conversation
 export function newConversation() {
@@ -51,19 +54,13 @@ export function newConversation() {
   chatInput.focus();
 }
 
+// Show welcome message
 export function createWelcomeMessage() {
   chatConversation.innerHTML = `
     <div class="welcome-container">
         <div class="welcome-message">${welcomeMessage}</div>
     </div>
     `;
-}
-
-export function removeActiveConversation() {
-  let activeButton = document.querySelector(".history-container li.active");
-  if (activeButton) {
-    activeButton.classList.remove("active");
-  }
 }
 
 // Remove a welcome message
@@ -74,6 +71,7 @@ export function removeWelcomeMessage() {
   }
 }
 
+// Create a new user message
 export function createUserMessage(messageContent, messageId = null) {
   // Generate message ID if not provided
   if (!messageId) {
@@ -85,81 +83,6 @@ export function createUserMessage(messageContent, messageId = null) {
   message.innerHTML = messageContent;
   chatConversation.appendChild(message);
   return messageId;
-}
-
-export function addNewConversationToHistory(conversationId, messageContent) {
-  let todayListHistory = document.getElementById("today-history");
-  const tempDiv = document.createElement("div");
-  tempDiv.innerHTML = `<li class="active" id="${conversationId}"></li>`;
-  const newConversationItem = tempDiv.firstChild;
-  newConversationItem.textContent = messageContent;
-  newConversationItem.addEventListener("click", () => {
-    handleConversationClick(newConversationItem);
-  });
-  todayListHistory.insertBefore(
-    newConversationItem,
-    todayListHistory.firstChild
-  );
-}
-
-export function handleConversationClick(conversationHistoryElement) {
-  // Get conversation id
-  const conversationId = conversationHistoryElement.id;
-
-  // Remove active class from current active conversation
-  removeActiveConversation();
-
-  // Add active class to clicked conversation
-  conversationHistoryElement.classList.add("active");
-
-  // Set conversation messages
-  setConversationMessages(conversationId);
-
-  // Scroll to top of conversation
-  chatConversation.scrollTop = chatConversation.scrollHeight;
-}
-
-export function setConversationMessages(conversationId) {
-  // Set new id to chatHisory element and empty it
-  chatConversation.id = conversationId;
-  chatConversation.innerHTML = "";
-
-  // Get conversation messages
-  fetch(`get_conversation_messages/?id=${conversationId}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": csrfmiddlewaretoken,
-    },
-  }).then((response) => {
-    // Handle successful requests
-    if (response.ok) {
-      return response.json().then((data) => {
-        const messages = data.messages;
-        // Create a message for each turn in messages
-        messages.forEach((message) => {
-          if (message.role == "user") {
-            createUserMessage(md.render(message.content), message.id);
-          } else {
-            createAssistantMessage(md.render(message.content), message.id);
-          }
-        });
-      });
-    } else {
-      // Handle errors caught in python backend
-      return (
-        response
-          .json()
-          .then((data) => {
-            showPopup(data.message, true);
-          })
-          // Handle uncaught errors
-          .catch((error) => {
-            showPopup("Erreur non interceptée", true);
-          })
-      );
-    }
-  });
 }
 
 export function createAssistantMessage(messageContent, messageId = null) {
@@ -190,6 +113,7 @@ export function createAssistantMessage(messageContent, messageId = null) {
   return [messageId, assistantMessageDiv];
 }
 
+// Create assistant message actions (rating up/down, copy button, add to FAQ)
 export function createAssistantMessageActions(messageId) {
   // Main div
   const assistantMessageActions = document.createElement("div");
@@ -255,6 +179,93 @@ export function createAssistantMessageActions(messageId) {
   return assistantMessageActions;
 }
 
+// Unselect active conversation
+export function removeActiveConversation() {
+  let activeButton = document.querySelector(".history-container li.active");
+  if (activeButton) {
+    activeButton.classList.remove("active");
+  }
+}
+
+// Add new conversation to history
+export function addNewConversationToHistory(conversationId, messageContent) {
+  let todayListHistory = document.getElementById("today-history");
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = `<li class="active" id="${conversationId}"></li>`;
+  const newConversationItem = tempDiv.firstChild;
+  newConversationItem.textContent = messageContent;
+  newConversationItem.addEventListener("click", () => {
+    handleConversationClick(newConversationItem);
+  });
+  todayListHistory.insertBefore(
+    newConversationItem,
+    todayListHistory.firstChild
+  );
+}
+
+// Set active conversationn fetching messages from server and displaying them
+export function handleConversationClick(conversationHistoryElement) {
+  // Get conversation id
+  const conversationId = conversationHistoryElement.id;
+
+  // Remove active class from current active conversation
+  removeActiveConversation();
+
+  // Add active class to clicked conversation
+  conversationHistoryElement.classList.add("active");
+
+  // Set conversation messages
+  setConversationMessages(conversationId);
+
+  // Scroll to top of conversation
+  chatConversation.scrollTop = chatConversation.scrollHeight;
+}
+
+// Fetch conversation messages from server and display them
+export function setConversationMessages(conversationId) {
+  // Set new id to chatHisory element and empty it
+  chatConversation.id = conversationId;
+  chatConversation.innerHTML = "";
+
+  // Get conversation messages
+  fetch(`get_conversation_messages/?id=${conversationId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrfmiddlewaretoken,
+    },
+  }).then((response) => {
+    // Handle successful requests
+    if (response.ok) {
+      return response.json().then((data) => {
+        const messages = data.messages;
+        // Create a message for each turn in messages
+        messages.forEach((message) => {
+          if (message.role == "user") {
+            createUserMessage(md.render(message.content), message.id);
+          } else {
+            createAssistantMessage(md.render(message.content), message.id);
+          }
+        });
+      });
+    } else {
+      // Handle errors caught in python backend
+      return (
+        response
+          .json()
+          .then((data) => {
+            showPopup(data.message, true);
+          })
+          // Handle uncaught errors
+          .catch((error) => {
+            showPopup("Erreur non interceptée", true);
+          })
+      );
+    }
+  });
+}
+
+// Rating up or down a message
 function handleVote(rating, messageId) {
   fetch("handle_vote/", {
     method: "POST",
@@ -285,6 +296,7 @@ function handleVote(rating, messageId) {
   });
 }
 
+// Add a message to the FAQ
 function handleFAQ(assistantMessageId) {
   // Get message just above assistant message
   let userMessageId =

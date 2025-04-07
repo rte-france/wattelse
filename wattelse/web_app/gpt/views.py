@@ -23,8 +23,8 @@ from .utils import (
     get_user_conversations,
 )
 
-# NUMBER MAX OF TOKENS
-MAX_TOKENS = 1536
+# Max tokens for the LLM
+MAX_TOKENS = 5000
 
 # Max messages in history
 MAX_MESSAGES = 12
@@ -49,9 +49,9 @@ LLM_CLIENT = OpenAI_Client(**llm_config)
 @login_required
 @require_GET
 def main_page(request):
-    """Main function for GPT app.
-    If request method is GET : render gpt.html
-    If request method is POST : make a call to OpenAI client
+    """
+    Main function for GPT app.
+    Renders GPT main page.
     """
     # Get user conversation history
     conversations = get_user_conversations(request.user)
@@ -68,6 +68,11 @@ def main_page(request):
 @login_required
 @require_POST
 def query_gpt(request):
+    """
+    Query LLM with user message.
+    Saves user message to database.
+    Returns LLM response as a stream.
+    """
     # Get request data
     data = json.loads(request.body)
     conversation_id = uuid.UUID(data.get("conversation_id"))
@@ -111,6 +116,10 @@ def query_gpt(request):
 @login_required
 @require_POST
 def save_assistant_message(request):
+    """
+    Saves assistant message to database.
+    This function is called after the streaming response from 'query_gpt' has ended.
+    """
     # Get request data
     data = json.loads(request.body)
     conversation_id = uuid.UUID(data.get("conversation_id"))
@@ -135,6 +144,9 @@ def save_assistant_message(request):
 @login_required
 @require_GET
 def get_conversation_messages(request):
+    """
+    Returns conversation messages associated with a conversation id in the OpenAI format.
+    """
     # Get request data
     conversation_id = uuid.UUID(request.GET.get("id"))
 
@@ -150,6 +162,10 @@ def get_conversation_messages(request):
 @login_required
 @require_POST
 def handle_vote(request):
+    """
+    Handles user vote for a message.
+    Retrieve message based on its id and update its rating.
+    """
     # Get request data
     data = json.loads(request.body)
     message_id = data.get("message_id")

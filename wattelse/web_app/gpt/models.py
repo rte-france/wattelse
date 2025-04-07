@@ -4,6 +4,11 @@ from django.contrib.auth.models import User
 
 
 class Conversation(models.Model):
+    """
+    Represents a chat conversation between a user and the assistant.
+    Each conversation contains multiple messages and belongs to a specific user.
+    """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255, blank=True)
@@ -18,6 +23,11 @@ class Conversation(models.Model):
 
 
 class Message(models.Model):
+    """
+    Represents an individual message within a conversation.
+    Messages can be from either the user or the assistant
+    """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         Conversation, related_name="messages", on_delete=models.CASCADE
@@ -29,11 +39,3 @@ class Message(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     rating = models.BooleanField(null=True, blank=True)
-
-    # class Meta:
-    #     indexes = [
-    #         models.Index(
-    #             fields=["conversation", "timestamp"]
-    #         ),  # For retrieving messages in a conversation by time
-    #         models.Index(fields=["role"]),  # If you often query by role
-    #     ]

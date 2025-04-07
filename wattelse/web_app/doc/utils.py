@@ -5,21 +5,14 @@
 
 import json
 import os
-import uuid
 import tempfile
 import datetime
 import pandas as pd
 
 from pathlib import Path
 
-from loguru import logger
-
-from django.db import models
-from django.shortcuts import render, redirect
 from django.contrib.auth.models import User, Group
-from django.http import Http404, JsonResponse
 
-from wattelse.config_utils import parse_literal
 from .models import RAGConversation, RAGMessage
 from accounts.models import GroupProfile, UserProfile
 
@@ -32,12 +25,12 @@ RAG_API = RAGOrchestratorClient(
 )
 
 # Feedback identifiers in the database
-GREAT = "great"
-OK = "ok"
-MISSING = "missing_info"
-WRONG = "wrong"
+# GREAT = "great"
+# OK = "ok"
+# MISSING = "missing_info"
+# WRONG = "wrong"
 
-# Long feedback FAQ file
+# FAQ file
 FAQ_FILE_PATTERN = "_FAQ.xlsx"
 
 LLM_MAPPING = {
@@ -55,14 +48,14 @@ LLM_MAPPING = {
 
 def get_user_active_group(user: User) -> Group | None:
     """
-    Given a user, return the id of its active group.
+    Given a user, return its active group.
     If user doesn't belong to a group, return None.
     """
     active_group = UserProfile.objects.get(user=user).active_group
     if active_group:
         return active_group
     else:
-        None
+        return None
 
 
 def get_user_groups(user: User) -> list[str] | None:
@@ -159,17 +152,6 @@ def conversation_messages(
     return history if history else None
 
 
-def get_conversation_first_message(
-    conversation_id, ChatModel: models.Model
-) -> tuple[str, datetime.datetime]:
-    """
-    Returns the first message of a conversation associated with its timestamp.
-    Used as a title that will be displayed to the user in the conversation selection pannel.
-    """
-    first_message = ChatModel.objects.filter(conversation_id=conversation_id).first()
-    return first_message.message, first_message.question_timestamp
-
-
 def get_user_conversations(user: User) -> dict[str, list]:
     """
     Returns a dictionnary containing the user's conversations in the following format :
@@ -230,19 +212,11 @@ def get_group_rag_config_name(group: Group) -> str:
     return group_profile.rag_config
 
 
-def new_user_created(request, username=None):
+def streaming_generator_rag(data_stream):
     """
-    Webpage rendered when a new user is created.
-    It warns the user that no group is associated yet and need to contact an administrator.
+    Generator to decode the chunks received from RAGOrchestratorClient.
+    First chunk contains relevant extracts, remaining chunks are plain text.
     """
-    if username is None:
-        return redirect("/login")
-    else:
-        return render(request, "accounts/new_user_created.html", {"username": username})
-
-
-def streaming_generator(data_stream):
-    """Generator to decode the chunks received from RAGOrchestratorClient"""
     first_chunk = True
     with data_stream as r:
         for chunk in r.iter_content(chunk_size=None, decode_unicode=True):
@@ -256,17 +230,10 @@ def streaming_generator(data_stream):
                 yield chunk["answer"]
 
 
-def streaming_generator_llm(data_stream):
-    """Generator to decode the chunks received from RAGOrchestratorClient"""
-    for chunk in data_stream:
-        if len(chunk.choices) > 0:
-            delta = chunk.choices[0].delta
-            if delta.content:
-                yield delta.content
-
-
 def update_FAQ(user_message: RAGMessage, faq_answer: str):
-    """Update a FAQ file with the faq answer"""
+    """
+    Update a FAQ file with the faq answer provided by a user.
+    """
     # Retrieve current FAQ file if it exists
     with tempfile.TemporaryDirectory() as temp_dir:
         # Construct the full path for the downloaded file within the temporary directory
@@ -293,17 +260,17 @@ def update_FAQ(user_message: RAGMessage, faq_answer: str):
         RAG_API.upload_files(user_message.group.name, [temp_file_path])
 
 
-def to_short_feedback(feedback: str) -> str:
-    """
-    Function that converts the identifiers of the short feedback sent from the user interface into
-    another identifier stored in the database.
-    """
-    if "rating-great" in feedback:
-        return GREAT
-    if "rating-ok" in feedback:
-        return OK
-    if "rating-missing" in feedback:
-        return MISSING
-    if "rating-wrong" in feedback:
-        return WRONG
-    return feedback
+# def to_short_feedback(feedback: str) -> str:
+#     """
+#     Function that converts the identifiers of the short feedback sent from the user interface into
+#     another identifier stored in the database.
+#     """
+#     if "rating-great" in feedback:
+#         return GREAT
+#     if "rating-ok" in feedback:
+#         return OK
+#     if "rating-missing" in feedback:
+#         return MISSING
+#     if "rating-wrong" in feedback:
+#         return WRONG
+#     return feedback

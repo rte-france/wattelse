@@ -17,13 +17,18 @@ from loguru import logger
 
 
 def root_page(request):
+    """
+    Root page for WattElse, linked to root url '/'.
+    Redirect to WattELse home page.
+    """
     return redirect(reverse("home:main_page"))
 
 
 def login(request):
-    """Main function for login page.
-    If request method is GET : render login.html
-    If request method is POST : log the user in and redirect to chatbot.html
+    """
+    Login page.
+    If request method is GET : render login page.
+    If request method is POST : log the user in and redirect to home page.
     """
     if request.method == "POST":
         username = request.POST.get("username")
@@ -49,9 +54,10 @@ def login(request):
 
 
 def register(request):
-    """Main function for register page.
-    If request method is GET : render register.html
-    If request method is POST : create a new user and print an new_user_created webpage
+    """
+    Register page.
+    If request method is GET : render register page.
+    If request method is POST : create a new user and redirect to home page.
     """
     if request.method == "POST":
         username = request.POST.get("username")
@@ -86,9 +92,10 @@ def register(request):
 
 @login_required
 def change_password(request):
-    """Main function for change password page.
-    If request method is GET : render change_password.html
-    If request method is POST : change user password and print an password_changed webpage
+    """
+    Change password page.
+    If request method is GET : render change password page.
+    If request method is POST : change user password and redirect to home page.
     """
     if request.method == "POST":
         user = request.user
@@ -101,7 +108,7 @@ def change_password(request):
                 user.set_password(password1)
                 user.save()
                 update_session_auth_hash(request, user)
-                return render(request, "accounts/password_changed.html")
+                return redirect(reverse("home:main_page"))
             except:
                 error_message = "Erreur lors du changement du mot de passe"
                 return render(
@@ -121,7 +128,9 @@ def change_password(request):
 
 
 def logout(request):
-    """Log a user out and redirect to login page"""
+    """
+    Log a user out and redirect to login page.
+    """
     logger.info(f"[User: {request.user.username}] logged out")
     auth.logout(request)
     return redirect(reverse("accounts:login"))
