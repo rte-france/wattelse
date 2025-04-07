@@ -56,7 +56,7 @@ def evaluate_metrics(
     regex_patterns = config.get_regex_patterns(model_name)
 
     # TODO : modify existing OpenAI_Client() to control the max_tokens
-    custom_timeout = 120.0  # 2 minutes instead of default 60 seconds
+    custom_timeout = 300.0  # 5 minutes instead of default 60 seconds (Necessary for reasoning models)
     kwargs = {"max_tokens": 2048, "timeout": Timeout(custom_timeout, connect=10.0)}
 
     evaluations = {}
@@ -182,7 +182,7 @@ def main(
             )
             if not new_path.exists():
                 report_output_path = new_path
-                logger.info(
+                logger.warning(
                     f"File already exists. Using alternative path: {'/'.join(report_output_path.parts[-3:])}"
                 )
                 break

@@ -343,7 +343,7 @@ def main(
             while True:
                 new_path = full_output_dir / f"evaluation_{model_name}_{counter}.xlsx"
                 if not new_path.exists():
-                    logger.info(
+                    logger.warning(
                         f"Output file for {model} already exists. Using alternative path: {new_path}"
                     )
                     output_path = new_path

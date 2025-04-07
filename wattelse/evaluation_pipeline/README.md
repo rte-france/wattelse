@@ -193,7 +193,6 @@ port_controller = 21001
 port_worker = 21002
 cuda_visible_devices = 3,2
 ```
-
 ## Usage
 
 ### Running the Full Evaluation Pipeline (LLM as Judge/Jury)
@@ -206,7 +205,8 @@ python run_jury.py /path/to/data.xlsx
 python run_jury.py /path/to/data.xlsx \
     --eval-config-path /path/to/eval_config.cfg \
     --server-config-path /path/to/server_config.cfg \
-    --output-dir /path/to/evaluation_results
+    --output-dir /path/to/evaluation_results \
+    --overwrite
 
 # Example with specific paths
 python run_jury.py ./data/rag_responses.xlsx \
@@ -231,16 +231,17 @@ python run_jury.py path/to/your/data.xlsx \
 
 ### Command-line Arguments
 
-For evaluation.py (Single Model):
+#### Common Arguments
 - `qr_df_path`: Path to the Excel file containing questions and responses
-- `--eval-config-path`: Path to the configuration file (default: "config.cfg")
-- `--server-config-path`: Path to the server configuration file (default: "server_config.cfg")
+- `--eval-config-path`: Path to the configuration file
+- `--server-config-path`: Path to the server configuration file
+- `--overwrite`: Overwrite existing output file if it exists (default: False)
+  > ⚠️ **Warning**: Using this flag will delete any existing file at the output path without confirmation. Use with caution to avoid data loss.
+
+#### For evaluation.py (Single Model)
 - `--report-output-path`: Path for the evaluation results Excel file (default: "report_output.xlsx")
 
-For run_jury.py (Multiple Models):
-- `qr_df_path`: Path to the Excel file containing questions and responses
-- `--eval-config-path`: Path to the configuration file (default: "eval_config.cfg")
-- `--server-config-path`: Path to the server configuration file (default: "server_config.cfg")
+#### For run_jury.py (Multiple Models)
 - `--output-dir`: Directory for evaluation results (default: "evaluation_results")
 
 # RAG Evaluation Framework
