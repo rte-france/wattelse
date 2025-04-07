@@ -18,6 +18,7 @@ app = typer.Typer()
 
 
 def create_energy_contract_extraction_prompt():
+    """Create a comprehensive prompt focused on energy contract information extraction"""
     return """
 You are an expert in extracting detailed information from energy contracts and grid connection documents.
 Analyze the following document and extract the specific information requested:
@@ -27,28 +28,29 @@ Document text:
 
 Extract and provide the following information in JSON format:
 {{
-    "substations": [
-        {{
-            "substation_name": "Name of the substation (Poste)",
-            "liaisons": [
-                {{
-                    "liaison_number": "Liaison number (e.g., 'Liaison 1')",
-                    "liaison_type": "Type of liaison (principale, complémentaire, secours)",
-                    "liaison_description": "Full description of the liaison",
-                    "connection_point": {{
-                        "connection_point_number": "Number of the connection point (e.g., 'Point de Connexion n° 1')",
-                        "connection_point_details": "Details about the connection point"
-                    }},
-                    "connection_power": "Power information related to this connection (Puissance de Raccordement)"
-                }}
-            ]
-        }}
-    ],
-    "evacuation_network": "Evacuation network for producers (réseau d'évacuation)",
-    "pst_information": "Points de Surveillance Technique (PST) information if present",
+    "connection_information": {{
+        "liaisons": [
+            {{
+                "liaison_number": "Liaison number (e.g., 'Liaison 1')",
+                "liaison_type": "Type of liaison (principale, complémentaire, secours)",
+                "details": "Any additional details about this liaison"
+            }}
+        ],
+        "client_substations": "List of client's electrical substations (postes du client)",
+        "evacuation_network": "Evacuation network for producers (réseau d'évacuation)",
+        "connection_points": "Connection points (Points de Connexion - PdC)",
+        "pst": "Points de Surveillance Technique (PST) information if present"
+    }},
     "contract_details": {{
         "cart_number": "CART contract number (n° de CART)",
         "effective_date": "Effective date of the contract (date de prise d'effet)",
+        "power_specifications": [
+            {{
+                "power_value": "Power value",
+                "power_type": "Type of power",
+                "unit": "Unit of measurement"
+            }}
+        ],
         "accounting_codes": "Accounting codes (codes décomptes)"
     }},
     "client_information": {{
@@ -59,18 +61,14 @@ Extract and provide the following information in JSON format:
 }}
 
 CRITICAL INSTRUCTIONS:
-1. IMPORTANT: Each substation (Poste) can have MULTIPLE liaisons, and each liaison can have its own connection point and power information. Preserve this hierarchical relationship.
-2. Look for patterns like:
-   - "Poste de BATAVIA"
-   - "Liaison 1 = constituée par le départ..."
-   - "Point de Connexion n° 1 = ..."
-   - "Puissance de Raccordement = ..."
-3. PST stands for "Points de Surveillance Technique" - look for this term specifically
-4. Return ONLY a valid JSON object without ANY additional text
-5. Do not include any text before or after the JSON structure
-6. The response MUST be parseable by a standard JSON parser
-7. If any information is not found in the document, use "Not found" as the value for that field
-8. Use only double quotes for JSON properties and values
+1. Focus especially on finding the liaisons (typically after "liaison 1") and their types (principale, complémentaire, secours)
+2. PST stands for "Points de Surveillance Technique" - look for this term specifically
+3. Return ONLY a valid JSON object without ANY additional text
+4. Do not include any text before or after the JSON structure
+5. The response MUST be parseable by a standard JSON parser
+6. If any information is not found in the document, use "Not found" as the value for that field
+7. Use only double quotes for JSON properties and values
+8. If there are multiple liaisons or power specifications, include them all as separate entries in their respective arrays
 """
 
 
