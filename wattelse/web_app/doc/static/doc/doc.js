@@ -1,4 +1,5 @@
 import {
+  sendButton,
   chatInput,
   chatConversation,
   newConversation,
@@ -7,7 +8,6 @@ import {
   handleConversationClick,
 } from "../../../static/js/gpt_doc_common.js";
 import {
-  sendButton,
   handleUserMessage,
   getSelectedFileNames,
   tabs,
@@ -17,7 +17,7 @@ import {
   selectAll,
   addUsersInputField,
   addUserToGroup,
-  documentPanel,
+  sideBar,
   initializeUploadArea,
   handleSelectAll,
   trashButton,
@@ -92,7 +92,7 @@ tabs.forEach((tab) => {
     contentSections.forEach((content) => (content.style.display = "none"));
 
     // Show the content section corresponding to the clicked tab
-    const targetContent = documentPanel.querySelector(
+    const targetContent = sideBar.querySelector(
       `.tab-content.${tab.dataset.content}`
     );
     targetContent.style.display = "";
