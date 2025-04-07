@@ -271,7 +271,8 @@ def main(
     eval_config_path: Path = Path("eval_config.cfg"),
     server_config_path: Path = Path("server_config.cfg"),
     output_dir: str = "evaluation_results",
-    retry_attempts: int = 2,  # New parameter for retry attempts
+    retry_attempts: int = 2,
+    overwrite: bool = False,  # Add new parameter
 ) -> None:
     """Main function to run evaluation on all models defined in the config."""
     # Convert relative paths to absolute paths based on the base directory
@@ -311,6 +312,7 @@ def main(
     eval_config = EvalConfig(eval_config_path)
     server_config = ServerConfig(server_config_path)
 
+    # Create the output directory without changing it
     full_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Get models from evaluation config
@@ -334,6 +336,19 @@ def main(
         model_name = model.split("/")[-1]
 
         output_path = full_output_dir / f"evaluation_{model_name}.xlsx"
+
+        # Check if this specific model's output file exists
+        if output_path.exists() and not overwrite:
+            counter = 1
+            while True:
+                new_path = full_output_dir / f"evaluation_{model_name}_{counter}.xlsx"
+                if not new_path.exists():
+                    logger.info(
+                        f"Output file for {model} already exists. Using alternative path: {new_path}"
+                    )
+                    output_path = new_path
+                    break
+                counter += 1
 
         # Add retry logic
         for attempt in range(retry_attempts + 1):

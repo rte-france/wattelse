@@ -166,11 +166,27 @@ def main(
     qr_df_path: Path,
     config_path: Path = CONFIG_EVAL,
     report_output_path: Path = REPORT_PATH,
+    overwrite: bool = False,  # Add new parameter
 ):
     """Main function to evaluate the RAG pipeline."""
     logger.info(f"Using input file: {'/'.join(qr_df_path.parts[-2:])}")
     logger.info(f"Using config path: {'/'.join(config_path.parts[-2:])}")
     logger.info(f"Output will be saved to: {'/'.join(report_output_path.parts[-2:])}")
+
+    # Check if output file exists, but keep the same folder
+    if report_output_path.exists() and not overwrite:
+        counter = 1
+        while True:
+            new_path = report_output_path.with_name(
+                f"{report_output_path.stem}_{counter}{report_output_path.suffix}"
+            )
+            if not new_path.exists():
+                report_output_path = new_path
+                logger.info(
+                    f"File already exists. Using alternative path: {'/'.join(report_output_path.parts[-3:])}"
+                )
+                break
+            counter += 1
 
     config = EvalConfig(config_path)
     logger.info(f"Loaded configuration from {'/'.join(config_path.parts[-2:])}")
