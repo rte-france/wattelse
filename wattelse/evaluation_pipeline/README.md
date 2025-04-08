@@ -10,8 +10,8 @@ flowchart TB
     %% Input Files
     subgraph Input["Input Files"]
         QA[Questions & Answers<br/>Excel File]
-        CF[Evaluation Config<br/>eval_config.cfg]
-        SF[Server Config<br/>server_config.cfg]
+        CF[Evaluation Config<br/>eval_config.toml]
+        SF[Server Config<br/>server_config.toml]
     end
 
     %% Configuration System with clearer separation
@@ -154,25 +154,30 @@ The diagram shows the main components and data flow of the evaluation pipeline:
 
 The evaluation pipeline uses two separate configuration files:
 
-### Evaluation Configuration File (`eval_config.cfg`)
+### Evaluation Configuration File (`eval_config.toml`)
 
-The evaluation pipeline is configured through `eval_config.cfg`. Key sections include:
+The evaluation pipeline is configured through `eval_config.toml`. Key sections include:
 
 ```ini
 [EVAL_CONFIG]
-enabled_metrics = faithfulness,correctness,retrievability
+enabled_metrics = ["faithfulness", "correctness", "retrievability"]
 
+# for local-hosted models
 [MODEL_META_LLAMA_META_LLAMA_3_8B_INSTRUCT]
-model_name = meta-llama/Meta-Llama-3-8B-Instruct
-prompt_type = meta-llama-3-8b
-regex_type = re_llama3
+model_name = "$LOCAL_OPENAI_DEFAULT_MODEL_NAME"
+prompt_type = "meta-llama-3-8b"
+regex_type = "re_llama3"
 temperature = 0.0
 
-[MODEL_XXX]
-model_name = XXX
-prompt_type = XXX
-regex_type = XXX
-temperature = XXX
+# for cloud-hosted models
+[MODEL_WATTELSE_GPT4O_MINI_SWEDEN_DEV]
+model_name = "$AZURE_SE_WATTELSE_OPENAI_DEFAULT_MODEL_NAME_DEV"
+deployment_type = "cloud"
+api_base = "$AZURE_SE_WATTELSE_OPENAI_ENDPOINT_DEV"
+api_key = "$AZURE_SE_WATTELSE_OPENAI_API_KEY_DEV"
+prompt_type = "vanilla"
+regex_type = "default"
+temperature = 0.0
 
 ...
 ```
@@ -181,17 +186,17 @@ temperature = XXX
 - Model-specific settings (`model_name`, `prompt_type`, `regex_type`, `temperature`)
 
 
-### Evaluation Configuration File (`server_config.cfg`)
+### Evaluation Configuration File (`server_config.toml`)
 
 Manages server and deployment settings:
 
 ```ini
 [SERVER_CONFIG]
-host = 0.0.0.0
+host = "0.0.0.0"
 port = 8888
 port_controller = 21001
 port_worker = 21002
-cuda_visible_devices = 3,2
+cuda_visible_devices = [0, 1]
 ```
 ## Usage
 
@@ -203,15 +208,15 @@ python run_jury.py /path/to/data.xlsx
 
 # With all options specified
 python run_jury.py /path/to/data.xlsx \
-    --eval-config-path /path/to/eval_config.cfg \
-    --server-config-path /path/to/server_config.cfg \
+    --eval-config-path /path/to/eval_config.toml \
+    --server-config-path /path/to/server_config.toml \
     --output-dir /path/to/evaluation_results \
     --overwrite
 
 # Example with specific paths
 python run_jury.py ./data/rag_responses.xlsx \
-    --eval-config-path ./configs/jury_eval_config.cfg \
-    --server-config-path ./configs/server_config.cfg \
+    --eval-config-path ./configs/jury_eval_config.toml \
+    --server-config-path ./configs/server_config.toml \
     --output-dir ./results/jury_evaluation
 ```
 
@@ -224,8 +229,8 @@ python run_jury.py ./data/rag_responses.xlsx \
 2. Run the evaluation pipeline:
 ```bash
 python run_jury.py path/to/your/data.xlsx \
-    --eval-config-path eval_config.cfg \
-    --server-config-path server_config.cfg \
+    --eval-config-path eval_config.toml \
+    --server-config-path server_config.toml \
     --output-dir evaluation_results
 ```
 
