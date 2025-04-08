@@ -1,41 +1,18 @@
-{% extends 'global.html' %} {% load static %} {% block extra_css %}
+{% extends 'global.html' %}
+
+{% load static %}
+
+{% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/gpt_doc_common.css' %}" />
 <link rel="stylesheet" href="{% static 'gpt/gpt.css' %}" />
-{% endblock %} {% block content %} {{ user.username|json_script:'user_name' }}
+{% endblock %}
+
+{% block content %}
+
+{{ user.username|json_script:'user_name' }}
 
 <!-- Main container for the page -->
 <div class="main-container">
-  <!-- History container -->
-  <div class="side-bar">
-    <div class="history-container">
-      <details open>
-        <summary>Aujourd'hui</summary>
-        <ul id="today-history">
-          {% for conversation in conversations.today %}
-          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
-          {% endfor %}
-        </ul>
-      </details>
-
-      <details open>
-        <summary>7 derniers jours</summary>
-        <ul id="last-week-history">
-          {% for conversation in conversations.last_week %}
-          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
-          {% endfor %}
-        </ul>
-      </details>
-
-      <details open>
-        <summary>Archives</summary>
-        <ul id="archives-history">
-          {% for conversation in conversations.others %}
-          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
-          {% endfor %}
-        </ul>
-      </details>
-    </div>
-  </div>
 
   <!-- Chat container -->
   <div class="chat-container">
@@ -64,6 +41,38 @@
     </div>
     <div class="disclaimer">
       Ce modèle peut générer des informations inexactes. Vérifiez ses réponses.
+    </div>
+  </div>
+
+  <!-- Sidebar container -->
+  <div class="side-bar">
+    <div class="history-container">
+      <details open>
+        <summary>Aujourd'hui</summary>
+        <ul id="today-history">
+          {% for conversation in conversations.today %}
+          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+
+      <details open>
+        <summary>7 derniers jours</summary>
+        <ul id="last-week-history">
+          {% for conversation in conversations.last_week %}
+          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+
+      <details open>
+        <summary>Archives</summary>
+        <ul id="archives-history">
+          {% for conversation in conversations.others %}
+          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
+          {% endfor %}
+        </ul>
+      </details>
     </div>
   </div>
 </div>

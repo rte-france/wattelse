@@ -1,5 +1,5 @@
 :root {
-  --side-bar-width: 33%;
+  --side-bar-width: 28%;
 }
 
 /* Right pannel container */
@@ -8,6 +8,11 @@
   padding: 10px;
   background-color: #f9f9f9;
   overflow-y: scroll;
+}
+
+/* User message color */
+.user-message {
+  background-color: var(--soft-blue);
 }
 
 /* Panel tabs */
@@ -399,4 +404,18 @@
 
 .system-prompt-save-button:hover {
   background-image: linear-gradient(rgb(0 0 0/10%) 0 0);
+}
+
+/* Change group select tag */
+.change-group-select {
+  font: inherit;
+  padding: 3px;
+  border: solid 1px lightgray;
+  color: var(--wattelse-lightning-color);
+  font-weight: 700;
+  border-radius: 5px;
+}
+
+.change-group-select option {
+  font-weight: inherit;
 }

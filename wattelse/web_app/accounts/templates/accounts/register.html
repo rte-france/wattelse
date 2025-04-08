@@ -10,12 +10,12 @@
 <div class="accounts-container">
   <div class="form-container">
     <div class="form-container-title">Inscription</div>
-    <!-- Print error message if form is not valid-->
+    <!-- Print error message if form is not valid -->
     {% if error_message %}
     <div class="form-error">{{ error_message }}</div>
     {% endif %}
   
-    <!-- Login form -->
+    <!-- Register form -->
     <form method="post">
       {% csrf_token %}
       <label class="form-label" for="username">Nom d'utilisateur :</label>
@@ -27,10 +27,10 @@
       <label class="form-label" for="password2">Confirmez le mot de passe :</label>
       <input class="form-input" type="password" name="password2" id="password2" required>
   
-      <button class="form-button" type="submit">Ok</button>
+      <button class="form-button" type="submit"><img src="{% static 'icons/arrow-right-white.svg' %}" class="icon"></button>
     </form>
   
-    <!-- New user link -->
+    <!-- Go back to login page -->
     <p class="form-footnote"><u><a href="{% url 'accounts:login' %}">J'ai déjà un compte.</a></u></p>
   </div>
 </div>

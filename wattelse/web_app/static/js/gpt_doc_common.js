@@ -246,6 +246,7 @@ export function setConversationMessages(conversationId) {
           } else {
             createAssistantMessage(md.render(message.content), message.id);
           }
+          addCopyButtonsToCodeBlocks();
         });
       });
     } else {
@@ -337,4 +338,51 @@ function handleFAQ(assistantMessageId) {
       }
     });
   }
+}
+
+export function addCopyButtonsToCodeBlocks() {
+  // Find all code blocks (typically wrapped in <pre><code> elements)
+  const codeBlocks = document.querySelectorAll("pre code");
+
+  // Process each code block
+  codeBlocks.forEach((codeBlock, index) => {
+    // Get the parent <pre> element
+    const preElement = codeBlock.parentElement;
+
+    // Make sure the pre element has position relative for button positioning
+    preElement.style.position = "relative";
+
+    // Create a copy button
+    const copyButton = document.createElement("button");
+    copyButton.className = "copy-code-button";
+    copyButton.innerHTML =
+      "<img src='/static/icons/copy-white.svg' class='icon'>";
+    copyButton.setAttribute("aria-label", "Copy code to clipboard");
+    copyButton.setAttribute("data-index", index);
+
+    // Style the button
+    copyButton.classList.add("copy-code-button");
+
+    // Add click event to copy code
+    copyButton.addEventListener("click", () => {
+      // Get the text content from the code block
+      const code = codeBlock.textContent;
+
+      // Copy the code to clipboard
+      unsecuredCopyToClipboard(code);
+
+      // Indicate success
+      copyButton.innerHTML =
+        "<img src='/static/icons/check-white.svg' class='icon'>";
+
+      // Reset button after 2 seconds
+      setTimeout(() => {
+        copyButton.innerHTML =
+          "<img src='/static/icons/copy-white.svg' class='icon'>";
+      }, 2000);
+    });
+
+    // Add the button to the pre element
+    preElement.appendChild(copyButton);
+  });
 }

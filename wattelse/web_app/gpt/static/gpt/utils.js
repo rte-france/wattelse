@@ -9,6 +9,7 @@ import {
   createUserMessage,
   createAssistantMessage,
   addNewConversationToHistory,
+  addCopyButtonsToCodeBlocks,
 } from "../../../static/js/gpt_doc_common.js";
 
 /// Functions ///
@@ -76,6 +77,8 @@ async function postUserMessageToGPT(userMessage, userMessageId) {
     streamResponse += decoder.decode(chunk);
     assistantMessageDiv.innerHTML = md.render(streamResponse);
   }
+  // Show copy button for code if needed
+  addCopyButtonsToCodeBlocks();
 
   // Save streamed response to database
   saveAssistantMessage(conversationId, assistantMessageId, streamResponse);

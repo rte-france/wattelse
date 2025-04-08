@@ -8,15 +8,16 @@
 /* Global variables */
 :root {
   --background-color: white;
-  --complementary-color: #fa8b4f;
   --wattelse-lightning-color: #6495ed;
+  --soft-blue: aliceblue;
+  --soft-green: #f0fff7;
+  --soft-grey: whitesmoke;
+  --softer-grey: #f9f9f9;
+  --complementary-color: #fa8b4f;
   --user-button-size: 35px;
 }
 
-/* ************ */
-/* COMMON STYLE */
-/* ************ */
-
+/* Default HTML element styles */
 body,
 html {
   font-family: "Open Sans", sans-serif;
@@ -29,11 +30,28 @@ html {
   flex-direction: column;
 }
 
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+hr {
+  border: none;
+  border-top: solid 2px lightgray;
+  width: 100%; /* Make sure it spans the full width */
+}
+
+/* Make icons the same size as text */
 .icon {
   width: 1em;
   height: 1em;
 }
 
+/* Top bar for title and user menu */
 .top-bar {
   box-sizing: border-box;
   display: flex;
@@ -42,16 +60,33 @@ html {
   padding: 10px;
 }
 
+/* Style for highlight.js */
 .hljs {
   overflow-x: scroll !important;
+  padding: 1em;
+  border-radius: 5px;
 }
 
 code:not(.hljs code) {
-  background-color: whitesmoke;
+  background-color: var(--soft-grey);
   border-radius: 5px;
   padding: 0 5px;
 }
 
+.copy-code-button {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  top: 8px;
+  right: 8px;
+  background-color: transparent;
+  color: var(--soft-grey);
+  height: 20px;
+  border: none;
+  border-radius: 10px;
+}
+
+/* WattElse top bar icon */
 .wattelse-top-bar {
   display: flex;
   align-items: center;
@@ -60,23 +95,32 @@ code:not(.hljs code) {
 }
 
 /* User Menu */
+.user-container {
+  position: relative;
+}
+
 .user-button {
   width: var(--user-button-size);
   height: var(--user-button-size);
   border-radius: 50%;
-  background-color: orange;
+  background-color: var(--complementary-color);
+  border: none;
+  text-align: center;
   font-weight: bold;
   color: white;
   border: none;
-  text-align: center;
+  background-color: var(--complementary-color);
 }
 
 .user-menu {
   position: absolute;
+  display: flex;
+  flex-direction: column;
+  top: 100%;
   right: 0;
+  margin: 10px;
   display: none;
   background-color: var(--background-color);
-  flex-direction: column;
   gap: 10px;
   padding: 10px;
   border: 1px solid lightgray;
@@ -86,8 +130,7 @@ code:not(.hljs code) {
 }
 
 .user-menu-item {
-  display: flex;
-  align-items: center;
+  white-space: nowrap;
 }
 
 .user-menu-icon {
@@ -96,6 +139,7 @@ code:not(.hljs code) {
   height: 1em;
 }
 
+/* Popup styles */
 .popup {
   position: fixed;
   right: 10px;
@@ -118,134 +162,11 @@ code:not(.hljs code) {
   background-color: crimson;
 }
 
-/* Main divs */
-.main-navbar {
-  height: var(--navbar-height);
-  padding-left: 20px;
-  padding-right: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: solid 1px lightgrey;
-  background-color: var(--main-color);
-}
-
-.wrapper {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* Navbar items */
-/* On the left */
-.wattelse-title {
-  font-weight: 800;
-  font-size: 1.8rem;
-  text-shadow: 0px 1px 2px #0000001a;
-}
-
-/* On the right */
-.nav-top-right {
-  display: flex;
-  gap: 30px;
-  align-items: center;
-  font-size: 1.2em;
-}
-
-.nav-top-right .tabs {
-  font-weight: 700;
-}
-
-.nav-top-right .tabs.doc {
-  color: cornflowerblue;
-}
-
-.nav-top-right .tabs.gpt {
-  color: #2aaa8a;
-}
-
-/* Base tag customization */
-/* Change pointer when hover a button */
-button {
-  cursor: pointer;
-}
-
-a {
-  color: inherit;
-  text-decoration: inherit;
-}
-
-hr {
-  border: none;
-  border-top: solid 2px lightgray;
-  width: 100%; /* Make sure it spans the full width */
-}
-
 /* User and group names */
 .groupname,
 .username {
   color: var(--wattelse-lightning-color);
   font-weight: 800;
-}
-
-.popup {
-  position: fixed;
-  right: 10px;
-  bottom: 10px;
-  color: white;
-  font-weight: 400;
-  padding: 10px;
-  border-radius: 5px;
-  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-  z-index: 1000; /* Ensure it appears on top of other elements */
-}
-
-/* Info and user button/menu style */
-.user-icon-button {
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  background-color: var(--complementary-color);
-  color: white;
-  border: none;
-  text-align: center;
-}
-
-.info-button {
-  cursor: pointer;
-}
-
-.user-icon-menu,
-.info-menu {
-  font-size: initial;
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-  background-color: white;
-  padding: 10px;
-  position: absolute;
-  top: calc(var(--navbar-height) + 10px);
-  right: 10px;
-  border: 1px solid lightgray;
-  border-radius: 10px;
-  z-index: 1000;
-}
-
-/* Change group select tag */
-.change-group-select {
-  font: inherit;
-  /* Personalize */
-  padding: 3px;
-  border: solid 1px lightgray;
-  color: var(--wattelse-lightning-color);
-  font-weight: 700;
-  border-radius: 5px;
-}
-
-.change-group-select option {
-  font-weight: inherit;
 }
 
 /* Custom scrollbar */
@@ -266,10 +187,4 @@ hr {
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: #a8bbbf;
-}
-
-/* Code blocks style */
-.hljs {
-  padding: 1em;
-  border-radius: 5px;
 }

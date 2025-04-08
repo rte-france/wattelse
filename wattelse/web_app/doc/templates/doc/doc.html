@@ -17,7 +17,37 @@
 
 <!-- Main container for the page -->
 <div class="main-container">
-  <!-- Panel container -->
+  <!-- Chat container -->
+  <div class="chat-container">
+    <!-- Top bar div -->
+    {% include 'top_bar.html' %}
+    <!-- Chat history div -->
+    <div class="chat-conversation" id="{{ conversation_id }}">
+      <!-- Messages will be displayed here -->
+    </div>
+
+    <!-- Message input field (everything in this div will be fixed at the bottom) -->
+    <div class="chat-input">
+      <textarea
+        type="text"
+        class="input-field"
+        placeholder="Demander à WattElse"
+      ></textarea>
+      <div class="chat-button-container">
+        <button class="send-button">
+          <img src="{% static 'icons/arrow-up.svg' %}" class="icon" />
+        </button>
+        <button class="new-conversation-button">
+          <img src="{% static 'icons/plus.svg' %}" class="icon" />
+        </button>
+      </div>
+    </div>
+    <div class="disclaimer">
+      Ce modèle peut générer des informations inexactes. Vérifiez ses réponses.
+    </div>
+  </div>
+
+  <!-- Sidebar container -->
   <div class="side-bar">
     <!-- All users have access to these tabs -->
     <div class="top-tab-list">
@@ -221,36 +251,6 @@
       </div>
     </div>
     {% endif %}
-  </div>
-
-  <!-- Chat container -->
-  <div class="chat-container">
-    <!-- Top bar div -->
-    {% include 'top_bar.html' %}
-    <!-- Chat history div -->
-    <div class="chat-conversation" id="{{ conversation_id }}">
-      <!-- Messages will be displayed here -->
-    </div>
-
-    <!-- Message input field (everything in this div will be fixed at the bottom) -->
-    <div class="chat-input">
-      <textarea
-        type="text"
-        class="input-field"
-        placeholder="Demander à WattElse"
-      ></textarea>
-      <div class="chat-button-container">
-        <button class="send-button">
-          <img src="{% static 'icons/arrow-up.svg' %}" class="icon" />
-        </button>
-        <button class="new-conversation-button">
-          <img src="{% static 'icons/plus.svg' %}" class="icon" />
-        </button>
-      </div>
-    </div>
-    <div class="disclaimer">
-      Ce modèle peut générer des informations inexactes. Vérifiez ses réponses.
-    </div>
   </div>
 </div>
 

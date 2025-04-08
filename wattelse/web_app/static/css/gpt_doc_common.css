@@ -11,15 +11,12 @@
   align-items: center;
 }
 
-/* Hisroty container */
-
+/* History container */
 .history-container {
   display: flex;
   flex-direction: column;
   width: 100%;
   gap: 15px;
-
-  overflow-y: scroll;
 }
 
 /* History elements */
@@ -84,7 +81,6 @@
   border-radius: 20px;
   max-width: 80%;
   align-self: flex-end;
-  background-color: aliceblue;
 }
 
 .assistant-message-container {
@@ -143,17 +139,17 @@
   width: 60%;
   border-radius: 15px;
   padding: 5px;
-  background-color: whitesmoke;
+  background-color: var(--soft-grey);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 8px;
+  box-shadow: rgba(0, 0, 0, 0.2) 0px 3px 8px;
 }
 
 .input-field {
   box-sizing: border-box;
-  padding: 10px;
   width: 100%;
+  padding: 10px;
   border: none;
   background-color: inherit;
   resize: none;
@@ -193,6 +189,7 @@
   color: darkgrey;
   text-align: center;
   font-size: 0.7em;
+  margin: 5px 0;
 }
 
 /* Welcome message */
@@ -203,7 +200,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 1s;
+  animation: fadeIn 3s;
 }
 
 @keyframes fadeIn {
@@ -218,4 +215,5 @@
 .welcome-message {
   font-size: 2em;
   font-weight: bold;
+  color: rgb(172, 172, 172);
 }
