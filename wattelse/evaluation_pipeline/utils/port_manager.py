@@ -70,7 +70,7 @@ class PortManager:
                 continue
         return False
 
-    def wait_for_availability(self, port, timeout=180, check_interval=5, verbose=True):
+    def wait_for_availability(self, port, timeout=240, check_interval=10, verbose=True):
         """Wait until port becomes available, with timeout.
 
         Args:
@@ -104,7 +104,7 @@ class PortManager:
             self.logger.success(f"Port {port} is now available")
         return True
 
-    def wait_for_server_startup(self, port, timeout=180, check_interval=5):
+    def wait_for_server_startup(self, port, timeout=240, check_interval=10):
         """Wait until server is responsive on the given port.
 
         Args:
@@ -141,7 +141,7 @@ class PortManager:
             self.logger.info(f"Waiting for server to start on port {port}...")
             time.sleep(check_interval)
 
-    def ensure_port_free(self, port, timeout=180, force=False, verbose=True):
+    def ensure_port_free(self, port, timeout=240, force=False, verbose=True):
         """Ensure a port is free by killing any process and waiting for availability.
 
         Args:

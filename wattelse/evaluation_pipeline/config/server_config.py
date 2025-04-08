@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-import configparser
 from typing import List
+import tomllib
 
 
 @dataclass
@@ -20,8 +20,8 @@ class ServerConfig:
 
     def load_config(self):
         """Load configuration from the server config file."""
-        config = configparser.ConfigParser()
-        config.read(self.config_path)
+        with open(self.config_path, "rb") as f:
+            config = tomllib.load(f)
 
         if "SERVER_CONFIG" in config:
             server_config = config["SERVER_CONFIG"]
@@ -33,7 +33,4 @@ class ServerConfig:
             self.port_worker = int(server_config.get("port_worker", self.port_worker))
 
             if "cuda_visible_devices" in server_config:
-                self.cuda_visible_devices = [
-                    int(x.strip())
-                    for x in server_config["cuda_visible_devices"].split(",")
-                ]
+                self.cuda_visible_devices = server_config["cuda_visible_devices"]
