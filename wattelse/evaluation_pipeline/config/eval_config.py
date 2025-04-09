@@ -1,8 +1,7 @@
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
-import tomllib
 from typing import Dict, Any, Set
+from wattelse.common.config_utils import load_toml_config
 from wattelse.evaluation_pipeline.prompts import RegexPatterns, PROMPTS
 
 
@@ -23,8 +22,7 @@ class EvalConfig:
 
     def load_config(self):
         """Load configuration from the config file."""
-        with open(self.config_path, "rb") as f:
-            config = tomllib.load(f)
+        config = load_toml_config(self.config_path)
 
         # Load enabled metrics
         if "EVAL_CONFIG" in config:
@@ -35,22 +33,14 @@ class EvalConfig:
 
         # Load default model
         if "DEFAULT_MODEL" in config:
-            default_model = config["DEFAULT_MODEL"].get(
+            self.default_model = config["DEFAULT_MODEL"].get(
                 "default_model", self.default_model
             )
-            # Expand environment variables in the default model string
-            self.default_model = os.path.expandvars(default_model)
 
         # Load model-specific configurations
         for section in config:
             if section.startswith("MODEL_"):
                 model_config = dict(config[section])
-
-                # Expand environment variables in string values
-                for key, value in model_config.items():
-                    if isinstance(value, str):
-                        model_config[key] = os.path.expandvars(value)
-
                 model_name = model_config["model_name"]
                 self.model_configs[model_name] = model_config
 

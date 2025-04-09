@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
-import tomllib
+from wattelse.common.config_utils import load_toml_config
 
 
 @dataclass
@@ -20,8 +20,7 @@ class ServerConfig:
 
     def load_config(self):
         """Load configuration from the server config file."""
-        with open(self.config_path, "rb") as f:
-            config = tomllib.load(f)
+        config = load_toml_config(self.config_path)
 
         if "SERVER_CONFIG" in config:
             server_config = config["SERVER_CONFIG"]
