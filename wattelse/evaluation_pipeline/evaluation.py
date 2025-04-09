@@ -2,6 +2,7 @@ import re
 import typer
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from loguru import logger
 from pathlib import Path
 from joblib import Parallel, delayed
@@ -166,44 +167,45 @@ def main(
     qr_df_path: Path,
     config_path: Path = CONFIG_EVAL,
     report_output_path: Path = REPORT_PATH,
-    overwrite: bool = False,  # Add new parameter
+    overwrite: bool = False,
 ):
     """Main function to evaluate the RAG pipeline."""
     logger.info(f"Using input file: {'/'.join(qr_df_path.parts[-2:])}")
     logger.info(f"Using config path: {'/'.join(config_path.parts[-2:])}")
     logger.info(f"Output will be saved to: {'/'.join(report_output_path.parts[-2:])}")
 
-    # Check if output file exists, but keep the same folder
-    if report_output_path.exists() and not overwrite:
-        counter = 1
-        while True:
-            new_path = report_output_path.with_name(
-                f"{report_output_path.stem}_{counter}{report_output_path.suffix}"
-            )
-            if not new_path.exists():
-                report_output_path = new_path
-                logger.warning(
-                    f"File already exists. Using alternative path: {'/'.join(report_output_path.parts[-3:])}"
-                )
-                break
-            counter += 1
+    # Handle file path logic
+    output_path = handle_output_path(report_output_path, overwrite)
 
     config = EvalConfig(config_path)
     logger.info(f"Loaded configuration from {'/'.join(config_path.parts[-2:])}")
-
     eval_df = pd.read_excel(qr_df_path)
     logger.info(
         f"Loaded input dataset from {'/'.join(qr_df_path.parts[-2:])} with {len(eval_df)} rows"
     )
-
     evaluated_df = evaluate_rag_metrics(eval_df, config)
 
     # Ensure the directory exists
-    report_output_path.parent.mkdir(parents=True, exist_ok=True)
-    evaluated_df.to_excel(report_output_path, index=False)
-    logger.info(
-        f"Evaluation results saved to {'/'.join(report_output_path.parts[-3:])}"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    evaluated_df.to_excel(output_path, index=False)
+    logger.info(f"Evaluation results saved to {'/'.join(output_path.parts[-3:])}")
+
+
+def handle_output_path(path: Path, overwrite: bool) -> Path:
+    """Handle file path logic based on overwrite parameter."""
+    if not path.exists() or overwrite:
+        if path.exists() and overwrite:
+            logger.info(f"Overwriting existing file: {'/'.join(path.parts[-3:])}")
+        return path
+
+    # If not overwriting, create a new filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    new_path = path.with_name(f"{path.stem}_{timestamp}{path.suffix}")
+
+    logger.warning(
+        f"File already exists. Using alternative path: {'/'.join(new_path.parts[-3:])}"
     )
+    return new_path
 
 
 if __name__ == "__main__":

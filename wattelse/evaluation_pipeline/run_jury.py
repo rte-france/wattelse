@@ -1,10 +1,11 @@
+import os
+import sys
 import time
 import subprocess
 import typer
 from pathlib import Path
-import os
+from datetime import datetime
 from loguru import logger
-import sys
 
 from wattelse.evaluation_pipeline import BASE_OUTPUT_DIR, RESULTS_BASE_DIR
 
@@ -265,14 +266,29 @@ def stop_vllm_server(session_name: str, server_config: ServerConfig):
         port_manager.kill_process(server_config.port, verbose=True)
 
 
+def handle_output_path(path: Path, overwrite: bool) -> Path:
+    """Handle file path logic based on overwrite parameter."""
+    if not path.exists() or overwrite:
+        if path.exists() and overwrite:
+            logger.info(f"Overwriting existing file: {path.name}")
+        return path
+
+    # If not overwriting, create a new filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    new_path = path.with_name(f"{path.stem}_{timestamp}{path.suffix}")
+
+    logger.warning(f"File already exists. Using alternative path: {new_path.name}")
+    return new_path
+
+
 @app.command()
 def main(
     qr_df_filename: str,
-    eval_config_path: Path = Path("eval_config.cfg"),
-    server_config_path: Path = Path("server_config.cfg"),
+    eval_config_path: Path = Path("eval_config.toml"),
+    server_config_path: Path = Path("server_config.toml"),
     output_dir: str = "evaluation_results",
     retry_attempts: int = 2,
-    overwrite: bool = False,  # Add new parameter
+    overwrite: bool = False,
 ) -> None:
     """Main function to run evaluation on all models defined in the config."""
     # Convert relative paths to absolute paths based on the base directory
@@ -335,20 +351,8 @@ def main(
         logger.info(f"Starting evaluation with model: {model}")
         model_name = model.split("/")[-1]
 
-        output_path = full_output_dir / f"evaluation_{model_name}.xlsx"
-
-        # Check if this specific model's output file exists
-        if output_path.exists() and not overwrite:
-            counter = 1
-            while True:
-                new_path = full_output_dir / f"evaluation_{model_name}_{counter}.xlsx"
-                if not new_path.exists():
-                    logger.warning(
-                        f"Output file for {model} already exists. Using alternative path: {new_path}"
-                    )
-                    output_path = new_path
-                    break
-                counter += 1
+        base_output_path = full_output_dir / f"evaluation_{model_name}.xlsx"
+        output_path = handle_output_path(base_output_path, overwrite)
 
         # Add retry logic
         for attempt in range(retry_attempts + 1):

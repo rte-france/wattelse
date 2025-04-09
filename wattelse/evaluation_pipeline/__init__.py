@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Define base paths
 BASE_DIR = Path(os.getenv("RAG_PIPELINE_EVAL_PATH", "/DSIA/nlp/experiments"))
-CONFIG_EVAL = BASE_DIR / "eval_config.cfg"
+CONFIG_EVAL = BASE_DIR / "eval_config.toml"
 REPORT_PATH = BASE_DIR / "report_output.xlsx"
 RESULTS_BASE_DIR = BASE_DIR / "results"
 BASE_DATA_DIR = BASE_DIR / "data"
