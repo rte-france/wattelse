@@ -105,7 +105,7 @@ To stop all services, run:
 
 ## Hardware requirements
 
-By default, WattElse only loads an embedding model on start. It requires around 2GB of VRAM if loaded on GPU.
+By default, WattElse only loads an embedding model on start. It requires around 2GB of VRAM if loaded on GPU. To change the embedding model, see [wattelse/api](wattelse/api) and [wattelse/api/embedding](wattelse/api/embedding).
 
 The LLM used depends on the RAG config. By default, no local LLM is loaded so you need to link RAG config to a remote LLM (OpenAI, Azure...). For RAG config management, see [wattelse/rag_backend](wattelse/rag_backend).
 
