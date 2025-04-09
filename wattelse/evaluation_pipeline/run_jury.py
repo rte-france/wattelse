@@ -1,11 +1,12 @@
+import os
+import sys
 import time
 import subprocess
 import typer
 from pathlib import Path
-import os
 from loguru import logger
-import sys
 
+from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
 from wattelse.evaluation_pipeline import BASE_OUTPUT_DIR, RESULTS_BASE_DIR
 
 logger.remove()
@@ -268,10 +269,11 @@ def stop_vllm_server(session_name: str, server_config: ServerConfig):
 @app.command()
 def main(
     qr_df_filename: str,
-    eval_config_path: Path = Path("eval_config.cfg"),
-    server_config_path: Path = Path("server_config.cfg"),
+    eval_config_path: Path = Path("eval_config.toml"),
+    server_config_path: Path = Path("server_config.toml"),
     output_dir: str = "evaluation_results",
-    retry_attempts: int = 2,  # New parameter for retry attempts
+    retry_attempts: int = 2,
+    overwrite: bool = False,
 ) -> None:
     """Main function to run evaluation on all models defined in the config."""
     # Convert relative paths to absolute paths based on the base directory
@@ -311,6 +313,7 @@ def main(
     eval_config = EvalConfig(eval_config_path)
     server_config = ServerConfig(server_config_path)
 
+    # Create the output directory without changing it
     full_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Get models from evaluation config
@@ -333,7 +336,8 @@ def main(
         logger.info(f"Starting evaluation with model: {model}")
         model_name = model.split("/")[-1]
 
-        output_path = full_output_dir / f"evaluation_{model_name}.xlsx"
+        base_output_path = full_output_dir / f"evaluation_{model_name}.xlsx"
+        output_path = handle_output_path(base_output_path, overwrite)
 
         # Add retry logic
         for attempt in range(retry_attempts + 1):

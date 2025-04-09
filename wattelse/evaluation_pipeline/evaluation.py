@@ -10,6 +10,7 @@ from openai import Timeout
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.evaluation_pipeline import CONFIG_EVAL, REPORT_PATH
+from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
 from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 
 # Column definitions
@@ -56,7 +57,7 @@ def evaluate_metrics(
     regex_patterns = config.get_regex_patterns(model_name)
 
     # TODO : modify existing OpenAI_Client() to control the max_tokens
-    custom_timeout = 120.0  # 2 minutes instead of default 60 seconds
+    custom_timeout = 300.0  # 5 minutes instead of default 60 seconds (Necessary for reasoning models)
     kwargs = {"max_tokens": 2048, "timeout": Timeout(custom_timeout, connect=10.0)}
 
     evaluations = {}
@@ -166,28 +167,28 @@ def main(
     qr_df_path: Path,
     config_path: Path = CONFIG_EVAL,
     report_output_path: Path = REPORT_PATH,
+    overwrite: bool = False,
 ):
     """Main function to evaluate the RAG pipeline."""
     logger.info(f"Using input file: {'/'.join(qr_df_path.parts[-2:])}")
     logger.info(f"Using config path: {'/'.join(config_path.parts[-2:])}")
     logger.info(f"Output will be saved to: {'/'.join(report_output_path.parts[-2:])}")
 
+    # Handle file path logic
+    output_path = handle_output_path(report_output_path, overwrite)
+
     config = EvalConfig(config_path)
     logger.info(f"Loaded configuration from {'/'.join(config_path.parts[-2:])}")
-
     eval_df = pd.read_excel(qr_df_path)
     logger.info(
         f"Loaded input dataset from {'/'.join(qr_df_path.parts[-2:])} with {len(eval_df)} rows"
     )
-
     evaluated_df = evaluate_rag_metrics(eval_df, config)
 
     # Ensure the directory exists
-    report_output_path.parent.mkdir(parents=True, exist_ok=True)
-    evaluated_df.to_excel(report_output_path, index=False)
-    logger.info(
-        f"Evaluation results saved to {'/'.join(report_output_path.parts[-3:])}"
-    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    evaluated_df.to_excel(output_path, index=False)
+    logger.info(f"Evaluation results saved to {'/'.join(output_path.parts[-3:])}")
 
 
 if __name__ == "__main__":

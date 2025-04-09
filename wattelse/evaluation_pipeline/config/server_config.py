@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-import configparser
 from typing import List
+from wattelse.common.config_utils import load_toml_config
 
 
 @dataclass
@@ -20,8 +20,7 @@ class ServerConfig:
 
     def load_config(self):
         """Load configuration from the server config file."""
-        config = configparser.ConfigParser()
-        config.read(self.config_path)
+        config = load_toml_config(self.config_path)
 
         if "SERVER_CONFIG" in config:
             server_config = config["SERVER_CONFIG"]
@@ -33,7 +32,4 @@ class ServerConfig:
             self.port_worker = int(server_config.get("port_worker", self.port_worker))
 
             if "cuda_visible_devices" in server_config:
-                self.cuda_visible_devices = [
-                    int(x.strip())
-                    for x in server_config["cuda_visible_devices"].split(",")
-                ]
+                self.cuda_visible_devices = server_config["cuda_visible_devices"]

@@ -76,6 +76,11 @@ def main(
         "-o",
         help="Path or filename for the predictions output (Excel file)",
     ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Overwrite existing output file if it exists",
+    ),
 ):
     """
     Main function to generate predictions from the RAG pipeline.
@@ -101,6 +106,20 @@ def main(
     else:
         # Resolve output path
         predictions_output_path = resolve_path(predictions_output_path, BASE_OUTPUT_DIR)
+
+    # Check if output file exists and handle accordingly
+    if predictions_output_path.exists() and not overwrite:
+        counter = 1
+        while True:
+            new_path = predictions_output_path.with_name(
+                f"{predictions_output_path.stem}_{counter}{predictions_output_path.suffix}"
+            )
+            if not new_path.exists():
+                logger.warning(f"Output file {predictions_output_path} already exists.")
+                predictions_output_path = new_path
+                logger.info(f"Using alternative path: {predictions_output_path}")
+                break
+            counter += 1
 
     # Ensure output directory exists
     predictions_output_path.parent.mkdir(parents=True, exist_ok=True)
