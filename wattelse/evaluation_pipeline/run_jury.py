@@ -4,9 +4,9 @@ import time
 import subprocess
 import typer
 from pathlib import Path
-from datetime import datetime
 from loguru import logger
 
+from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
 from wattelse.evaluation_pipeline import BASE_OUTPUT_DIR, RESULTS_BASE_DIR
 
 logger.remove()
@@ -264,21 +264,6 @@ def stop_vllm_server(session_name: str, server_config: ServerConfig):
         logger.error(f"Error stopping VLLM server: {e}")
         # Try to kill the port anyway
         port_manager.kill_process(server_config.port, verbose=True)
-
-
-def handle_output_path(path: Path, overwrite: bool) -> Path:
-    """Handle file path logic based on overwrite parameter."""
-    if not path.exists() or overwrite:
-        if path.exists() and overwrite:
-            logger.info(f"Overwriting existing file: {path.name}")
-        return path
-
-    # If not overwriting, create a new filename with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    new_path = path.with_name(f"{path.stem}_{timestamp}{path.suffix}")
-
-    logger.warning(f"File already exists. Using alternative path: {new_path.name}")
-    return new_path
 
 
 @app.command()

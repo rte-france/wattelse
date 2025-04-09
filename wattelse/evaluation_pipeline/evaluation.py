@@ -2,7 +2,6 @@ import re
 import typer
 import pandas as pd
 import numpy as np
-from datetime import datetime
 from loguru import logger
 from pathlib import Path
 from joblib import Parallel, delayed
@@ -11,6 +10,7 @@ from openai import Timeout
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.evaluation_pipeline import CONFIG_EVAL, REPORT_PATH
+from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
 from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 
 # Column definitions
@@ -160,23 +160,6 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame, config: EvalConfig) -> pd.DataFr
     )
 
     return eval_df
-
-
-def handle_output_path(path: Path, overwrite: bool) -> Path:
-    """Handle file path logic based on overwrite parameter."""
-    if not path.exists() or overwrite:
-        if path.exists() and overwrite:
-            logger.info(f"Overwriting existing file: {'/'.join(path.parts[-3:])}")
-        return path
-
-    # If not overwriting, create a new filename with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    new_path = path.with_name(f"{path.stem}_{timestamp}{path.suffix}")
-
-    logger.warning(
-        f"File already exists. Using alternative path: {'/'.join(new_path.parts[-3:])}"
-    )
-    return new_path
 
 
 @app.command()
