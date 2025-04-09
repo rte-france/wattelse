@@ -83,11 +83,28 @@ python start.py
 
 Django web app should be running at: http://localhost:8000
 
+## Launch WattElse
+
+To launch WattElse with all services, go to WattElse root folder and run:
+
+```bash
+./start_all_services.sh
+```
+
+This script starts all services in separated `screens`:
+
+- Embedding API
+- RAGOrchestrator API
+- Django
+-
+
 ## Hardware requirements
 
-WattElse uses embedding models for RAG. It also uses larger generative models for responses. By default, all models are loaded on GPU. For _RAG_, you will for example need:
+By default, WattElse only loads an embedding model on start. It requires around 2GB of VRAM if loaded on GPU.
 
-- 1 GPU with > 20Go (or several smaller GPUs)
+The LLM used depends on the RAG config. By default, no local LLM is loaded so you need to link RAG config to a remote LLM (OpenAI, Azure...). For RAG config management, see [wattelse/rag_backend](wattelse/rag_backend).
+
+If you want to load a local LLM using `vLLM`, you need to have enough VRAM to load the model. For example, the `llama-3.1-8B-instruct` model requires around 16GB of VRAM.
 
 # RAG service
 
