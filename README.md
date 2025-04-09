@@ -96,7 +96,6 @@ This script starts all services in separated `screens`:
 - Embedding API
 - RAGOrchestrator API
 - Django
--
 
 ## Hardware requirements
 
