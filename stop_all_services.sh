@@ -4,7 +4,7 @@ echo "Stopping Dashboard..."
 screen -X -S dashboard quit
 
 echo "Stopping Django..."
-cd `pwd`/wattelse/chatbot/frontend; python stop.py; cd -
+cd `pwd`/wattelse/django; python stop.py; cd -
 screen -X -S django quit
 
 echo "Stopping RAG Orchestrator API..."
