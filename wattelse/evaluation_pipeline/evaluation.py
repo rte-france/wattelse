@@ -162,6 +162,23 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame, config: EvalConfig) -> pd.DataFr
     return eval_df
 
 
+def handle_output_path(path: Path, overwrite: bool) -> Path:
+    """Handle file path logic based on overwrite parameter."""
+    if not path.exists() or overwrite:
+        if path.exists() and overwrite:
+            logger.info(f"Overwriting existing file: {'/'.join(path.parts[-3:])}")
+        return path
+
+    # If not overwriting, create a new filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    new_path = path.with_name(f"{path.stem}_{timestamp}{path.suffix}")
+
+    logger.warning(
+        f"File already exists. Using alternative path: {'/'.join(new_path.parts[-3:])}"
+    )
+    return new_path
+
+
 @app.command()
 def main(
     qr_df_path: Path,
@@ -189,23 +206,6 @@ def main(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     evaluated_df.to_excel(output_path, index=False)
     logger.info(f"Evaluation results saved to {'/'.join(output_path.parts[-3:])}")
-
-
-def handle_output_path(path: Path, overwrite: bool) -> Path:
-    """Handle file path logic based on overwrite parameter."""
-    if not path.exists() or overwrite:
-        if path.exists() and overwrite:
-            logger.info(f"Overwriting existing file: {'/'.join(path.parts[-3:])}")
-        return path
-
-    # If not overwriting, create a new filename with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    new_path = path.with_name(f"{path.stem}_{timestamp}{path.suffix}")
-
-    logger.warning(
-        f"File already exists. Using alternative path: {'/'.join(new_path.parts[-3:])}"
-    )
-    return new_path
 
 
 if __name__ == "__main__":
