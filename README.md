@@ -97,6 +97,12 @@ This script starts all services in separated `screens`:
 - RAGOrchestrator API
 - Django
 
+To stop all services, run:
+
+```bash
+./stop_all_services.sh
+```
+
 ## Hardware requirements
 
 By default, WattElse only loads an embedding model on start. It requires around 2GB of VRAM if loaded on GPU.
