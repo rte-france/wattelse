@@ -13,7 +13,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 MAX_ATTEMPTS = 3
 TIMEOUT = 60.0
-DEFAULT_TEMPERATURE = 0.1
+DEFAULT_TEMPERATURE = 0
 DEFAULT_MAX_TOKENS = 512
 
 AZURE_API_VERSION = "2024-10-21"

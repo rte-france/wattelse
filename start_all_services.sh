@@ -47,7 +47,7 @@ wait_for_api "RAGOrchestrator API" "`pwd`/wattelse/api/rag_orchestrator"
 
 # Start Django application
 echo "Starting Django application..."
-screen -dmS django bash -c 'cd `pwd`/wattelse/django && python start.py 2>&1 | tee -a $WATTELSE_LOGS_DIR/django.log; bash'
+screen -dmS django bash -c 'cd `pwd`/wattelse/web_app && python start.py 2>&1 | tee -a $WATTELSE_LOGS_DIR/django.log; bash'
 
 # Start Dashboard
 echo "Starting Dashboard..."

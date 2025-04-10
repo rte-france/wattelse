@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!--
+  ~ Copyright (c) 2024, RTE (https://www.rte-france.com)
+  ~ See AUTHORS.txt
+  ~ SPDX-License-Identifier: MPL-2.0
+  ~ This file is part of Wattelse, a NLP application suite.
+-->
+
+<!-- If user is not authenticated, return to login page -->
+{% if not user.is_authenticated %}
+    <script>window.location.replace("/login")</script>
+{% endif %}
+
+{{ user.username|json_script:'user_name' }}
+{{ available_docs|json_script:'available_docs'}}
+
+<!-- Main container for the page -->
+{% csrf_token %}
+
+<div class="wrapper">
+
+    <!-- Chat container -->
+    <div class="chat-container">
+
+        <!-- Chat history div -->
+        <div class="chat-history" id="{{ conversation_id }}">
+            <!-- Messages will be displayed here -->
+        </div>
+        
+        <!-- Message input field (everything in this div will be fixed at the bottom) -->
+        <div class="chat-input">
+            <textarea type="text" class="input-field" placeholder="Entrez votre question..."></textarea>
+            <div class="chat-button-container">
+                <button class="send-button"><i class="fa-solid fa-paper-plane"></i></button>
+                <button class="new-conversation-button" onclick="newConversation();"><i class="fa-solid fa-rotate-right fa-rotate-90 fa-xl"></i></button>
+            </div>
+        </div>
+        <div class="disclaimer">
+            LLM : {{ llm_name }}<br>
+            Ce modèle peut générer des informations inexactes. Vérifiez ses réponses.
+        </div>
+    </div>
+
+    <!-- Panel container -->
+     <div class="conversations-container">
+        <div class="history-container">
+            <details open>
+                <summary>
+                    Aujourd'hui
+                </summary>
+                <ul id="today-history">
+                    {% for conversation in conversations.today %}
+                        <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
+    
+            <details>
+                <summary>
+                    7 derniers jours
+                </summary>
+                <ul id="last-week-history">
+                    {% for conversation in conversations.last_week %}
+                        <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
+    
+            <details>
+                <summary>
+                    Archives
+                </summary>
+                <ul id="archives-history">
+                    {% for conversation in conversations.others %}
+                        <li id="{{ conversation.id }}" onclick="getConversationHistory(this, '{{ conversation.id }}')">{{ conversation.title }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
+        </div>
+     </div>
+</div>
+
+<!-- Load script for chatbot page -->
+{% load static %}
+<script src="{% static 'chatbot/marked.min.js' %}"></script>
+<script src="{% static 'chatbot/common_functions.js' %}?v={{ STATIC_VERSION }}"></script>
+<script src="{% static 'chatbot/secureGPT_functions.js' %}?v={{ STATIC_VERSION }}"></script>
+
+{% endblock %}
+
+
