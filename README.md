@@ -75,6 +75,12 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
+- Collect static files (needed when `DEBUG=False` in Django)
+
+```bash
+python manage.py collectstatic
+```
+
 - Start Django server:
 
 ```bash
