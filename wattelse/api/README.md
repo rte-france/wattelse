@@ -9,9 +9,7 @@ Available APIs:
 - [embedding](embedding): uses a SentenceTransformer model to transform text into embeddings
 - [vllm](vllm): loads a local LLM and starts an OpenAI API like endpoint
 - [rag_orchestrator](rag_orchestrator): used for WattElse DOC, handles multiple RAG instances and routes queries to the appropriate RAG instance
-- [openai](openai): (client only) provides a simple interface to interact with the OpenAI API
-- [fastchat](fastchat): deprecated
-- [ollama](ollama): deprecated
+- [openai](openai): (client only) provides a simple interface to interact with the OpenAI APIs
 
 ## Start an API
 
