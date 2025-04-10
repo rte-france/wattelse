@@ -126,7 +126,7 @@ def main_page(request):
 
 
 @login_required
-@require_GET
+@require_POST
 def query_rag(request):
     """
     Main function for RAG calls.
