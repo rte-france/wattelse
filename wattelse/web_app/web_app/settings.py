@@ -19,11 +19,12 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 # these three lines swap the stdlib sqlite3 lib with the pysqlite3 package
 __import__("pysqlite3")
 import sys
+import os
 
 sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 from pathlib import Path
-from wattelse.rag_backend import BASE_DATA_PATH
+from wattelse import BASE_DATA_PATH
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,7 +36,7 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-wsa9k4v_goql%t8rn@q4*5flo+xnnxa%8!^p2g(4g-=py==ur)"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -58,7 +59,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "chatbot",
+    "accounts",
+    "home",
+    "gpt",
+    "doc",
 ]
 
 MIDDLEWARE = [
@@ -69,6 +73,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 ROOT_URLCONF = "web_app.urls"
@@ -84,7 +89,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "chatbot.context_processors.versioning",
+                "doc.context_processors.versioning",
             ],
         },
     },
@@ -139,6 +144,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = "/static/"
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+STATIC_ROOT = BASE_DATA_PATH / "staticfiles"
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
@@ -152,3 +166,7 @@ SESSION_COOKIE_AGE = 24 * 60 * 60  # 24 hours
 # Static files versioning to avoid browser cache (Javascript, CSS)
 
 STATIC_VERSION = "1.12"
+
+# Login URL for the login_required decorator
+
+LOGIN_URL = "/login"

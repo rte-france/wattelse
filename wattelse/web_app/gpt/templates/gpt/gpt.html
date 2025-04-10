@@ -1,0 +1,99 @@
+{% extends 'global.html' %}
+
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/gpt_doc_common.css' %}" />
+<link rel="stylesheet" href="{% static 'gpt/gpt.css' %}" />
+{% endblock %}
+
+{% block content %}
+
+{{ user.username|json_script:'user_name' }}
+
+<!-- Main container for the page -->
+<div class="main-container">
+
+  <!-- Chat container -->
+  <div class="chat-container">
+    <!-- Top bar div -->
+    {% include 'top_bar.html' %}
+    <!-- Chat history div -->
+    <div class="chat-conversation" id="{{ conversation_id }}">
+      <!-- Messages will be displayed here -->
+    </div>
+
+    <!-- Message input field (everything in this div will be fixed at the bottom) -->
+    <div class="chat-input">
+      <textarea
+        type="text"
+        class="input-field"
+        placeholder="Demander à WattElse"
+      ></textarea>
+      <div class="chat-button-container">
+        <button class="send-button" title="Envoyer">
+          <img src="{% static 'icons/arrow-up.svg' %}" class="icon" />
+        </button>
+        <button class="new-conversation-button" title="Nouvelle conversation">
+          <img src="{% static 'icons/plus.svg' %}" class="icon" />
+        </button>
+      </div>
+    </div>
+    <div class="disclaimer">
+      Ce modèle peut générer des informations inexactes. Vérifiez ses réponses.
+    </div>
+  </div>
+
+  <!-- Sidebar container -->
+  <div class="side-bar">
+    <div class="history-container">
+      <details open>
+        <summary>Aujourd'hui</summary>
+        <ul id="today-history">
+          {% for conversation in conversations.today %}
+          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+
+      <details open>
+        <summary>7 derniers jours</summary>
+        <ul id="last-week-history">
+          {% for conversation in conversations.last_week %}
+          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+
+      <details open>
+        <summary>Archives</summary>
+        <ul id="archives-history">
+          {% for conversation in conversations.others %}
+          <li id="{{ conversation.id }}">{{ conversation.title }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+    </div>
+  </div>
+</div>
+
+<!-- Load script for chatbot page -->
+{% load static %}
+<script
+  type="module"
+  src="{% static 'js/gpt_doc_common.js' %}?v={{ STATIC_VERSION }}"
+></script>
+<script
+  type="module"
+  src="{% static 'gpt/gpt.js' %}?v={{ STATIC_VERSION }}"
+></script>
+
+<!-- Use Markdwon-it and Highlight.js for better rendering -->
+<script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-dark.min.css"
+/>
+
+{% endblock %}

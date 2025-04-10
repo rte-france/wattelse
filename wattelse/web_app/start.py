@@ -12,6 +12,5 @@ command = [
     "manage.py",
     "runserver",
     f"{CONFIG.host}:{CONFIG.port}",
-    "--insecure",
 ]
 subprocess.run(command)

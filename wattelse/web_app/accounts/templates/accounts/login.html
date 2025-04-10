@@ -1,0 +1,38 @@
+{% extends 'global.html' %}
+
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/accounts.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="accounts-container">
+  <div class="form-container">
+    <div class="form-container-title">Connexion</div>
+    <!-- Print error message if form is not valid-->
+    {% if error_message %}
+    <div class="form-error">{{ error_message }}</div>
+    {% endif %}
+  
+    <!-- Login form -->
+    <form method="post">
+      {% csrf_token %}
+      <label class="form-label" for="username">Nom d'utilisateur :</label>
+      <input class="form-input" type="text" id="username" name="username" required>
+
+      <label class="form-label" for="password">Mot de passe :</label>
+      <input class="form-input" type="password" name="password" id="password" required>
+
+      <button class="form-button" type="submit"><img src="{% static 'icons/arrow-right-white.svg' %}" class="icon"></button>
+    </form>
+  
+    <!-- New user link -->
+    <p class="form-footnote">Nouvel utilisateur ? <u><a href="{% url 'accounts:register' %}">Créez un compte.</a></u></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'home/home.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'global.html' %}
+
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/accounts.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="accounts-container">
+  <div class="form-container">
+    <div class="form-container-title">Inscription</div>
+    <!-- Print error message if form is not valid -->
+    {% if error_message %}
+    <div class="form-error">{{ error_message }}</div>
+    {% endif %}
+  
+    <!-- Register form -->
+    <form method="post">
+      {% csrf_token %}
+      <label class="form-label" for="username">Nom d'utilisateur :</label>
+      <input class="form-input" type="text" id="username" name="username" required>
+  
+      <label class="form-label" for="password1">Mot de passe :</label>
+      <input class="form-input" type="password" name="password1" id="password1" required>
+  
+      <label class="form-label" for="password2">Confirmez le mot de passe :</label>
+      <input class="form-input" type="password" name="password2" id="password2" required>
+  
+      <button class="form-button" type="submit"><img src="{% static 'icons/arrow-right-white.svg' %}" class="icon"></button>
+    </form>
+  
+    <!-- Go back to login page -->
+    <p class="form-footnote"><u><a href="{% url 'accounts:login' %}">J'ai déjà un compte.</a></u></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'home/home.js' %}"></script>
+{% endblock %}

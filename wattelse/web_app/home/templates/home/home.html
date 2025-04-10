@@ -1,0 +1,43 @@
+{% extends 'global.html' %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'home/home.css' %}" />
+{% endblock %}
+{% block content %}
+
+<div class="main-container">
+  {% include 'top_bar.html' %}
+  <div class="home-container">
+    <div class="home-title">
+      <img src="{% static 'icons/wattelse.svg' %}" class="icon" />WattElse
+    </div>
+    <div class="app-container">
+      <button
+        id="gpt-button"
+        class="app-button gpt"
+        data-url="{% url 'gpt:main_page' %}"
+      >
+        <div class="app-button-title">GPT</div>
+        <div class="app-button-description">
+          IA générative sécurisée pour vous aider dans vos tâches quotidiennes
+        </div>
+      </button>
+      <button
+        id="doc-button"
+        class="app-button doc"
+        data-url="{% url 'doc:main_page' %}"
+      >
+        <div class="app-button-title">DOC</div>
+        <div class="app-button-description">
+          Moteur de recherche augmenté par IA connecté à vos documents
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'home/home.js' %}"></script>
+{% endblock %}

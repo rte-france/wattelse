@@ -1,0 +1,190 @@
+/*
+ * Copyright (c) 2024, RTE (https://www.rte-france.com)
+ * See AUTHORS.txt
+ * SPDX-License-Identifier: MPL-2.0
+ * This file is part of Wattelse, a NLP application suite.
+ */
+
+/* Global variables */
+:root {
+  --background-color: white;
+  --wattelse-lightning-color: #6495ed;
+  --soft-blue: aliceblue;
+  --soft-green: #f0fff7;
+  --soft-grey: whitesmoke;
+  --softer-grey: #f9f9f9;
+  --complementary-color: #fa8b4f;
+  --user-button-size: 35px;
+}
+
+/* Default HTML element styles */
+body,
+html {
+  font-family: "Open Sans", sans-serif;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--background-color);
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+hr {
+  border: none;
+  border-top: solid 2px lightgray;
+  width: 100%; /* Make sure it spans the full width */
+}
+
+/* Make icons the same size as text */
+.icon {
+  width: 1em;
+  height: 1em;
+}
+
+/* Top bar for title and user menu */
+.top-bar {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+/* Style for highlight.js */
+.hljs {
+  overflow-x: scroll !important;
+  padding: 1em;
+  border-radius: 5px;
+}
+
+code:not(.hljs code) {
+  background-color: var(--soft-grey);
+  border-radius: 5px;
+  padding: 0 5px;
+}
+
+.copy-code-button {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  top: 8px;
+  right: 8px;
+  background-color: transparent;
+  color: var(--soft-grey);
+  height: 20px;
+  border: none;
+  border-radius: 10px;
+}
+
+/* WattElse top bar icon */
+.wattelse-top-bar {
+  display: flex;
+  align-items: center;
+  font-size: 1.5em;
+  font-weight: 800;
+}
+
+/* User Menu */
+.user-container {
+  position: relative;
+}
+
+.user-button {
+  width: var(--user-button-size);
+  height: var(--user-button-size);
+  border-radius: 50%;
+  background-color: var(--complementary-color);
+  border: none;
+  text-align: center;
+  font-weight: bold;
+  color: white;
+  border: none;
+  background-color: var(--complementary-color);
+}
+
+.user-menu {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  top: 100%;
+  right: 0;
+  margin: 10px;
+  display: none;
+  background-color: var(--background-color);
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid lightgray;
+  border-radius: 10px;
+  z-index: 1000;
+  font-size: 1.3em;
+}
+
+.user-menu-item {
+  white-space: nowrap;
+}
+
+.user-menu-icon {
+  padding-right: 5px;
+  width: 1em;
+  height: 1em;
+}
+
+/* Popup styles */
+.popup {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  color: white;
+  font-weight: 400;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  z-index: 1000;
+}
+
+.popup.success {
+  background-color: mediumseagreen;
+}
+
+.popup.error {
+  background-color: crimson;
+}
+
+/* User and group names */
+.groupname,
+.username {
+  color: var(--wattelse-lightning-color);
+  font-weight: 800;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 20px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #d6dee1;
+  border-radius: 20px;
+  border: 6px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #a8bbbf;
+}

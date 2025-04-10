@@ -22,4 +22,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-urlpatterns = [path("admin/", admin.site.urls), path("", include("chatbot.urls"))]
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("", include("accounts.urls")),
+    path("home/", include("home.urls")),
+    path("gpt/", include("gpt.urls")),
+    path("doc/", include("doc.urls")),
+]
