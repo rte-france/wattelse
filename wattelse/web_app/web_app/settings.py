@@ -24,11 +24,7 @@ import os
 sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 from pathlib import Path
-<<<<<<< HEAD
 from wattelse.rag_backend import BASE_DATA_PATH
-=======
-from wattelse import BASE_DATA_PATH
->>>>>>> e3a7b4b (First working version of django refactor)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
