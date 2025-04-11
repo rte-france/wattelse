@@ -81,14 +81,6 @@ python manage.py createsuperuser
 python manage.py collectstatic
 ```
 
-- Start Django server:
-
-```bash
-python start.py
-```
-
-Django web app should be running at: http://localhost:8000
-
 ## Launch WattElse
 
 To launch WattElse with all services, go to WattElse root folder and run:
@@ -101,7 +93,11 @@ This script starts all services in separated `screens`:
 
 - Embedding API
 - RAGOrchestrator API
-- Django
+- Django server
+
+Django web app should be running at: http://localhost:8000
+
+For your first connection, you can use the superuser credentials you created earlier or create a new user.
 
 To stop all services, run:
 
