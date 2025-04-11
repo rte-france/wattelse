@@ -42,10 +42,13 @@ class RAGOrchestratorClient(APIClient):
         client_secret: str = os.getenv("WATTELSE_CLIENT_SECRET", None),
     ):
         super().__init__(url, client_id, client_secret)
-        if self.check_service():
-            logger.debug("RAG Orchestrator is running")
-        else:
-            logger.error("Check RAG Orchestrator, does not seem to be running")
+        try:
+            if self.check_service():
+                logger.debug("RAG Orchestrator is running")
+            else:
+                logger.warning("RAGOrchestrator API is not running")
+        except:
+            logger.warning("RAGOrchestrator API is not running")
 
     def check_service(self) -> bool:
         """Check if RAG Orchestrator is running"""
