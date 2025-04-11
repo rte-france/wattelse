@@ -23,7 +23,7 @@ from langchain_core.document_loaders import BaseLoader
 from langchain_core.documents import Document
 from langchain_core.documents.base import Blob
 
-from wattelse.rag_backend.indexer import CODE_EXTENSIONS, CFG_EXTENSIONS
+from wattelse.rag_backend.indexer import CODE_EXTENSIONS, CFG_EXTENSIONS, CODE_MAPPING
 
 
 class ParsingException(Exception):
@@ -145,7 +145,7 @@ def _parse_language(file: Path, extension: str) -> List[Document]:
     # Each top-level function and class in the code is loaded into separate documents. Furthermore, an extra document
     # is generated, containing the remaining top-level code that excludes the already segmented functions and classes.
     blob = Blob.from_path(file)
-    parser = LanguageParser(language=extension[1:])
+    parser = LanguageParser(language=CODE_MAPPING[extension])
     return parser.parse(blob)
 
 
