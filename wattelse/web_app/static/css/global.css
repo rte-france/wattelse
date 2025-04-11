@@ -9,8 +9,8 @@
 :root {
   --background-color: white;
   --wattelse-lightning-color: #6495ed;
-  --soft-blue: aliceblue;
-  --soft-green: #f0fff7;
+  --soft-blue: rgb(202, 230, 255);
+  --soft-green: #d3fde7;
   --soft-grey: whitesmoke;
   --softer-grey: #f9f9f9;
   --complementary-color: #fa8b4f;
