@@ -24,6 +24,11 @@ from .utils import (
 
 LLM_CLIENT = OpenAI(base_url=CONFIG.gpt.base_url, api_key=CONFIG.gpt.api_key)
 
+LLM_MAPPING = {
+    "gpt-4o-mini": "GPT-4o mini",
+    "mistral-large-2411": "Mistral Large",
+}
+
 
 @login_required
 @require_GET
@@ -35,12 +40,16 @@ def main_page(request):
     # Get user conversation history
     conversations = get_user_conversations(request.user)
 
+    # Get available model names
+    models = [
+        {"model_id": model.id, "model_name": LLM_MAPPING[model.id]}
+        for model in LLM_CLIENT.models.list().data
+    ]
+
     return render(
         request,
         "gpt/gpt.html",
-        context={
-            "conversations": conversations,
-        },
+        context={"conversations": conversations, "models": models},
     )
 
 
