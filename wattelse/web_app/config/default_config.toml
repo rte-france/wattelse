@@ -1,2 +1,10 @@
+[django]
 host = "0.0.0.0"
 port = "8000"
+
+[gpt]
+base_url = "$LITELLM_WATTELSE_BASE_URL"
+api_key = "$LITELLM_WATTELSE_API_KEY"
+default_model = "mistral-large"
+max_tokens = 2000
+max_messages = 12

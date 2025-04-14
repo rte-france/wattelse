@@ -4,8 +4,9 @@
 #  This file is part of Wattelse, a NLP application suite.
 
 from pathlib import Path
-import tomllib
 from pydantic_settings import BaseSettings
+
+from wattelse.config_utils import load_toml_config
 
 
 class DjangoConfig(BaseSettings):
@@ -13,7 +14,19 @@ class DjangoConfig(BaseSettings):
     port: str
 
 
+class GPTConfig(BaseSettings):
+    base_url: str
+    api_key: str
+    default_model: str
+    max_tokens: int
+    max_messages: int
+
+
+class GlobalConfig(BaseSettings):
+    django: DjangoConfig
+    gpt: GPTConfig
+
+
 # Load config file
 config_file = Path(__file__).parent / "default_config.toml"
-with open(config_file, "rb") as f:
-    CONFIG = DjangoConfig(**tomllib.load(f))
+CONFIG = GlobalConfig(**load_toml_config(config_file))
