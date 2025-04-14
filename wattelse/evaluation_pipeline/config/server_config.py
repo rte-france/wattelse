@@ -6,7 +6,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
-from wattelse.common.config_utils import load_toml_config
+from wattelse.config_utils import load_toml_config
 
 
 @dataclass

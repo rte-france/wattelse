@@ -10,7 +10,7 @@ import pandas as pd
 from loguru import logger
 from pathlib import Path
 from tqdm import tqdm
-from wattelse.chatbot.backend.rag_backend import RAGBackend
+from wattelse.rag_backend.rag_backend import RAGBackend
 from wattelse.evaluation_pipeline import (
     BASE_DIR,
     BASE_DATA_DIR,
@@ -18,7 +18,7 @@ from wattelse.evaluation_pipeline import (
     BASE_OUTPUT_DIR,
 )
 
-CONFIG_RAG = "azure_20241216"
+CONFIG_RAG = "mistral_20250123"
 QUERY_COLUMN = "question"
 DOC_LIST_COLUMN = "source_doc"
 RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
