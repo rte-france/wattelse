@@ -41,6 +41,7 @@ def parse_eval_response(eval_text, metric_key, regex_patterns):
     }
 
 
+# FIXME Redundant kwargs parameters
 def evaluate_metrics(
     llm_client, question, answer, context_extracted, config: EvalConfig
 ) -> dict:
@@ -62,7 +63,7 @@ def evaluate_metrics(
     regex_patterns = config.get_regex_patterns(model_name)
 
     # TODO : modify existing OpenAI_Client() to control the max_tokens
-    custom_timeout = 300.0  # 5 minutes instead of default 60 seconds (Necessary for reasoning models)
+    custom_timeout = 500.0  # 8 minutes instead of default 60 seconds (Necessary for reasoning models)
     kwargs = {"max_tokens": 2048, "timeout": Timeout(custom_timeout, connect=10.0)}
 
     evaluations = {}
@@ -107,7 +108,13 @@ def evaluate_metrics(
 
 def evaluate_row(row: pd.Series, config: EvalConfig) -> dict:
     """Function to evaluate a single row of data (question, answer, and context)."""
-    llm_client = OpenAI_Client()  # Initialize the LLM client inside the worker function
+    # Initialize the LLM client inside the worker function
+    llm_client = OpenAI_Client()
+
+    # Override both timeout and max_tokens directly on the client instance
+    llm_client.llm_client.timeout = Timeout(500.0, connect=10.0)
+    llm_client.max_tokens = 2048  # Set the max_tokens to match your desired value
+
     try:
         question = row[QUERY_COLUMN]
         context_extracted = row[RAG_RELEVANT_EXTRACTS_COLUMN]

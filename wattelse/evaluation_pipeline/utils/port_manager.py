@@ -146,7 +146,7 @@ class PortManager:
             self.logger.info(f"Waiting for server to start on port {port}...")
             time.sleep(check_interval)
 
-    def ensure_port_free(self, port, timeout=240, force=False, verbose=True):
+    def ensure_port_free(self, port, timeout=420, force=False, verbose=True):
         """Ensure a port is free by killing any process and waiting for availability.
 
         Args:

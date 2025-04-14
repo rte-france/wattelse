@@ -135,8 +135,21 @@ def main(
 
     # Initialize RAG backend
     eval_group_id = "rag_eval"
+
+    # First, create a RAG backend instance
     RAG_EVAL_BACKEND = RAGBackend(eval_group_id, CONFIG_RAG)
-    RAG_EVAL_BACKEND.clear_collection()
+
+    # Then clear the collection
+    try:
+        RAG_EVAL_BACKEND.clear_collection()
+        logger.info("Cleared existing collection")
+    except Exception as e:
+        logger.warning(f"Error clearing collection: {e}")
+
+    # After clearing, recreate the RAG backend to initialize a fresh collection
+    # This is necessary because clear_collection() deletes the collection completely
+    RAG_EVAL_BACKEND = RAGBackend(eval_group_id, CONFIG_RAG)
+
     logger.info(f"RAG Backend initialized with LLM: {RAG_EVAL_BACKEND.llm.model_name}")
 
     # Get embedding API model name directly from the RAG Backend's config
@@ -162,13 +175,40 @@ def main(
             raise ValueError(f"Document {doc} not found in eval corpus folder")
 
     # Load eval docs in RAG backend
+    documents_added = False
     for doc in tqdm(
         eval_corpus_path.iterdir(), desc="Loading documents into RAG Backend"
     ):
         if doc.name in all_doc_list:
-            with open(doc, "rb") as f:
-                RAG_EVAL_BACKEND.add_file_to_collection(doc.name, f)
-                logger.info(f"Added {doc.name} to collection")
+            try:
+                with open(doc, "rb") as f:
+                    RAG_EVAL_BACKEND.add_file_to_collection(doc.name, f)
+                    logger.info(f"Added {doc.name} to collection")
+                    documents_added = True
+            except Exception as e:
+                logger.error(f"Error adding {doc.name} to collection: {e}")
+                # If we have an error, we might need to recreate the backend
+                if not documents_added:
+                    logger.warning("Document loading failed, recreating RAG backend")
+                    # Recreate the RAG backend instance to ensure fresh collection
+                    RAG_EVAL_BACKEND = RAGBackend(eval_group_id, CONFIG_RAG)
+                    # Try again with the same document
+                    try:
+                        with open(doc, "rb") as f_retry:
+                            RAG_EVAL_BACKEND.add_file_to_collection(doc.name, f_retry)
+                            logger.info(
+                                f"Successfully added {doc.name} after recreating backend"
+                            )
+                            documents_added = True
+                    except Exception as e_retry:
+                        logger.error(f"Failed on retry: {e_retry}")
+                        raise ValueError(
+                            "Could not add documents to collection after recreating the backend"
+                        )
+
+    # Make sure at least some documents were added
+    if not documents_added:
+        raise ValueError("No documents were successfully added to the collection")
 
     # Get Prompts configurations
     prompt_configs = {
@@ -231,24 +271,34 @@ def main(
 
         # Measure retriever time
         retriever_start_time = time.time()
-        retriever = RAG_EVAL_BACKEND.document_collection.collection.as_retriever()
-        _ = retriever.get_relevant_documents(row[QUERY_COLUMN])
-        retriever_time = time.time() - retriever_start_time
+        try:
+            retriever = RAG_EVAL_BACKEND.document_collection.collection.as_retriever()
+            _ = retriever.get_relevant_documents(row[QUERY_COLUMN])
+            retriever_time = time.time() - retriever_start_time
+        except Exception as e:
+            logger.error(f"Error during retrieval: {e}")
+            retriever_time = 0
 
         # Measure query time
         start_time = time.time()
-        response = RAG_EVAL_BACKEND.query_rag(
-            row[QUERY_COLUMN], selected_files=row[DOC_LIST_COLUMN]
-        )
-        query_time = time.time() - start_time
+        try:
+            response = RAG_EVAL_BACKEND.query_rag(
+                row[QUERY_COLUMN], selected_files=row[DOC_LIST_COLUMN]
+            )
+            query_time = time.time() - start_time
 
-        answer = response.get("answer", "")
-        relevant_extracts = [
-            re.sub(SPECIAL_CHARACTER_FILTER, " ", extract["content"])
-            for extract in response.get(
-                "relevant_extracts", []
-            )  # TODO: Modify this to rag_relevant_extracts
-        ]
+            answer = response.get("answer", "")
+            relevant_extracts = [
+                re.sub(SPECIAL_CHARACTER_FILTER, " ", extract["content"])
+                for extract in response.get(
+                    "relevant_extracts", []
+                )  # TODO: Modify this to rag_relevant_extracts
+            ]
+        except Exception as e:
+            logger.error(f"Error during query: {e}")
+            query_time = 0
+            answer = f"Error: {str(e)}"
+            relevant_extracts = []
 
         logger.info(f"RAG Answer for question '{row[QUERY_COLUMN]}': {answer}")
         logger.info(f"RAG Relevant Extracts: {relevant_extracts}")
@@ -317,8 +367,13 @@ def main(
 
     logger.info(f"Predictions and configurations saved to {predictions_output_path}")
 
-    # Clear RAG backend
-    RAG_EVAL_BACKEND.clear_collection()
+    # Try to properly clean up, but don't crash if it fails
+    try:
+        # Don't clear the collection here as it might cause issues
+        # if we need to reuse the same backend later
+        pass
+    except Exception as e:
+        logger.warning(f"Error during cleanup: {e}")
 
 
 if __name__ == "__main__":
