@@ -241,3 +241,33 @@ class RAGOrchestratorClient(APIClient):
             raise RAGAPIError(
                 f"[Group: {group_id}] Error: {response.status_code, response.text}"
             )
+
+    # TODO : Implementing reindexing process for new embedding models
+    def reindex_documents(self, group_id: str, embedding_model: str = None) -> dict:
+        """Re-index all documents for a specific group with a new embedding model.
+        Saves time by avoiding the need to re-upload all documents.
+
+        Agrs:
+            group_id: Group ID to reindex
+            embedding_model: New embedding model name (uses current model if None)
+
+        Returns:
+            Status of the reindexing operation
+
+        Example:
+            response = client.reindex_documents("bilingual_group", "Lajavaness/bilingual-embedding-large")
+            logger.sucess(f"Reindexed {response['document_count']} documents")
+        """
+        # Will call the /reindex-docs/{group_id} endpoint
+
+        # Command line something like : `python reindex_embeddings.py --group energy-group-007 --embedding-model Lajavaness/bilingual-embedding-large`
+
+        payload = {}
+        if embedding_model:
+            payload["embedding_model"] = embedding_model
+
+        # Placeholder - will be replaced with actual implementation
+        logger.debug(
+            f"[Group: {group_id}] Reindexing with model: {embedding_model or 'current'}"
+        )
+        return {"message": "Reindexing not yet implemented"}
