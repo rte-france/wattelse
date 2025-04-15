@@ -15,6 +15,7 @@ from tqdm_joblib import tqdm_joblib
 from openai import Timeout
 from typing import Dict
 
+# FIXME Review Imports and function calling
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 from wattelse.evaluation_pipeline.config.server_config import ServerConfig
@@ -68,6 +69,7 @@ def parse_pairwise_response(
     winner_match = re.search(patterns["winner"], eval_text, re.DOTALL)
     winner_raw = winner_match.group(1).strip() if winner_match else "Unknown"
 
+    # FIXME Review name of each model style
     # Normalize winner to one of the expected values
     if model1_name in winner_raw:
         winner = model1_name
@@ -336,6 +338,7 @@ def evaluate_pairwise_metrics(
         return pd.DataFrame()
 
 
+# FIXME Only use cloud models, Supreme Judge LLM
 def setup_vllm_environment(
     model_name: str, eval_config: EvalConfig, server_config: ServerConfig
 ) -> Dict:
@@ -506,6 +509,7 @@ def main(
         logger.error(f"Traceback: {traceback.format_exc()}")
         sys.exit(1)
 
+    # FIXME Shouldn't need this, already sourced in configs, also judges might all be cloud-base
     # Select an appropriate model for evaluation
     # Look for a cloud model first
     cloud_models = [

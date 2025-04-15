@@ -249,9 +249,9 @@ python run_jury.py path/to/your/data.xlsx \
 #### For run_jury.py (Multiple Models)
 - `--output-dir`: Directory for evaluation results (default: "evaluation_results")
 
-# RAG Evaluation Framework
+# RAG Evaluation Framework (Criteria Evaluation + Pairwise Comparaison)
 
-## Evaluation Metrics (Coarsed-grained)
+## Criteria Evaluation Metrics (Coarsed-grained)
 
 This framework evaluates three key aspects of RAG systems using a consistent judgment scale from 1-5 (where 1 is very insufficient and 5 is very satisfactory).
 
@@ -283,6 +283,10 @@ Determines whether the retrieved context is relevant and sufficient to answer th
 
 Each metric is evaluated by LLM judges using carefully calibrated prompts specific to each model's capabilities and tendencies.
 
+## Pairwise Comparaison Evaluation Metrics
+
+TODO
+
 ## Output
 
 The pipeline generates:
@@ -311,7 +315,6 @@ The evaluation pipeline consists of several key components:
 4. **Prompt Management** (`prompt_eval.py`):
    - Stores evaluation prompts
    - Manages prompt templates
-
 
 ## Subdirectories
 
