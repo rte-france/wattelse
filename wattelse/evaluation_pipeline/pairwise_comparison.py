@@ -20,6 +20,7 @@ from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 from wattelse.evaluation_pipeline.config.server_config import ServerConfig
 from wattelse.evaluation_pipeline.utils.port_manager import PortManager
 from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
+from wattelse.evaluation_pipeline.prompts.regex_patterns import RegexPatterns
 from wattelse.evaluation_pipeline import (
     CONFIG_EVAL,
     RESULTS_BASE_DIR,
@@ -38,7 +39,9 @@ port_manager = PortManager(logger)
 app = typer.Typer()
 
 
-def parse_pairwise_response(eval_text: str, model1_name: str, model2_name: str) -> Dict:
+def parse_pairwise_response(
+    eval_text: str, model1_name: str, model2_name: str, judge_model_name: str = None
+) -> Dict:
     """
     Parse responses from pairwise comparison evaluation.
 
@@ -46,18 +49,23 @@ def parse_pairwise_response(eval_text: str, model1_name: str, model2_name: str) 
         eval_text: The raw evaluation text from the LLM
         model1_name: Name of the first model
         model2_name: Name of the second model
+        judge_model_name: Name of the judge model used for evaluation (optional)
 
     Returns:
         dict: Dictionary with parsed analysis, winner, and reason
     """
+    # Get the appropriate regex patterns using the RegexPatterns class
+    regex_patterns = RegexPatterns()
+    patterns = regex_patterns.get_pairwise_patterns(judge_model_name)
+
     # Extract analysis section
-    analysis_match = re.search(r"ANALYSIS:\s*(.*?)(?=WINNER:|$)", eval_text, re.DOTALL)
+    analysis_match = re.search(patterns["analysis"], eval_text, re.DOTALL)
     analysis = (
         analysis_match.group(1).strip() if analysis_match else "Analysis not found"
     )
 
     # Extract winner
-    winner_match = re.search(r"WINNER:\s*(.+?)(?=REASON:|$)", eval_text, re.DOTALL)
+    winner_match = re.search(patterns["winner"], eval_text, re.DOTALL)
     winner_raw = winner_match.group(1).strip() if winner_match else "Unknown"
 
     # Normalize winner to one of the expected values
@@ -71,7 +79,7 @@ def parse_pairwise_response(eval_text: str, model1_name: str, model2_name: str) 
         winner = "Unknown"
 
     # Extract reason
-    reason_match = re.search(r"REASON:\s*(.*?)$", eval_text, re.DOTALL)
+    reason_match = re.search(patterns["reason"], eval_text, re.DOTALL)
     reason = reason_match.group(1).strip() if reason_match else "Reason not found"
 
     return {"analysis": analysis, "winner": winner, "reason": reason}
@@ -150,7 +158,7 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
     # Initialize the LLM client
     llm_client = OpenAI_Client()
 
-    # Override timeout and max_tokens directly on the client instance
+    # FIXME Awkward calling (Override timeout and max_tokens directly on the client instance)
     llm_client.llm_client.timeout = Timeout(500.0, connect=10.0)
     llm_client.max_tokens = 2048
 
@@ -207,14 +215,14 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
                 "reason": "Unsupported metric type",
             }
 
-        # Generate evaluation using the same approach as in evaluate_metrics
-        custom_timeout = 500.0
-        kwargs = {"max_tokens": 2048, "timeout": Timeout(custom_timeout, connect=10.0)}
-
+        # Generate evaluation
+        kwargs = {"max_tokens": 2048, "timeout": Timeout(500.0, connect=10.0)}
         eval_text = llm_client.generate(prompt_text, **kwargs)
 
-        # Parse the response
-        results = parse_pairwise_response(eval_text, model1_name, model2_name)
+        # Parse the response using the judge model name for pattern selection
+        results = parse_pairwise_response(
+            eval_text, model1_name, model2_name, model_name
+        )
 
         # Add question and metric info
         results["question"] = question
@@ -308,6 +316,9 @@ def evaluate_pairwise_metrics(
                 model1_wins = sum(metric_results["winner"] == model1_name)
                 model2_wins = sum(metric_results["winner"] == model2_name)
                 ties = sum(metric_results["winner"] == "Tie")
+                errors = sum(metric_results["winner"] == "Error") + sum(
+                    metric_results["winner"] == "Unknown"
+                )
 
                 logger.info(f"\n{metric} Summary:")
                 logger.info(
@@ -317,13 +328,14 @@ def evaluate_pairwise_metrics(
                     f"  {model2_name}: {model2_wins} wins ({model2_wins/total:.1%})"
                 )
                 logger.info(f"  Ties: {ties} ({ties/total:.1%})")
+                if errors > 0:
+                    logger.warning(f"  Errors/Unknown: {errors} ({errors/total:.1%})")
 
         return all_metrics_df
     else:
         return pd.DataFrame()
 
 
-# FIXME Only use cloud models, a LLM Supreme Judge.
 def setup_vllm_environment(
     model_name: str, eval_config: EvalConfig, server_config: ServerConfig
 ) -> Dict:
@@ -494,26 +506,6 @@ def main(
         logger.error(f"Traceback: {traceback.format_exc()}")
         sys.exit(1)
 
-    # Load configurations
-    try:
-        eval_config = EvalConfig(resolved_config_path)
-        server_config = ServerConfig(resolved_server_config_path)
-
-        # Print active metrics for debugging
-        if hasattr(eval_config, "active_metrics"):
-            logger.info(f"Active metrics in config: {eval_config.active_metrics}")
-            pairwise_metrics = [
-                m for m in eval_config.active_metrics if m.endswith("_pairwise")
-            ]
-            logger.info(f"Pairwise metrics found: {pairwise_metrics}")
-
-    except Exception as e:
-        logger.error(f"Error loading configuration: {e}")
-        import traceback
-
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        sys.exit(1)
-
     # Select an appropriate model for evaluation
     # Look for a cloud model first
     cloud_models = [
@@ -562,6 +554,9 @@ def main(
                 model1_wins = sum(metric_results["winner"] == model1_name)
                 model2_wins = sum(metric_results["winner"] == model2_name)
                 ties = sum(metric_results["winner"] == "Tie")
+                errors = sum(metric_results["winner"] == "Error") + sum(
+                    metric_results["winner"] == "Unknown"
+                )
 
                 summary_data.append(
                     {
@@ -572,6 +567,8 @@ def main(
                         f"{model2_name}_win_pct": f"{model2_wins/total:.1%}",
                         "ties": ties,
                         "tie_pct": f"{ties/total:.1%}",
+                        "errors": errors,
+                        "error_pct": f"{errors/total:.1%}" if errors > 0 else "0.0%",
                         "total_comparisons": total,
                     }
                 )
