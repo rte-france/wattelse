@@ -6,6 +6,7 @@
 import re
 import typer
 import pandas as pd
+import numpy as np
 import os
 import sys
 from loguru import logger
@@ -13,20 +14,25 @@ from pathlib import Path
 from joblib import Parallel, delayed
 from tqdm_joblib import tqdm_joblib
 from openai import Timeout
+from typing import Dict
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.evaluation_pipeline import (
-    BASE_OUTPUT_DIR,
-    RESULTS_BASE_DIR,
-)
+from wattelse.evaluation_pipeline import CONFIG_EVAL, REPORT_PATH
 from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 from wattelse.evaluation_pipeline.config.server_config import ServerConfig
 from wattelse.evaluation_pipeline.utils.port_manager import PortManager
+from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
 
 # Column definitions
 QUERY_COLUMN = "question"
 ANSWER_COLUMN = "answer"
 RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
+
+# Define base directories - replace with your actual import if available
+if not "BASE_OUTPUT_DIR" in globals():
+    BASE_OUTPUT_DIR = Path("/DSIA/nlp/experiments/data_predictions")
+if not "RESULTS_BASE_DIR" in globals():
+    RESULTS_BASE_DIR = Path("/DSIA/nlp/experiments/results")
 
 # Directory for comparison data
 COMPARISON_DATA_DIR = Path("/DSIA/nlp/experiments/comparaison_data")
@@ -37,74 +43,43 @@ port_manager = PortManager(logger)
 app = typer.Typer()
 
 
-def resolve_config_path(config_path: Path) -> Path:
+def parse_pairwise_response(eval_text: str, model1_name: str, model2_name: str) -> Dict:
     """
-    Resolve the configuration file path, checking multiple locations.
+    Parse responses from pairwise comparison evaluation.
 
     Args:
-        config_path: Initial path to the config file
+        eval_text: The raw evaluation text from the LLM
+        model1_name: Name of the first model
+        model2_name: Name of the second model
 
     Returns:
-        Path: Resolved path to the config file
+        dict: Dictionary with parsed analysis, winner, and reason
     """
-    # Check if the path is absolute and exists
-    if config_path.is_absolute() and config_path.exists():
-        return config_path
+    # Extract analysis section
+    analysis_match = re.search(r"ANALYSIS:\s*(.*?)(?=WINNER:|$)", eval_text, re.DOTALL)
+    analysis = (
+        analysis_match.group(1).strip() if analysis_match else "Analysis not found"
+    )
 
-    # Check relative to current directory
-    if Path(config_path.name).exists():
-        return Path(config_path.name).absolute()
+    # Extract winner
+    winner_match = re.search(r"WINNER:\s*(.+?)(?=REASON:|$)", eval_text, re.DOTALL)
+    winner_raw = winner_match.group(1).strip() if winner_match else "Unknown"
 
-    # Check in the config directory relative to this file
-    config_dir = Path(__file__).parent / "config"
-    potential_path = config_dir / config_path.name
-    if potential_path.exists():
-        return potential_path
+    # Normalize winner to one of the expected values
+    if model1_name in winner_raw:
+        winner = model1_name
+    elif model2_name in winner_raw:
+        winner = model2_name
+    elif "tie" in winner_raw.lower() or "both" in winner_raw.lower():
+        winner = "Tie"
+    else:
+        winner = "Unknown"
 
-    # Check in the parent directory's config
-    parent_config_dir = Path(__file__).parent.parent / "config"
-    potential_path = parent_config_dir / config_path.name
-    if potential_path.exists():
-        return potential_path
+    # Extract reason
+    reason_match = re.search(r"REASON:\s*(.*?)$", eval_text, re.DOTALL)
+    reason = reason_match.group(1).strip() if reason_match else "Reason not found"
 
-    # Check in the evaluation_pipeline directory
-    eval_pipeline_dir = Path(__file__).parent
-    potential_path = eval_pipeline_dir / config_path.name
-    if potential_path.exists():
-        return potential_path
-
-    # If we can't find it, return the original path (which will fail)
-    return config_path
-
-
-def handle_output_path_custom(path: Path, overwrite: bool) -> Path:
-    """
-    Custom function to handle output path with proper overwrite behavior.
-
-    Args:
-        path: The desired output path
-        overwrite: Whether to overwrite existing files
-
-    Returns:
-        Path: The final output path
-    """
-    if not overwrite and path.exists():
-        # If overwrite is False and the file exists, create a new filename
-        base_name = path.stem
-        extension = path.suffix
-        directory = path.parent
-
-        counter = 1
-        while True:
-            new_name = f"{base_name}_{counter}{extension}"
-            new_path = directory / new_name
-            if not new_path.exists():
-                logger.info(f"File {path} exists, saving to {new_path} instead")
-                return new_path
-            counter += 1
-
-    # If overwrite is True or file doesn't exist, return the original path
-    return path
+    return {"analysis": analysis, "winner": winner, "reason": reason}
 
 
 def merge_datasets(
@@ -165,43 +140,22 @@ def merge_datasets(
     return merged_df
 
 
-def parse_pairwise_response(eval_text: str, model1_name: str, model2_name: str) -> dict:
-    """Parse responses from pairwise comparison evaluation."""
+def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Dict:
+    """
+    Evaluate a single row for pairwise comparison on the specified metric.
 
-    # Extract analysis section
-    analysis_match = re.search(r"ANALYSIS:\s*(.*?)(?=WINNER:|$)", eval_text, re.DOTALL)
-    analysis = (
-        analysis_match.group(1).strip() if analysis_match else "Analysis not found"
-    )
+    Args:
+        row: The DataFrame row containing question, answers, and contexts
+        metric: The pairwise metric to evaluate
+        config: The evaluation configuration
 
-    # Extract winner
-    winner_match = re.search(r"WINNER:\s*(.+?)(?=REASON:|$)", eval_text, re.DOTALL)
-    winner_raw = winner_match.group(1).strip() if winner_match else "Unknown"
-
-    # Normalize winner to one of the expected values
-    if model1_name in winner_raw:
-        winner = model1_name
-    elif model2_name in winner_raw:
-        winner = model2_name
-    elif "tie" in winner_raw.lower() or "both" in winner_raw.lower():
-        winner = "Tie"
-    else:
-        winner = "Unknown"
-
-    # Extract reason
-    reason_match = re.search(r"REASON:\s*(.*?)$", eval_text, re.DOTALL)
-    reason = reason_match.group(1).strip() if reason_match else "Reason not found"
-
-    return {"analysis": analysis, "winner": winner, "reason": reason}
-
-
-def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> dict:
-    """Evaluate a single row for pairwise comparison on the specified metric."""
-
+    Returns:
+        dict: Dictionary with evaluation results
+    """
     # Initialize the LLM client
     llm_client = OpenAI_Client()
 
-    # Override timeout and max_tokens
+    # Override timeout and max_tokens directly on the client instance
     llm_client.llm_client.timeout = Timeout(500.0, connect=10.0)
     llm_client.max_tokens = 2048
 
@@ -210,11 +164,27 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> di
         model1_name = row["model1_name"]
         model2_name = row["model2_name"]
 
+        # Use the EvalConfig to get the appropriate prompt for this metric and model
+        model_name = getattr(llm_client, "model_name", config.default_model)
+
+        try:
+            prompt = config.get_prompt(metric, model_name)
+        except ValueError as e:
+            logger.error(f"Error getting prompt for {metric}: {e}")
+            return {
+                "question": question,
+                "metric": metric,
+                "analysis": f"Error: Metric '{metric}' not configured",
+                "winner": "Error",
+                "reason": f"Configuration error: {str(e)}",
+            }
+
+        # Format prompt based on metric type
         if metric == "correctness_pairwise":
             answer1 = row[f"{ANSWER_COLUMN}_model1"]
             answer2 = row[f"{ANSWER_COLUMN}_model2"]
 
-            prompt = config.get_prompt(metric, config.default_model).format(
+            prompt_text = prompt.format(
                 question=question,
                 model1_name=model1_name,
                 answer1=answer1,
@@ -225,7 +195,7 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> di
             context1 = row[f"{RAG_RELEVANT_EXTRACTS_COLUMN}_model1"]
             context2 = row[f"{RAG_RELEVANT_EXTRACTS_COLUMN}_model2"]
 
-            prompt = config.get_prompt(metric, config.default_model).format(
+            prompt_text = prompt.format(
                 question=question,
                 model1_name=model1_name,
                 context1=context1,
@@ -233,14 +203,22 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> di
                 context2=context2,
             )
         else:
-            raise ValueError(f"Unsupported pairwise metric: {metric}")
+            logger.warning(f"Unknown pairwise metric type: {metric}")
+            return {
+                "question": question,
+                "metric": metric,
+                "analysis": f"Error: Unsupported metric '{metric}'",
+                "winner": "Error",
+                "reason": "Unsupported metric type",
+            }
 
-        # Generate evaluation
-        eval_text = llm_client.generate(
-            prompt, max_tokens=2048, timeout=Timeout(500.0, connect=10.0)
-        )
+        # Generate evaluation using the same approach as in evaluate_metrics
+        custom_timeout = 500.0
+        kwargs = {"max_tokens": 2048, "timeout": Timeout(custom_timeout, connect=10.0)}
 
-        # Parse response
+        eval_text = llm_client.generate(prompt_text, **kwargs)
+
+        # Parse the response
         results = parse_pairwise_response(eval_text, model1_name, model2_name)
 
         # Add question and metric info
@@ -255,6 +233,10 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> di
 
     except Exception as e:
         logger.error(f"Error in pairwise evaluation: {e}")
+        import traceback
+
+        logger.error(f"Traceback: {traceback.format_exc()}")
+
         return {
             "question": row[QUERY_COLUMN],
             "metric": metric,
@@ -279,18 +261,18 @@ def evaluate_pairwise_metrics(
     """
     logger.info(f"LLM Evaluation model: {OpenAI_Client().model_name}")
 
-    # Get pairwise metrics from config
-    metrics = [m for m in config.active_metrics if m.endswith("_pairwise")]
+    # Filter for pairwise metrics from active metrics
+    pairwise_metrics = [m for m in config.active_metrics if m.endswith("_pairwise")]
 
-    if not metrics:
+    if not pairwise_metrics:
         logger.warning(
-            "No pairwise metrics found in config. Please ensure you have enabled metrics like 'correctness_pairwise' or 'retrievability_pairwise'"
+            "No pairwise metrics found in active metrics. Please ensure metrics like 'correctness_pairwise' or 'retrievability_pairwise' are enabled in your config."
         )
         return pd.DataFrame()
 
     results_dfs = []
 
-    for metric in metrics:
+    for metric in pairwise_metrics:
         logger.info(f"Running pairwise comparison for metric: {metric}")
 
         # Wrap the Parallel execution with tqdm_joblib to show progress
@@ -323,7 +305,7 @@ def evaluate_pairwise_metrics(
         model1_name = comparison_df["model1_name"].values[0]
         model2_name = comparison_df["model2_name"].values[0]
 
-        for metric in metrics:
+        for metric in pairwise_metrics:
             metric_results = all_metrics_df[all_metrics_df["metric"] == metric]
             total = len(metric_results)
 
@@ -348,7 +330,7 @@ def evaluate_pairwise_metrics(
 
 def setup_vllm_environment(
     model_name: str, eval_config: EvalConfig, server_config: ServerConfig
-) -> dict:
+) -> Dict:
     """
     Set up the environment for local VLLM models.
 
@@ -386,6 +368,46 @@ def extract_model_name_from_file(filename: str) -> str:
     return filename.split(".")[0]  # Fallback to filename without extension
 
 
+def resolve_config_path(config_path: Path) -> Path:
+    """
+    Resolve the configuration file path, checking multiple locations.
+
+    Args:
+        config_path: Initial path to the config file
+
+    Returns:
+        Path: Resolved path to the config file
+    """
+    # Check if the path is absolute and exists
+    if config_path.is_absolute() and config_path.exists():
+        return config_path
+
+    # Check relative to current directory
+    if Path(config_path.name).exists():
+        return Path(config_path.name).absolute()
+
+    # Check in the config directory relative to this file
+    config_dir = Path(__file__).parent / "config"
+    potential_path = config_dir / config_path.name
+    if potential_path.exists():
+        return potential_path
+
+    # Check in the parent directory's config
+    parent_config_dir = Path(__file__).parent.parent / "config"
+    potential_path = parent_config_dir / config_path.name
+    if potential_path.exists():
+        return potential_path
+
+    # Check in the evaluation_pipeline directory
+    eval_pipeline_dir = Path(__file__).parent
+    potential_path = eval_pipeline_dir / config_path.name
+    if potential_path.exists():
+        return potential_path
+
+    # If we can't find it, return the original path (which will fail)
+    return config_path
+
+
 @app.command()
 def main(
     set1_filename: str = typer.Argument(
@@ -394,11 +416,11 @@ def main(
     set2_filename: str = typer.Argument(
         ..., help="Filename of the second model's evaluation results"
     ),
-    config_path: str = typer.Option(
-        "pair_jury_01.toml", help="Path to the evaluation configuration file"
+    config_path: Path = typer.Option(
+        CONFIG_EVAL, help="Path to the evaluation configuration file"
     ),
-    server_config_path: str = typer.Option(
-        "server_config.toml", help="Path to the server configuration file"
+    server_config_path: Path = typer.Option(
+        Path("server_config.toml"), help="Path to the server configuration file"
     ),
     output_dir: str = typer.Option(
         "pairwise_results", help="Directory to save comparison results"
@@ -437,9 +459,9 @@ def main(
     merged_df.to_excel(merged_path, index=False)
     logger.info(f"Merged dataset saved to {merged_path}")
 
-    # Resolve configuration paths
-    resolved_config_path = resolve_config_path(Path(config_path))
-    resolved_server_config_path = resolve_config_path(Path(server_config_path))
+    # Resolve configuration paths - using provided paths with CONFIG_EVAL as default
+    resolved_config_path = resolve_config_path(config_path)
+    resolved_server_config_path = resolve_config_path(server_config_path)
 
     if not resolved_config_path.exists():
         logger.error(f"Configuration file not found: {config_path}")
@@ -457,13 +479,62 @@ def main(
     logger.info(f"Using server config file: {resolved_server_config_path}")
 
     # Load configurations
-    eval_config = EvalConfig(resolved_config_path)
-    server_config = ServerConfig(resolved_server_config_path)
+    try:
+        eval_config = EvalConfig(resolved_config_path)
+        server_config = ServerConfig(resolved_server_config_path)
 
-    # Setup environment for OpenAI client
-    os.environ.update(
-        setup_vllm_environment(eval_config.default_model, eval_config, server_config)
-    )
+        # Print active metrics for debugging
+        if hasattr(eval_config, "active_metrics"):
+            logger.info(f"Active metrics in config: {eval_config.active_metrics}")
+            pairwise_metrics = [
+                m for m in eval_config.active_metrics if m.endswith("_pairwise")
+            ]
+            logger.info(f"Pairwise metrics found: {pairwise_metrics}")
+
+    except Exception as e:
+        logger.error(f"Error loading configuration: {e}")
+        import traceback
+
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        sys.exit(1)
+
+    # Load configurations
+    try:
+        eval_config = EvalConfig(resolved_config_path)
+        server_config = ServerConfig(resolved_server_config_path)
+
+        # Print active metrics for debugging
+        if hasattr(eval_config, "active_metrics"):
+            logger.info(f"Active metrics in config: {eval_config.active_metrics}")
+            pairwise_metrics = [
+                m for m in eval_config.active_metrics if m.endswith("_pairwise")
+            ]
+            logger.info(f"Pairwise metrics found: {pairwise_metrics}")
+
+    except Exception as e:
+        logger.error(f"Error loading configuration: {e}")
+        import traceback
+
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        sys.exit(1)
+
+    # Select an appropriate model for evaluation
+    # Look for a cloud model first
+    cloud_models = [
+        m
+        for m in eval_config.model_configs.keys()
+        if eval_config.get_model_config(m).get("deployment_type") == "cloud"
+    ]
+
+    if cloud_models:
+        eval_model = cloud_models[0]  # Use the first cloud model
+        logger.info(f"Using cloud model {eval_model} for evaluation")
+    else:
+        eval_model = eval_config.default_model
+        logger.info(f"No cloud models found, using default model {eval_model}")
+
+    # Update the environment with the selected model
+    os.environ.update(setup_vllm_environment(eval_model, eval_config, server_config))
 
     # Step 2: Run pairwise comparison
     full_output_dir = RESULTS_BASE_DIR / output_dir
@@ -471,7 +542,7 @@ def main(
 
     output_filename = f"pairwise_{model1_name}_vs_{model2_name}.xlsx"
     output_path = full_output_dir / output_filename
-    output_path = handle_output_path_custom(output_path, overwrite)
+    output_path = handle_output_path(output_path, overwrite)
 
     # Run evaluation - now reading metrics from config
     results_df = evaluate_pairwise_metrics(merged_df, eval_config)
@@ -483,9 +554,11 @@ def main(
 
         # Create a summary file
         summary_data = []
-        metrics = [m for m in eval_config.active_metrics if m.endswith("_pairwise")]
+        pairwise_metrics = [
+            m for m in eval_config.active_metrics if m.endswith("_pairwise")
+        ]
 
-        for metric in metrics:
+        for metric in pairwise_metrics:
             metric_results = results_df[results_df["metric"] == metric]
             total = len(metric_results)
 
@@ -509,7 +582,7 @@ def main(
 
         summary_df = pd.DataFrame(summary_data)
         summary_path = full_output_dir / f"summary_{model1_name}_vs_{model2_name}.xlsx"
-        summary_path = handle_output_path_custom(summary_path, overwrite)
+        summary_path = handle_output_path(summary_path, overwrite)
         summary_df.to_excel(summary_path, index=False)
         logger.success(f"Summary results saved to {summary_path}")
     else:

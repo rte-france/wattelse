@@ -6,6 +6,6 @@ model_name = "$AZURE_SE_WATTELSE_OPENAI_DEFAULT_MODEL_NAME_DEV"
 deployment_type = "cloud"
 api_base = "$AZURE_SE_WATTELSE_OPENAI_ENDPOINT_DEV"
 api_key = "$AZURE_SE_WATTELSE_OPENAI_API_KEY_DEV"
-prompt_type = "vanilla"
+prompt_type = "default"
 regex_type = "default"
 temperature = 0.0
