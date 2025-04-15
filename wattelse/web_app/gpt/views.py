@@ -52,15 +52,17 @@ def main_page(request):
     models = []
     for model in LLM_CLIENT.models.list().data:
         model_id = model.id
-        mapping = LLM_MAPPING[model_id]
-        model_data = {
-            "model_id": model_id,
-            "model_name": mapping["name"],
-            "provider": mapping["provider"],
-        }
-        models.append(model_data)
-        if model_id == DEFAULT_MODEL_ID:
-            default_model = model_data
+        # Add model to list if it is in the mapping
+        if model_id in LLM_MAPPING:
+            mapping = LLM_MAPPING[model_id]
+            model_data = {
+                "model_id": model_id,
+                "model_name": mapping["name"],
+                "provider": mapping["provider"],
+            }
+            models.append(model_data)
+            if model_id == DEFAULT_MODEL_ID:
+                default_model = model_data
 
     return render(
         request,
