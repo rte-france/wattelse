@@ -14,3 +14,67 @@
 .user-message {
   background-color: var(--soft-green);
 }
+
+/* Model selection div */
+.model-select {
+  position: relative;
+  user-select: none;
+}
+
+.model-select-selected {
+  padding: 7px 9px;
+  border: 1px solid #ccc;
+  background-color: white;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-select .select-items {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  background: #fff;
+  z-index: 99;
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.model-select .select-item {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.model-select .select-item:hover {
+  background-color: #f0f0f0;
+}
+
+.model-select.open .select-items {
+  display: block;
+}
+
+.model-select.open .model-select-selected {
+  border-radius: 0 0 6px 6px;
+}
+
+/* Adding arrow indicator */
+.model-select-selected::after {
+  content: "▼";
+  font-size: 10px;
+  margin-left: auto;
+  color: #666;
+}
+
+.model-select.open .model-select-selected::after {
+  content: "▲";
+}

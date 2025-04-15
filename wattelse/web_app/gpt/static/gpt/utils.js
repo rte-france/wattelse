@@ -12,6 +12,15 @@ import {
   addCopyButtonsToCodeBlocks,
 } from "../../../static/js/gpt_doc_common.js";
 
+// Global variables
+
+// Model selection elements
+export const modelSelect = document.getElementById("modelSelect");
+export const selectedModel = document.getElementById("selectedModel");
+export const modeloptions = modelSelect.querySelectorAll(
+  ".model-select .select-item"
+);
+
 /// Functions ///
 
 // Logic to handle user message
@@ -34,8 +43,7 @@ export function handleUserMessage(messageContent) {
 // Post user message to GPT and handle streaming response
 async function postUserMessageToGPT(userMessage, userMessageId) {
   // Get selected model name
-  const modelSelect = document.getElementById("model-select");
-  const model = modelSelect.value;
+  const model = selectedModel.dataset.value;
 
   // Get conversation id
   const conversationId = chatConversation.id;

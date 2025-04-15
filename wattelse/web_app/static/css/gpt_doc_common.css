@@ -162,6 +162,24 @@
 
 .chat-button-container {
   display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 5px;
+  justify-content: space-between;
+}
+
+.send-new-buttons {
+  display: flex;
+}
+
+.chat-button-container select {
+  background-color: inherit;
+  border-radius: 10px;
+  border: none;
+}
+
+.chat-button-container select:focus {
+  outline: none;
 }
 
 .send-button,

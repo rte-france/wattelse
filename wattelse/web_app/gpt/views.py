@@ -25,9 +25,17 @@ from .utils import (
 LLM_CLIENT = OpenAI(base_url=CONFIG.gpt.base_url, api_key=CONFIG.gpt.api_key)
 
 LLM_MAPPING = {
-    "gpt-4o-mini": "GPT-4o mini",
-    "mistral-large-2411": "Mistral Large",
+    "gpt-4o-mini": {
+        "name": "GPT-4o mini",
+        "provider": "openai",
+    },
+    "mistral-large-2411": {
+        "name": "Mistral Large",
+        "provider": "mistral",
+    },
 }
+
+DEFAULT_MODEL_ID = "mistral-large-2411"
 
 
 @login_required
@@ -41,15 +49,27 @@ def main_page(request):
     conversations = get_user_conversations(request.user)
 
     # Get available model names
-    models = [
-        {"model_id": model.id, "model_name": LLM_MAPPING[model.id]}
-        for model in LLM_CLIENT.models.list().data
-    ]
+    models = []
+    for model in LLM_CLIENT.models.list().data:
+        model_id = model.id
+        mapping = LLM_MAPPING[model_id]
+        model_data = {
+            "model_id": model_id,
+            "model_name": mapping["name"],
+            "provider": mapping["provider"],
+        }
+        models.append(model_data)
+        if model_id == DEFAULT_MODEL_ID:
+            default_model = model_data
 
     return render(
         request,
         "gpt/gpt.html",
-        context={"conversations": conversations, "models": models},
+        context={
+            "conversations": conversations,
+            "models": models,
+            "default_model": default_model,
+        },
     )
 
 
@@ -67,6 +87,8 @@ def query_gpt(request):
     message_id = uuid.UUID(data.get("message_id"))
     content = data.get("content")
     model = data.get("model")
+
+    print(model)
 
     # Get or create conversation
     conversation, _ = Conversation.objects.get_or_create(
