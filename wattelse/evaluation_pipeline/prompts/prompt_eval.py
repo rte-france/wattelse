@@ -361,7 +361,7 @@ Indicate whether the context allows the question to be answered and contains the
 
 # Added for metric prompts prompts.py file
 CORRECTNESS_PAIRWISE_PROMPT = {
-    "vanilla": """
+    "default": """
 You are an expert evaluator for question-answering systems. You will be given a question and two different answers to that question.
 
 Question: {question}
@@ -386,7 +386,7 @@ REASON:
 }
 
 RETRIEVABILITY_PAIRWISE_PROMPT = {
-    "vanilla": """
+    "default": """
 You are an expert evaluator for retrieval systems. You will be given a question and two different sets of retrieved contexts.
 
 Question: {question}
