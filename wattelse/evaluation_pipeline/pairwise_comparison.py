@@ -6,7 +6,6 @@
 import re
 import typer
 import pandas as pd
-import numpy as np
 import os
 import sys
 from loguru import logger
@@ -17,25 +16,21 @@ from openai import Timeout
 from typing import Dict
 
 from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.evaluation_pipeline import CONFIG_EVAL, REPORT_PATH
 from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 from wattelse.evaluation_pipeline.config.server_config import ServerConfig
 from wattelse.evaluation_pipeline.utils.port_manager import PortManager
 from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
+from wattelse.evaluation_pipeline import (
+    CONFIG_EVAL,
+    RESULTS_BASE_DIR,
+    BASE_OUTPUT_DIR,
+    COMPARISON_DATA_DIR,
+)
 
 # Column definitions
 QUERY_COLUMN = "question"
 ANSWER_COLUMN = "answer"
 RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
-
-# Define base directories - replace with your actual import if available
-if not "BASE_OUTPUT_DIR" in globals():
-    BASE_OUTPUT_DIR = Path("/DSIA/nlp/experiments/data_predictions")
-if not "RESULTS_BASE_DIR" in globals():
-    RESULTS_BASE_DIR = Path("/DSIA/nlp/experiments/results")
-
-# Directory for comparison data
-COMPARISON_DATA_DIR = Path("/DSIA/nlp/experiments/comparaison_data")
 
 # Global port manager
 port_manager = PortManager(logger)
@@ -328,6 +323,7 @@ def evaluate_pairwise_metrics(
         return pd.DataFrame()
 
 
+# FIXME Only use cloud models, a LLM Supreme Judge.
 def setup_vllm_environment(
     model_name: str, eval_config: EvalConfig, server_config: ServerConfig
 ) -> Dict:

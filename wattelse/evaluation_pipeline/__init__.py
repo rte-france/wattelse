@@ -20,6 +20,7 @@ RESULTS_BASE_DIR = BASE_DIR / "results"
 BASE_DATA_DIR = BASE_DIR / "data"
 BASE_DOCS_DIR = BASE_DIR / "docs"
 BASE_OUTPUT_DIR = BASE_DIR / "data_predictions"
+COMPARISON_DATA_DIR = BASE_DIR / "comparaison_data"
 
 # Import main functions for easier access
 from wattelse.evaluation_pipeline.evaluation import evaluate_rag_metrics
