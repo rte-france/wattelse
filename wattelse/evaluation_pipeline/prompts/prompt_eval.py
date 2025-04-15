@@ -359,9 +359,62 @@ Indicate whether the context allows the question to be answered and contains the
 """,
 }
 
+# Added for metric prompts prompts.py file
+CORRECTNESS_PAIRWISE_PROMPT = {
+    "vanilla": """
+You are an expert evaluator for question-answering systems. You will be given a question and two different answers to that question.
+
+Question: {question}
+
+Model 1 ({model1_name}) Answer:
+{answer1}
+
+Model 2 ({model2_name}) Answer:
+{answer2}
+
+Evaluate both answers ONLY on their correctness and accuracy, without considering context retrieval quality.
+
+Your response must follow this exact format:
+ANALYSIS:
+[Your detailed analysis of both answers' correctness]
+
+WINNER: [Either "{model1_name}", "{model2_name}", or "Tie"]
+
+REASON:
+[Brief explanation for your choice based on correctness]
+""",
+}
+
+RETRIEVABILITY_PAIRWISE_PROMPT = {
+    "vanilla": """
+You are an expert evaluator for retrieval systems. You will be given a question and two different sets of retrieved contexts.
+
+Question: {question}
+
+Model 1 ({model1_name}) Retrieved Context:
+{context1}
+
+Model 2 ({model2_name}) Retrieved Context:
+{context2}
+
+Evaluate both retrieved contexts ONLY on their relevance and completeness for answering the question.
+
+Your response must follow this exact format:
+ANALYSIS:
+[Your detailed analysis of both contexts' relevance]
+
+WINNER: [Either "{model1_name}", "{model2_name}", or "Tie"]
+
+REASON:
+[Brief explanation for your choice based on context quality]
+""",
+}
+
 # Combine prompts in a nested dictionary
 PROMPTS = {
     "correctness": CORRECTNESS_EVAL_PROMPT,
     "faithfulness": FAITHFULNESS_EVAL_PROMPT,
     "retrievability": RETRIEVABILITY_EVAL_PROMPT,
+    "correctness_pairwise": CORRECTNESS_PAIRWISE_PROMPT,
+    "retrievability_pairwise": RETRIEVABILITY_PAIRWISE_PROMPT,
 }
