@@ -2,20 +2,19 @@
 #  See AUTHORS.txt
 #  SPDX-License-Identifier: MPL-2.0
 #  This file is part of Wattelse, a NLP application suite.
-import configparser
 import json
 import uuid
-from pathlib import Path
 
 from loguru import logger
+from openai import OpenAI
 
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET, require_POST
 
-from wattelse.api.openai.client_openai_api import OpenAI_Client
-from wattelse.config_utils import parse_literal, EnvInterpolation
+
+from wattelse.web_app.config.settings import CONFIG
 from .models import Conversation, Message
 from .utils import (
     streaming_generator_llm,
@@ -23,27 +22,20 @@ from .utils import (
     get_user_conversations,
 )
 
-# Max tokens for the LLM
-MAX_TOKENS = 5000
+LLM_CLIENT = OpenAI(base_url=CONFIG.gpt.base_url, api_key=CONFIG.gpt.api_key)
 
-# Max messages in history
-MAX_MESSAGES = 12
-
-
-# Config for retriever and generator
-config = configparser.ConfigParser(
-    converters={"literal": parse_literal}, interpolation=EnvInterpolation()
-)  # takes into account environment variables
-config.read(Path(__file__).parent / "secure_gpt.cfg")
-openai_cfg = parse_literal(dict(config["openai_cfg"]))
-llm_config = {
-    "api_key": openai_cfg["openai_api_key"],
-    "endpoint": openai_cfg["openai_endpoint"],
-    "model": openai_cfg["openai_default_model"],
-    "temperature": openai_cfg["temperature"],
+LLM_MAPPING = {
+    "gpt-4o-mini": {
+        "name": "GPT-4o mini",
+        "provider": "openai",
+    },
+    "mistral-large-2411": {
+        "name": "Mistral Large",
+        "provider": "mistral",
+    },
 }
 
-LLM_CLIENT = OpenAI_Client(**llm_config)
+DEFAULT_MODEL_ID = "mistral-large-2411"
 
 
 @login_required
@@ -56,11 +48,29 @@ def main_page(request):
     # Get user conversation history
     conversations = get_user_conversations(request.user)
 
+    # Get available model names
+    models = []
+    for model in LLM_CLIENT.models.list().data:
+        model_id = model.id
+        # Add model to list if it is in the mapping
+        if model_id in LLM_MAPPING:
+            mapping = LLM_MAPPING[model_id]
+            model_data = {
+                "model_id": model_id,
+                "model_name": mapping["name"],
+                "provider": mapping["provider"],
+            }
+            models.append(model_data)
+            if model_id == DEFAULT_MODEL_ID:
+                default_model = model_data
+
     return render(
         request,
         "gpt/gpt.html",
         context={
             "conversations": conversations,
+            "models": models,
+            "default_model": default_model,
         },
     )
 
@@ -78,6 +88,9 @@ def query_gpt(request):
     conversation_id = uuid.UUID(data.get("conversation_id"))
     message_id = uuid.UUID(data.get("message_id"))
     content = data.get("content")
+    model = data.get("model")
+
+    print(model)
 
     # Get or create conversation
     conversation, _ = Conversation.objects.get_or_create(
@@ -93,14 +106,17 @@ def query_gpt(request):
     message.save()
 
     # Get user chat history
-    history = conversation_messages(conversation, n=MAX_MESSAGES)
+    messages = conversation_messages(
+        conversation, n=CONFIG.gpt.max_messages, include_id=False
+    )
 
     # Query LLM
     try:
-        response = LLM_CLIENT.generate_from_history(
-            messages=history,
+        response = LLM_CLIENT.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=CONFIG.gpt.max_tokens,
             stream=True,
-            max_tokens=MAX_TOKENS,
         )
         return StreamingHttpResponse(
             streaming_generator_llm(response),
@@ -125,6 +141,7 @@ def save_assistant_message(request):
     conversation_id = uuid.UUID(data.get("conversation_id"))
     message_id = uuid.UUID(data.get("message_id"))
     content = data.get("content")
+    model = data.get("model")
 
     # Get conversation
     conversation = Conversation.objects.get(id=conversation_id, user=request.user)
@@ -135,6 +152,7 @@ def save_assistant_message(request):
         conversation=conversation,
         role="assistant",
         content=content,
+        model=model,
     )
     message.save()
 

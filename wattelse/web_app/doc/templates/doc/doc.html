@@ -34,12 +34,15 @@
         placeholder="Demander à WattElse"
       ></textarea>
       <div class="chat-button-container">
-        <button class="send-button" title="Envoyer">
-          <img src="{% static 'icons/arrow-up.svg' %}" class="icon" />
-        </button>
-        <button class="new-conversation-button" title="Nouvelle conversation">
-          <img src="{% static 'icons/plus.svg' %}" class="icon" />
-        </button>
+        <div><!-- Empty div to put 'send' and 'new' buttons on the right --></div>
+        <div class="send-new-buttons">
+          <button class="send-button" title="Envoyer">
+            <img src="{% static 'icons/arrow-up.svg' %}" class="icon" />
+          </button>
+          <button class="new-conversation-button" title="Nouvelle conversation">
+            <img src="{% static 'icons/plus.svg' %}" class="icon" />
+          </button>
+        </div>
       </div>
     </div>
     <div class="disclaimer">

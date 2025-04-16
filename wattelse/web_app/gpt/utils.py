@@ -60,18 +60,18 @@ def get_user_conversations(user: User) -> dict[str, list]:
 def conversation_messages(
     conversation: Conversation,
     n: int = 0,
+    include_id: bool = True,
 ) -> list[dict[str, str]] | None:
     """
-    Return chat history following OpenAI API format + include message_id:
+    Return chat history following OpenAI API format, optionally including message_id:
     [
         {"role": "user", "content": "message1", "id": "message_id"},
         {"role": "assistant", "content": "message2", "id": "message_id"},
-        {"role": "user", "content": "message3", "id": "message_id"},
-        {...}
+        ...
     ]
     If no history is found return None.
     Use `n` parameter to only return the last `n` messages.
-    Default `n` value is 0 to return all messages.
+    Use `include_id` to control whether to include message IDs.
     """
     messages = conversation.messages.order_by("created_at")
 
@@ -79,7 +79,11 @@ def conversation_messages(
         messages = messages[:n]
 
     history = [
-        {"role": message.role, "content": message.content, "id": str(message.id)}
+        {
+            "role": message.role,
+            "content": message.content,
+            **({"id": str(message.id)} if include_id else {}),
+        }
         for message in messages
     ]
 

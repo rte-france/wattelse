@@ -31,12 +31,30 @@
         placeholder="Demander à WattElse"
       ></textarea>
       <div class="chat-button-container">
-        <button class="send-button" title="Envoyer">
-          <img src="{% static 'icons/arrow-up.svg' %}" class="icon" />
-        </button>
-        <button class="new-conversation-button" title="Nouvelle conversation">
-          <img src="{% static 'icons/plus.svg' %}" class="icon" />
-        </button>
+        <div class="model-select" id="modelSelect"> 
+          <div class="model-select-selected" id="selectedModel" data-value="{{ default_model.model_id }}"> 
+            <img src="{% static 'icons/' %}{{ default_model.provider }}.svg" class="icon"> 
+            <span>{{ default_model.model_name }}</span>
+          </div> 
+        
+          <div class="select-items"> 
+            {% for model in models %}
+            <div class="select-item" data-value="{{ model.model_id }}"> 
+              <img src="{% static 'icons/' %}{{ model.provider }}.svg" class="icon">
+              <span>{{ model.model_name }}</span>
+            </div>
+          {% endfor %}
+          </div> 
+        </div>
+        <div class="send-new-buttons">
+          <button class="send-button" title="Envoyer">
+            <img src="{% static 'icons/arrow-up.svg' %}" class="icon" />
+          </button>
+          <button class="new-conversation-button" title="Nouvelle conversation">
+            <img src="{% static 'icons/plus.svg' %}" class="icon" />
+          </button>
+        </div>
+        
       </div>
     </div>
     <div class="disclaimer">
@@ -85,7 +103,7 @@
 ></script>
 <script
   type="module"
-  src="{% static 'gpt/gpt.js' %}?v={{ STATIC_VERSION }}"
+  src="{% static 'gpt/secure_gpt.js' %}?v={{ STATIC_VERSION }}"
 ></script>
 
 <!-- Use Markdwon-it and Highlight.js for better rendering -->

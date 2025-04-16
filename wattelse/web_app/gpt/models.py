@@ -39,3 +39,4 @@ class Message(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     rating = models.BooleanField(null=True, blank=True)
+    model = models.CharField(max_length=255, blank=True)

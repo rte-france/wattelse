@@ -1,4 +1,9 @@
-import { handleUserMessage } from "./utils.js";
+import {
+  handleUserMessage,
+  modelSelect,
+  selectedModel,
+  modeloptions,
+} from "./utils.js";
 import {
   sendButton,
   chatInput,
@@ -51,4 +56,39 @@ document.querySelectorAll(".history-container li").forEach((conversation) => {
 // New conversation button
 newConversationButton.addEventListener("click", () => {
   newConversation();
+});
+
+// Model selection
+// Toggle dropdown when clicking the selected area
+selectedModel.addEventListener("click", (e) => {
+  e.stopPropagation(); // Prevent from triggering document click
+  modelSelect.classList.toggle("open");
+});
+
+// Handle option click
+modeloptions.forEach((item) => {
+  item.addEventListener("click", (e) => {
+    e.stopPropagation(); // Prevent bubbling
+
+    // Get the content from the clicked item
+    const imgSrc = item.querySelector("img").src;
+    const imgAlt = item.querySelector("img").alt;
+    const labelText = item.querySelector("span").textContent;
+    const value = item.dataset.value;
+
+    // Update the selected element
+    selectedModel.querySelector("img").src = imgSrc;
+    selectedModel.querySelector("img").alt = imgAlt;
+    selectedModel.querySelector("span").textContent = labelText;
+    selectedModel.dataset.value = value;
+
+    modelSelect.classList.remove("open");
+  });
+});
+
+// Close if clicking outside
+document.addEventListener("click", (e) => {
+  if (!modelSelect.contains(e.target)) {
+    modelSelect.classList.remove("open");
+  }
 });

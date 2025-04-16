@@ -11,6 +11,6 @@ command = [
     "python",
     "manage.py",
     "runserver",
-    f"{CONFIG.host}:{CONFIG.port}",
+    f"{CONFIG.django.host}:{CONFIG.django.port}",
 ]
 subprocess.run(command)

@@ -12,6 +12,15 @@ import {
   addCopyButtonsToCodeBlocks,
 } from "../../../static/js/gpt_doc_common.js";
 
+// Global variables
+
+// Model selection elements
+export const modelSelect = document.getElementById("modelSelect");
+export const selectedModel = document.getElementById("selectedModel");
+export const modeloptions = modelSelect.querySelectorAll(
+  ".model-select .select-item"
+);
+
 /// Functions ///
 
 // Logic to handle user message
@@ -33,6 +42,9 @@ export function handleUserMessage(messageContent) {
 
 // Post user message to GPT and handle streaming response
 async function postUserMessageToGPT(userMessage, userMessageId) {
+  // Get selected model name
+  const model = selectedModel.dataset.value;
+
   // Get conversation id
   const conversationId = chatConversation.id;
 
@@ -61,6 +73,7 @@ async function postUserMessageToGPT(userMessage, userMessageId) {
       conversation_id: conversationId,
       message_id: userMessageId,
       content: userMessage,
+      model: model,
     }),
   });
 
@@ -81,11 +94,16 @@ async function postUserMessageToGPT(userMessage, userMessageId) {
   addCopyButtonsToCodeBlocks();
 
   // Save streamed response to database
-  saveAssistantMessage(conversationId, assistantMessageId, streamResponse);
+  saveAssistantMessage(
+    conversationId,
+    assistantMessageId,
+    streamResponse,
+    model
+  );
 }
 
 //  Save streamed response to database
-function saveAssistantMessage(conversationId, messageId, content) {
+function saveAssistantMessage(conversationId, messageId, content, model) {
   fetch("save_assistant_message/", {
     method: "POST",
     headers: {
@@ -96,6 +114,7 @@ function saveAssistantMessage(conversationId, messageId, content) {
       conversation_id: conversationId,
       message_id: messageId,
       content: content,
+      model: model,
     }),
   }).then((response) => {
     // Handle successful requests
