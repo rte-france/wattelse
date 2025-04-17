@@ -20,6 +20,7 @@ from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
 from wattelse.evaluation_pipeline import (
     CONFIG_EVAL,
+    CONFIG_PAIRWISE_EVAL,
     RESULTS_BASE_DIR,
     BASE_OUTPUT_DIR,
     COMPARISON_DATA_DIR,
@@ -400,7 +401,8 @@ def main(
         ..., help="Filename of the second model's evaluation results"
     ),
     config_path: Path = typer.Option(
-        CONFIG_EVAL, help="Path to the evaluation configuration file"
+        CONFIG_PAIRWISE_EVAL,
+        help="Path to the pairwise evaluation configuration file",
     ),
     output_dir: str = typer.Option(
         "pairwise_results", help="Directory to save comparison results"
