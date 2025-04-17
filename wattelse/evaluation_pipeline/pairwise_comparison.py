@@ -15,7 +15,8 @@ from tqdm_joblib import tqdm_joblib
 from openai import Timeout
 from typing import Dict
 
-# FIXME Review Imports and function calling
+# FIXME Review imports and function calling
+# FIXME Add all logs in the results to have a better understanding
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 from wattelse.evaluation_pipeline.config.server_config import ServerConfig
@@ -40,6 +41,7 @@ port_manager = PortManager(logger)
 app = typer.Typer()
 
 
+# FIXME Verify before merging datatsets that there are no duplicates so the comparaison is not out of
 def parse_pairwise_response(
     eval_text: str, model1_name: str, model2_name: str, judge_model_name: str = None
 ) -> Dict:
@@ -87,6 +89,7 @@ def parse_pairwise_response(
     return {"analysis": analysis, "winner": winner, "reason": reason}
 
 
+# FIXME Verify before merging datatsets that there are no duplicates so the comparaison is not out of order.
 def merge_datasets(
     df1_path: Path, df2_path: Path, model1_name: str, model2_name: str
 ) -> pd.DataFrame:
@@ -168,6 +171,10 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
         question = row[QUERY_COLUMN]
         model1_name = row["model1_name"]
         model2_name = row["model2_name"]
+        answer1 = row[f"{ANSWER_COLUMN}_model1"]
+        answer2 = row[f"{ANSWER_COLUMN}_model2"]
+        context1 = row[f"{RAG_RELEVANT_EXTRACTS_COLUMN}_model1"]
+        context2 = row[f"{RAG_RELEVANT_EXTRACTS_COLUMN}_model2"]
 
         # Use the EvalConfig to get the appropriate prompt for this metric and model
         model_name = getattr(llm_client, "model_name", config.default_model)
@@ -182,13 +189,14 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
                 "analysis": f"Error: Metric '{metric}' not configured",
                 "winner": "Error",
                 "reason": f"Configuration error: {str(e)}",
+                "answer1": answer1,
+                "answer2": answer2,
+                "context1": context1,
+                "context2": context2,
             }
 
         # Format prompt based on metric type
         if metric == "correctness_pairwise":
-            answer1 = row[f"{ANSWER_COLUMN}_model1"]
-            answer2 = row[f"{ANSWER_COLUMN}_model2"]
-
             prompt_text = prompt.format(
                 question=question,
                 model1_name=model1_name,
@@ -197,9 +205,6 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
                 answer2=answer2,
             )
         elif metric == "retrievability_pairwise":
-            context1 = row[f"{RAG_RELEVANT_EXTRACTS_COLUMN}_model1"]
-            context2 = row[f"{RAG_RELEVANT_EXTRACTS_COLUMN}_model2"]
-
             prompt_text = prompt.format(
                 question=question,
                 model1_name=model1_name,
@@ -215,6 +220,10 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
                 "analysis": f"Error: Unsupported metric '{metric}'",
                 "winner": "Error",
                 "reason": "Unsupported metric type",
+                "answer1": answer1,
+                "answer2": answer2,
+                "context1": context1,
+                "context2": context2,
             }
 
         # Generate evaluation
@@ -226,9 +235,13 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
             eval_text, model1_name, model2_name, model_name
         )
 
-        # Add question and metric info
+        # Add question, metric info, and the model outputs and contexts
         results["question"] = question
         results["metric"] = metric
+        results["answer1"] = answer1
+        results["answer2"] = answer2
+        results["context1"] = context1
+        results["context2"] = context2
 
         logger.info(
             f"Pairwise comparison for question: '{question[:50]}...' on {metric}: Winner: {results['winner']}"
@@ -248,6 +261,10 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
             "analysis": f"Error during evaluation: {str(e)}",
             "winner": "Error",
             "reason": str(e),
+            "answer1": row.get(f"{ANSWER_COLUMN}_model1", ""),
+            "answer2": row.get(f"{ANSWER_COLUMN}_model2", ""),
+            "context1": row.get(f"{RAG_RELEVANT_EXTRACTS_COLUMN}_model1", ""),
+            "context2": row.get(f"{RAG_RELEVANT_EXTRACTS_COLUMN}_model2", ""),
         }
 
 
@@ -541,8 +558,21 @@ def main(
 
     # Save results
     if not results_df.empty:
+        # Rename columns for clarity in the output file
+        results_df = results_df.rename(
+            columns={
+                "answer1": f"{ANSWER_COLUMN}_{model1_name}",
+                "answer2": f"{ANSWER_COLUMN}_{model2_name}",
+                "context1": f"{RAG_RELEVANT_EXTRACTS_COLUMN}_{model1_name}",
+                "context2": f"{RAG_RELEVANT_EXTRACTS_COLUMN}_{model2_name}",
+            }
+        )
+
+        # Save the complete results
         results_df.to_excel(output_path, index=False)
-        logger.success(f"Pairwise comparison results saved to {output_path}")
+        logger.success(
+            f"Pairwise comparison results with model outputs saved to {output_path}"
+        )
 
         # Create a summary file
         summary_data = []
