@@ -15,14 +15,9 @@ from tqdm_joblib import tqdm_joblib
 from openai import Timeout
 from typing import Dict
 
-# FIXME Review imports and function calling
-# FIXME Add all logs in the results to have a better understanding
 from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
-from wattelse.evaluation_pipeline.config.server_config import ServerConfig
-from wattelse.evaluation_pipeline.utils.port_manager import PortManager
 from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
-from wattelse.evaluation_pipeline.prompts.regex_patterns import RegexPatterns
 from wattelse.evaluation_pipeline import (
     CONFIG_EVAL,
     RESULTS_BASE_DIR,
@@ -35,15 +30,15 @@ QUERY_COLUMN = "question"
 ANSWER_COLUMN = "answer"
 RAG_RELEVANT_EXTRACTS_COLUMN = "rag_relevant_extracts"
 
-# Global port manager
-port_manager = PortManager(logger)
-
 app = typer.Typer()
 
 
-# FIXME Verify before merging datatsets that there are no duplicates so the comparaison is not out of
 def parse_pairwise_response(
-    eval_text: str, model1_name: str, model2_name: str, judge_model_name: str = None
+    eval_text: str,
+    model1_name: str,
+    model2_name: str,
+    config: EvalConfig,
+    judge_model_name: str = None,
 ) -> Dict:
     """
     Parse responses from pairwise comparison evaluation.
@@ -52,14 +47,14 @@ def parse_pairwise_response(
         eval_text: The raw evaluation text from the LLM
         model1_name: Name of the first model
         model2_name: Name of the second model
+        config: The evaluation configuration
         judge_model_name: Name of the judge model used for evaluation (optional)
 
     Returns:
         dict: Dictionary with parsed analysis, winner, and reason
     """
-    # Get the appropriate regex patterns using the RegexPatterns class
-    regex_patterns = RegexPatterns()
-    patterns = regex_patterns.get_pairwise_patterns(judge_model_name)
+    # Use the regex_patterns from the config instead of creating a new instance
+    patterns = config.regex_patterns.get_pairwise_patterns(judge_model_name)
 
     # Extract analysis section
     analysis_match = re.search(patterns["analysis"], eval_text, re.DOTALL)
@@ -71,7 +66,6 @@ def parse_pairwise_response(
     winner_match = re.search(patterns["winner"], eval_text, re.DOTALL)
     winner_raw = winner_match.group(1).strip() if winner_match else "Unknown"
 
-    # FIXME Review name of each model style
     # Normalize winner to one of the expected values
     if model1_name in winner_raw:
         winner = model1_name
@@ -89,7 +83,6 @@ def parse_pairwise_response(
     return {"analysis": analysis, "winner": winner, "reason": reason}
 
 
-# FIXME Verify before merging datatsets that there are no duplicates so the comparaison is not out of order.
 def merge_datasets(
     df1_path: Path, df2_path: Path, model1_name: str, model2_name: str
 ) -> pd.DataFrame:
@@ -111,9 +104,13 @@ def merge_datasets(
     df1 = pd.read_excel(df1_path)
     df2 = pd.read_excel(df2_path)
 
-    # Verify both datasets have the same questions
-    if len(df1) != len(df2):
-        logger.warning(f"Datasets have different lengths: {len(df1)} vs {len(df2)}")
+    # Simple check to ensure we have common questions
+    common_questions = set(df1[QUERY_COLUMN]).intersection(set(df2[QUERY_COLUMN]))
+    if not common_questions:
+        logger.error("No common questions found between the two datasets")
+        sys.exit(1)
+
+    logger.info(f"Found {len(common_questions)} common questions for comparison")
 
     # Merge on question column
     # First rename columns to avoid conflicts
@@ -163,7 +160,7 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
     # Initialize the LLM client
     llm_client = OpenAI_Client()
 
-    # FIXME Awkward calling (Override timeout and max_tokens directly on the client instance)
+    # Set longer timeout and max tokens for complex evaluations
     llm_client.llm_client.timeout = Timeout(500.0, connect=10.0)
     llm_client.max_tokens = 2048
 
@@ -231,8 +228,9 @@ def evaluate_pairwise_row(row: pd.Series, metric: str, config: EvalConfig) -> Di
         eval_text = llm_client.generate(prompt_text, **kwargs)
 
         # Parse the response using the judge model name for pattern selection
+        # Pass the config to avoid circular imports
         results = parse_pairwise_response(
-            eval_text, model1_name, model2_name, model_name
+            eval_text, model1_name, model2_name, config, model_name
         )
 
         # Add question, metric info, and the model outputs and contexts
@@ -355,36 +353,33 @@ def evaluate_pairwise_metrics(
         return pd.DataFrame()
 
 
-# FIXME Only use cloud models, Supreme Judge LLM
-def setup_vllm_environment(
-    model_name: str, eval_config: EvalConfig, server_config: ServerConfig
-) -> Dict:
+def setup_cloud_model_environment(model_name: str, eval_config: EvalConfig) -> Dict:
     """
-    Set up the environment for local VLLM models.
+    Set up the environment for cloud LLM models for evaluation.
 
     Args:
         model_name: The name of the model to use for evaluation
         eval_config: The evaluation configuration
-        server_config: The server configuration
 
     Returns:
         dict: Environment variables for OpenAI client
+
+    Raises:
+        ValueError: If the specified model is not a cloud model
     """
     model_config = eval_config.get_model_config(model_name)
     deployment_type = model_config.get("deployment_type", "local")
 
-    if deployment_type == "cloud":
-        return {
-            "OPENAI_API_KEY": model_config["api_key"],
-            "OPENAI_ENDPOINT": model_config["api_base"],
-            "OPENAI_DEFAULT_MODEL_NAME": model_config["model_name"],
-        }
-    else:
-        return {
-            "OPENAI_ENDPOINT": f"http://localhost:{server_config.port}/v1",
-            "OPENAI_API_KEY": "EMPTY",
-            "OPENAI_DEFAULT_MODEL_NAME": model_name,
-        }
+    if deployment_type != "cloud":
+        raise ValueError(
+            f"Model {model_name} is not a cloud model. Only cloud models are supported for pairwise evaluation."
+        )
+
+    return {
+        "OPENAI_API_KEY": model_config["api_key"],
+        "OPENAI_ENDPOINT": model_config["api_base"],
+        "OPENAI_DEFAULT_MODEL_NAME": model_config["model_name"],
+    }
 
 
 def extract_model_name_from_file(filename: str) -> str:
@@ -394,46 +389,6 @@ def extract_model_name_from_file(filename: str) -> str:
     if len(parts) >= 3:
         return parts[2]  # Return the model identifier
     return filename.split(".")[0]  # Fallback to filename without extension
-
-
-def resolve_config_path(config_path: Path) -> Path:
-    """
-    Resolve the configuration file path, checking multiple locations.
-
-    Args:
-        config_path: Initial path to the config file
-
-    Returns:
-        Path: Resolved path to the config file
-    """
-    # Check if the path is absolute and exists
-    if config_path.is_absolute() and config_path.exists():
-        return config_path
-
-    # Check relative to current directory
-    if Path(config_path.name).exists():
-        return Path(config_path.name).absolute()
-
-    # Check in the config directory relative to this file
-    config_dir = Path(__file__).parent / "config"
-    potential_path = config_dir / config_path.name
-    if potential_path.exists():
-        return potential_path
-
-    # Check in the parent directory's config
-    parent_config_dir = Path(__file__).parent.parent / "config"
-    potential_path = parent_config_dir / config_path.name
-    if potential_path.exists():
-        return potential_path
-
-    # Check in the evaluation_pipeline directory
-    eval_pipeline_dir = Path(__file__).parent
-    potential_path = eval_pipeline_dir / config_path.name
-    if potential_path.exists():
-        return potential_path
-
-    # If we can't find it, return the original path (which will fail)
-    return config_path
 
 
 @app.command()
@@ -447,9 +402,6 @@ def main(
     config_path: Path = typer.Option(
         CONFIG_EVAL, help="Path to the evaluation configuration file"
     ),
-    server_config_path: Path = typer.Option(
-        Path("server_config.toml"), help="Path to the server configuration file"
-    ),
     output_dir: str = typer.Option(
         "pairwise_results", help="Directory to save comparison results"
     ),
@@ -458,7 +410,7 @@ def main(
     ),
 ):
     """
-    Run pairwise comparison between two RAG model outputs.
+    Run pairwise comparison between two RAG model outputs using cloud-based judge models.
     """
     logger.info(
         f"Starting pairwise comparison between {set1_filename} and {set2_filename}"
@@ -468,9 +420,19 @@ def main(
     set1_path = BASE_OUTPUT_DIR / set1_filename
     set2_path = BASE_OUTPUT_DIR / set2_filename
 
-    if not set1_path.exists() or not set2_path.exists():
-        logger.error(f"Input files not found: {set1_path} or {set2_path}")
-        return
+    # Simple path existence checks with direct errors
+    if not set1_path.exists():
+        logger.error(f"Input file not found: {set1_path}")
+        sys.exit(1)
+
+    if not set2_path.exists():
+        logger.error(f"Input file not found: {set2_path}")
+        sys.exit(1)
+
+    # Check if config file exists
+    if not config_path.exists():
+        logger.error(f"Configuration file not found: {config_path}")
+        sys.exit(1)
 
     # Ensure comparison data directory exists
     COMPARISON_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -487,63 +449,44 @@ def main(
     merged_df.to_excel(merged_path, index=False)
     logger.info(f"Merged dataset saved to {merged_path}")
 
-    # Resolve configuration paths - using provided paths with CONFIG_EVAL as default
-    resolved_config_path = resolve_config_path(config_path)
-    resolved_server_config_path = resolve_config_path(server_config_path)
-
-    if not resolved_config_path.exists():
-        logger.error(f"Configuration file not found: {config_path}")
-        logger.error(f"Searched in multiple locations. Please provide a valid path.")
-        logger.error(f"Current directory: {os.getcwd()}")
-        logger.error(f"Script directory: {Path(__file__).parent}")
-        sys.exit(1)
-
-    if not resolved_server_config_path.exists():
-        logger.error(f"Server configuration file not found: {server_config_path}")
-        logger.error(f"Searched in multiple locations. Please provide a valid path.")
-        sys.exit(1)
-
-    logger.info(f"Using config file: {resolved_config_path}")
-    logger.info(f"Using server config file: {resolved_server_config_path}")
-
-    # Load configurations
+    # Load configuration
     try:
-        eval_config = EvalConfig(resolved_config_path)
-        server_config = ServerConfig(resolved_server_config_path)
+        eval_config = EvalConfig(config_path)
 
         # Print active metrics for debugging
-        if hasattr(eval_config, "active_metrics"):
-            logger.info(f"Active metrics in config: {eval_config.active_metrics}")
-            pairwise_metrics = [
-                m for m in eval_config.active_metrics if m.endswith("_pairwise")
-            ]
-            logger.info(f"Pairwise metrics found: {pairwise_metrics}")
+        pairwise_metrics = [
+            m for m in eval_config.active_metrics if m.endswith("_pairwise")
+        ]
+        if not pairwise_metrics:
+            logger.error("No pairwise metrics found in configuration")
+            sys.exit(1)
+
+        logger.info(f"Found pairwise metrics: {', '.join(pairwise_metrics)}")
 
     except Exception as e:
         logger.error(f"Error loading configuration: {e}")
-        import traceback
-
-        logger.error(f"Traceback: {traceback.format_exc()}")
         sys.exit(1)
 
-    # FIXME Shouldn't need this, already sourced in configs, also judges might all be cloud-base
-    # Select an appropriate model for evaluation
-    # Look for a cloud model first
+    # Select an appropriate cloud model for evaluation
     cloud_models = [
         m
         for m in eval_config.model_configs.keys()
         if eval_config.get_model_config(m).get("deployment_type") == "cloud"
     ]
 
-    if cloud_models:
-        eval_model = cloud_models[0]  # Use the first cloud model
-        logger.info(f"Using cloud model {eval_model} for evaluation")
-    else:
-        eval_model = eval_config.default_model
-        logger.info(f"No cloud models found, using default model {eval_model}")
+    if not cloud_models:
+        logger.error("No cloud models found in configuration")
+        sys.exit(1)
+
+    eval_model = cloud_models[0]  # Use the first cloud model
+    logger.info(f"Using cloud model {eval_model} for evaluation")
 
     # Update the environment with the selected model
-    os.environ.update(setup_vllm_environment(eval_model, eval_config, server_config))
+    try:
+        os.environ.update(setup_cloud_model_environment(eval_model, eval_config))
+    except ValueError as e:
+        logger.error(str(e))
+        sys.exit(1)
 
     # Step 2: Run pairwise comparison
     full_output_dir = RESULTS_BASE_DIR / output_dir
@@ -553,7 +496,7 @@ def main(
     output_path = full_output_dir / output_filename
     output_path = handle_output_path(output_path, overwrite)
 
-    # Run evaluation - now reading metrics from config
+    # Run evaluation using metrics from config
     results_df = evaluate_pairwise_metrics(merged_df, eval_config)
 
     # Save results
