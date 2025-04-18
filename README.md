@@ -1,5 +1,13 @@
 # WattElse project
 
+[![rte-france - WattElse](https://img.shields.io/static/v1?label=rte-france&message=WattElse&color=blue&logo=github)](https://github.com/rte-france/wattelse "Go to GitHub repo")
+![GitHub License](https://img.shields.io/github/license/rte-france/wattelse)
+[![stars - BERTrend](https://img.shields.io/github/stars/rte-france/wattelse?style=social)](https://github.com/rte-france/wattelse)
+[![forks - BERTrend](https://img.shields.io/github/forks/rte-france/wattelse?style=social)](https://github.com/rte-france/wattelse)
+[![issues - BERTrend](https://img.shields.io/github/issues/rte-france/wattelse)](https://github.com/rte-france/wattelse/issues)
+![Static Badge](https://img.shields.io/badge/python-%3E%3D3.11-blue)
+
+
 WattElse is a NLP suite developed for the needs of RTE (Réseau de Transport d'Electricité).
 
 It is composed of two main modules:
