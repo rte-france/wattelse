@@ -65,8 +65,79 @@ The embeddings and RAG orchestrator APIs have been secured using different ways
     - `client_secret`: application password used to generate authentication tokens
     - `scopes`: so far, one the value `admin`, `full_access`, `restricted_access`. This allows to define to which API a third-party API can connect. It is set by the administrators
     - `authorized_groups`: a list of group names the application can access to for the RAG APIs. This is set by the administrators.
+    - `rate_limit`: maximum number of requests per minute
+    - `rate_window`: time window considered for the limit (one minute by default)
   * Depending on its credentials, a third-party application can access to the full set of the APIs or only a subset, sometimes restricted to specific groups.
 
 Credentials are stored in a client registry (configurable path).
 
 Before calling a restricted API, a client application must authenticate using the `/token` endpoint with its credentials.
+
+### Configuration
+
+Services that use this security feature (currently [Embedding Service](embedding/main.py) and [RAG Orchestrator Service](rag_orchestrator/main.py)) shall be configured as described below.
+
+**Creation of a wattelse client registry configuration file**
+The `wattelse_client_registry.json` file is a configuration file that stores client authentication information for the Wattelse application suite. It must be properly configured for the authentication system to work.
+
+The configuration file should be located on the server running the service in the home directory on the user launching the service:
+- Path: `~/wattelse_client_registry.json`
+- Linux/Mac: `/home/your_username/wattelse_client_registry.json`
+
+This registry is primarily used by the Django front end to access the APIs but can be used also by any new application that 
+needs to access these APIs.
+The structure of the `wattelse_client_registry.json` file is the following:
+
+```
+{
+    "admin": {
+        "client_secret": "<admin_secret>",
+        "scopes": [
+            "admin",
+            "full_access",
+            "restricted_access"
+        ],
+        "authorized_groups": [],
+	"rate_limit": 100,
+	"rate_window": 60
+    },
+    "wattelse": {
+        "client_secret": "<wattelse_secret>",
+        "scopes": [
+            "full_access",
+            "restricted_access"
+        ],
+        "authorized_groups": [],
+        "rate_limit": 5,
+        "rate_window": 60
+    },
+    "<your_app>": {
+        "client_secret": "<your_app_secret>",
+        "scopes": [
+            "restricted_access"
+            # any value among "full_access", "restricted_acess", "admin" depending the APIs you want to access
+        ],
+        "authorized_groups": [
+            "<your_RAG_group>"
+            # list of RAG groups you want the app to access, leave empty for all
+        ],
+        "rate_limit": 25,
+        "rate_window": 60
+    }
+}
+
+```
+
+Several clients can be added to this registry to access the WattElse APIs:
+- `wattelse` is the default client, used by the Django app to communicate between the front and the APIs.
+
+In order to work properly, on the server hosting Django, the environment variable `$WATTELSE_CLIENT_SECRET`
+must be set to the same value as the one set in the `wattelse_client_registry.json` file.
+
+- `<your_app>` is the entry you can configure to ensure that `your_app` has the right to communicate with the APIs.
+
+- `<your_app_secret>` can be creating with the command:
+`openssl rand -hex 32`
+- when communicating with the API, `<your_app>` must pass in the request headers both application name and `client_secret` value.
+In order to ease this, we provide an implementation example in Python, see 
+`wattelse.api.common.client.APIClient`.

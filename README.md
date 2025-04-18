@@ -43,6 +43,7 @@ Install WattElse and its dependencies:
 To run WattElse, you need to set the following environment variables:
 
 - `WATTELSE_BASE_DIR`: path where WattElse data will be stored
+- `WATTELSE_CLIENT_SECRET`: secret used by the Django WattElse app to communicate with internal APIs. This value should match the one defined on the `$HOME/client_registry.json` file. Refer to the [API documentation](wattelse/api/README.md) for details.
 - `DJANGO_SECRET_KEY`: Django secret key (see [Django documentation](https://docs.djangoproject.com/en/4.2/ref/settings/#std-setting-SECRET_KEY))
 
 To create a Django `SECRET_KEY`, run the following code in a python shell:
@@ -97,7 +98,13 @@ This script starts all services in separated `screens`:
 
 Django web app should be running at: http://localhost:8000
 
+If everything has been set up correctly, you should see the following screen on http://localhost:8000
+
+![img.png](wattelse/docs/images/home_page_wattelse.png)
+
 For your first connection, you can use the superuser credentials you created earlier or create a new user.
+
+## Stop WattElse
 
 To stop all services, run:
 
