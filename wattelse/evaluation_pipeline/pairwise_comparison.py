@@ -19,8 +19,6 @@ from wattelse.api.openai.client_openai_api import OpenAI_Client
 from wattelse.evaluation_pipeline.config.eval_config import EvalConfig
 from wattelse.evaluation_pipeline.utils.file_utils import handle_output_path
 from wattelse.evaluation_pipeline import (
-    CONFIG_EVAL,
-    CONFIG_PAIRWISE_EVAL,
     RESULTS_BASE_DIR,
     BASE_OUTPUT_DIR,
     COMPARISON_DATA_DIR,
@@ -400,9 +398,8 @@ def main(
     set2_filename: str = typer.Argument(
         ..., help="Filename of the second model's evaluation results"
     ),
-    config_path: Path = typer.Option(
-        CONFIG_PAIRWISE_EVAL,
-        help="Path to the pairwise evaluation configuration file",
+    config_path: str = typer.Option(
+        "config/pair_jury_01.toml", help="Path to the evaluation configuration file"
     ),
     output_dir: str = typer.Option(
         "pairwise_results", help="Directory to save comparison results"
@@ -431,9 +428,27 @@ def main(
         logger.error(f"Input file not found: {set2_path}")
         sys.exit(1)
 
-    # Check if config file exists
-    if not config_path.exists():
+    # Look for the config file in several possible locations
+    config_path_obj = Path(config_path)
+
+    # Try different paths to find the config file
+    possible_paths = [
+        config_path_obj,  # Try as given
+        Path(__file__).parent / config_path_obj,  # Relative to script
+        Path(__file__).parent / "config" / config_path_obj.name,  # In config directory
+        Path.cwd() / config_path_obj,  # Relative to current working directory
+    ]
+
+    found_config = None
+    for path in possible_paths:
+        if path.exists():
+            found_config = path
+            logger.info(f"Found configuration file at: {path}")
+            break
+
+    if not found_config:
         logger.error(f"Configuration file not found: {config_path}")
+        logger.error(f"Tried: {[str(p) for p in possible_paths]}")
         sys.exit(1)
 
     # Ensure comparison data directory exists
@@ -453,7 +468,7 @@ def main(
 
     # Load configuration
     try:
-        eval_config = EvalConfig(config_path)
+        eval_config = EvalConfig(found_config)
 
         # Print active metrics for debugging
         pairwise_metrics = [
@@ -468,6 +483,8 @@ def main(
     except Exception as e:
         logger.error(f"Error loading configuration: {e}")
         sys.exit(1)
+
+    # Rest of your function remains the same...
 
     # Select an appropriate cloud model for evaluation
     cloud_models = [
