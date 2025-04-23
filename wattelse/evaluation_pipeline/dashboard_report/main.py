@@ -806,55 +806,6 @@ def handle_pairwise_analysis_page(pairwise_experiments_data):
             # Display the table
             st.dataframe(display_df, use_container_width=True)
 
-            # Create bar chart for win rates
-            st.markdown("### Win Rate Visualization")
-
-            # Prepare data for the chart
-            chart_data = []
-            for _, row in combined_stats.iterrows():
-                model = row["Model"]
-                for metric in metrics:
-                    if f"{metric}_win_rate" in row:
-                        chart_data.append(
-                            {
-                                "Model": model,
-                                "Metric": metric.title(),
-                                "Win Rate": row[f"{metric}_win_rate"],
-                            }
-                        )
-
-            chart_df = pd.DataFrame(chart_data)
-
-            # Create the bar chart
-            if not chart_df.empty:
-                fig = go.Figure()
-
-                for model in chart_df["Model"].unique():
-                    model_data = chart_df[chart_df["Model"] == model]
-                    fig.add_trace(
-                        go.Bar(
-                            x=model_data["Metric"],
-                            y=model_data["Win Rate"],
-                            name=model,
-                            hovertemplate="Model: %{x}<br>Win Rate: %{y:.1f}%<extra></extra>",
-                        )
-                    )
-
-                fig.update_layout(
-                    title="Win Rates by Model and Metric",
-                    xaxis_title="Metric",
-                    yaxis_title="Win Rate (%)",
-                    yaxis_ticksuffix="%",
-                    barmode="group",
-                    legend_title="Model",
-                )
-
-                st.plotly_chart(
-                    fig,
-                    use_container_width=True,
-                    key=f"win_rate_chart_{str(uuid.uuid4())}",
-                )
-
             # Display metrics separately
             st.markdown("### Analysis by Metric")
 
@@ -1425,7 +1376,29 @@ def main():
         handle_pdf_export(experiments_data)
 
     elif page == "Raw Data":
-        handle_raw_data_page(experiments_data)
+        # Check if pairwise experiments exist
+        pairwise_data = []
+        if (
+            "pairwise_experiments" in st.session_state
+            and st.session_state.pairwise_experiments
+        ):
+            # Load pairwise experiments data
+            for exp in st.session_state.pairwise_experiments:
+                file_path = exp.get("file", "")
+                if file_path:
+                    data = load_pairwise_evaluation_files(file_path)
+                    if data is not None:
+                        pairwise_data.append(
+                            {
+                                "name": exp["name"],
+                                "file": file_path,
+                                "dfs": data[0],
+                                "combined_stats": data[1],
+                            }
+                        )
+
+        # Call the enhanced raw data page with pairwise data
+        handle_raw_data_page(experiments_data, pairwise_data)
 
 
 if __name__ == "__main__":

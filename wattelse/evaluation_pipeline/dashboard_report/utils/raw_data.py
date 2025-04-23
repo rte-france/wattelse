@@ -6,6 +6,18 @@
 import streamlit as st
 import pandas as pd
 
+from utils.pairwise import (
+    PAIRWISE_WINNER_COLUMN,
+    PAIRWISE_REASON_COLUMN,
+    PAIRWISE_QUESTION_COLUMN,
+    PAIRWISE_METRIC_COLUMN,
+    PAIRWISE_MODEL1_NAME_COLUMN,
+    PAIRWISE_MODEL2_NAME_COLUMN,
+    PAIRWISE_ANSWER_PREFIX,
+    PAIRWISE_EXTRACTS_PREFIX,
+    PAIRWISE_ANALYSIS_COLUMN,
+)
+
 
 def highlight_differences(
     row, display_df, comparison_df, selected_exps, filtered_score_columns
@@ -318,12 +330,14 @@ def calculate_extract_similarity(extract1, extract2):
     return intersection / union
 
 
-def handle_raw_data_page(experiments_data):
+def handle_raw_data_page(experiments_data, pairwise_experiments_data=None):
     """Enhanced Raw Data page with row-by-row comparison functionality, metric filtering, and judge justifications."""
     st.header("Raw Data")
 
     # Create tabs for different data views
-    tab1, tab2 = st.tabs(["🔍 Row Comparison", "⏱️ Timing Data"])
+    tab1, tab2, tab3 = st.tabs(
+        ["🔍 Row Comparison", "🔄 Pairwise Analysis", "⏱️ Timing Data"]
+    )
 
     # Tab 1: Row Comparison View
     with tab1:
@@ -965,8 +979,350 @@ def handle_raw_data_page(experiments_data):
                     else:
                         st.info("No rows match the current filter criteria")
 
-    # Tab 2: Timing Data
+    # Tab 2: Pairwise Analysis View
     with tab2:
+        st.subheader("Pairwise Comparison Analysis")
+
+        if not pairwise_experiments_data:
+            st.info(
+                "No pairwise comparison data available. Please configure pairwise experiments in the Experiment Setup page."
+            )
+            return
+
+        # Select a pairwise comparison
+        selected_comparison = st.selectbox(
+            "Select Pairwise Comparison",
+            [exp["name"] for exp in pairwise_experiments_data],
+            key="pairwise_raw_selector",
+        )
+
+        # Get the selected comparison data
+        selected_data = next(
+            (
+                exp
+                for exp in pairwise_experiments_data
+                if exp["name"] == selected_comparison
+            ),
+            None,
+        )
+
+        if not selected_data:
+            st.warning("Selected comparison data not found")
+        else:
+            # Get the dataframe from the first (and likely only) judge
+            judge_data = next(iter(selected_data["dfs"].values()), None)
+
+            if judge_data is None or judge_data.empty:
+                st.warning("No data found in the selected comparison")
+            else:
+                # Get all available metrics
+                metrics = []
+                if PAIRWISE_METRIC_COLUMN in judge_data.columns:
+                    metrics = ["All Metrics"] + sorted(
+                        judge_data[PAIRWISE_METRIC_COLUMN].unique().tolist()
+                    )
+
+                # Filter options
+                col1, col2 = st.columns([1, 2])
+
+                with col1:
+                    selected_metric = st.selectbox(
+                        "Filter by Metric", metrics, key="pairwise_metric_filter"
+                    )
+
+                with col2:
+                    selected_winner = st.selectbox(
+                        "Filter by Winner",
+                        ["All Winners"]
+                        + sorted(judge_data[PAIRWISE_WINNER_COLUMN].unique().tolist()),
+                        key="pairwise_winner_filter",
+                    )
+
+                # Apply filters
+                filtered_data = judge_data.copy()
+
+                if selected_metric != "All Metrics":
+                    filtered_data = filtered_data[
+                        filtered_data[PAIRWISE_METRIC_COLUMN] == selected_metric
+                    ]
+
+                if selected_winner != "All Winners":
+                    filtered_data = filtered_data[
+                        filtered_data[PAIRWISE_WINNER_COLUMN] == selected_winner
+                    ]
+
+                # Display filter status
+                if filtered_data.empty:
+                    st.warning("No data matches the selected filters")
+                else:
+                    # Get model names from the data for display
+                    model1_name = None
+                    model2_name = None
+
+                    if (
+                        PAIRWISE_MODEL1_NAME_COLUMN in filtered_data.columns
+                        and not filtered_data[PAIRWISE_MODEL1_NAME_COLUMN].empty
+                    ):
+                        model1_name = filtered_data[PAIRWISE_MODEL1_NAME_COLUMN].iloc[0]
+
+                    if (
+                        PAIRWISE_MODEL2_NAME_COLUMN in filtered_data.columns
+                        and not filtered_data[PAIRWISE_MODEL2_NAME_COLUMN].empty
+                    ):
+                        model2_name = filtered_data[PAIRWISE_MODEL2_NAME_COLUMN].iloc[0]
+
+                    # Show summary of the filtered data
+                    st.info(
+                        f"Displaying {len(filtered_data)} comparison results "
+                        + (
+                            f"for metric: {selected_metric}"
+                            if selected_metric != "All Metrics"
+                            else "across all metrics"
+                        )
+                        + (
+                            f", winner: {selected_winner}"
+                            if selected_winner != "All Winners"
+                            else ""
+                        )
+                    )
+
+                    # Display the filtered dataframe
+                    # Reorder columns for better display
+                    display_cols = []
+
+                    # First add basic info columns
+                    if PAIRWISE_QUESTION_COLUMN in filtered_data.columns:
+                        display_cols.append(PAIRWISE_QUESTION_COLUMN)
+
+                    if PAIRWISE_METRIC_COLUMN in filtered_data.columns:
+                        display_cols.append(PAIRWISE_METRIC_COLUMN)
+
+                    if PAIRWISE_WINNER_COLUMN in filtered_data.columns:
+                        display_cols.append(PAIRWISE_WINNER_COLUMN)
+
+                    # Add model name columns
+                    if PAIRWISE_MODEL1_NAME_COLUMN in filtered_data.columns:
+                        display_cols.append(PAIRWISE_MODEL1_NAME_COLUMN)
+
+                    if PAIRWISE_MODEL2_NAME_COLUMN in filtered_data.columns:
+                        display_cols.append(PAIRWISE_MODEL2_NAME_COLUMN)
+
+                    # Add remaining columns that haven't been added yet
+                    for col in filtered_data.columns:
+                        if col not in display_cols:
+                            display_cols.append(col)
+
+                    # Display the dataframe with reordered columns
+                    st.dataframe(filtered_data[display_cols], use_container_width=True)
+
+                    # Add export to CSV option
+                    csv = filtered_data.to_csv(index=False)
+                    metric_name = selected_metric.replace(" ", "_").lower()
+                    winner_filter = selected_winner.replace(" ", "_").lower()
+                    st.download_button(
+                        label="Download Filtered Results as CSV",
+                        data=csv,
+                        file_name=f"pairwise_{selected_comparison}_{metric_name}_{winner_filter}.csv",
+                        mime="text/csv",
+                    )
+
+                    # Add detailed view for a specific comparison
+                    st.subheader("Detailed Comparison View")
+
+                    # Get questions from filtered data
+                    questions = []
+                    if PAIRWISE_QUESTION_COLUMN in filtered_data.columns:
+                        questions = sorted(
+                            filtered_data[PAIRWISE_QUESTION_COLUMN].unique().tolist()
+                        )
+
+                    if questions:
+                        selected_question = st.selectbox(
+                            "Select Question to Examine",
+                            questions,
+                            key="pairwise_question_selector",
+                        )
+
+                        # Get the row for this question
+                        question_rows = filtered_data[
+                            filtered_data[PAIRWISE_QUESTION_COLUMN] == selected_question
+                        ]
+
+                        if not question_rows.empty:
+                            question_row = question_rows.iloc[0]
+
+                            # Display the question
+                            st.markdown("##### Question")
+                            st.markdown(f"**{selected_question}**")
+
+                            # Display the metric and winner
+                            metric = question_row.get(PAIRWISE_METRIC_COLUMN, "Unknown")
+                            winner = question_row.get(PAIRWISE_WINNER_COLUMN, "Unknown")
+
+                            # Get model names
+                            model1 = question_row.get(
+                                PAIRWISE_MODEL1_NAME_COLUMN, "Model 1"
+                            )
+                            model2 = question_row.get(
+                                PAIRWISE_MODEL2_NAME_COLUMN, "Model 2"
+                            )
+
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown(f"**Metric:** {metric}")
+                            with col2:
+                                win_color = (
+                                    "#c6efce" if winner else "#ffffff"
+                                )  # Green background for winner
+                                st.markdown(
+                                    f"<div style='background-color: {win_color}; padding: 5px; border-radius: 5px;'>"
+                                    f"<b>Winner:</b> {winner}"
+                                    f"</div>",
+                                    unsafe_allow_html=True,
+                                )
+
+                            # Display reason if available
+                            if PAIRWISE_REASON_COLUMN in question_row and pd.notna(
+                                question_row[PAIRWISE_REASON_COLUMN]
+                            ):
+                                st.markdown("##### Reason for Decision")
+                                st.markdown(f"_{question_row[PAIRWISE_REASON_COLUMN]}_")
+
+                            # Display analysis if available
+                            if PAIRWISE_ANALYSIS_COLUMN in question_row and pd.notna(
+                                question_row[PAIRWISE_ANALYSIS_COLUMN]
+                            ):
+                                st.markdown("##### Analysis")
+                                st.markdown(question_row[PAIRWISE_ANALYSIS_COLUMN])
+
+                            # Display model outputs side by side
+                            st.markdown("##### Model Responses")
+
+                            model_cols = st.columns(2)
+
+                            # Find answer columns
+                            model1_ans_col = None
+                            model2_ans_col = None
+
+                            for col in question_row.index:
+                                if col.startswith(PAIRWISE_ANSWER_PREFIX + model1):
+                                    model1_ans_col = col
+                                elif col.startswith(PAIRWISE_ANSWER_PREFIX + model2):
+                                    model2_ans_col = col
+
+                            # Display model 1 answer
+                            with model_cols[0]:
+                                st.markdown(f"**{model1}**")
+                                if model1_ans_col and pd.notna(
+                                    question_row[model1_ans_col]
+                                ):
+                                    st.markdown(question_row[model1_ans_col])
+                                else:
+                                    # Try alternative column patterns
+                                    found = False
+                                    for col in question_row.index:
+                                        if (
+                                            PAIRWISE_ANSWER_PREFIX in col
+                                            and model1.lower() in col.lower()
+                                        ):
+                                            st.markdown(question_row[col])
+                                            found = True
+                                            break
+                                    if not found:
+                                        st.info(f"No answer found for {model1}")
+
+                            # Display model 2 answer
+                            with model_cols[1]:
+                                # Add winner indicator
+                                if winner == model2:
+                                    st.markdown(f"**{model2}** ✅")
+                                else:
+                                    st.markdown(f"**{model2}**")
+
+                                if model2_ans_col and pd.notna(
+                                    question_row[model2_ans_col]
+                                ):
+                                    st.markdown(question_row[model2_ans_col])
+                                else:
+                                    # Try alternative column patterns
+                                    found = False
+                                    for col in question_row.index:
+                                        if (
+                                            PAIRWISE_ANSWER_PREFIX in col
+                                            and model2.lower() in col.lower()
+                                        ):
+                                            st.markdown(question_row[col])
+                                            found = True
+                                            break
+                                    if not found:
+                                        st.info(f"No answer found for {model2}")
+
+                            # Display relevant extracts if available
+                            st.markdown("##### Relevant Extracts")
+                            extract_cols = st.columns(2)
+
+                            # Find extract columns
+                            model1_ext_col = None
+                            model2_ext_col = None
+
+                            for col in question_row.index:
+                                if col.startswith(PAIRWISE_EXTRACTS_PREFIX + model1):
+                                    model1_ext_col = col
+                                elif col.startswith(PAIRWISE_EXTRACTS_PREFIX + model2):
+                                    model2_ext_col = col
+
+                            # Display model 1 extracts
+                            with extract_cols[0]:
+                                st.markdown(f"**{model1} Extracts**")
+                                if model1_ext_col and pd.notna(
+                                    question_row[model1_ext_col]
+                                ):
+                                    with st.expander("Show Extracts", expanded=False):
+                                        st.markdown(question_row[model1_ext_col])
+                                else:
+                                    # Try alternative column patterns
+                                    found = False
+                                    for col in question_row.index:
+                                        if (
+                                            PAIRWISE_EXTRACTS_PREFIX in col
+                                            and model1.lower() in col.lower()
+                                        ):
+                                            with st.expander(
+                                                "Show Extracts", expanded=False
+                                            ):
+                                                st.markdown(question_row[col])
+                                            found = True
+                                            break
+                                    if not found:
+                                        st.info(f"No extracts found for {model1}")
+
+                            # Display model 2 extracts
+                            with extract_cols[1]:
+                                st.markdown(f"**{model2} Extracts**")
+                                if model2_ext_col and pd.notna(
+                                    question_row[model2_ext_col]
+                                ):
+                                    with st.expander("Show Extracts", expanded=False):
+                                        st.markdown(question_row[model2_ext_col])
+                                else:
+                                    # Try alternative column patterns
+                                    found = False
+                                    for col in question_row.index:
+                                        if (
+                                            PAIRWISE_EXTRACTS_PREFIX in col
+                                            and model2.lower() in col.lower()
+                                        ):
+                                            with st.expander(
+                                                "Show Extracts", expanded=False
+                                            ):
+                                                st.markdown(question_row[col])
+                                            found = True
+                                            break
+                                    if not found:
+                                        st.info(f"No extracts found for {model2}")
+
+    # Tab 3: Timing Data (existing code)
+    with tab3:
         for exp in experiments_data:
             st.subheader(f"{exp['name']}")
             if exp["timing"] is not None:
