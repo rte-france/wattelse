@@ -881,7 +881,6 @@ def main():
         [
             "Experiment Setup",
             "Performance Overview",
-            "Pairwise Analysis",  # Add new page
             "Timing Analysis",
             "PDF Export",
             "Raw Data",
@@ -983,7 +982,6 @@ def main():
 
         # Create tabs for Summary and Individual Judges
         tab_summary, *judge_tabs = st.tabs(["Summary"] + list(sorted(all_judges)))
-
         with tab_summary:
             st.subheader("Evaluation Summary")
             st.caption(
@@ -991,15 +989,8 @@ def main():
             )
 
             # Generate summary metrics
-            summary_dfs, summary_figs, overall_df, overall_fig = create_metrics_summary(
+            summary_dfs, summary_figs, overall_df = create_metrics_summary(
                 experiments_data
-            )
-
-            # Display overall summary
-            st.plotly_chart(
-                overall_fig,
-                use_container_width=True,
-                key=f"overall_summary_chart_{str(uuid.uuid4())}",
             )
 
             # Display summary table and radar plot side-by-side
@@ -1119,33 +1110,328 @@ def main():
                     key=f"avg_radar_chart_{str(uuid.uuid4())}",
                 )
 
-            # Display individual metric summaries in expandable sections
-            st.subheader("Individual Metric Summaries")
-            for metric in sorted(summary_figs.keys()):
-                with st.expander(f"{metric.title()} Metric Details", expanded=False):
-                    st.plotly_chart(
-                        summary_figs[metric],
-                        use_container_width=True,
-                        key=f"summary_{metric}_chart_{str(uuid.uuid4())}",
-                    )
+            # PAIRWISE COMPARISON SECTION - Now below the confidence intervals
+            st.subheader("Pairwise Comparison Evaluation")
 
-                    col1, col2 = st.columns([1, 1])
-                    with col1:
-                        # Create display DataFrame with bold formatting
-                        display_df = pd.DataFrame()
-                        display_df["Experiment"] = summary_dfs[metric]["Experiment"]
-                        display_df["Average Performance %"] = summary_dfs[metric][
-                            "Display Score"
-                        ]
-                        display_df["Judges Count"] = summary_dfs[metric]["Judges Count"]
+            # Check if pairwise data is available
+            if (
+                "pairwise_experiments" in st.session_state
+                and st.session_state.pairwise_experiments
+            ):
+                # Load pairwise data
+                pairwise_data = []
+                for exp in st.session_state.pairwise_experiments:
+                    file_path = exp.get("file", "")
+                    if file_path:
+                        data = load_pairwise_evaluation_files(file_path)
+                        if data is not None:
+                            pairwise_data.append(
+                                {
+                                    "name": exp["name"],
+                                    "file": file_path,
+                                    "dfs": data[0],
+                                    "combined_stats": data[1],
+                                }
+                            )
 
-                        # Use st.markdown to render the bold formatting
-                        st.markdown(
-                            display_df.to_markdown(index=False), unsafe_allow_html=True
+                if pairwise_data:
+                    # If there are multiple pairwise datasets, add a selectbox
+                    if len(pairwise_data) > 1:
+                        selected_pairwise_name = st.selectbox(
+                            "Select Pairwise Comparison",
+                            [exp["name"] for exp in pairwise_data],
+                            key="overview_pairwise_selector",
                         )
-                    with col2:
-                        if metric in METRIC_DESCRIPTIONS:
-                            st.info(METRIC_DESCRIPTIONS[metric])
+                        selected_pairwise = next(
+                            (
+                                exp
+                                for exp in pairwise_data
+                                if exp["name"] == selected_pairwise_name
+                            ),
+                            pairwise_data[0],
+                        )
+                    else:
+                        selected_pairwise = pairwise_data[0]
+
+                    # Get combined stats
+                    combined_stats = selected_pairwise["combined_stats"]
+
+                    if not combined_stats.empty:
+                        # Create columns for layout matching the criteria evaluation
+                        col1, col2 = st.columns([1, 1])
+
+                        with col1:
+                            # Create comprehensive table with all metrics
+                            st.markdown("##### Pairwise Win Statistics")
+
+                            # Create a DataFrame to hold all metric win statistics
+                            all_metrics_data = []
+
+                            # Find all metrics with win rates
+                            all_win_columns = [
+                                col
+                                for col in combined_stats.columns
+                                if col.endswith("_win_rate")
+                            ]
+                            for win_col in all_win_columns:
+                                metric_name = win_col.replace("_win_rate", "")
+
+                                # For each model, get the statistics
+                                for _, row in combined_stats.iterrows():
+                                    model = row["Model"]
+                                    win_rate = row[win_col]
+                                    wins_col = win_col.replace("_win_rate", "_wins")
+                                    total_col = win_col.replace("_win_rate", "_total")
+
+                                    wins = row[wins_col] if wins_col in row else 0
+                                    total = row[total_col] if total_col in row else 0
+
+                                    all_metrics_data.append(
+                                        {
+                                            "Model": model,
+                                            "Metric": metric_name.title(),
+                                            "Win Rate": f"{win_rate:.1f}%",
+                                            "Wins/Total": f"{int(wins)}/{int(total)}",
+                                        }
+                                    )
+
+                            # Create and display the DataFrame
+                            if all_metrics_data:
+                                metrics_df = pd.DataFrame(all_metrics_data)
+
+                                # Pivot the DataFrame to have metrics as columns
+                                pivot_df = metrics_df.pivot(
+                                    index="Model",
+                                    columns="Metric",
+                                    values=["Win Rate", "Wins/Total"],
+                                )
+
+                                # Flatten multi-index columns
+                                pivot_df.columns = [
+                                    f"{col[1]} {col[0]}" for col in pivot_df.columns
+                                ]
+
+                                # Reset index to make Model a column
+                                pivot_df = pivot_df.reset_index()
+
+                                # Apply styling to highlight highest win rates
+                                def highlight_max_win_rate(s):
+                                    is_win_rate = "Win Rate" in s.name
+                                    if is_win_rate:
+                                        # Extract numeric values
+                                        numeric_vals = [
+                                            (
+                                                float(val.rstrip("%"))
+                                                if isinstance(val, str) and "%" in val
+                                                else 0
+                                            )
+                                            for val in s
+                                        ]
+                                        max_val = max(numeric_vals)
+                                        return [
+                                            (
+                                                "font-weight: bold"
+                                                if val == max_val
+                                                else ""
+                                            )
+                                            for val in numeric_vals
+                                        ]
+                                    return ["" for _ in s]
+
+                                # Apply styling
+                                styled_df = pivot_df.style.apply(highlight_max_win_rate)
+
+                                # Display the table
+                                st.dataframe(styled_df, use_container_width=True)
+                            else:
+                                st.info(
+                                    "No win statistics available for the selected comparison."
+                                )
+
+                        with col2:
+                            # For circular plot, focus on correctness pairwise first if available
+                            correctness_pairwise_data = []
+
+                            # Find correctness_pairwise data
+                            for col in combined_stats.columns:
+                                if (
+                                    "correctness_pairwise" in col.lower()
+                                    and col.endswith("_win_rate")
+                                ):
+                                    for _, row in combined_stats.iterrows():
+                                        model = row["Model"]
+                                        win_rate = row[col]
+                                        correctness_pairwise_data.append(
+                                            {"Model": model, "Win Rate": win_rate}
+                                        )
+
+                            # If correctness_pairwise data exists, create pie chart
+                            if correctness_pairwise_data:
+                                pie_df = pd.DataFrame(correctness_pairwise_data)
+
+                                fig = go.Figure(
+                                    go.Pie(
+                                        labels=pie_df["Model"],
+                                        values=pie_df["Win Rate"],
+                                        hovertemplate="Model: %{label}<br>Win Rate: %{value:.1f}%<extra></extra>",
+                                    )
+                                )
+
+                                fig.update_layout(
+                                    title="Correctness Pairwise Win Rates",
+                                )
+
+                                # Display the pie chart
+                                st.plotly_chart(
+                                    fig,
+                                    use_container_width=True,
+                                    key=f"pairwise_pie_{str(uuid.uuid4())}",
+                                )
+                            else:
+                                # If no correctness_pairwise, try any other metric
+                                other_metric_data = []
+                                other_metric_name = ""
+
+                                for col in all_win_columns:
+                                    if other_metric_data:
+                                        break
+
+                                    metric_name = col.replace("_win_rate", "")
+                                    other_metric_name = metric_name.title()
+
+                                    for _, row in combined_stats.iterrows():
+                                        model = row["Model"]
+                                        win_rate = row[col]
+                                        other_metric_data.append(
+                                            {"Model": model, "Win Rate": win_rate}
+                                        )
+
+                                if other_metric_data:
+                                    pie_df = pd.DataFrame(other_metric_data)
+
+                                    fig = go.Figure(
+                                        go.Pie(
+                                            labels=pie_df["Model"],
+                                            values=pie_df["Win Rate"],
+                                            hovertemplate="Model: %{label}<br>Win Rate: %{value:.1f}%<extra></extra>",
+                                        )
+                                    )
+
+                                    fig.update_layout(
+                                        title=f"{other_metric_name} Win Rates",
+                                    )
+
+                                    # Display the pie chart
+                                    st.plotly_chart(
+                                        fig,
+                                        use_container_width=True,
+                                        key=f"pairwise_other_pie_{str(uuid.uuid4())}",
+                                    )
+                                else:
+                                    st.info(
+                                        "No metric data available for visualization."
+                                    )
+                    else:
+                        st.info(
+                            "No statistics available for the selected pairwise comparison."
+                        )
+                else:
+                    st.info(
+                        "No pairwise comparison data loaded. Configure pairwise experiments in the Experiment Setup page."
+                    )
+            else:
+                st.info(
+                    "No pairwise experiments configured. Add pairwise comparisons in the Experiment Setup page."
+                )
+
+                # Format each column with highest value in bold and add stars for judge agreement
+                for col in metric_columns:
+                    # Find max value in this column
+                    max_val = formatted_df[col].max()
+
+                    # Add stars based on how many judges rated this experiment as best for this metric
+                    best_count_col = f"{col}_best_count"
+                    if best_count_col in formatted_df.columns:
+                        formatted_df[f"{col}_display"] = formatted_df.apply(
+                            lambda row: (
+                                f"**{row[col]:.1f}%** {'*' * row[best_count_col]}"
+                                if row[col] == max_val
+                                else (
+                                    f"{row[col]:.1f}% {'*' * row[best_count_col]}"
+                                    if row[best_count_col] > 0
+                                    else f"{row[col]:.1f}%"
+                                )
+                            ),
+                            axis=1,
+                        )
+                    else:
+                        # If best_count_col doesn't exist, just format without stars
+                        formatted_df[f"{col}_display"] = formatted_df.apply(
+                            lambda row: (
+                                f"**{row[col]:.1f}%**"
+                                if row[col] == max_val
+                                else f"{row[col]:.1f}%"
+                            ),
+                            axis=1,
+                        )
+
+                # MAIN TABLE - Create a new DataFrame with just the display columns
+                display_df = pd.DataFrame()
+                display_df["Experiment"] = formatted_df["Experiment"]
+
+                # Add just the metric columns (no CI)
+                for metric in sorted(metric_columns):
+                    if f"{metric}_display" in formatted_df.columns:
+                        display_df[metric] = formatted_df[f"{metric}_display"]
+
+                # Add Number of Judges column
+                display_df["Number of Judges"] = formatted_df["Number of Judges"]
+
+                # Use st.markdown to render the bold formatting
+                st.markdown(display_df.to_markdown(index=False), unsafe_allow_html=True)
+
+                # Add a note explaining the stars
+                st.caption(
+                    "Note: Stars (*) indicate how many judges rated this experiment as the best for that metric. "
+                    "Bold values indicate the highest score in each column."
+                )
+
+                # CONFIDENCE INTERVAL TABLE - Create a separate table just for CIs
+                st.markdown("##### 95% Confidence Intervals")
+
+                ci_df = pd.DataFrame()
+                ci_df["Experiment"] = formatted_df["Experiment"]
+
+                # Add CI columns for all metrics
+                for metric in sorted(metric_columns):
+                    # Add CI column if available
+                    ci_lower_col = f"{metric}_ci_lower"
+                    ci_upper_col = f"{metric}_ci_upper"
+                    if (
+                        ci_lower_col in formatted_df.columns
+                        and ci_upper_col in formatted_df.columns
+                    ):
+                        # Find row with highest upper bound for this metric's CI
+                        max_upper_bound = formatted_df[ci_upper_col].max()
+
+                        # Format CI column with highest value in bold
+                        ci_df[f"{metric.title()}"] = formatted_df.apply(
+                            lambda row: (
+                                f"**({row[ci_lower_col]:.1f}% - {row[ci_upper_col]:.1f}%)**"
+                                if row[ci_upper_col] == max_upper_bound
+                                else f"({row[ci_lower_col]:.1f}% - {row[ci_upper_col]:.1f}%)"
+                            ),
+                            axis=1,
+                        )
+
+                # Use st.markdown to render the bold formatting for CI table
+                st.markdown(ci_df.to_markdown(index=False), unsafe_allow_html=True)
+
+                # Add a note explaining the CI table
+                st.caption(
+                    "Note: This table shows the 95% confidence intervals for each metric. "
+                    "Bold values indicate the highest upper bound in each column."
+                )
 
         # Create individual judge tabs
         for judge_tab, judge_name in zip(judge_tabs, sorted(all_judges)):

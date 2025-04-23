@@ -413,5 +413,3 @@ def handle_pairwise_analysis_page(pairwise_experiments_data):
                                             st.markdown(f"**Winner:** {winner}")
                                             st.markdown(f"**Reason:** {reason}")
                                             st.divider()
-
-
