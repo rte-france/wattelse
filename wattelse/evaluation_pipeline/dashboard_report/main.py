@@ -27,14 +27,6 @@ from utils import (
     METRIC_DESCRIPTIONS,
 )
 from wattelse.evaluation_pipeline import RESULTS_BASE_DIR
-from utils.pairwise import (
-    load_pairwise_evaluation_files,
-    PAIRWISE_WINNER_COLUMN,
-    PAIRWISE_REASON_COLUMN,
-    PAIRWISE_QUESTION_COLUMN,
-    PAIRWISE_METRIC_COLUMN,
-    METRIC_DESCRIPTIONS,
-)
 
 
 def setup_page():
@@ -864,7 +856,10 @@ def main():
             )
 
             # Generate summary metrics
-            overall_df = create_metrics_summary(experiments_data)
+            # FIXME : AttributeError: 'tuple' object has no attribute 'copy' but I need to remove summary_dfs, summary_figs
+            summary_dfs, summary_figs, overall_df = create_metrics_summary(
+                experiments_data
+            )
 
             # Display summary table and radar plot side-by-side
             st.subheader("Performance Summary")
