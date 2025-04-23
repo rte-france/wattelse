@@ -16,6 +16,7 @@ from .constants import (
     RAG_QUERY_TIME_COLUMN,
     RAG_RETRIEVER_TIME_COLUMN,
     METRIC_DESCRIPTIONS,
+    # Add pairwise constants here if needed for direct import
 )
 
 # Import data loading functions
@@ -36,3 +37,10 @@ from .pdf_extract import create_pdf_report, get_pdf_download_link
 
 # Import raw data handling functions
 from .raw_data import handle_raw_data_page
+
+# Import pairwise functions
+from .pairwise import (
+    load_pairwise_evaluation_files,
+    handle_pairwise_analysis_page,
+    PAIRWISE_RESULTS_DIR,
+)
