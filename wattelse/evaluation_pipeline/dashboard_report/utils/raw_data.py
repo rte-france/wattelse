@@ -1321,7 +1321,7 @@ def handle_raw_data_page(experiments_data, pairwise_experiments_data=None):
                                     if not found:
                                         st.info(f"No extracts found for {model2}")
 
-    # Tab 3: Timing Data (existing code)
+    # Tab 3: Timing Data
     with tab3:
         for exp in experiments_data:
             st.subheader(f"{exp['name']}")
