@@ -298,7 +298,7 @@ def evaluate_pairwise_metrics(
         with tqdm_joblib(
             desc=f"Evaluating {metric}", total=comparison_df.shape[0]
         ) as progress_bar:
-            evaluations = Parallel(n_jobs=-1)(
+            evaluations = Parallel(n_jobs=24)(
                 delayed(evaluate_pairwise_row)(row, metric, config)
                 for _, row in comparison_df.iterrows()
             )
