@@ -8,7 +8,7 @@
 import plotly.graph_objects as go
 import plotly.colors
 import pandas as pd
-from utils import (
+from .constants import (
     PAIRWISE_METRIC_COLUMN,
     PAIRWISE_WINNER_COLUMN,
 )
@@ -331,8 +331,8 @@ def create_pairwise_pie_chart(combined_stats, pairwise_dfs=None, metric_name=Non
         all_counts = {}
         total_comparisons = 0
 
-        # Process each judge's dataframe
-        for judge_name, df in pairwise_dfs.items():
+        # Process each experiment_name dataframe
+        for _, df in pairwise_dfs.items():
             if (
                 PAIRWISE_METRIC_COLUMN in df.columns
                 and PAIRWISE_WINNER_COLUMN in df.columns

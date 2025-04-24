@@ -18,6 +18,7 @@ from .constants import (
     METRIC_DESCRIPTIONS,
     PAIRWISE_WINNER_COLUMN,
     PAIRWISE_METRIC_COLUMN,
+    PAIRWISE_RESULTS_DIR,
 )
 
 # Import data loading functions
@@ -44,5 +45,4 @@ from .raw_data import handle_raw_data_page
 from .pairwise import (
     load_pairwise_evaluation_files,
     handle_pairwise_analysis_page,
-    PAIRWISE_RESULTS_DIR,
 )

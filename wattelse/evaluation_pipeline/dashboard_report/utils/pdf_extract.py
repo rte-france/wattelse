@@ -27,6 +27,8 @@ from datetime import datetime
 import markdown
 from bs4 import BeautifulSoup
 import logging
+from scipy import stats
+import numpy as np
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -401,9 +403,6 @@ def create_pdf_report(
 
                     # Calculate CI for all metrics
                     if all_scores:
-                        from scipy import stats
-                        import numpy as np
-
                         scores_array = np.array(
                             [s * 100 for s in all_scores]
                         )  # Convert to percentages

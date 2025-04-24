@@ -6,7 +6,7 @@
 import streamlit as st
 import pandas as pd
 
-from utils.pairwise import (
+from .constants import (
     PAIRWISE_WINNER_COLUMN,
     PAIRWISE_REASON_COLUMN,
     PAIRWISE_QUESTION_COLUMN,
@@ -1054,23 +1054,6 @@ def handle_raw_data_page(experiments_data, pairwise_experiments_data=None):
                 # Display filter status
                 if filtered_data.empty:
                     st.warning("No data matches the selected filters")
-                else:
-                    # Get model names from the data for display
-                    model1_name = None
-                    model2_name = None
-
-                    if (
-                        PAIRWISE_MODEL1_NAME_COLUMN in filtered_data.columns
-                        and not filtered_data[PAIRWISE_MODEL1_NAME_COLUMN].empty
-                    ):
-                        model1_name = filtered_data[PAIRWISE_MODEL1_NAME_COLUMN].iloc[0]
-
-                    if (
-                        PAIRWISE_MODEL2_NAME_COLUMN in filtered_data.columns
-                        and not filtered_data[PAIRWISE_MODEL2_NAME_COLUMN].empty
-                    ):
-                        model2_name = filtered_data[PAIRWISE_MODEL2_NAME_COLUMN].iloc[0]
-
                     # Show summary of the filtered data
                     st.info(
                         f"Displaying {len(filtered_data)} comparison results "

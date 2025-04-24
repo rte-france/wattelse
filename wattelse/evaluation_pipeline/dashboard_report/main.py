@@ -120,7 +120,7 @@ def handle_experiment_setup():
     tab1, tab2 = st.tabs(["Standard Evaluation", "Pairwise Evaluation"])
 
     with tab1:
-        # PRESERVE ORIGINAL CODE FOR CRITERIA-BASED EVALUATION
+        # CRITERIA-BASED EVALUATION
         st.subheader("Standard Criteria-Based Evaluation")
 
         # Get available experiments
@@ -927,7 +927,7 @@ def main():
                     key=f"avg_radar_chart_{str(uuid.uuid4())}",
                 )
 
-            # PAIRWISE COMPARISON SECTION - Now below the confidence intervals
+            # PAIRWISE COMPARISON SECTION - Below the confidence intervals
             # In the Performance Overview section where you display pairwise data:
             st.subheader("Pairwise Comparison Evaluation")
 
