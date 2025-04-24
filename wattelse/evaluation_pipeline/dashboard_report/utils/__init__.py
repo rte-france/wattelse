@@ -16,7 +16,8 @@ from .constants import (
     RAG_QUERY_TIME_COLUMN,
     RAG_RETRIEVER_TIME_COLUMN,
     METRIC_DESCRIPTIONS,
-    # Add pairwise constants here if needed for direct import
+    PAIRWISE_WINNER_COLUMN,
+    PAIRWISE_METRIC_COLUMN,
 )
 
 # Import data loading functions
@@ -27,6 +28,7 @@ from .visualization import (
     create_timing_plot,
     create_radar_plot,
     create_average_radar_plot,
+    create_pairwise_pie_chart,
 )
 
 # Import the new metrics summary function

@@ -137,65 +137,6 @@ def calculate_pairwise_combined_stats(pairwise_dfs):
     return combined_stats
 
 
-def create_pairwise_win_rate_chart(pairwise_data):
-    """Create a chart showing win rates for models across different metrics."""
-    if not pairwise_data:
-        return None
-
-    # Extract combined statistics
-    combined_stats = pairwise_data.get("combined_stats")
-    if combined_stats is None or combined_stats.empty:
-        return None
-
-    # Get metrics
-    metrics = [
-        col.replace("_win_rate", "")
-        for col in combined_stats.columns
-        if col.endswith("_win_rate")
-    ]
-
-    # Prepare data for chart
-    chart_data = []
-    for _, row in combined_stats.iterrows():
-        model = row["Model"]
-        for metric in metrics:
-            if f"{metric}_win_rate" in row:
-                chart_data.append(
-                    {
-                        "Model": model,
-                        "Metric": metric.title(),
-                        "Win Rate": row[f"{metric}_win_rate"],
-                    }
-                )
-
-    # Create the chart
-    fig = go.Figure()
-
-    # Add traces for each model
-    for model in set(item["Model"] for item in chart_data):
-        model_data = [item for item in chart_data if item["Model"] == model]
-        fig.add_trace(
-            go.Bar(
-                x=[item["Metric"] for item in model_data],
-                y=[item["Win Rate"] for item in model_data],
-                name=model,
-                hovertemplate="Model: %{x}<br>Win Rate: %{y:.1f}%<extra></extra>",
-            )
-        )
-
-    # Update layout
-    fig.update_layout(
-        title="Win Rates by Model and Metric",
-        xaxis_title="Metric",
-        yaxis_title="Win Rate (%)",
-        yaxis_ticksuffix="%",
-        barmode="group",
-        legend_title="Model",
-    )
-
-    return fig
-
-
 def handle_pairwise_analysis_page(pairwise_experiments_data):
     """Handle pairwise analysis page with visualizations and statistics."""
     st.header("Pairwise Analysis")
@@ -413,3 +354,117 @@ def handle_pairwise_analysis_page(pairwise_experiments_data):
                                             st.markdown(f"**Winner:** {winner}")
                                             st.markdown(f"**Reason:** {reason}")
                                             st.divider()
+
+
+def create_pairwise_overview_section(pairwise_data):
+    """Create a streamlit section showing pairwise comparison overview for the Performance page.
+
+    Args:
+        pairwise_data (list): List of pairwise experiment data dictionaries
+
+    Returns:
+        None: Directly renders to Streamlit
+    """
+    # If there are multiple pairwise datasets, add a selectbox
+    if len(pairwise_data) > 1:
+        selected_pairwise_name = st.selectbox(
+            "Select Pairwise Comparison",
+            [exp["name"] for exp in pairwise_data],
+            key="overview_pairwise_selector",
+        )
+        selected_pairwise = next(
+            (exp for exp in pairwise_data if exp["name"] == selected_pairwise_name),
+            pairwise_data[0],
+        )
+    else:
+        selected_pairwise = pairwise_data[0]
+
+    # Get combined stats
+    combined_stats = selected_pairwise["combined_stats"]
+
+    if not combined_stats.empty:
+        # Create columns for layout matching the criteria evaluation
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            # Display win rate table
+            st.markdown("##### Pairwise Win Statistics")
+
+            # Format the win rate table
+            display_df = pd.DataFrame()
+            display_df["Model"] = combined_stats["Model"]
+
+            # Get all metrics
+            metrics = [
+                col.replace("_win_rate", "")
+                for col in combined_stats.columns
+                if col.endswith("_win_rate")
+            ]
+
+            # Add win rate columns with formatting
+            for metric in metrics:
+                if f"{metric}_win_rate" in combined_stats.columns:
+                    display_df[f"{metric.title()} Win Rate"] = combined_stats[
+                        f"{metric}_win_rate"
+                    ].apply(lambda x: f"{x:.1f}%")
+
+                    # Add wins/total columns
+                    if (
+                        f"{metric}_wins" in combined_stats.columns
+                        and f"{metric}_total" in combined_stats.columns
+                    ):
+                        display_df[f"{metric.title()} Wins/Total"] = (
+                            combined_stats.apply(
+                                lambda row: f"{int(row[f'{metric}_wins'])}/{int(row[f'{metric}_total'])}",
+                                axis=1,
+                            )
+                        )
+
+            # Display the table
+            st.dataframe(display_df, use_container_width=True)
+
+        with col2:
+            # Create pie chart for a selected metric
+            # First look for correctness_pairwise, then use first available metric
+            selected_metric = None
+            for metric in metrics:
+                if "correctness" in metric.lower():
+                    selected_metric = metric
+                    break
+
+            # If no correctness metric, use the first available
+            if not selected_metric and metrics:
+                selected_metric = metrics[0]
+
+            if selected_metric:
+                # Create win data for pie chart
+                win_data = []
+                for _, row in combined_stats.iterrows():
+                    model = row["Model"]
+                    win_rate = row[f"{selected_metric}_win_rate"]
+                    win_data.append({"Model": model, "Win Rate": win_rate})
+
+                pie_df = pd.DataFrame(win_data)
+
+                fig = go.Figure(
+                    go.Pie(
+                        labels=pie_df["Model"],
+                        values=pie_df["Win Rate"],
+                        hovertemplate="Model: %{label}<br>Win Rate: %{value:.1f}%<extra></extra>",
+                    )
+                )
+
+                fig.update_layout(
+                    title=f"{selected_metric.title()} Win Rates",
+                )
+
+                # Display the pie chart
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True,
+                    key=f"pairwise_pie_{str(uuid.uuid4())}",
+                )
+            else:
+                st.info("No metric data available for visualization.")
+    else:
+        st.info("No statistics available for the selected pairwise comparison.")
