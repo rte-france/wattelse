@@ -103,6 +103,64 @@ def merge_datasets(
     df1 = pd.read_excel(df1_path)
     df2 = pd.read_excel(df2_path)
 
+    # Check for duplicates within each dataset (before deduplication)
+    duplicates_df1 = df1[df1.duplicated(QUERY_COLUMN, keep=False)]
+    duplicates_df2 = df2[df2.duplicated(QUERY_COLUMN, keep=False)]
+
+    if not duplicates_df1.empty:
+        logger.warning(
+            f"Found {len(duplicates_df1)} duplicate questions in first dataset"
+        )
+        for q in duplicates_df1[QUERY_COLUMN].unique():
+            count = duplicates_df1[QUERY_COLUMN].value_counts()[q]
+            logger.warning(
+                f"Question '{q[:50]}...' appears {count} times in first dataset"
+            )
+
+    if not duplicates_df2.empty:
+        logger.warning(
+            f"Found {len(duplicates_df2)} duplicate questions in second dataset"
+        )
+        for q in duplicates_df2[QUERY_COLUMN].unique():
+            count = duplicates_df2[QUERY_COLUMN].value_counts()[q]
+            logger.warning(
+                f"Question '{q[:50]}...' appears {count} times in second dataset"
+            )
+
+    # Deduplicate the datasets
+    logger.info(
+        f"Before deduplication: df1 has {len(df1)} rows, df2 has {len(df2)} rows"
+    )
+    df1 = df1.drop_duplicates(subset=[QUERY_COLUMN])
+    df2 = df2.drop_duplicates(subset=[QUERY_COLUMN])
+    logger.info(
+        f"After deduplication: df1 has {len(df1)} rows, df2 has {len(df2)} rows"
+    )
+
+    # Normalize questions to handle potential whitespace differences
+    df1[QUERY_COLUMN + "_norm"] = df1[QUERY_COLUMN].str.strip().str.lower()
+    df2[QUERY_COLUMN + "_norm"] = df2[QUERY_COLUMN].str.strip().str.lower()
+
+    # Check with normalized questions
+    only_in_df1_norm = set(df1[QUERY_COLUMN + "_norm"]) - set(
+        df2[QUERY_COLUMN + "_norm"]
+    )
+    only_in_df2_norm = set(df2[QUERY_COLUMN + "_norm"]) - set(
+        df1[QUERY_COLUMN + "_norm"]
+    )
+
+    logger.warning(
+        f"After normalization: Found {len(only_in_df1_norm)} questions only in first dataset"
+    )
+    if only_in_df1_norm:
+        logger.warning(f"Questions only in first dataset: {list(only_in_df1_norm)}")
+
+    logger.warning(
+        f"After normalization: Found {len(only_in_df2_norm)} questions only in second dataset"
+    )
+    if only_in_df2_norm:
+        logger.warning(f"Questions only in second dataset: {list(only_in_df2_norm)}")
+
     # Simple check to ensure we have common questions
     common_questions = set(df1[QUERY_COLUMN]).intersection(set(df2[QUERY_COLUMN]))
     if not common_questions:
@@ -298,7 +356,7 @@ def evaluate_pairwise_metrics(
         with tqdm_joblib(
             desc=f"Evaluating {metric}", total=comparison_df.shape[0]
         ) as progress_bar:
-            evaluations = Parallel(n_jobs=24)(
+            evaluations = Parallel(n_jobs=10)(
                 delayed(evaluate_pairwise_row)(row, metric, config)
                 for _, row in comparison_df.iterrows()
             )
