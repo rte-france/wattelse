@@ -593,45 +593,6 @@ def main(
         logger.success(
             f"Pairwise comparison results with model outputs saved to {output_path}"
         )
-
-        # Create a summary file
-        summary_data = []
-        pairwise_metrics = [
-            m for m in eval_config.active_metrics if m.endswith("_pairwise")
-        ]
-
-        for metric in pairwise_metrics:
-            metric_results = results_df[results_df["metric"] == metric]
-            total = len(metric_results)
-
-            if total > 0:
-                model1_wins = sum(metric_results["winner"] == model1_name)
-                model2_wins = sum(metric_results["winner"] == model2_name)
-                ties = sum(metric_results["winner"] == "Tie")
-                errors = sum(metric_results["winner"] == "Error") + sum(
-                    metric_results["winner"] == "Unknown"
-                )
-
-                summary_data.append(
-                    {
-                        "metric": metric,
-                        f"{model1_name}_wins": model1_wins,
-                        f"{model1_name}_win_pct": f"{model1_wins/total:.1%}",
-                        f"{model2_name}_wins": model2_wins,
-                        f"{model2_name}_win_pct": f"{model2_wins/total:.1%}",
-                        "ties": ties,
-                        "tie_pct": f"{ties/total:.1%}",
-                        "errors": errors,
-                        "error_pct": f"{errors/total:.1%}" if errors > 0 else "0.0%",
-                        "total_comparisons": total,
-                    }
-                )
-
-        summary_df = pd.DataFrame(summary_data)
-        summary_path = full_output_dir / f"summary_{model1_name}_vs_{model2_name}.xlsx"
-        summary_path = handle_output_path(summary_path, overwrite)
-        summary_df.to_excel(summary_path, index=False)
-        logger.success(f"Summary results saved to {summary_path}")
     else:
         logger.error("No results generated from pairwise comparison")
 
