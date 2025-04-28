@@ -379,12 +379,25 @@ def create_pairwise_overview_section(pairwise_data):
     combined_stats = selected_pairwise["combined_stats"]
 
     if not combined_stats.empty:
+        # Calculate total questions evaluated
+        total_questions = 0
+        unique_questions = set()
+
+        # Go through all judge dataframes to count unique questions
+        for judge_name, df in selected_pairwise["dfs"].items():
+            if PAIRWISE_QUESTION_COLUMN in df.columns:
+                unique_questions.update(df[PAIRWISE_QUESTION_COLUMN].unique())
+
+        total_questions = len(unique_questions)
+
         # Create columns for layout matching the criteria evaluation
         col1, col2 = st.columns([1, 1])
 
         with col1:
             # Display win rate table
-            st.markdown("##### Pairwise Win Statistics")
+            st.markdown(
+                f"##### Pairwise Win Statistics (Total Questions: {total_questions})"
+            )
 
             # Format the win rate table
             display_df = pd.DataFrame()

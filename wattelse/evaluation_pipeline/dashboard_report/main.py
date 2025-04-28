@@ -28,6 +28,7 @@ from utils import (
     METRIC_DESCRIPTIONS,
     PAIRWISE_METRIC_COLUMN,
     PAIRWISE_WINNER_COLUMN,
+    PAIRWISE_QUESTION_COLUMN,
 )
 from wattelse.evaluation_pipeline import RESULTS_BASE_DIR
 
@@ -979,8 +980,23 @@ def main():
                         col1, col2 = st.columns([1, 1])
 
                         with col1:
+                            # Calculate total unique questions across all judges
+                            total_questions = 0
+                            unique_questions = set()
+
+                            # Go through all judge dataframes to count unique questions
+                            for judge_name, df in selected_pairwise["dfs"].items():
+                                if PAIRWISE_QUESTION_COLUMN in df.columns:
+                                    unique_questions.update(
+                                        df[PAIRWISE_QUESTION_COLUMN].unique()
+                                    )
+
+                            total_questions = len(unique_questions)
+
                             # Display comprehensive table with all metrics and all information
-                            st.markdown("##### Pairwise Win Statistics")
+                            st.markdown(
+                                f"##### Pairwise Win Statistics (Total Questions: {total_questions})"
+                            )
 
                             # Get all metrics and possible winners (including Tie, Error, etc.)
                             metrics = [

@@ -19,6 +19,7 @@ from .constants import (
     PAIRWISE_WINNER_COLUMN,
     PAIRWISE_METRIC_COLUMN,
     PAIRWISE_RESULTS_DIR,
+    PAIRWISE_QUESTION_COLUMN,
 )
 
 # Import data loading functions
