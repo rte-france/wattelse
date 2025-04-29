@@ -20,11 +20,16 @@ from utils import (
     create_pdf_report,
     get_pdf_download_link,
     handle_raw_data_page,
+    load_pairwise_evaluation_files,
+    create_pairwise_pie_chart,
     RAG_QUERY_TIME_COLUMN,
     RAG_RETRIEVER_TIME_COLUMN,
     METRIC_DESCRIPTIONS,
+    PAIRWISE_METRIC_COLUMN,
+    PAIRWISE_WINNER_COLUMN,
+    PAIRWISE_QUESTION_COLUMN,
 )
-from wattelse.evaluation_pipeline import RESULTS_BASE_DIR
+from wattelse.evaluation_pipeline import RESULTS_BASE_DIR, PAIRWISE_RESULTS_DIR
 
 
 def setup_page():
@@ -85,6 +90,20 @@ def get_available_experiments(base_path=RESULTS_BASE_DIR):
     )
 
 
+def get_available_pairwise_files(base_path):
+    """Get all available pairwise Excel files."""
+    base_path = Path(base_path)
+
+    if not base_path.exists():
+        return []
+
+    # Find all pairwise Excel files in the base directory and subdirectories
+    all_files = list(base_path.glob("**/pairwise_*.xlsx"))
+
+    # Convert to strings for display
+    return [str(file) for file in all_files]
+
+
 def handle_experiment_setup():
     """Handle experiment setup page with directory navigation."""
     st.header("Experiment Configuration")
@@ -93,217 +112,393 @@ def handle_experiment_setup():
     if "experiments" not in st.session_state:
         st.session_state.experiments = []
 
-    # Get available experiments
-    base_path = RESULTS_BASE_DIR
-    available_experiments, experiment_paths, experiment_categories = (
-        get_available_experiments(base_path)
-    )
+    # Initialize pairwise experiments in session state if not already present
+    if "pairwise_experiments" not in st.session_state:
+        st.session_state.pairwise_experiments = []
 
-    st.info(
+    # Create tabs for regular and pairwise experiments
+    tab1, tab2 = st.tabs(["Standard Evaluation", "Pairwise Evaluation"])
+
+    with tab1:
+        # CRITERIA-BASED EVALUATION
+        st.subheader("Standard Criteria-Based Evaluation")
+
+        # Get available experiments
+        base_path = RESULTS_BASE_DIR
+        available_experiments, experiment_paths, experiment_categories = (
+            get_available_experiments(base_path)
+        )
+
+        st.info(
+            """
+        Configure the experiments you want to compare:
+        1. Select experiment directories from the available options
+        2. Give each experiment a meaningful name
+        3. Use the move up/down buttons to reorder experiments
         """
-    Configure the experiments you want to compare:
-    1. Select experiment directories from the available options
-    2. Give each experiment a meaningful name
-    3. Use the move up/down buttons to reorder experiments
-    """
-    )
-
-    if not available_experiments:
-        st.warning(
-            f"No experiment directories with evaluation files found in {base_path} or its subdirectories"
         )
 
-        # Add option to check directly for files in current directory
-        st.subheader("Available Excel Files")
-        st.write(
-            "The following evaluation files were found in the current working directory:"
-        )
+        if not available_experiments:
+            st.warning(
+                f"No experiment directories with evaluation files found in {base_path} or its subdirectories"
+            )
 
-        # List Excel files directly
-        excel_files = list(Path().glob("evaluation_*.xlsx"))
-        if excel_files:
-            for file in excel_files:
-                st.text(f"- {file.name}")
+            # Add option to check directly for files in current directory
+            st.subheader("Available Excel Files")
+            st.write(
+                "The following evaluation files were found in the current working directory:"
+            )
 
-            # Add a way to use these files directly
-            if st.button("Use Current Directory Files"):
-                st.session_state.experiments = [
-                    {"dir": "", "name": "Current Directory"}
+            # List Excel files directly
+            excel_files = list(Path().glob("evaluation_*.xlsx"))
+            if excel_files:
+                for file in excel_files:
+                    st.text(f"- {file.name}")
+
+                # Add a way to use these files directly
+                if st.button("Use Current Directory Files"):
+                    st.session_state.experiments = [
+                        {"dir": "", "name": "Current Directory"}
+                    ]
+                    st.rerun()
+            else:
+                st.error("No evaluation files found in the current directory either.")
+
+            return
+
+        # Add filter for experiment categories
+        if experiment_categories:
+            selected_category = st.selectbox(
+                "Filter by Category",
+                ["All Categories"] + experiment_categories,
+                key="category_filter",
+            )
+
+            # Filter the available experiments based on the selected category
+            if selected_category != "All Categories":
+                filtered_experiments = [
+                    exp
+                    for exp in available_experiments
+                    if f"({selected_category})" in exp
                 ]
-                st.rerun()
-        else:
-            st.error("No evaluation files found in the current directory either.")
-
-        return
-
-    # Add filter for experiment categories
-    if experiment_categories:
-        selected_category = st.selectbox(
-            "Filter by Category",
-            ["All Categories"] + experiment_categories,
-            key="category_filter",
-        )
-
-        # Filter the available experiments based on the selected category
-        if selected_category != "All Categories":
-            filtered_experiments = [
-                exp for exp in available_experiments if f"({selected_category})" in exp
-            ]
-            display_experiments = filtered_experiments
+                display_experiments = filtered_experiments
+            else:
+                display_experiments = available_experiments
         else:
             display_experiments = available_experiments
-    else:
-        display_experiments = available_experiments
 
-    # Display each experiment with reordering controls
-    for i, exp in enumerate(st.session_state.experiments):
-        with st.container():
-            st.markdown(f"### Experiment {i+1}")
+        # Display each experiment with reordering controls
+        for i, exp in enumerate(st.session_state.experiments):
+            with st.container():
+                st.markdown(f"### Experiment {i+1}")
 
-            # First row: Move up/down buttons
-            move_cols = st.columns([0.5, 0.5, 4])
+                # First row: Move up/down buttons
+                move_cols = st.columns([0.5, 0.5, 4])
 
-            with move_cols[0]:
-                # Move up button (disabled for first item)
-                if i > 0:
-                    if st.button("⬆️", key=f"up_{i}", help="Move experiment up"):
-                        # Swap with previous experiment
-                        (
-                            st.session_state.experiments[i],
-                            st.session_state.experiments[i - 1],
-                        ) = (
-                            st.session_state.experiments[i - 1],
-                            st.session_state.experiments[i],
-                        )
-                        st.rerun()
-                else:
-                    # Disabled button (placeholder to maintain layout)
-                    st.empty()
+                with move_cols[0]:
+                    # Move up button (disabled for first item)
+                    if i > 0:
+                        if st.button("⬆️", key=f"up_{i}", help="Move experiment up"):
+                            # Swap with previous experiment
+                            (
+                                st.session_state.experiments[i],
+                                st.session_state.experiments[i - 1],
+                            ) = (
+                                st.session_state.experiments[i - 1],
+                                st.session_state.experiments[i],
+                            )
+                            st.rerun()
+                    else:
+                        # Disabled button (placeholder to maintain layout)
+                        st.empty()
 
-            with move_cols[1]:
-                # Move down button (disabled for last item)
-                if i < len(st.session_state.experiments) - 1:
-                    if st.button("⬇️", key=f"down_{i}", help="Move experiment down"):
-                        # Swap with next experiment
-                        (
-                            st.session_state.experiments[i],
-                            st.session_state.experiments[i + 1],
-                        ) = (
-                            st.session_state.experiments[i + 1],
-                            st.session_state.experiments[i],
-                        )
-                        st.rerun()
-                else:
-                    # Disabled button (placeholder to maintain layout)
-                    st.empty()
+                with move_cols[1]:
+                    # Move down button (disabled for last item)
+                    if i < len(st.session_state.experiments) - 1:
+                        if st.button("⬇️", key=f"down_{i}", help="Move experiment down"):
+                            # Swap with next experiment
+                            (
+                                st.session_state.experiments[i],
+                                st.session_state.experiments[i + 1],
+                            ) = (
+                                st.session_state.experiments[i + 1],
+                                st.session_state.experiments[i],
+                            )
+                            st.rerun()
+                    else:
+                        # Disabled button (placeholder to maintain layout)
+                        st.empty()
 
-            # Main experiment configuration row
-            config_cols = st.columns([2, 2, 0.5])
+                # Main experiment configuration row
+                config_cols = st.columns([2, 2, 0.5])
 
-            with config_cols[0]:
-                # Get the current directory value
-                current_dir = exp["dir"]
+                with config_cols[0]:
+                    # Get current directory value
+                    current_dir = exp["dir"]
 
-                # Find the correct index based on the current directory
-                dir_index = 0  # Default to empty selection
-                for idx, option in enumerate(display_experiments):
-                    option_dir = ""
-                    if option == "(Base Directory)":
+                    # Find the correct index based on the current directory
+                    dir_index = 0  # Default to empty selection
+                    for idx, option in enumerate(display_experiments):
                         option_dir = ""
-                    elif option.startswith("(") and option.endswith(" Base)"):
-                        option_dir = option[1:-6]  # Remove "(" and " Base)"
-                    elif " (" in option and ")" in option:
-                        parts = option.split(" (")
-                        exp_name = parts[0]
-                        category = parts[1][:-1]  # Remove the closing ")"
-                        option_dir = f"{category}/{exp_name}"
-                    else:
-                        option_dir = option
+                        if option == "(Base Directory)":
+                            option_dir = ""
+                        elif option.startswith("(") and option.endswith(" Base)"):
+                            option_dir = option[1:-6]  # Remove "(" and " Base)"
+                        elif " (" in option and ")" in option:
+                            parts = option.split(" (")
+                            exp_name = parts[0]
+                            category = parts[1][:-1]  # Remove the closing ")"
+                            option_dir = f"{category}/{exp_name}"
+                        else:
+                            option_dir = option
 
-                    if option_dir == current_dir:
-                        dir_index = (
-                            idx + 1
-                        )  # +1 because we add an empty option at index 0
-                        break
+                        if option_dir == current_dir:
+                            dir_index = (
+                                idx + 1
+                            )  # +1 because we add an empty option at index 0
+                            break
 
-                selected_exp = st.selectbox(
-                    "📁 Directory",
-                    [""] + display_experiments,
-                    index=dir_index,
-                    key=f"dir_{i}",
-                )
+                    selected_exp = st.selectbox(
+                        "📁 Directory",
+                        [""] + display_experiments,
+                        index=dir_index,
+                        key=f"dir_{i}",
+                    )
 
-                # Update the experiment directory based on the selection
-                new_dir = ""
-                if selected_exp == "(Base Directory)":
+                    # Update the experiment directory based on the selection
                     new_dir = ""
-                elif selected_exp.startswith("(") and selected_exp.endswith(" Base)"):
-                    # Extract the category name and set as dir
-                    category = selected_exp[1:-6]  # Remove "(" and " Base)"
-                    new_dir = category
-                elif selected_exp:
-                    # For experiment with category format: "name (category)"
-                    if " (" in selected_exp and ")" in selected_exp:
-                        parts = selected_exp.split(" (")
-                        exp_name = parts[0]
-                        category = parts[1][:-1]  # Remove the closing ")"
-                        new_dir = f"{category}/{exp_name}"
-                    else:
-                        new_dir = selected_exp
+                    default_name = ""  # Added this line to track the default name
 
-                # Only update if the directory has changed
-                if new_dir != current_dir:
-                    exp["dir"] = new_dir
+                    if selected_exp == "(Base Directory)":
+                        new_dir = ""
+                        default_name = "Base Directory"  # Add default name
+                    elif selected_exp.startswith("(") and selected_exp.endswith(
+                        " Base)"
+                    ):
+                        # Extract the category name and set as dir
+                        category = selected_exp[1:-6]  # Remove "(" and " Base)"
+                        new_dir = category
+                        default_name = category  # Use category as default name
+                    elif selected_exp:
+                        # For experiment with category format: "name (category)"
+                        if " (" in selected_exp and ")" in selected_exp:
+                            parts = selected_exp.split(" (")
+                            exp_name = parts[0]
+                            category = parts[1][:-1]  # Remove the closing ")"
+                            new_dir = f"{category}/{exp_name}"
+                            default_name = exp_name  # Use experiment name as default
+                        else:
+                            new_dir = selected_exp
+                            default_name = selected_exp  # Use full name as default
 
-                # Show the full path for clarity
+                    # Only update if the directory has changed
+                    if new_dir != current_dir:
+                        exp["dir"] = new_dir
+                        # Auto-populate name if it's empty or matches old directory structure
+                        if (
+                            not exp["name"]
+                            or exp["name"] == f"Experiment {i+1}"
+                            or exp["name"].startswith(current_dir)
+                        ):
+                            exp["name"] = default_name
+
+                    # Show the full path for clarity
+                    if selected_exp and selected_exp in experiment_paths:
+                        st.caption(f"Full path: {experiment_paths[selected_exp]}")
+
+                with config_cols[1]:
+                    exp["name"] = st.text_input(
+                        "📝 Name", value=exp["name"], key=f"name_{i}"
+                    )
+
+                with config_cols[2]:
+                    if st.button("🗑️", key=f"remove_{i}", help="Remove this experiment"):
+                        st.session_state.experiments.pop(i)
+                        st.rerun()
+
+                # Preview available files in the selected directory
                 if selected_exp and selected_exp in experiment_paths:
-                    st.caption(f"Full path: {experiment_paths[selected_exp]}")
+                    preview_path = Path(experiment_paths[selected_exp])
 
-            with config_cols[1]:
-                exp["name"] = st.text_input(
-                    "📝 Name", value=exp["name"], key=f"name_{i}"
-                )
+                    excel_files = list(preview_path.glob("evaluation_*.xlsx"))
+                    if excel_files:
+                        with st.expander("Preview Available Files", expanded=False):
+                            for file in excel_files:
+                                st.text(f"- {file.name}")
+                    else:
+                        st.warning("No evaluation files found in this directory")
 
-            with config_cols[2]:
-                if st.button("🗑️", key=f"remove_{i}", help="Remove this experiment"):
-                    st.session_state.experiments.pop(i)
+                # Insert button
+                if st.button(
+                    "➕ Insert Experiment",
+                    key=f"insert_{i}",
+                    help="Insert experiment below",
+                ):
+                    st.session_state.experiments.insert(
+                        i + 1,
+                        {
+                            "dir": "",
+                            "name": f"Experiment {len(st.session_state.experiments) + 1}",
+                        },
+                    )
                     st.rerun()
 
-            # Preview available files in the selected directory
-            if selected_exp and selected_exp in experiment_paths:
-                preview_path = Path(experiment_paths[selected_exp])
+                st.divider()
 
-                excel_files = list(preview_path.glob("evaluation_*.xlsx"))
-                if excel_files:
-                    with st.expander("Preview Available Files", expanded=False):
-                        for file in excel_files:
-                            st.text(f"- {file.name}")
-                else:
-                    st.warning("No evaluation files found in this directory")
+        # Add a final "Add Experiment" button at the bottom for convenience
+        if st.button(
+            "➕ Add Experiment", key="add_exp_bottom", use_container_width=True
+        ):
+            st.session_state.experiments.append(
+                {
+                    "dir": "",
+                    "name": f"Experiment {len(st.session_state.experiments) + 1}",
+                }
+            )
+            st.rerun()
 
-            # Insert button
-            if st.button(
-                "➕ Insert Experiment",
-                key=f"insert_{i}",
-                help="Insert experiment below",
-            ):
-                st.session_state.experiments.insert(
-                    i + 1,
-                    {
-                        "dir": "",
-                        "name": f"Experiment {len(st.session_state.experiments) + 1}",
-                    },
-                )
-                st.rerun()
+    # PAIRWISE EVALUATION TAB
+    with tab2:
+        # Pairwise evaluation setup
+        st.subheader("Pairwise Comparison Evaluation")
 
-            st.divider()
-
-    # Add a final "Add Experiment" button at the bottom for convenience
-    if st.button("➕ Add Experiment", key="add_exp_bottom", use_container_width=True):
-        st.session_state.experiments.append(
-            {"dir": "", "name": f"Experiment {len(st.session_state.experiments) + 1}"}
+        st.info(
+            """
+        Configure pairwise comparison experiments:
+        1. Select pairwise comparison Excel files
+        2. Give each comparison a meaningful name
+        """
         )
-        st.rerun()
+
+        # Get available pairwise files
+        base_path = PAIRWISE_RESULTS_DIR
+        available_pairwise_files = get_available_pairwise_files(base_path)
+
+        if not available_pairwise_files:
+            st.warning(
+                f"No pairwise comparison files found in {base_path} or its subdirectories"
+            )
+            return
+
+        # Display each pairwise experiment configuration
+        for i, exp in enumerate(st.session_state.pairwise_experiments):
+            with st.container():
+                st.markdown(f"### Pairwise Comparison {i+1}")
+
+                # First row: Move up/down buttons
+                move_cols = st.columns([0.5, 0.5, 4])
+
+                with move_cols[0]:
+                    # Move up button (disabled for first item)
+                    if i > 0:
+                        if st.button(
+                            "⬆️", key=f"pairwise_up_{i}", help="Move comparison up"
+                        ):
+                            # Swap with previous experiment
+                            (
+                                st.session_state.pairwise_experiments[i],
+                                st.session_state.pairwise_experiments[i - 1],
+                            ) = (
+                                st.session_state.pairwise_experiments[i - 1],
+                                st.session_state.pairwise_experiments[i],
+                            )
+                            st.rerun()
+                    else:
+                        # Disabled button (placeholder to maintain layout)
+                        st.empty()
+
+                with move_cols[1]:
+                    # Move down button (disabled for last item)
+                    if i < len(st.session_state.pairwise_experiments) - 1:
+                        if st.button(
+                            "⬇️", key=f"pairwise_down_{i}", help="Move comparison down"
+                        ):
+                            # Swap with next experiment
+                            (
+                                st.session_state.pairwise_experiments[i],
+                                st.session_state.pairwise_experiments[i + 1],
+                            ) = (
+                                st.session_state.pairwise_experiments[i + 1],
+                                st.session_state.pairwise_experiments[i],
+                            )
+                            st.rerun()
+                    else:
+                        # Disabled button (placeholder to maintain layout)
+                        st.empty()
+
+                # Main configuration row
+                config_cols = st.columns([2, 2, 0.5])
+
+                with config_cols[0]:
+                    # Get current file path
+                    current_file = exp.get("file", "")
+
+                    # Find index for the current file
+                    file_index = 0  # Default to empty selection
+                    for idx, file_path in enumerate(available_pairwise_files):
+                        if file_path == current_file:
+                            file_index = (
+                                idx + 1
+                            )  # +1 because we add empty option at index 0
+                            break
+
+                    # File selection dropdown
+                    selected_file = st.selectbox(
+                        "📄 Pairwise Comparison File",
+                        [""] + available_pairwise_files,
+                        index=file_index,
+                        key=f"pairwise_file_{i}",
+                        format_func=lambda x: Path(x).name if x else "Select a file",
+                    )
+
+                    # Update the file path
+                    if selected_file != current_file:
+                        exp["file"] = selected_file
+
+                    # Show full path
+                    if selected_file:
+                        st.caption(f"Full path: {selected_file}")
+
+                with config_cols[1]:
+                    # Name field with default from filename if empty
+                    default_name = exp.get("name", "")
+                    if not default_name and selected_file:
+                        file_name = Path(selected_file).stem
+                        default_name = file_name.replace("pairwise_", "")
+
+                    exp["name"] = st.text_input(
+                        "📝 Name",
+                        value=default_name,
+                        key=f"pairwise_name_{i}",
+                    )
+
+                with config_cols[2]:
+                    if st.button(
+                        "🗑️", key=f"pairwise_remove_{i}", help="Remove this comparison"
+                    ):
+                        st.session_state.pairwise_experiments.pop(i)
+                        st.rerun()
+
+                # Preview selected file
+                if selected_file:
+                    try:
+                        preview_df = pd.read_excel(selected_file, nrows=1)
+                        with st.expander("Preview File Structure", expanded=False):
+                            st.write("File columns:")
+                            st.write(", ".join(preview_df.columns.tolist()))
+                    except Exception as e:
+                        st.warning(f"Could not preview file: {str(e)}")
+
+                st.divider()
+
+        # Add button for new pairwise comparison
+        if st.button(
+            "➕ Add Pairwise Comparison",
+            key="add_pairwise_comp",
+            use_container_width=True,
+        ):
+            st.session_state.pairwise_experiments.append({"file": "", "name": ""})
+            st.rerun()
 
 
 def display_metric_descriptions():
@@ -501,6 +696,9 @@ def main():
     if "experiments" not in st.session_state:
         st.session_state.experiments = []
 
+    if "pairwise_experiments" not in st.session_state:
+        st.session_state.pairwise_experiments = []
+
     # Sidebar navigation
     page = st.sidebar.radio(
         "Select a Page",
@@ -517,13 +715,48 @@ def main():
         handle_experiment_setup()
         return
 
-    # Check if experiments are configured
-    if len(st.session_state.experiments) == 0:
-        st.info(
-            "No experiments are configured. Please go to the Experiment Setup page to add experiments."
-        )
-        return
+    # Check if regular or pairwise experiments are configured based on the page
+    elif page == "Pairwise Analysis":
+        if len(st.session_state.pairwise_experiments) == 0:
+            st.info(
+                "No pairwise experiments are configured. Please go to the Experiment Setup page to add pairwise comparisons."
+            )
+            return
 
+        # Load pairwise experiments data
+        pairwise_experiments_data = []
+        has_invalid_files = False
+
+        for exp in st.session_state.pairwise_experiments:
+            file_path = exp.get("file", "")
+            if not file_path:
+                has_invalid_files = True
+                continue
+
+            data = load_pairwise_evaluation_files(file_path)
+            if data is not None:
+                pairwise_experiments_data.append(
+                    {
+                        "name": exp["name"],
+                        "file": file_path,
+                        "dfs": data[0],  # Judge-specific dataframes
+                        "combined_stats": data[1],  # Combined statistics
+                    }
+                )
+            else:
+                has_invalid_files = True
+
+        # Handle various error states
+        if has_invalid_files:
+            st.warning(
+                "Some pairwise comparison files are invalid or empty. Please check the configuration."
+            )
+
+        if not pairwise_experiments_data:
+            st.error(
+                "No valid pairwise evaluation files found. Please configure valid files."
+            )
+            return
     # Load experiments data
     experiments_data = []
     has_invalid_paths = False
@@ -568,7 +801,6 @@ def main():
 
         # Create tabs for Summary and Individual Judges
         tab_summary, *judge_tabs = st.tabs(["Summary"] + list(sorted(all_judges)))
-
         with tab_summary:
             st.subheader("Evaluation Summary")
             st.caption(
@@ -576,16 +808,7 @@ def main():
             )
 
             # Generate summary metrics
-            summary_dfs, summary_figs, overall_df, overall_fig = create_metrics_summary(
-                experiments_data
-            )
-
-            # Display overall summary
-            st.plotly_chart(
-                overall_fig,
-                use_container_width=True,
-                key=f"overall_summary_chart_{str(uuid.uuid4())}",
-            )
+            _, _, overall_df = create_metrics_summary(experiments_data)
 
             # Display summary table and radar plot side-by-side
             st.subheader("Performance Summary")
@@ -704,34 +927,233 @@ def main():
                     key=f"avg_radar_chart_{str(uuid.uuid4())}",
                 )
 
-            # Display individual metric summaries in expandable sections
-            st.subheader("Individual Metric Summaries")
-            for metric in sorted(summary_figs.keys()):
-                with st.expander(f"{metric.title()} Metric Details", expanded=False):
-                    st.plotly_chart(
-                        summary_figs[metric],
-                        use_container_width=True,
-                        key=f"summary_{metric}_chart_{str(uuid.uuid4())}",
-                    )
+            # PAIRWISE COMPARISON SECTION - Below the confidence intervals
+            # In the Performance Overview section where you display pairwise data:
+            st.subheader("Pairwise Comparison Evaluation")
 
-                    col1, col2 = st.columns([1, 1])
-                    with col1:
-                        # Create display DataFrame with bold formatting
-                        display_df = pd.DataFrame()
-                        display_df["Experiment"] = summary_dfs[metric]["Experiment"]
-                        display_df["Average Performance %"] = summary_dfs[metric][
-                            "Display Score"
-                        ]
-                        display_df["Judges Count"] = summary_dfs[metric]["Judges Count"]
+            # Check if pairwise data is available
+            if (
+                "pairwise_experiments" in st.session_state
+                and st.session_state.pairwise_experiments
+            ):
+                # Load pairwise data
+                pairwise_data = []
+                for exp in st.session_state.pairwise_experiments:
+                    file_path = exp.get("file", "")
+                    if file_path:
+                        data = load_pairwise_evaluation_files(file_path)
+                        if data is not None:
+                            pairwise_data.append(
+                                {
+                                    "name": exp["name"],
+                                    "file": file_path,
+                                    "dfs": data[0],
+                                    "combined_stats": data[1],
+                                }
+                            )
 
-                        # Use st.markdown to render the bold formatting
-                        st.markdown(
-                            display_df.to_markdown(index=False), unsafe_allow_html=True
+                if pairwise_data:
+                    # If there are multiple pairwise datasets, add a selectbox
+                    if len(pairwise_data) > 1:
+                        selected_pairwise_name = st.selectbox(
+                            "Select Pairwise Comparison",
+                            [exp["name"] for exp in pairwise_data],
+                            key="overview_pairwise_selector",
                         )
-                    with col2:
-                        if metric in METRIC_DESCRIPTIONS:
-                            st.info(METRIC_DESCRIPTIONS[metric])
+                        selected_pairwise = next(
+                            (
+                                exp
+                                for exp in pairwise_data
+                                if exp["name"] == selected_pairwise_name
+                            ),
+                            pairwise_data[0],
+                        )
+                    else:
+                        selected_pairwise = pairwise_data[0]
 
+                    # Get combined stats
+                    combined_stats = selected_pairwise["combined_stats"]
+
+                    if not combined_stats.empty:
+                        # Create columns for layout
+                        col1, col2 = st.columns([1, 1])
+
+                        with col1:
+                            # Calculate total unique questions across all judges
+                            total_questions = 0
+                            unique_questions = set()
+
+                            # Go through all judge dataframes to count unique questions
+                            for judge_name, df in selected_pairwise["dfs"].items():
+                                if PAIRWISE_QUESTION_COLUMN in df.columns:
+                                    unique_questions.update(
+                                        df[PAIRWISE_QUESTION_COLUMN].unique()
+                                    )
+
+                            total_questions = len(unique_questions)
+
+                            # Display comprehensive table with all metrics and all information
+                            st.markdown(
+                                f"##### Pairwise Win Statistics (Total Questions: {total_questions})"
+                            )
+
+                            # Get all metrics and possible winners (including Tie, Error, etc.)
+                            metrics = [
+                                col.replace("_win_rate", "")
+                                for col in combined_stats.columns
+                                if col.endswith("_win_rate")
+                            ]
+
+                            # Create a table that includes all possible outcomes in the Winner column
+                            all_results_data = []
+
+                            # Process raw judge data to get complete winner statistics
+                            for judge_name, df in selected_pairwise["dfs"].items():
+                                if (
+                                    PAIRWISE_METRIC_COLUMN in df.columns
+                                    and PAIRWISE_WINNER_COLUMN in df.columns
+                                ):
+                                    # Group by metric and winner to get counts
+                                    grouped = (
+                                        df.groupby(
+                                            [
+                                                PAIRWISE_METRIC_COLUMN,
+                                                PAIRWISE_WINNER_COLUMN,
+                                            ]
+                                        )
+                                        .size()
+                                        .reset_index(name="Count")
+                                    )
+
+                                    # Calculate percentages by metric
+                                    for metric, metric_df in grouped.groupby(
+                                        PAIRWISE_METRIC_COLUMN
+                                    ):
+                                        total = metric_df["Count"].sum()
+
+                                        for _, row in metric_df.iterrows():
+                                            winner = row[PAIRWISE_WINNER_COLUMN]
+                                            count = row["Count"]
+                                            percentage = (
+                                                (count / total * 100)
+                                                if total > 0
+                                                else 0
+                                            )
+
+                                            all_results_data.append(
+                                                {
+                                                    "Metric": metric,
+                                                    "Winner": winner,
+                                                    "Count": count,
+                                                    "Percentage": percentage,
+                                                    "Judge": judge_name,
+                                                }
+                                            )
+
+                            # Create a combined summary across all judges
+                            if all_results_data:
+                                results_df = pd.DataFrame(all_results_data)
+                                summary = (
+                                    results_df.groupby(["Metric", "Winner"])
+                                    .agg({"Count": "sum", "Judge": "count"})
+                                    .reset_index()
+                                )
+
+                                # Calculate overall percentages
+                                for metric, metric_df in summary.groupby("Metric"):
+                                    total = metric_df["Count"].sum()
+                                    summary.loc[
+                                        summary["Metric"] == metric, "Percentage"
+                                    ] = (
+                                        summary.loc[
+                                            summary["Metric"] == metric, "Count"
+                                        ]
+                                        / total
+                                        * 100
+                                    )
+
+                                # Find max percentage for each metric for bold formatting
+                                max_percentages = (
+                                    summary.groupby("Metric")["Percentage"]
+                                    .max()
+                                    .to_dict()
+                                )
+
+                                # Format for display with bold for highest values
+                                summary["Display"] = summary.apply(
+                                    lambda row: (
+                                        f"**{row['Count']} ({row['Percentage']:.1f}%)**"
+                                        if row["Percentage"]
+                                        == max_percentages.get(row["Metric"], 0)
+                                        else f"{row['Count']} ({row['Percentage']:.1f}%)"
+                                    ),
+                                    axis=1,
+                                )
+
+                                # Pivot table for better display
+                                pivot_table = summary.pivot(
+                                    index="Winner", columns="Metric", values="Display"
+                                ).reset_index()
+
+                                # Format the column headers nicely
+                                pivot_table.columns = [
+                                    col.title() if col != "Winner" else col
+                                    for col in pivot_table.columns
+                                ]
+
+                                # Display the pivot table with markdown to maintain bold formatting
+                                st.markdown(
+                                    pivot_table.to_markdown(index=False),
+                                    unsafe_allow_html=True,
+                                )
+
+                                # Add caption explaining bold values
+                                st.caption(
+                                    "**Bold values** indicate the highest percentage for each metric category."
+                                )
+                            else:
+                                st.info("No detailed winner statistics available.")
+
+                            # And then replace the pie chart creation code with:
+                            with col2:
+                                # Create a PIE CHART for a selected metric
+                                # Look for correctness_pairwise first, then use first available metric
+                                selected_metric = None
+
+                                for metric in metrics:
+                                    if "correctness" in metric.lower():
+                                        selected_metric = metric
+                                        break
+
+                                # If no correctness metric found, use the first available
+                                if not selected_metric and metrics:
+                                    selected_metric = metrics[0]
+
+                                if selected_metric:
+                                    # Create the pie chart using the imported function
+                                    fig = create_pairwise_pie_chart(
+                                        combined_stats=selected_pairwise[
+                                            "combined_stats"
+                                        ],
+                                        pairwise_dfs=selected_pairwise["dfs"],
+                                        metric_name=selected_metric,
+                                    )
+
+                                    if fig:
+                                        # Display the pie chart
+                                        st.plotly_chart(
+                                            fig,
+                                            use_container_width=True,
+                                            key=f"pairwise_pie_{str(uuid.uuid4())}",
+                                        )
+                                    else:
+                                        st.info(
+                                            "No metric data available for visualization."
+                                        )
+                                else:
+                                    st.info(
+                                        "No metric data available for visualization."
+                                    )
         # Create individual judge tabs
         for judge_tab, judge_name in zip(judge_tabs, sorted(all_judges)):
             with judge_tab:
@@ -961,7 +1383,29 @@ def main():
         handle_pdf_export(experiments_data)
 
     elif page == "Raw Data":
-        handle_raw_data_page(experiments_data)
+        # Check if pairwise experiments exist
+        pairwise_data = []
+        if (
+            "pairwise_experiments" in st.session_state
+            and st.session_state.pairwise_experiments
+        ):
+            # Load pairwise experiments data
+            for exp in st.session_state.pairwise_experiments:
+                file_path = exp.get("file", "")
+                if file_path:
+                    data = load_pairwise_evaluation_files(file_path)
+                    if data is not None:
+                        pairwise_data.append(
+                            {
+                                "name": exp["name"],
+                                "file": file_path,
+                                "dfs": data[0],
+                                "combined_stats": data[1],
+                            }
+                        )
+
+        # Call the enhanced raw data page with pairwise data
+        handle_raw_data_page(experiments_data, pairwise_data)
 
 
 if __name__ == "__main__":

@@ -16,6 +16,10 @@ from .constants import (
     RAG_QUERY_TIME_COLUMN,
     RAG_RETRIEVER_TIME_COLUMN,
     METRIC_DESCRIPTIONS,
+    PAIRWISE_WINNER_COLUMN,
+    PAIRWISE_METRIC_COLUMN,
+    PAIRWISE_RESULTS_DIR,
+    PAIRWISE_QUESTION_COLUMN,
 )
 
 # Import data loading functions
@@ -26,6 +30,7 @@ from .visualization import (
     create_timing_plot,
     create_radar_plot,
     create_average_radar_plot,
+    create_pairwise_pie_chart,
 )
 
 # Import the new metrics summary function
@@ -36,3 +41,9 @@ from .pdf_extract import create_pdf_report, get_pdf_download_link
 
 # Import raw data handling functions
 from .raw_data import handle_raw_data_page
+
+# Import pairwise functions
+from .pairwise import (
+    load_pairwise_evaluation_files,
+    handle_pairwise_analysis_page,
+)

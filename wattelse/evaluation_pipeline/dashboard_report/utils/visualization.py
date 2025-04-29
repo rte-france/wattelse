@@ -7,6 +7,11 @@
 
 import plotly.graph_objects as go
 import plotly.colors
+import pandas as pd
+from .constants import (
+    PAIRWISE_METRIC_COLUMN,
+    PAIRWISE_WINNER_COLUMN,
+)
 
 
 def create_timing_plot(experiments_data, column_name, title):
@@ -279,3 +284,144 @@ def create_radar_plot(experiments_data):
     )
 
     return fig
+
+
+def create_pairwise_pie_chart(combined_stats, pairwise_dfs=None, metric_name=None):
+    """Create a pie chart showing win rates for a specific metric, including all possible outcomes.
+
+    Args:
+        combined_stats (pd.DataFrame): Combined statistics DataFrame
+        pairwise_dfs (dict, optional): Dictionary of dataframes with raw pairwise data by judge
+        metric_name (str, optional): Specific metric to use. If None, first looks
+                                    for correctness_pairwise, then uses any available metric.
+
+    Returns:
+        go.Figure: Plotly figure with pie chart, or None if no data available
+    """
+    # First try using the combined stats if provided
+    if combined_stats is not None and not combined_stats.empty:
+        metric_col = None
+        title = ""
+
+        if metric_name:
+            metric_col = f"{metric_name}_win_rate"
+            title = f"{metric_name.title()} Win Rates"
+        else:
+            # Look for correctness_pairwise first
+            for col in combined_stats.columns:
+                if "correctness_pairwise" in col.lower() and col.endswith("_win_rate"):
+                    metric_col = col
+                    metric_name = col.replace("_win_rate", "")
+                    title = f"{metric_name.title()} Win Rates"
+                    break
+
+        # If specific metric not found, use any available win_rate column
+        if not metric_col:
+            for col in combined_stats.columns:
+                if col.endswith("_win_rate"):
+                    metric_col = col
+                    metric_name = col.replace("_win_rate", "")
+                    title = f"{metric_name.title()} Win Rates"
+                    break
+
+    # If we have raw pairwise data and a metric name, use that for complete statistics
+    if pairwise_dfs and metric_name:
+        # Create a more comprehensive chart from raw data to include all outcomes
+        win_data = []
+        all_counts = {}
+        total_comparisons = 0
+
+        # Process each experiment_name dataframe
+        for _, df in pairwise_dfs.items():
+            if (
+                PAIRWISE_METRIC_COLUMN in df.columns
+                and PAIRWISE_WINNER_COLUMN in df.columns
+            ):
+                # Filter for the selected metric
+                metric_df = df[df[PAIRWISE_METRIC_COLUMN] == metric_name]
+
+                if not metric_df.empty:
+                    # Count occurrences of each winner
+                    winners = metric_df[PAIRWISE_WINNER_COLUMN].value_counts()
+
+                    # Add to overall counts
+                    for winner, count in winners.items():
+                        if winner in all_counts:
+                            all_counts[winner] += count
+                        else:
+                            all_counts[winner] = count
+
+                        total_comparisons += count
+
+        # Calculate percentages and create data for the chart
+        for winner, count in all_counts.items():
+            percentage = (
+                (count / total_comparisons * 100) if total_comparisons > 0 else 0
+            )
+            win_data.append(
+                {"Winner": winner, "Count": count, "Percentage": percentage}
+            )
+
+        # Sort by percentage (highest first)
+        win_data = sorted(win_data, key=lambda x: x["Percentage"], reverse=True)
+
+        # Create pie chart with all outcomes
+        if win_data:
+            pie_df = pd.DataFrame(win_data)
+
+            fig = go.Figure(
+                go.Pie(
+                    labels=pie_df["Winner"],
+                    values=pie_df["Percentage"],
+                    hovertemplate="Winner: %{label}<br>Percentage: %{value:.1f}%<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>",
+                    customdata=[
+                        (row["Count"], total_comparisons)
+                        for _, row in pie_df.iterrows()
+                    ],
+                )
+            )
+
+            fig.update_layout(
+                title=f"{metric_name.title()} Win Distribution",
+            )
+
+            return fig
+
+    # Fallback to combined stats if we couldn't use raw data
+    elif combined_stats is not None and metric_col:
+        win_data = []
+        for _, row in combined_stats.iterrows():
+            model = row["Model"]
+            win_rate = row[metric_col]
+
+            # Get wins and total if available
+            wins_col = metric_col.replace("_win_rate", "_wins")
+            total_col = metric_col.replace("_win_rate", "_total")
+
+            wins = row[wins_col] if wins_col in row else 0
+            total = row[total_col] if total_col in row else 0
+
+            win_data.append(
+                {"Model": model, "Win Rate": win_rate, "Wins": wins, "Total": total}
+            )
+
+        # If we have data, create the pie chart
+        if win_data:
+            pie_df = pd.DataFrame(win_data)
+
+            fig = go.Figure(
+                go.Pie(
+                    labels=pie_df["Model"],
+                    values=pie_df["Win Rate"],
+                    hovertemplate="Model: %{label}<br>Win Rate: %{value:.1f}%<br>Wins: %{customdata[0]}/%{customdata[1]}<extra></extra>",
+                    customdata=pie_df[["Wins", "Total"]].values,
+                )
+            )
+
+            fig.update_layout(
+                title=title,
+            )
+
+            return fig
+
+    return None

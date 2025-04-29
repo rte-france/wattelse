@@ -1,6 +1,6 @@
 # Wattelse RAG Evaluation Pipeline
 
-A robust evaluation pipeline for Retrieval-Augmented Generation (RAG) systems using Large Language Models (LLMs) as a jury. This pipeline evaluates RAG responses across multiple dimensions using different LLMs to provide comprehensive assessment metrics.
+Evaluation pipeline for Retrieval-Augmented Generation (RAG) systems using Large Language Models (LLMs) as a jury. This pipeline evaluates RAG responses across multiple dimensions using different LLMs to provide comprehensive assessment metrics.
 
 ## System Architecture
 The following diagram illustrates how the different components of the evaluation pipeline work together:
@@ -12,8 +12,8 @@ flowchart TB
         QA[Questions & Answers<br/>Excel File]
         CF[Evaluation Config<br/>eval_config.toml]
         SF[Server Config<br/>server_config.toml]
+        PA[Model A & B Outputs<br/>Excel Files]
     end
-
     %% Configuration System with clearer separation
     subgraph ConfigSystem["Configuration System"]
         direction TB
@@ -21,17 +21,16 @@ flowchart TB
         subgraph ServerConfig["Server Configuration"]
             SC[ServerConfig Class<br/>server_config.py]
         end
-
         subgraph EvalConfig["Evaluation Configuration"]
             EC[EvalConfig Class<br/>eval_config.py]
             RP[Response Parsing<br/>regex_patterns.py]
             PE[Prompt Templates<br/>prompt_eval.py]
         end
     end
-
     %% Orchestration with improved model setup
     subgraph Orchestration["Pipeline Orchestration"]
         RS[Pipeline Controller<br/>run_jury.py]
+        PJ[Pairwise Comparison<br/>pairwise_jury.py]
         
         subgraph ModelSetup["Model Setup & Deployment"]
             direction TB
@@ -50,7 +49,6 @@ flowchart TB
             end
         end
     end
-
     %% Evaluation Process with metrics - ENHANCED SECTION
     subgraph Evaluation["Evaluation Process"]
         direction TB
@@ -64,47 +62,53 @@ flowchart TB
                 FA[Faithfulness<br/>Context Adherence]
                 CO[Correctness<br/>Question Answering]
                 RE[Retrievability<br/>Context Relevance]
+                PWC[Pairwise Comparison<br/>Model A vs Model B]
             end
             
             subgraph ResultProc["Result Processing"]
                 direction TB
                 RA[Reasoning<br/>Extraction]
                 SC1[Score<br/>Extraction]
+                WD[Winner<br/>Extraction]
+                WDR[Reasoning Winner<br/>Extraction]
             end
         end
     end
-
     %% Output generation
     subgraph Output["Result Generation"]
         IR[Model-Specific<br/>Results]
-        FR[Consolidated<br/>Report]
+        FR[📊 Streamlit Dashboard<br/>Report]
+        PCR[Pairwise Comparison<br/>Results]
     end
-
     %% Main flow connections - reorganized for clarity
     CF --> EC
     SF --> SC
     EC <--> PE & RP
     QA --> RS
+    PA --> PJ
+    CF --> PJ
     SC --> RS
     EC --> RS
-
     RS --> MS
     MS --> |Local|LocalModels
     MS --> |Cloud|CloudModels
     LocalModels --> EV
     CloudModels --> EV
+    CloudModels --> PJ
     EV --> LLMEval
+    PJ --> LG
     
     LG --> MetricEval
     MetricEval --> ResultProc
     RP --> ResultProc
     
     ResultProc --> IR
+    ResultProc --> PCR
     IR --> FR
+    PCR --> FR
     PE --> LG
     
     RS <--> PM
-
     %% Styling
     classDef configFile fill:#f9f9ff,stroke:#333,stroke-width:2px
     classDef codeFile fill:#e6e6ff,stroke:#333,stroke-width:2px
@@ -113,26 +117,26 @@ flowchart TB
     classDef setup fill:#ffe6e6,stroke:#333,stroke-width:1px
     classDef llm fill:#e6ffff,stroke:#333,stroke-width:1px
     classDef container fill:#ffffff,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
+    classDef pairwise fill:#faddb1,stroke:#333,stroke-width:1px
+    classDef dashboard fill:#d4f4fa,stroke:#333,stroke-width:2px,stroke-dasharray: 5 2
 
-    class QA,CF,SF configFile
-    class EC,RP,PE,EV,RS,SC,PM codeFile
-    class FA,CO,RE,RA,SC1 process
-    class IR,FR output
+    class QA,CF,SF,PA configFile
+    class EC,RP,PE,EV,RS,SC,PM,PJ codeFile
+    class FA,CO,RE,RA,SC1,PWC,WD,WDR process
+    class IR,PCR output
     class MS,VM,SS,PC,API,AUTH setup
     class LG llm
     class ConfigSystem,Orchestration,Evaluation,Output,Input container
+    class PA,PJ,PWC,WD,WDR,PCR pairwise
+    class FR dashboard
 ```
-The diagram shows the main components and data flow of the evaluation pipeline:
-
-- Input layer processes the evaluation data and configuration files
-- Configuration system manages evaluation and server settings
-- Evaluation process performs the core metrics assessment
-- Pipeline orchestration handles model management
-- Output generation combines results from all evaluators
 
 ## Features
 
 - Multi-model evaluation using different LLMs as jury members
+- Flexible evaluation methods:
+  - **Criteria-based evaluation**: Assesses individual models on specific metrics
+  - **Pairwise comparison**: Directly compares two model outputs against each other
 - Three key evaluation metrics:
   - **Correctness**: Assesses if the response accurately answers the question
   - **Faithfulness**: Measures how well the response aligns with the provided context
@@ -160,7 +164,7 @@ The evaluation pipeline is configured through `eval_config.toml`. Key sections i
 
 ```ini
 [EVAL_CONFIG]
-enabled_metrics = ["faithfulness", "correctness", "retrievability"]
+enabled_metrics = ["faithfulness", "correctness", "retrievability", "correctness_pairwise", "retrievability_pairwise"]
 
 # for local-hosted models
 [MODEL_META_LLAMA_META_LLAMA_3_8B_INSTRUCT]
@@ -178,15 +182,14 @@ api_key = "$AZURE_SE_WATTELSE_OPENAI_API_KEY_DEV"
 prompt_type = "vanilla"
 regex_type = "default"
 temperature = 0.0
-
-...
 ```
+
 ### Evaluation Configuration:
-- `enabled_metrics`: List of metrics to evaluate
+- `enabled_metrics`: List of metrics to evaluate, including criteria-based and pairwise metrics
 - Model-specific settings (`model_name`, `prompt_type`, `regex_type`, `temperature`)
 
 
-### Evaluation Configuration File (`server_config.toml`)
+### Server Configuration File (`server_config.toml`)
 
 Manages server and deployment settings:
 
@@ -198,9 +201,10 @@ port_controller = 21001
 port_worker = 21002
 cuda_visible_devices = [0, 1]
 ```
+
 ## Usage
 
-### Running the Full Evaluation Pipeline (LLM as Judge/Jury)
+### Running the Criteria-Based Evaluation Pipeline (LLM as Judge/Jury)
 
 ```bash
 # Basic usage
@@ -220,40 +224,59 @@ python run_jury.py ./data/rag_responses.xlsx \
     --output-dir ./results/jury_evaluation
 ```
 
-1. Prepare your evaluation dataset in Excel format with the following columns:
-   - `question`: The input question
-   - `answer`: The RAG system's response
-   - `source_doc`: Source documents used
-   - `rag_relevant_extracts`: RAG relevant extracts from context
+### Running the Pairwise Comparison Evaluation
 
-2. Run the evaluation pipeline:
 ```bash
-python run_jury.py path/to/your/data.xlsx \
-    --eval-config-path eval_config.toml \
-    --server-config-path server_config.toml \
-    --output-dir evaluation_results
+# Basic usage
+python pairwise_comparison.py rag_outputs_model1.xlsx rag_outputs_model2.xlsx
+
+# With all options specified
+python pairwise_comparison.py rag_outputs_model1.xlsx rag_outputs_model2.xlsx \
+    --config-path /path/to/pair_jury_config.toml \
+    --output-dir /path/to/pairwise_results \
+    --overwrite
+
+# Example with specific paths
+python pairwise_comparison.py ./data/mistral_outputs.xlsx ./data/llama_outputs.xlsx \
+    --config-path ./configs/pair_jury_01.toml \
+    --output-dir ./results/pairwise_comparison
 ```
 
 ### Command-line Arguments
 
 #### Common Arguments
-- `qr_df_path`: Path to the Excel file containing questions and responses
 - `--eval-config-path`: Path to the configuration file
 - `--server-config-path`: Path to the server configuration file
 - `--overwrite`: Overwrite existing output file if it exists (default: False)
   > ⚠️ **Warning**: Using this flag will delete any existing file at the output path without confirmation. Use with caution to avoid data loss.
 
-#### For evaluation.py (Single Model)
-- `--report-output-path`: Path for the evaluation results Excel file (default: "report_output.xlsx")
-
-#### For run_jury.py (Multiple Models)
+#### For Criteria-Based Evaluation (`run_jury.py`)
+- `qr_df_path`: Path to the Excel file containing questions and responses
 - `--output-dir`: Directory for evaluation results (default: "evaluation_results")
+
+#### For Pairwise Comparison (`pairwise_comparison.py`)
+- `set1_filename`: Excel Filename of the first model's evaluation results
+- `set2_filename`: Excel Filename of the second model's evaluation results
+- `--config-path`: Path to the pairwise evaluation configuration file
+- `--output-dir`: Directory to save comparison results
 
 # RAG Evaluation Framework
 
-## Evaluation Metrics (Coarsed-grained)
+## Evaluation Methods
 
-This framework evaluates three key aspects of RAG systems using a consistent judgment scale from 1-5 (where 1 is very insufficient and 5 is very satisfactory).
+### Criteria-Based Evaluation
+
+Evaluates individual model outputs on specific metrics using a scoring scale from 1-5 (where 1 is very insufficient and 5 is very satisfactory).
+
+### Pairwise Comparison Evaluation (Correctness)
+
+Directly compares two model outputs against each other, determining which model performs better on specific metrics. For each comparison, the LLM judge must:
+- Analyze both responses in detail
+- Determine which response is better for the given question
+- Provide reasoning for the decision
+- Indicate if the comparison is a tie
+
+## Evaluation Metrics
 
 ### Correctness Evaluation
 
@@ -281,14 +304,15 @@ Determines whether the retrieved context is relevant and sufficient to answer th
 - **Answer Enablement**: Checks if the context directly allows the question to be answered
 - **Comprehensiveness**: Determines if all aspects of the question can be addressed using the retrieved materials
 
-Each metric is evaluated by LLM judges using carefully calibrated prompts specific to each model's capabilities and tendencies.
+**Note**: Each metric is evaluated by LLM judges using carefully calibrated prompts specific to each model's capabilities and tendencies.
 
 ## Output
 
 The pipeline generates:
 - Individual evaluation files for each model
-- A combined evaluation file with results from all models
+- Combined evaluation file with results from all models
 - Detailed scoring and feedback for each evaluation metric
+- Pairwise comparison results showing which model performs better on each metric
 
 ## Architecture
 
@@ -299,18 +323,23 @@ The evaluation pipeline consists of several key components:
    - Handles model switching
    - Coordinates result aggregation
 
-2. **Evaluation Engine** (`evaluation.py`):
+2. **Pairwise Comparison** (`pairwise_comparison.py`):
+   - Compares outputs from different RAG models
+   - Uses LLM judges to determine better performing models
+   - Generates detailed comparison analysis
+
+3. **Evaluation Engine** (`evaluation.py`):
    - Implements core evaluation logic
    - Processes individual responses
    - Calculates metrics
 
-3. **Configuration Manager** (`eval_config.py`):
+4. **Configuration Manager** (`eval_config.py`):
    - Manages evaluation settings
    - Handles model-specific configurations
 
-4. **Prompt Management** (`prompt_eval.py`):
+5. **Prompt Management** (`prompt_eval.py`):
    - Stores evaluation prompts
-   - Manages prompt templates
+   - Manages prompt templates for both criteria-based and pairwise evaluation
 
 
 ## Subdirectories

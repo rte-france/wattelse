@@ -1,0 +1,11 @@
+[EVAL_CONFIG]
+enabled_metrics = ["correctness_pairwise"]
+
+[MODEL_WATTELSE_GPT4O_MINI_SWEDEN_DEV]
+model_name = "$AZURE_SE_WATTELSE_OPENAI_DEFAULT_MODEL_NAME_DEV"
+deployment_type = "cloud"
+api_base = "$AZURE_SE_WATTELSE_OPENAI_ENDPOINT_DEV"
+api_key = "$AZURE_SE_WATTELSE_OPENAI_API_KEY_DEV"
+prompt_type = "default"
+regex_type = "default"
+temperature = 0.0

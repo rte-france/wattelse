@@ -159,7 +159,7 @@ def evaluate_rag_metrics(eval_df: pd.DataFrame, config: EvalConfig) -> pd.DataFr
 
     # Wrap the Parallel execution with tqdm_joblib to show progress
     with tqdm_joblib(desc="Evaluating Rows", total=eval_df.shape[0]) as progress_bar:
-        evaluations = Parallel(n_jobs=-1)(
+        evaluations = Parallel(n_jobs=24)(
             delayed(evaluate_row)(row, config) for _, row in eval_df.iterrows()
         )
 
