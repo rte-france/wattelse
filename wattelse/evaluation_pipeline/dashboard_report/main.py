@@ -22,7 +22,6 @@ from utils import (
     handle_raw_data_page,
     load_pairwise_evaluation_files,
     create_pairwise_pie_chart,
-    PAIRWISE_RESULTS_DIR,
     RAG_QUERY_TIME_COLUMN,
     RAG_RETRIEVER_TIME_COLUMN,
     METRIC_DESCRIPTIONS,
@@ -30,7 +29,7 @@ from utils import (
     PAIRWISE_WINNER_COLUMN,
     PAIRWISE_QUESTION_COLUMN,
 )
-from wattelse.evaluation_pipeline import RESULTS_BASE_DIR
+from wattelse.evaluation_pipeline import RESULTS_BASE_DIR, PAIRWISE_RESULTS_DIR
 
 
 def setup_page():
