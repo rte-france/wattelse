@@ -5,6 +5,7 @@
 [![stars - BERTrend](https://img.shields.io/github/stars/rte-france/wattelse?style=social)](https://github.com/rte-france/wattelse)
 [![forks - BERTrend](https://img.shields.io/github/forks/rte-france/wattelse?style=social)](https://github.com/rte-france/wattelse)
 [![issues - BERTrend](https://img.shields.io/github/issues/rte-france/wattelse)](https://github.com/rte-france/wattelse/issues)
+[![Downloads](https://pepy.tech/badge/wattelse)](https://pepy.tech/project/wattelse)
 ![Static Badge](https://img.shields.io/badge/python-%3E%3D3.11-blue)
 
 
