@@ -93,7 +93,7 @@ def rag_page(request):
     can_manage_users = request.user.has_perm("chatbot.can_manage_users")
 
     # Check if group is allowed to edit system prompt
-    group_can_edit_system_prompt = can_edit_group_system_prompt(user_group_id)
+    group_can_edit_system_prompt = True
 
     # Only admin can edit system prompt, other users have read access by default
     user_can_edit_system_prompt = is_superuser(request.user)
