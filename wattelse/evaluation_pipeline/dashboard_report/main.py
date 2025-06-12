@@ -715,49 +715,7 @@ def main():
         handle_experiment_setup()
         return
 
-    # Check if regular or pairwise experiments are configured based on the page
-    elif page == "Pairwise Analysis":
-        if len(st.session_state.pairwise_experiments) == 0:
-            st.info(
-                "No pairwise experiments are configured. Please go to the Experiment Setup page to add pairwise comparisons."
-            )
-            return
-
-        # Load pairwise experiments data
-        pairwise_experiments_data = []
-        has_invalid_files = False
-
-        for exp in st.session_state.pairwise_experiments:
-            file_path = exp.get("file", "")
-            if not file_path:
-                has_invalid_files = True
-                continue
-
-            data = load_pairwise_evaluation_files(file_path)
-            if data is not None:
-                pairwise_experiments_data.append(
-                    {
-                        "name": exp["name"],
-                        "file": file_path,
-                        "dfs": data[0],  # Judge-specific dataframes
-                        "combined_stats": data[1],  # Combined statistics
-                    }
-                )
-            else:
-                has_invalid_files = True
-
-        # Handle various error states
-        if has_invalid_files:
-            st.warning(
-                "Some pairwise comparison files are invalid or empty. Please check the configuration."
-            )
-
-        if not pairwise_experiments_data:
-            st.error(
-                "No valid pairwise evaluation files found. Please configure valid files."
-            )
-            return
-    # Load experiments data
+    # Load standard experiments data
     experiments_data = []
     has_invalid_paths = False
 
@@ -775,18 +733,50 @@ def main():
         else:
             has_invalid_paths = True
 
-    # Handle various error states
-    if not st.session_state.experiments:
+    # Load pairwise experiments data (moved outside the unreachable elif block)
+    pairwise_experiments_data = []
+    has_invalid_pairwise_files = False
+
+    if (
+        "pairwise_experiments" in st.session_state
+        and st.session_state.pairwise_experiments
+    ):
+        for exp in st.session_state.pairwise_experiments:
+            file_path = exp.get("file", "")
+            if not file_path:
+                has_invalid_pairwise_files = True
+                continue
+
+            data = load_pairwise_evaluation_files(file_path)
+            if data is not None:
+                pairwise_experiments_data.append(
+                    {
+                        "name": exp["name"],
+                        "file": file_path,
+                        "dfs": data[0],  # Judge-specific dataframes
+                        "combined_stats": data[1],  # Combined statistics
+                    }
+                )
+            else:
+                has_invalid_pairwise_files = True
+
+    # Handle various error states for standard experiments
+    if not st.session_state.experiments and not st.session_state.pairwise_experiments:
         st.error("No experiments configured. Please add experiments in the Setup page.")
         return
     elif has_invalid_paths:
-        st.error(
+        st.warning(
             "Some experiment paths are invalid or empty. Please check the configuration."
         )
-        return
-    elif not experiments_data:
+    elif not experiments_data and not pairwise_experiments_data:
         st.error("No valid evaluation files found in the specified directories.")
         return
+
+    # Handle pairwise file errors
+    if has_invalid_pairwise_files:
+        st.warning(
+            "Some pairwise comparison files are invalid or empty. Please check the configuration."
+        )
 
     if page == "Performance Overview":
         st.header("Performance Overview")
@@ -928,233 +918,204 @@ def main():
                 )
 
             # PAIRWISE COMPARISON SECTION - Below the confidence intervals
-            # In the Performance Overview section where you display pairwise data:
             st.subheader("Pairwise Comparison Evaluation")
 
             # Check if pairwise data is available
-            if (
-                "pairwise_experiments" in st.session_state
-                and st.session_state.pairwise_experiments
-            ):
-                # Load pairwise data
-                pairwise_data = []
-                for exp in st.session_state.pairwise_experiments:
-                    file_path = exp.get("file", "")
-                    if file_path:
-                        data = load_pairwise_evaluation_files(file_path)
-                        if data is not None:
-                            pairwise_data.append(
-                                {
-                                    "name": exp["name"],
-                                    "file": file_path,
-                                    "dfs": data[0],
-                                    "combined_stats": data[1],
-                                }
-                            )
+            if pairwise_experiments_data:
+                # If there are multiple pairwise datasets, add a selectbox
+                if len(pairwise_experiments_data) > 1:
+                    selected_pairwise_name = st.selectbox(
+                        "Select Pairwise Comparison",
+                        [exp["name"] for exp in pairwise_experiments_data],
+                        key="overview_pairwise_selector",
+                    )
+                    selected_pairwise = next(
+                        (
+                            exp
+                            for exp in pairwise_experiments_data
+                            if exp["name"] == selected_pairwise_name
+                        ),
+                        pairwise_experiments_data[0],
+                    )
+                else:
+                    selected_pairwise = pairwise_experiments_data[0]
 
-                if pairwise_data:
-                    # If there are multiple pairwise datasets, add a selectbox
-                    if len(pairwise_data) > 1:
-                        selected_pairwise_name = st.selectbox(
-                            "Select Pairwise Comparison",
-                            [exp["name"] for exp in pairwise_data],
-                            key="overview_pairwise_selector",
+                # Get combined stats
+                combined_stats = selected_pairwise["combined_stats"]
+
+                if not combined_stats.empty:
+                    # Create columns for layout
+                    col1, col2 = st.columns([1, 1])
+
+                    with col1:
+                        # Calculate total unique questions across all judges
+                        total_questions = 0
+                        unique_questions = set()
+
+                        # Go through all judge dataframes to count unique questions
+                        for judge_name, df in selected_pairwise["dfs"].items():
+                            if PAIRWISE_QUESTION_COLUMN in df.columns:
+                                unique_questions.update(
+                                    df[PAIRWISE_QUESTION_COLUMN].unique()
+                                )
+
+                        total_questions = len(unique_questions)
+
+                        # Display comprehensive table with all metrics and all information
+                        st.markdown(
+                            f"##### Pairwise Win Statistics (Total Questions: {total_questions})"
                         )
-                        selected_pairwise = next(
-                            (
-                                exp
-                                for exp in pairwise_data
-                                if exp["name"] == selected_pairwise_name
-                            ),
-                            pairwise_data[0],
-                        )
-                    else:
-                        selected_pairwise = pairwise_data[0]
 
-                    # Get combined stats
-                    combined_stats = selected_pairwise["combined_stats"]
+                        # Get all metrics and possible winners (including Tie, Error, etc.)
+                        metrics = [
+                            col.replace("_win_rate", "")
+                            for col in combined_stats.columns
+                            if col.endswith("_win_rate")
+                        ]
 
-                    if not combined_stats.empty:
-                        # Create columns for layout
-                        col1, col2 = st.columns([1, 1])
+                        # Create a table that includes all possible outcomes in the Winner column
+                        all_results_data = []
 
-                        with col1:
-                            # Calculate total unique questions across all judges
-                            total_questions = 0
-                            unique_questions = set()
-
-                            # Go through all judge dataframes to count unique questions
-                            for judge_name, df in selected_pairwise["dfs"].items():
-                                if PAIRWISE_QUESTION_COLUMN in df.columns:
-                                    unique_questions.update(
-                                        df[PAIRWISE_QUESTION_COLUMN].unique()
+                        # Process raw judge data to get complete winner statistics
+                        for judge_name, df in selected_pairwise["dfs"].items():
+                            if (
+                                PAIRWISE_METRIC_COLUMN in df.columns
+                                and PAIRWISE_WINNER_COLUMN in df.columns
+                            ):
+                                # Group by metric and winner to get counts
+                                grouped = (
+                                    df.groupby(
+                                        [
+                                            PAIRWISE_METRIC_COLUMN,
+                                            PAIRWISE_WINNER_COLUMN,
+                                        ]
                                     )
+                                    .size()
+                                    .reset_index(name="Count")
+                                )
 
-                            total_questions = len(unique_questions)
+                                # Calculate percentages by metric
+                                for metric, metric_df in grouped.groupby(
+                                    PAIRWISE_METRIC_COLUMN
+                                ):
+                                    total = metric_df["Count"].sum()
 
-                            # Display comprehensive table with all metrics and all information
-                            st.markdown(
-                                f"##### Pairwise Win Statistics (Total Questions: {total_questions})"
+                                    for _, row in metric_df.iterrows():
+                                        winner = row[PAIRWISE_WINNER_COLUMN]
+                                        count = row["Count"]
+                                        percentage = (
+                                            (count / total * 100) if total > 0 else 0
+                                        )
+
+                                        all_results_data.append(
+                                            {
+                                                "Metric": metric,
+                                                "Winner": winner,
+                                                "Count": count,
+                                                "Percentage": percentage,
+                                                "Judge": judge_name,
+                                            }
+                                        )
+
+                        # Create a combined summary across all judges
+                        if all_results_data:
+                            results_df = pd.DataFrame(all_results_data)
+                            summary = (
+                                results_df.groupby(["Metric", "Winner"])
+                                .agg({"Count": "sum", "Judge": "count"})
+                                .reset_index()
                             )
 
-                            # Get all metrics and possible winners (including Tie, Error, etc.)
-                            metrics = [
-                                col.replace("_win_rate", "")
-                                for col in combined_stats.columns
-                                if col.endswith("_win_rate")
+                            # Calculate overall percentages
+                            for metric, metric_df in summary.groupby("Metric"):
+                                total = metric_df["Count"].sum()
+                                summary.loc[
+                                    summary["Metric"] == metric, "Percentage"
+                                ] = (
+                                    summary.loc[summary["Metric"] == metric, "Count"]
+                                    / total
+                                    * 100
+                                )
+
+                            # Find max percentage for each metric for bold formatting
+                            max_percentages = (
+                                summary.groupby("Metric")["Percentage"].max().to_dict()
+                            )
+
+                            # Format for display with bold for highest values
+                            summary["Display"] = summary.apply(
+                                lambda row: (
+                                    f"**{row['Count']} ({row['Percentage']:.1f}%)**"
+                                    if row["Percentage"]
+                                    == max_percentages.get(row["Metric"], 0)
+                                    else f"{row['Count']} ({row['Percentage']:.1f}%)"
+                                ),
+                                axis=1,
+                            )
+
+                            # Pivot table for better display
+                            pivot_table = summary.pivot(
+                                index="Winner", columns="Metric", values="Display"
+                            ).reset_index()
+
+                            # Format the column headers nicely
+                            pivot_table.columns = [
+                                col.title() if col != "Winner" else col
+                                for col in pivot_table.columns
                             ]
 
-                            # Create a table that includes all possible outcomes in the Winner column
-                            all_results_data = []
+                            # Display the pivot table with markdown to maintain bold formatting
+                            st.markdown(
+                                pivot_table.to_markdown(index=False),
+                                unsafe_allow_html=True,
+                            )
 
-                            # Process raw judge data to get complete winner statistics
-                            for judge_name, df in selected_pairwise["dfs"].items():
-                                if (
-                                    PAIRWISE_METRIC_COLUMN in df.columns
-                                    and PAIRWISE_WINNER_COLUMN in df.columns
-                                ):
-                                    # Group by metric and winner to get counts
-                                    grouped = (
-                                        df.groupby(
-                                            [
-                                                PAIRWISE_METRIC_COLUMN,
-                                                PAIRWISE_WINNER_COLUMN,
-                                            ]
-                                        )
-                                        .size()
-                                        .reset_index(name="Count")
-                                    )
+                            # Add caption explaining bold values
+                            st.caption(
+                                "**Bold values** indicate the highest percentage for each metric category."
+                            )
+                        else:
+                            st.info("No detailed winner statistics available.")
 
-                                    # Calculate percentages by metric
-                                    for metric, metric_df in grouped.groupby(
-                                        PAIRWISE_METRIC_COLUMN
-                                    ):
-                                        total = metric_df["Count"].sum()
+                    with col2:
+                        # Create a PIE CHART for a selected metric
+                        # Look for correctness_pairwise first, then use first available metric
+                        selected_metric = None
 
-                                        for _, row in metric_df.iterrows():
-                                            winner = row[PAIRWISE_WINNER_COLUMN]
-                                            count = row["Count"]
-                                            percentage = (
-                                                (count / total * 100)
-                                                if total > 0
-                                                else 0
-                                            )
+                        for metric in metrics:
+                            if "correctness" in metric.lower():
+                                selected_metric = metric
+                                break
 
-                                            all_results_data.append(
-                                                {
-                                                    "Metric": metric,
-                                                    "Winner": winner,
-                                                    "Count": count,
-                                                    "Percentage": percentage,
-                                                    "Judge": judge_name,
-                                                }
-                                            )
+                        # If no correctness metric found, use the first available
+                        if not selected_metric and metrics:
+                            selected_metric = metrics[0]
 
-                            # Create a combined summary across all judges
-                            if all_results_data:
-                                results_df = pd.DataFrame(all_results_data)
-                                summary = (
-                                    results_df.groupby(["Metric", "Winner"])
-                                    .agg({"Count": "sum", "Judge": "count"})
-                                    .reset_index()
-                                )
+                        if selected_metric:
+                            # Create the pie chart using the imported function
+                            fig = create_pairwise_pie_chart(
+                                combined_stats=selected_pairwise["combined_stats"],
+                                pairwise_dfs=selected_pairwise["dfs"],
+                                metric_name=selected_metric,
+                            )
 
-                                # Calculate overall percentages
-                                for metric, metric_df in summary.groupby("Metric"):
-                                    total = metric_df["Count"].sum()
-                                    summary.loc[
-                                        summary["Metric"] == metric, "Percentage"
-                                    ] = (
-                                        summary.loc[
-                                            summary["Metric"] == metric, "Count"
-                                        ]
-                                        / total
-                                        * 100
-                                    )
-
-                                # Find max percentage for each metric for bold formatting
-                                max_percentages = (
-                                    summary.groupby("Metric")["Percentage"]
-                                    .max()
-                                    .to_dict()
-                                )
-
-                                # Format for display with bold for highest values
-                                summary["Display"] = summary.apply(
-                                    lambda row: (
-                                        f"**{row['Count']} ({row['Percentage']:.1f}%)**"
-                                        if row["Percentage"]
-                                        == max_percentages.get(row["Metric"], 0)
-                                        else f"{row['Count']} ({row['Percentage']:.1f}%)"
-                                    ),
-                                    axis=1,
-                                )
-
-                                # Pivot table for better display
-                                pivot_table = summary.pivot(
-                                    index="Winner", columns="Metric", values="Display"
-                                ).reset_index()
-
-                                # Format the column headers nicely
-                                pivot_table.columns = [
-                                    col.title() if col != "Winner" else col
-                                    for col in pivot_table.columns
-                                ]
-
-                                # Display the pivot table with markdown to maintain bold formatting
-                                st.markdown(
-                                    pivot_table.to_markdown(index=False),
-                                    unsafe_allow_html=True,
-                                )
-
-                                # Add caption explaining bold values
-                                st.caption(
-                                    "**Bold values** indicate the highest percentage for each metric category."
+                            if fig:
+                                # Display the pie chart
+                                st.plotly_chart(
+                                    fig,
+                                    use_container_width=True,
+                                    key=f"pairwise_pie_{str(uuid.uuid4())}",
                                 )
                             else:
-                                st.info("No detailed winner statistics available.")
+                                st.info("No metric data available for visualization.")
+                        else:
+                            st.info("No metric data available for visualization.")
+            else:
+                st.info(
+                    "No pairwise comparison data available. Please configure pairwise experiments in the Experiment Setup page."
+                )
 
-                            # And then replace the pie chart creation code with:
-                            with col2:
-                                # Create a PIE CHART for a selected metric
-                                # Look for correctness_pairwise first, then use first available metric
-                                selected_metric = None
-
-                                for metric in metrics:
-                                    if "correctness" in metric.lower():
-                                        selected_metric = metric
-                                        break
-
-                                # If no correctness metric found, use the first available
-                                if not selected_metric and metrics:
-                                    selected_metric = metrics[0]
-
-                                if selected_metric:
-                                    # Create the pie chart using the imported function
-                                    fig = create_pairwise_pie_chart(
-                                        combined_stats=selected_pairwise[
-                                            "combined_stats"
-                                        ],
-                                        pairwise_dfs=selected_pairwise["dfs"],
-                                        metric_name=selected_metric,
-                                    )
-
-                                    if fig:
-                                        # Display the pie chart
-                                        st.plotly_chart(
-                                            fig,
-                                            use_container_width=True,
-                                            key=f"pairwise_pie_{str(uuid.uuid4())}",
-                                        )
-                                    else:
-                                        st.info(
-                                            "No metric data available for visualization."
-                                        )
-                                else:
-                                    st.info(
-                                        "No metric data available for visualization."
-                                    )
-        # Create individual judge tabs
+        # Create individual judge tabs (rest of the Performance Overview code remains the same)
         for judge_tab, judge_name in zip(judge_tabs, sorted(all_judges)):
             with judge_tab:
                 st.subheader(f"Analysis by {judge_name}")
@@ -1354,6 +1315,13 @@ def main():
                     st.warning(f"No data available for {judge_name}")
 
     elif page == "Timing Analysis":
+        # Require at least standard experiments for timing analysis
+        if not experiments_data:
+            st.error(
+                "No standard experiments configured. Please add standard experiments in the Setup page for timing analysis."
+            )
+            return
+
         st.header("Timing Analysis")
         tab1, tab2 = st.tabs(["📊 Total Time", "🔄 Retriever Time"])
 
@@ -1380,32 +1348,18 @@ def main():
             )
 
     elif page == "PDF Export":
+        # Require at least standard experiments for PDF export
+        if not experiments_data:
+            st.error(
+                "No standard experiments configured. Please add standard experiments in the Setup page for PDF export."
+            )
+            return
+
         handle_pdf_export(experiments_data)
 
     elif page == "Raw Data":
-        # Check if pairwise experiments exist
-        pairwise_data = []
-        if (
-            "pairwise_experiments" in st.session_state
-            and st.session_state.pairwise_experiments
-        ):
-            # Load pairwise experiments data
-            for exp in st.session_state.pairwise_experiments:
-                file_path = exp.get("file", "")
-                if file_path:
-                    data = load_pairwise_evaluation_files(file_path)
-                    if data is not None:
-                        pairwise_data.append(
-                            {
-                                "name": exp["name"],
-                                "file": file_path,
-                                "dfs": data[0],
-                                "combined_stats": data[1],
-                            }
-                        )
-
-        # Call the enhanced raw data page with pairwise data
-        handle_raw_data_page(experiments_data, pairwise_data)
+        # Pass both types of data to the raw data handler
+        handle_raw_data_page(experiments_data, pairwise_experiments_data)
 
 
 if __name__ == "__main__":

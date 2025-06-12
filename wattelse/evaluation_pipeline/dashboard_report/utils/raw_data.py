@@ -1054,6 +1054,7 @@ def handle_raw_data_page(experiments_data, pairwise_experiments_data=None):
                 # Display filter status
                 if filtered_data.empty:
                     st.warning("No data matches the selected filters")
+                else:
                     # Show summary of the filtered data
                     st.info(
                         f"Displaying {len(filtered_data)} comparison results "
@@ -1303,6 +1304,8 @@ def handle_raw_data_page(experiments_data, pairwise_experiments_data=None):
                                             break
                                     if not found:
                                         st.info(f"No extracts found for {model2}")
+                    else:
+                        st.info("No questions available in the filtered data.")
 
     # Tab 3: Timing Data
     with tab3:
