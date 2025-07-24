@@ -60,7 +60,7 @@ urlpatterns = [
     path("dashboard/", views.dashboard, name="dashboard"),
     # GPT chat
     path("gpt/", secureGPT_views.gpt_page, name="gpt_chat"),
-    path("query_gpt/", secureGPT_views.query_gpt, name="query_gpt"),
+    # path("query_gpt/", secureGPT_views.query_gpt, name="query_gpt"),
     # Conversations history management
     path(
         "get_conversation_messages/",
