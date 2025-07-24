@@ -55,16 +55,9 @@ def gpt_page(request):
         return redirect("/login")
 
     if request.method == "GET":
-        # Get user conversation history
-        conversations = get_user_conversation_history(request.user, GPTChat)
-
         return render(
             request,
-            "chatbot/secureGPT.html",
-            context={
-                "llm_name": LLM_MAPPING[llm_config["model"]],
-                "conversations": conversations,
-            },
+            "chatbot/secureGPT_redirect.html",
         )
     else:
         raise Http404()
