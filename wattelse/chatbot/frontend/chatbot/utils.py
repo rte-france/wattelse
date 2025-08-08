@@ -50,6 +50,7 @@ LLM_MAPPING = {
     "wattelse-mistral-Large-2411": "Mistral-large",
     "meta-llama/Meta-Llama-3-8B-Instruct": "Meta-Llama-3-8B-Instruct",
     "wattelse-Phi-4": "phi-4",
+    "gpt-4.1-mini": "gpt-4.1-mini",
 }
 
 ChatModels = {
