@@ -135,11 +135,8 @@ def get_group_usernames_list(group_id: str) -> dict[str, bool]:
     }
     with is_superuser() being True if the user is admin of its group.
     """
-    # Get group object
-    group = Group.objects.get(name=group_id)
-
     # Filter users having group_id as active group
-    users_list = UserProfile.objects.filter(active_group=group).exclude(
+    users_list = User.objects.filter(groups__name=group_id).exclude(
         user__is_superuser=True
     )
     users_dict = {user.user.username: is_superuser(user.user) for user in users_list}
