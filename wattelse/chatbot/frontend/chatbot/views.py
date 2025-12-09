@@ -127,7 +127,7 @@ def rag_page(request):
             "admin_group_selection": admin_group_selection,
             "conversations": conversations,
             "is_wattelse_doc": True,
-            "llm_name": LLM_MAPPING[RAG_API.get_rag_llm_model(user_group_id)],
+            "llm_name": RAG_API.get_rag_llm_model(user_group_id),
         },
     )
 
