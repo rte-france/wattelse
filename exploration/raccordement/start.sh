@@ -1,0 +1,1 @@
+OPENAI_API_KEY=$AZURE_WATTELSE_OPENAI_API_KEY OPENAI_ENDPOINT=$AZURE_WATTELSE_OPENAI_ENDPOINT CUDA_VISIBLE_DEVICES=0 streamlit run  --theme.primaryColor royalblue --server.port 8989 topics_raccordement.py
