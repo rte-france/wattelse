@@ -6,7 +6,6 @@
 import streamlit as st
 from wattelse.gpt_rte import generation
 
-
 # Get model name used for generation
 
 model_name = generation.model_name

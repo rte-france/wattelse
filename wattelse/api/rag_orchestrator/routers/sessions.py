@@ -24,7 +24,6 @@ from wattelse.api.common.security import (
 )
 from wattelse.chatbot.backend.rag_backend import RAGBackend
 
-
 router = APIRouter()
 
 

@@ -81,7 +81,7 @@ def side_bar():
             key="group",
         )
 
-        (min_date, max_date) = st.session_state["unfiltered_timestamp_range"]
+        min_date, max_date = st.session_state["unfiltered_timestamp_range"]
 
         st.slider(
             "Select the range of timestamps",

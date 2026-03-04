@@ -13,7 +13,6 @@ from wattelse.api.rag_orchestrator import (
 from wattelse.api.rag_orchestrator.rag_sessions import RAG_SESSIONS
 from wattelse.api.rag_orchestrator.utils import require_session
 
-
 router = APIRouter()
 
 

@@ -7,7 +7,6 @@ from typing import List
 
 from langchain_core.documents import Document
 
-
 # these functions are used to concatenate parent-headers to the beginning of each subsection
 
 
