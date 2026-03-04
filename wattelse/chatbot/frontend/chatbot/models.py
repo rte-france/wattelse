@@ -56,7 +56,7 @@ class GPTChat(models.Model):
 class GroupProfile(models.Model):
     group = models.OneToOneField(Group, on_delete=models.CASCADE, primary_key=True)
     rag_config = models.CharField(
-        max_length=100, default="azure_20241216", null=False, blank=False
+        max_length=100, default="gpt-5.1_20260211", null=False, blank=False
     )
     system_prompt = models.TextField(null=True, blank=True, default="")
 
