@@ -51,7 +51,7 @@ ALLOWED_HOSTS = [
 ]
 
 # Tell Django to trust the X-Forwarded-Proto header from Traefik
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Tell Django to trust the secure origin for CSRF checks (Required in Django 4.0+)
 CSRF_TRUSTED_ORIGINS = [
