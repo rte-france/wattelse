@@ -47,6 +47,7 @@ ALLOWED_HOSTS = [
     "10.132.6.55",
     "10.132.5.44",
     "dsia.rte-france.com",
+    "wattelse-doc.dsia.rte-france.com",
 ]
 
 
